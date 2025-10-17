@@ -134,7 +134,7 @@ function Start-OM {
         }
         # Helper scriptblock for handling move success (shared between sf and sa)
         $handleMoveSuccess = {
-            param($moveResult, $useWhatIf, $oldpath, $album, $audioFiles, $refreshTracks)
+            param($moveResult, $useWhatIf, $oldpath)
     
             if ($moveResult -and $moveResult.Success) {
                 if ($useWhatIf) {
@@ -159,10 +159,10 @@ function Start-OM {
                         #  continue doTracks
                     }
                     # Folder was moved - update $album and reload audio files from new location
-                    $album = Get-Item -LiteralPath $moveResult.NewAlbumPath
+                    $script:album = Get-Item -LiteralPath $moveResult.NewAlbumPath
             
                     # Reload audio files with fresh TagLib handles from the NEW album path
-                    $audioFiles = Get-ChildItem -LiteralPath $album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
+                    $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
                     $audioFiles = foreach ($f in $audioFiles) {
                         try {
                             $tagFile = [TagLib.File]::Create($f.FullName)
@@ -183,7 +183,21 @@ function Start-OM {
                             continue
                         }
                     }
-                    $refreshTracks = $true
+
+                    # Update file paths in existing paired tracks to avoid re-pairing
+                    if ($pairedTracks -and $pairedTracks.Count -gt 0) {
+                        for ($i = 0; $i -lt [Math]::Min($pairedTracks.Count, $audioFiles.Count); $i++) {
+                            if ($pairedTracks[$i].AudioFile.TagFile) {
+                                try { $pairedTracks[$i].AudioFile.TagFile.Dispose() } catch { }
+                            }
+                            $pairedTracks[$i].AudioFile.FilePath = $audioFiles[$i].FilePath
+                            $pairedTracks[$i].AudioFile.TagFile = $audioFiles[$i].TagFile
+                        }
+                    }
+                    $refreshTracks = $false
+
+
+                    # $refreshTracks = $true
                     Write-Host "Album saved and folder moved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
                     #  continue doTracks
                 }
@@ -192,10 +206,11 @@ function Start-OM {
                 Write-Warning "Move failed or was skipped. Move result: $moveResult"
             }
         }
-
+        $script:album = $null
         $artist = Split-Path -Leaf $Path
         $albums = Get-ChildItem -LiteralPath $Path -Directory
-        foreach ($album in $albums) {
+        foreach ($albumOriginal in $albums) {
+            $script:album = $albumOriginal
             # Initialize album artist override for this album
             $script:ManualAlbumArtist = $null
             
@@ -203,18 +218,18 @@ function Start-OM {
             if ($useWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
             # derive album name and year
             # Try to extract year from the start of the folder name (e.g., "2023 - Album Name")
-            if ($album.Name -match '^(\d{4})\s*[-]?\s*(.+)') {
+            if ($script:album.Name -match '^(\d{4})\s*[-]?\s*(.+)') {
                 $year = $matches[1]
                 $albumName = $matches[2].Trim()
             }
             else {
                 $year = $null
-                $albumName = $album.Name.Trim()
+                $albumName = $script:album.Name.Trim()
 
             }
-            $audioFilesCheck = Get-ChildItem -LiteralPath $album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
+            $audioFilesCheck = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
             if (-not $audioFilesCheck -or $audioFilesCheck.Count -eq 0) {
-                Write-Warning "No supported audio files found in album folder: $($album.FullName). Skipping album."
+                Write-Warning "No supported audio files found in album folder: $($script:album.FullName). Skipping album."
                 continue
             }
 
@@ -430,7 +445,7 @@ function Start-OM {
                             break 2
                         }
                         # collect audio files and tags
-                        $audioFiles = Get-ChildItem -LiteralPath $album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
+                        $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
                         $audioFiles = foreach ($f in $audioFiles) {
                             try {
                                 $tagFile = [TagLib.File]::Create($f.FullName)
@@ -729,15 +744,15 @@ function Start-OM {
                       
     
                         # Prefer sorting by disc/track when provider supplied disc numbers, otherwise keep name-sorting
-                        $hasDiscNumbers = $false
-                        try {
-                            if ($tracksForAlbum -and $tracksForAlbum.Count -gt 0) {
-                                $hasDiscNumbers = ($tracksForAlbum | Where-Object { ($_.PSObject.Properties.Match('disc_Number') -and $_.disc_Number -gt 0) -or ($_.PSObject.Properties.Match('disc_number') -and $_.disc_number -gt 0) }).Count -gt 0
-                            }
-                        }
-                        catch { $hasDiscNumbers = $false }
-                        $sortMethod = if ($hasDiscNumbers) { 'byTrackNumber' } else { 'byOrder' }
-
+                        # $hasDiscNumbers = $false
+                        # try {
+                        #     if ($tracksForAlbum -and $tracksForAlbum.Count -gt 0) {
+                        #         $hasDiscNumbers = ($tracksForAlbum | Where-Object { ($_.PSObject.Properties.Match('disc_Number') -and $_.disc_Number -gt 0) -or ($_.PSObject.Properties.Match('disc_number') -and $_.disc_number -gt 0) }).Count -gt 0
+                        #     }
+                        # }
+                        # catch { $hasDiscNumbers = $false }
+                        #$sortMethod = if ($hasDiscNumbers) { 'byTrackNumber' } else { 'byOrder' }
+                        $sortMethod = 'byOrder'
                         # Debug: when verbose, print the raw provider track list so users can verify
                         # that disc numbers were parsed and normalized (helps compare with test output)
                         try {
@@ -875,7 +890,7 @@ function Start-OM {
                                 }
                                 '^sf$' {
                                     $year = Get-ReleaseYear -ReleaseDate (Get-IfExists $ProviderAlbum 'release_date')
-                                    $oldpath = $album.FullName
+                                    $oldpath = $script:album.FullName
                                     $safeAlbumName = Approve-PathSegment -Segment (Get-IfExists $ProviderAlbum 'name') -Replacement '_' -CollapseRepeating -Transliterate
                                     
                                     # Use ManualAlbumArtist if set, otherwise fall back to ProviderArtist
@@ -896,7 +911,8 @@ function Start-OM {
                                     }
                                     # call Move-AlbumFolder and pass -WhatIf from the caller (if requested)
                                     $moveResult = Invoke-MoveAlbumWithRetry -mvArgs $mvArgs -useWhatIf $useWhatIf
-                                    & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath -album $album -audioFiles $audioFiles -refreshTracks $refreshTracks
+                                                                        & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath
+                                    #& $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath -album $album -audioFiles $audioFiles -refreshTracks $refreshTracks
                                     continue doTracks                         
                                     # if ($moveResult -and $moveResult.Success) {
                                     #     # If the move would not change the path, don't prompt or attempt to re-open.
@@ -1089,7 +1105,7 @@ function Start-OM {
                                                 }
                                             }
                                             # Reload audio files with fresh TagLib handles
-                                            $audioFiles = Get-ChildItem -LiteralPath $album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
+                                            $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
                                             $audioFiles = foreach ($f in $audioFiles) {
                                                 try {
                                                     $tagFile = [TagLib.File]::Create($f.FullName)
@@ -1190,7 +1206,7 @@ function Start-OM {
                                         Write-Verbose "Preview: keeping TagFile handles open so interactive UI can display tags."
                                     }
                                     $year = Get-ReleaseYear -ReleaseDate (Get-IfExists $ProviderAlbum 'release_date')
-                                    $oldpath = $album.FullName
+                                    $oldpath = $script:album.FullName
                                     $safeAlbumName = Approve-PathSegment -Segment (Get-IfExists $ProviderAlbum 'name') -Replacement '_' -CollapseRepeating -Transliterate
                                     
                                     # Use ManualAlbumArtist if set, otherwise fall back to ProviderArtist
@@ -1211,8 +1227,9 @@ function Start-OM {
                                     }
     
                                     $moveResult = Invoke-MoveAlbumWithRetry -mvArgs $mvArgs -useWhatIf $useWhatIf
-                                    & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath -album $album -audioFiles $audioFiles -refreshTracks $refreshTracks
-                                    continue                                   
+                                 #   & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath -album $album -audioFiles $audioFiles -refreshTracks $refreshTracks
+                                                                  & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath
+                                 continue                                   
                                     # if ($moveResult -and $moveResult.Success) {
                                     #     if ($useWhatIf) {
                                     #         Write-Host "WhatIf: album would be moved:" -ForegroundColor Yellow
