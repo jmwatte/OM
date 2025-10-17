@@ -86,7 +86,12 @@ CmdletsToExport = @()
 VariablesToExport = @()
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @()
+AliasesToExport = @(
+    'SOM',  # Start-OM
+    'SOT',  # Set-OMTags
+    'GOT',  # Get-OMTags
+    'AOD'   # Add-OMDiscNumbers
+)
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()
