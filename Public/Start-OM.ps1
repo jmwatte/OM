@@ -1,4 +1,4 @@
-function Invoke-MuFoManual {
+function Start-OM {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true)]
