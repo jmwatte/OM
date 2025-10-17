@@ -84,9 +84,9 @@ function Get-QAlbumTracks {
             if (-not (Test-Path $HtmlFile)) { throw "HtmlFile not found: $HtmlFile" }
             Write-Verbose ("Loaded HTML from file: {0}" -f $HtmlFile)
 
-            # If HTML fixture is provided, prefer the stable helper parser implemented in Public\Get-TracksFromHtml.ps1
+            # If HTML fixture is provided, prefer the stable helper parser implemented in Private\Get-TracksFromHtml.ps1
             try {
-                . "$PSScriptRoot\..\Public\Get-TracksFromHtml.ps1"
+                . "$PSScriptRoot\..\Get-TracksFromHtml.ps1"
                 $parsed = Get-TracksFromHtml -Path $HtmlFile
                 if ($parsed) {
                     # Ensure provider-canonical shape for downstream consumers

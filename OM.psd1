@@ -73,7 +73,6 @@ FunctionsToExport = @(
     'Add-OMDiscNumbers',
     'Get-OMConfig',
     'Get-OMTags',
-    'Get-TracksFromHtml',
     'Set-OMConfig',
     'Set-OMTags',
     'Start-OM'
