@@ -177,22 +177,30 @@ function Set-OMConfig {
                 }
             }
             else {
-                # Windows: Remove inherited permissions and grant only current user full control
-                try {
-                    $acl = Get-Acl $ConfigPath
-                    $acl.SetAccessRuleProtection($true, $false)  # Disable inheritance, don't copy existing
-                    $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
-                        [System.Security.Principal.WindowsIdentity]::GetCurrent().Name,
-                        "FullControl",
-                        "Allow"
-                    )
-                    $acl.SetAccessRule($rule)
-                    Set-Acl $ConfigPath $acl
-                    Write-Verbose "Set restrictive file permissions (current user only)"
+                # Windows: Check if running as administrator before attempting to set permissions
+                $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+                
+                if ($isAdmin) {
+                    # Remove inherited permissions and grant only current user full control
+                    try {
+                        $acl = Get-Acl $ConfigPath
+                        $acl.SetAccessRuleProtection($true, $false)  # Disable inheritance, don't copy existing
+                        $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+                            [System.Security.Principal.WindowsIdentity]::GetCurrent().Name,
+                            "FullControl",
+                            "Allow"
+                        )
+                        $acl.SetAccessRule($rule)
+                        Set-Acl $ConfigPath $acl
+                        Write-Verbose "Set restrictive file permissions (current user only)"
+                    }
+                    catch {
+                        Write-Verbose "Could not set restrictive permissions: $($_.Exception.Message)"
+                        Write-Verbose "Config file saved successfully but with default permissions"
+                    }
                 }
-                catch {
-                    Write-Verbose "Could not set restrictive permissions (requires elevated privileges): $($_.Exception.Message)"
-                    Write-Verbose "Config file saved successfully but with default permissions"
+                else {
+                    Write-Verbose "Skipping restrictive permission setting - requires administrator privileges. Config saved with default permissions, which are usually sufficient for personal use."
                 }
             }
 
