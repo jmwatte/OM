@@ -42,14 +42,14 @@ function Invoke-MusicBrainzRequest {
 
     # Get contact from config, fallback to GitHub project URL
     try {
-        $config = Get-MuFoConfig
+        $config = Get-OMConfig
         $contact = if ($config -and (Get-IfExists $config 'MusicBrainzContact')) { 
             $config.MusicBrainzContact 
         } else { 
-            "https://github.com/jmwatte/MuFo"
+            "https://github.com/jmwatte/OM"
         }
     } catch {
-        $contact = "https://github.com/jmwatte/MuFo"
+        $contact = "https://github.com/jmwatte/OM"
     }
     
     # MusicBrainz requires User-Agent header

@@ -42,7 +42,7 @@ function Invoke-DiscogsRequest {
     )
 
     # Get Discogs configuration
-    $config = Get-MuFoConfig -Provider Discogs
+    $config = Get-OMConfig -Provider Discogs
     
     if (-not $config) {
         throw @"
