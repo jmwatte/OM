@@ -6,6 +6,3 @@ Get-ChildItem -Path $PSScriptRoot\Private -Filter *.ps1 -Recurse | ForEach-Objec
 
 # Public functions
 Get-ChildItem -Path $PSScriptRoot\Public -Filter *.ps1 | ForEach-Object { . $_.FullName }
-
-# Export public functions
-Export-ModuleMember -Function (Get-ChildItem -Path $PSScriptRoot\Public -Filter *.ps1 | ForEach-Object { $_.BaseName })
