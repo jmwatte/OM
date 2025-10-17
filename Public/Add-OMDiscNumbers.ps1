@@ -6,7 +6,7 @@
     Adds disc numbers to audio files in subfolders of a specified base folder.
 
 .DESCRIPTION
-    The Add-DiscNumbers function scans the subfolders of the given base folder, sorts them alphabetically,
+    The Add-OMDiscNumbers function scans the subfolders of the given base folder, sorts them alphabetically,
     and assigns incremental disc numbers (starting from 1) to all audio files within each subfolder.
     Only files with extensions .mp3, .flac, .wav, .m4a, or .aac are processed. If a file already has a disc number
     (not 0), it is skipped. The function uses TagLib# to read and write audio tags.
@@ -17,31 +17,31 @@
     The path to the base folder containing subfolders with audio files. This parameter is mandatory and accepts pipeline input.
 
 .EXAMPLE
-    Add-DiscNumbers -baseFolder "C:\Music\Albums"
+    Add-OMDiscNumbers -baseFolder "C:\Music\Albums"
 
     Processes all subfolders under "C:\Music\Albums", assigning disc numbers 1, 2, 3, etc., to audio files in each.
 
 .EXAMPLE
-    "C:\Music\Albums" | Add-DiscNumbers -WhatIf
+    "C:\Music\Albums" | Add-OMDiscNumbers -WhatIf
 
     Pipes the folder path and previews changes without applying them.
 
 .EXAMPLE
-    Add-DiscNumbers -baseFolder "C:\Music\Albums" -Confirm
+    Add-OMDiscNumbers -baseFolder "C:\Music\Albums" -Confirm
 
     Prompts for confirmation before updating each file.
 
 .NOTES
-    - Requires TagLib# library to be available in the MuFo module's lib folder.
+    - Requires TagLib# library to be available in the OM module's lib folder.
     - Subfolders are sorted alphabetically to ensure consistent disc numbering.
     - Only updates files where the disc tag is currently 0.
     - Use -WhatIf to preview changes without modifying files.
 
 .LINK
-    https://github.com/jmwatte/MuFo
+    https://github.com/jmwatte/OM
 #>
 
-function Add-DiscNumbers {
+function Add-OMDiscNumbers {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param (
         [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
