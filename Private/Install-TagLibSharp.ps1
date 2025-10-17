@@ -356,8 +356,8 @@ function Install-TagLibSharp {
         Add-Type -Path $foundDll.FullName
         Write-Host "✓ TagLib-Sharp loaded successfully!" -ForegroundColor Green
         Write-Host ""
-        Write-Host "You can now use MuFo's track tagging features:" -ForegroundColor Cyan
-        Write-Host "  Invoke-MuFo -Path 'C:\Music' -IncludeTracks" -ForegroundColor White
+        Write-Host "You can now use OM's track tagging features:" -ForegroundColor Cyan
+        Write-Host "  Start-OM -Path 'C:\Music' -IncludeTracks" -ForegroundColor White
     }
     catch {
         Write-Warning "TagLib-Sharp installed but failed to load: $($_.Exception.Message)"

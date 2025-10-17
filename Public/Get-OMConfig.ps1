@@ -1,14 +1,14 @@
-function Get-MuFoConfig {
+function Get-OMConfig {
     <#
     .SYNOPSIS
-    Retrieves MuFo configuration including API credentials.
+    Retrieves OM configuration including API credentials.
     
     .DESCRIPTION
     Loads configuration from user-specific config file or environment variables.
     Searches for config.json in the following order:
-    1. $env:MUFO_CONFIG_PATH (if set)
-    2. ~/.mufo/config.json (Linux/Mac)
-    3. $env:USERPROFILE\.mufo\config.json (Windows)
+    1. $env:OM_CONFIG_PATH (if set)
+    2. ~/.OM/config.json (Linux/Mac)
+    3. $env:USERPROFILE\.OM\config.json (Windows)
     4. Module directory (for development only - not recommended for production)
     
     .PARAMETER Provider
@@ -16,11 +16,11 @@ function Get-MuFoConfig {
     Valid values: 'Spotify', 'Qobuz', 'Discogs'
     
     .EXAMPLE
-    $config = Get-MuFoConfig
+    $config = Get-OMConfig
     $spotifyId = $config.Spotify.ClientId
     
     .EXAMPLE
-    $discogsConfig = Get-MuFoConfig -Provider Discogs
+    $discogsConfig = Get-OMConfig -Provider Discogs
     #>
     [CmdletBinding()]
     param(
@@ -30,16 +30,16 @@ function Get-MuFoConfig {
     )
 
     # Priority 1: Custom config path from environment variable
-    if ($env:MUFO_CONFIG_PATH -and (Test-Path $env:MUFO_CONFIG_PATH)) {
-        $configPath = $env:MUFO_CONFIG_PATH
-        Write-Verbose "Using config from MUFO_CONFIG_PATH: $configPath"
+    if ($env:OM_CONFIG_PATH -and (Test-Path $env:OM_CONFIG_PATH)) {
+        $configPath = $env:OM_CONFIG_PATH
+        Write-Verbose "Using config from OM_CONFIG_PATH: $configPath"
     }
     else {
         # Priority 2: User-specific config directory
         $userConfigDir = if ($IsLinux -or $IsMacOS) {
-            Join-Path $env:HOME '.mufo'
+            Join-Path $env:HOME '.OM'
         } else {
-            Join-Path $env:USERPROFILE '.mufo'
+            Join-Path $env:USERPROFILE '.OM'
         }
         
         $configPath = Join-Path $userConfigDir 'config.json'

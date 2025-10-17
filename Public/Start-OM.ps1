@@ -983,7 +983,7 @@ function Invoke-MuFoManual {
                                     }
 
                                     try {
-                                        $saveResult = Save-MuFoTrackSelection -PairedTracks $pairedTracks -SelectedIndices $selectedIndices -ProviderArtist $ProviderArtist -ProviderAlbum $ProviderAlbum -UseWhatIf:$useWhatIf
+                                        $saveResult = Save-OMTrackSelection -PairedTracks $pairedTracks -SelectedIndices $selectedIndices -ProviderArtist $ProviderArtist -ProviderAlbum $ProviderAlbum -UseWhatIf:$useWhatIf
                                     }
                                     catch {
                                         Write-Warning "Failed to save selected tracks: $($_.Exception.Message)"

@@ -1,4 +1,4 @@
-function Save-MuFoTrackSelection {
+function Save-OMTrackSelection {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]

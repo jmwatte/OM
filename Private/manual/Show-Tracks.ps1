@@ -100,7 +100,7 @@ function Show-Tracks {
                     $arrow = if ($Reverse) { '↑' } else { '_' }
                     $color = if ($spotify -and $audio.Title -eq $spotify.name) { 'Green' } else { 'Yellow' }
                     
-                    # Format audio file duration (stored as milliseconds in Invoke-MuFoManual)
+                    # Format audio file duration (stored as milliseconds in Start-OM)
                     $audioDurationStr = if ($audio.Duration) {
                         if ($audio.Duration -is [TimeSpan]) {
                             "{0:mm\:ss}" -f $audio.Duration

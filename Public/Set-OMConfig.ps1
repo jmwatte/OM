@@ -1,15 +1,15 @@
-function Set-MuFoConfig {
+function Set-OMConfig {
     <#
     .SYNOPSIS
-    Sets MuFo configuration values including API credentials.
+    Sets OM configuration values including API credentials.
     
     .DESCRIPTION
     Saves API credentials and configuration to user-specific config file.
     Creates the config directory if it doesn't exist.
     
     Config file location:
-    - Linux/Mac: ~/.mufo/config.json
-    - Windows: %USERPROFILE%\.mufo\config.json
+    - Linux/Mac: ~/.OM/config.json
+    - Windows: %USERPROFILE%\.OM\config.json
     
     .PARAMETER SpotifyClientId
     Spotify API Client ID (from https://developer.spotify.com/dashboard)
@@ -39,13 +39,13 @@ function Set-MuFoConfig {
     If set, merges new values with existing config. Otherwise, replaces entire provider config.
     
     .EXAMPLE
-    Set-MuFoConfig -SpotifyClientId "abc123" -SpotifyClientSecret "xyz789"
+    Set-OMConfig -SpotifyClientId "abc123" -SpotifyClientSecret "xyz789"
     
     .EXAMPLE
-    Set-MuFoConfig -DiscogsConsumerKey "key123" -DiscogsConsumerSecret "secret456" -Merge
+    Set-OMConfig -DiscogsConsumerKey "key123" -DiscogsConsumerSecret "secret456" -Merge
     
     .EXAMPLE
-    Set-MuFoConfig -QobuzAppId "12345" -QobuzSecret "secret" -ConfigPath "C:\custom\config.json"
+    Set-OMConfig -QobuzAppId "12345" -QobuzSecret "secret" -ConfigPath "C:\custom\config.json"
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -79,13 +79,11 @@ function Set-MuFoConfig {
 
     # Determine config file path
     if (-not $ConfigPath) {
-        $userConfigDir = if ($IsLinux -or $IsMacOS) {
-            Join-Path $env:HOME '.mufo'
-        } else {
-            Join-Path $env:USERPROFILE '.mufo'
-        }
-        
-        $ConfigPath = Join-Path $userConfigDir 'config.json'
+    $userConfigDir = if ($IsLinux -or $IsMacOS) {
+        Join-Path $env:HOME '.OM'
+    } else {
+        Join-Path $env:USERPROFILE '.OM'
+    }        $ConfigPath = Join-Path $userConfigDir 'config.json'
     }
 
     # Create directory if it doesn't exist

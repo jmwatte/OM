@@ -195,10 +195,10 @@ function Set-AudioFileTags {
     - Use -Verbose to track progress on large collections
     - Consider -WhatIf for dry runs on 100+ files to verify logic
     
-    For album-level Spotify integration with automatic tag enhancement, use Invoke-MuFo with -FixTags.
+    For album-level Spotify integration with automatic tag enhancement, use Start-OM with -FixTags.
     
     Author: jmw
-    Module: MuFo
+    Module: OM
     Version: 1.0
 #>
     [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium', DefaultParameterSetName = 'Simple')]

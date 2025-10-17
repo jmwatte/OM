@@ -1,7 +1,7 @@
 function Invoke-StageB-AlbumSelection {
     <#
     .SYNOPSIS
-        Stage B: Album selection for Invoke-MuFoManual workflow.
+        Stage B: Album selection for Start-OM workflow.
     
     .DESCRIPTION
         Handles album search, selection, and navigation. Supports:

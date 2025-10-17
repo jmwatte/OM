@@ -49,7 +49,7 @@ function Invoke-DiscogsRequest {
 Discogs credentials not configured.
 
 Set them with:
-  Set-MuFoConfig -DiscogsConsumerKey 'your_key' -DiscogsConsumerSecret 'your_secret'
+  Set-OMConfig -DiscogsConsumerKey 'your_key' -DiscogsConsumerSecret 'your_secret'
 
 Get credentials at: https://www.discogs.com/settings/developers
 "@
@@ -84,7 +84,7 @@ Get credentials at: https://www.discogs.com/settings/developers
 
     # Build headers
     $headers = @{
-        'User-Agent' = 'MuFo/1.0 (https://github.com/jmwatte/MuFo)'
+        'User-Agent' = 'OM/1.0 (https://github.com/jmwatte/OM)'
         'Accept' = 'application/vnd.discogs.v2.discogs+json'
     }
 
@@ -109,7 +109,7 @@ Get credentials at: https://www.discogs.com/settings/developers
 Discogs OAuth 1.0a with Consumer Key/Secret requires full signature generation.
 For simplicity, either:
 1. Generate a Personal Access Token at https://www.discogs.com/settings/developers
-2. Set it with: Set-MuFoConfig -DiscogsToken 'your_token'
+2. Set it with: Set-OMConfig -DiscogsToken 'your_token'
 
 Attempting unauthenticated request (limited rate: 25 req/min)...
 "@
