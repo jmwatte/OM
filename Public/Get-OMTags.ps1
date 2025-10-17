@@ -209,11 +209,14 @@ function Get-OMTags {
                 $estimatedTotal = if ($processedCount -gt 0) { $elapsed.TotalSeconds * ($files.Count / $processedCount) } else { 0 }
                 $remaining = [TimeSpan]::FromSeconds([math]::Max(0, $estimatedTotal - $elapsed.TotalSeconds))
                 
-                Write-Progress -Activity "Reading Audio File Tags" `
-                              -Status "Processing file $processedCount of $($files.Count) ($percentComplete%)" `
-                              -CurrentOperation "$(Split-Path $file -Leaf)" `
-                              -PercentComplete $percentComplete `
-                              -SecondsRemaining $remaining.TotalSeconds
+                 $progressParams = @{
+                    Activity         = "Reading Audio File Tags"
+                    Status           = "Processing file $processedCount of $($files.Count) ($percentComplete%)"
+                    CurrentOperation = "$(Split-Path $file -Leaf)"
+                    PercentComplete  = $percentComplete
+                    SecondsRemaining = $remaining.TotalSeconds
+                }
+                Write-Progress @progressParams
             }
             
             try {

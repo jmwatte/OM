@@ -99,12 +99,14 @@ function Invoke-StageB-AlbumSelection {
         [Parameter()]
         [scriptblock]$ShowHeader,
         [Parameter()]
+        [int]$trackCount,
+        [Parameter()]
         [switch]$FetchAlbums
     )
     
     Clear-Host
     if ($ShowHeader) {
-        & $ShowHeader -Provider $Provider -Artist $Artist -AlbumName $AlbumName
+        & $ShowHeader -Provider $Provider -Artist $Artist -AlbumName $AlbumName -trackCount $trackCount
     }
     
     # Initialize pagination
@@ -278,7 +280,7 @@ $CachedAlbums=$albumsForArtist
     while ($true) {
         Clear-Host
         if ($ShowHeader) {
-            & $ShowHeader -Provider $Provider -Artist $Artist -AlbumName $AlbumName
+            & $ShowHeader -Provider $Provider -Artist $Artist -AlbumName $AlbumName -trackCount $trackCount
         }
         
         # Show filter mode indicator for Discogs
@@ -301,8 +303,17 @@ $CachedAlbums=$albumsForArtist
         $endIdx = [math]::Min($startIdx + $pageSize - 1, $albumsForArtist.Count - 1)
 
         for ($i = $startIdx; $i -le $endIdx; $i++) {
-            Write-Host "[$($i+1)] $($albumsForArtist[$i].name)  (id: $($albumsForArtist[$i].id)) (year: $($albumsForArtist[$i].release_date))"
-        }
+ $album = $albumsForArtist[$i]
+            $trackInfo = ""
+            if ($album.PSObject.Properties.Match('total_tracks')) {
+                $trackInfo = " ($($album.total_tracks) tracks)"
+            } elseif ($album.PSObject.Properties.Match('track_count')) {
+                $trackInfo = " ($($album.track_count) tracks)"
+            } elseif ($album.PSObject.Properties.Match('tracks_count')) {
+                $trackInfo = " ($($album.tracks_count) tracks)"
+            }
+            Write-Host "[$($i+1)] $($album.name)  (id: $($album.id)) (year: $($album.release_date))$trackInfo"
+       }
 
         # Non-interactive album selection
         if ($AlbumId) {
@@ -631,6 +642,7 @@ $CachedAlbums=$albumsForArtist
                         "$($albumNames[0]) + $($validIndices.Count - 1) more albums" 
                     }
                     release_date = $firstAlbum.release_date
+                     track_count = $combinedTracks.Count
                     _isCombined = $true
                     _albumCount = $validIndices.Count
                     _albumNames = $albumNames

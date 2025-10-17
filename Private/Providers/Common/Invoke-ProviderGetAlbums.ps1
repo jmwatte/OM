@@ -25,10 +25,13 @@ function Invoke-ProviderGetAlbums {
         'Spotify' { Get-ArtistAlbums -Id $ArtistId -Album }
         'Qobuz'   { Get-QArtistAlbums -Id $ArtistId }  # $ArtistId is $href
         'Discogs' { 
-            Get-DArtistAlbums -Id $ArtistId `
-                -MastersOnly:$MastersOnly `
-                -IncludeSingles:$IncludeSingles `
-                -IncludeCompilations:$IncludeCompilations
+            $discogsParams = @{
+                Id                   = $ArtistId
+                MastersOnly          = $MastersOnly
+                IncludeSingles       = $IncludeSingles
+                IncludeCompilations  = $IncludeCompilations
+            }
+            Get-DArtistAlbums @discogsParams
         }
         'MusicBrainz' { Get-MBArtistAlbums -ArtistId $ArtistId }
     }

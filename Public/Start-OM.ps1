@@ -97,7 +97,8 @@ function Start-OM {
             param(
                 [string]$Provider,
                 [string]$Artist,
-                [string]$AlbumName
+                [string]$AlbumName,
+                [int]$TrackCount = 0
             )
             Write-Host ""
             Write-Host "🎵 ═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
@@ -106,7 +107,12 @@ function Start-OM {
             Write-Host "👤 Original Artist: " -NoNewline -ForegroundColor Yellow
             Write-Host $Artist -ForegroundColor White
             Write-Host "💿 Original Album: " -NoNewline -ForegroundColor Green
-            Write-Host $AlbumName -ForegroundColor White
+            Write-Host $AlbumName -NoNewline -ForegroundColor White
+            if ($TrackCount -gt 0) {
+                Write-Host " ($TrackCount tracks)" -ForegroundColor White
+            } else {
+                Write-Host ""  # Ensure newline
+            }
             Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
             Write-Host ""
         }
@@ -232,7 +238,7 @@ function Start-OM {
                 Write-Warning "No supported audio files found in album folder: $($script:album.FullName). Skipping album."
                 continue
             }
-
+$trackCount = $audioFilesCheck.Count
             $artistQuery = $artist
             $stage = "A"
             $cachedAlbums = $null
@@ -248,7 +254,7 @@ function Start-OM {
                     "A" {
                         $loadStageBResults = $true
                         Clear-Host
-                        & $showHeader -Provider $Provider -Artist $artist -AlbumName $albumName
+                        & $showHeader -Provider $Provider -Artist $artist -AlbumName $albumName -TrackCount $trackCount
                         
                         if ($artistQuery -ne $artist) {
                             Write-Host "Searching for: $artistQuery" -ForegroundColor Yellow
@@ -276,7 +282,9 @@ function Start-OM {
                             $inputF = Read-Host "Enter new search, '(cp)' change provider [$Provider], '(s)kip' to skip album, or 'id:<id>' to select by id"
                             switch -Regex ($inputF) {
                                 '^s(kip)?$' { 
-                                    break 
+                                    $albumDone = $true
+                                    break stageLoop
+                                    #break 
                                 }
                                 '^cp$' {
                                     Write-Host "`nCurrent provider: $Provider" -ForegroundColor Cyan
@@ -347,7 +355,8 @@ function Start-OM {
                         if ($inputF -eq 's' -or $inputF -eq 'skip') { 
                             # Skip this album folder entirely
                             $albumDone = $true
-                            break 
+                         break stageLoop
+                         #   break 
                         }
                         if ($inputF -eq 'cp') {
                             Write-Host "`nCurrent provider: $Provider" -ForegroundColor Cyan
@@ -373,21 +382,25 @@ function Start-OM {
                     "B" {
                         # Stage B: Album selection
                         
-                        $stageBResult = Invoke-StageB-AlbumSelection `
-                            -Provider $Provider `
-                            -ProviderArtist $ProviderArtist `
-                            -AlbumName $albumName `
-                            -Year $year `
-                            -CachedAlbums $cachedAlbums `
-                            -CachedArtistId $cachedArtistId `
-                            -NormalizeDiscogsId $normalizeDiscogsId `
-                            -Artist $artist `
-                            -ShowHeader $showHeader `
-                            -NonInteractive:$NonInteractive `
-                            -AutoSelect:$AutoSelect `
-                            -AlbumId $albumId `
-                            -GoB:$goB `
-                            -FetchAlbums:$loadStageBResults `
+                         $stageBParams = @{
+                            Provider           = $Provider
+                            ProviderArtist     = $ProviderArtist
+                            AlbumName          = $albumName
+                            Year               = $year
+                            CachedAlbums       = $cachedAlbums
+                            CachedArtistId     = $cachedArtistId
+                            NormalizeDiscogsId = $normalizeDiscogsId
+                            Artist             = $artist
+                            ShowHeader         = $showHeader
+                            TrackCount         = $TrackCount
+                            NonInteractive     = $NonInteractive
+                            AutoSelect         = $AutoSelect
+                            AlbumId            = $albumId
+                            GoB                = $goB
+                            FetchAlbums        = $loadStageBResults
+                        }
+                        
+                        $stageBResult = Invoke-StageB-AlbumSelection @stageBParams
 
 
                                 
@@ -410,14 +423,16 @@ function Start-OM {
                         
                         # Handle skip action (break out of stage loop)
                         if ($stage -eq 'Skip') {
-                            break
+                            $albumDone = $true
+                            break stageLoop
+                           # break
                         }
                         
                         continue stageLoop
                     }
                     "C" {
                         Clear-Host
-                        & $showHeader -Provider $Provider -Artist $artist -AlbumName $albumName
+                        & $showHeader -Provider $Provider -Artist $artist -AlbumName $albumName -TrackCount $trackCount
                         
                         if ($useWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
                         
@@ -721,7 +736,11 @@ function Start-OM {
                                 # Try different property names for album artist across providers
                                 $currentAlbumArtist = Get-IfExists $ProviderAlbum 'album_artist'
                                 if (-not $currentAlbumArtist) { $currentAlbumArtist = Get-IfExists $ProviderAlbum 'artist' }
-                                if (-not $currentAlbumArtist -and $ProviderArtist) { $currentAlbumArtist = Get-IfExists $ProviderArtist 'name' }
+                                if (-not $currentAlbumArtist -and $ProviderArtist) { 
+                                    # Use simple name from raw MusicBrainz object instead of disambiguated name
+                                    $currentAlbumArtist = Get-IfExists $ProviderArtist '_rawMusicBrainzObject' | Get-IfExists 'name'
+                                    if (-not $currentAlbumArtist) { $currentAlbumArtist = Get-IfExists $ProviderArtist 'name' }  # Fallback
+                                }     
                                 if ($currentAlbumArtist) {
                                     Write-Host "   Album artist from API: $currentAlbumArtist" -ForegroundColor Gray
                                 }
@@ -911,7 +930,7 @@ function Start-OM {
                                     }
                                     # call Move-AlbumFolder and pass -WhatIf from the caller (if requested)
                                     $moveResult = Invoke-MoveAlbumWithRetry -mvArgs $mvArgs -useWhatIf $useWhatIf
-                                                                        & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath
+                                    & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath
                                     #& $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath -album $album -audioFiles $audioFiles -refreshTracks $refreshTracks
                                     continue doTracks                         
                                     # if ($moveResult -and $moveResult.Success) {
@@ -1227,9 +1246,9 @@ function Start-OM {
                                     }
     
                                     $moveResult = Invoke-MoveAlbumWithRetry -mvArgs $mvArgs -useWhatIf $useWhatIf
-                                 #   & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath -album $album -audioFiles $audioFiles -refreshTracks $refreshTracks
-                                                                  & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath
-                                 continue                                   
+                                    #   & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath -album $album -audioFiles $audioFiles -refreshTracks $refreshTracks
+                                    & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath
+                                    continue                                   
                                     # if ($moveResult -and $moveResult.Success) {
                                     #     if ($useWhatIf) {
                                     #         Write-Host "WhatIf: album would be moved:" -ForegroundColor Yellow

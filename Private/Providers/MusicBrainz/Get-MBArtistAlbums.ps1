@@ -98,6 +98,10 @@ function Get-MBArtistAlbums {
                 country = if (Get-IfExists $release 'country') { $release.country } else { $null }
                 barcode = if (Get-IfExists $release 'barcode') { $release.barcode } else { $null }
                 status = if (Get-IfExists $release 'status') { $release.status } else { 'Official' }
+               track_count = if (Get-IfExists $release 'medium-list') { 
+                    ($release.'medium-list' | ForEach-Object { if (Get-IfExists $_ 'track-count') { $_.'track-count' } else { 0 } } | Measure-Object -Sum).Sum 
+                } else { 0 }
+               
                 _rawMusicBrainzObject = $release
             }
         }
