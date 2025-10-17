@@ -1,4 +1,4 @@
-function Get-AudioFileTags {
+function Get-OMTags {
 <#
 .SYNOPSIS
     Reads audio file tags using TagLib-Sharp with enhanced classical music support.
@@ -27,7 +27,7 @@ function Get-AudioFileTags {
     Array of PSCustomObject with comprehensive tag fields including classical music metadata, or a single summary object if -Summary is specified. If -AllTags is specified, all TagLib tag properties are included.
 
 .EXAMPLE
-    Get-AudioFileTags -Path "C:\Music\Arvo Pärt\1999 - Alina" -IncludeComposer
+    Get-OMTags -Path "C:\Music\Arvo Pärt\1999 - Alina" -IncludeComposer
     
     Reads all audio files with classical music analysis.
 

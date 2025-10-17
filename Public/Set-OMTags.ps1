@@ -1,14 +1,14 @@
-function Set-AudioFileTags {
+function Set-OMTags {
 <#
 .SYNOPSIS
     Updates audio file tags with flexible input methods and PowerShell-style pipeline support.
 
 .DESCRIPTION
-    Set-AudioFileTags provides a modern, PowerShell-native interface for modifying audio file metadata.
+    Set-OMTags provides a modern, PowerShell-native interface for modifying audio file metadata.
     It supports three distinct workflow patterns to accommodate different use cases:
     
     1. SIMPLE MODE: Apply the same tag updates to one or more files using a hashtable
-    2. PIPELINE MODE: Process Get-AudioFileTags output with optional tag overrides
+    2. PIPELINE MODE: Process Get-OMTags output with optional tag overrides
     3. TRANSFORM MODE: Use a scriptblock for complex per-file conditional logic
     
     The function leverages TagLib-Sharp for reliable tag writing across multiple audio formats
@@ -39,7 +39,7 @@ function Set-AudioFileTags {
     Example: @{Artist="Henryk Górecki"; Year=2012; Genres=@("Classical","Requiem")}
 
 .PARAMETER InputObject
-    PSCustomObject tag object from Get-AudioFileTags pipeline.
+    PSCustomObject tag object from Get-OMTags pipeline.
     Automatically extracts the Path property and uses all other properties as tag values.
     
     Used in Pipeline mode.
@@ -75,34 +75,34 @@ function Set-AudioFileTags {
     Useful for interactive review of batch operations.
 
 .EXAMPLE
-    Set-AudioFileTags -Path "song.flac" -Tags @{Year=2012; Album="Symphony No. 3"}
+    Set-OMTags -Path "song.flac" -Tags @{Year=2012; Album="Symphony No. 3"}
     
     SIMPLE MODE: Update Year and Album tags on a single file.
 
 .EXAMPLE
-    Set-AudioFileTags -Path "song.flac" -Tags @{Genres=@("Classical","Requiem")} -WhatIf
+    Set-OMTags -Path "song.flac" -Tags @{Genres=@("Classical","Requiem")} -WhatIf
     
     Preview tag changes without writing. Shows what would be updated.
 
 .EXAMPLE
-    Get-AudioFileTags -Path "C:\Music\Album" | Set-AudioFileTags -Tags @{AlbumArtist="Stefania Woytowicz"}
+    Get-OMTags -Path "C:\Music\Album" | Set-OMTags -Tags @{AlbumArtist="Stefania Woytowicz"}
     
     PIPELINE MODE: Apply same AlbumArtist to all files in a directory.
 
 .EXAMPLE
-    Get-AudioFileTags -Path "C:\Music\Album" | Set-AudioFileTags -Tags @{Year=2023} -PassThru | 
+    Get-OMTags -Path "C:\Music\Album" | Set-OMTags -Tags @{Year=2023} -PassThru | 
         Format-Table FileName, Year, Album
     
     Update Year and display results in a table with -PassThru.
 
 .EXAMPLE
-    Get-AudioFileTags -Path "C:\Music" | Where-Object { -not $_.Year } | 
-        Set-AudioFileTags -Tags @{Year=2023} -Verbose
+    Get-OMTags -Path "C:\Music" | Where-Object { -not $_.Year } | 
+        Set-OMTags -Tags @{Year=2023} -Verbose
     
     Find files missing Year tag and set to 2023 with verbose output.
 
 .EXAMPLE
-    Get-AudioFileTags -Path "album" | Set-AudioFileTags -Transform { 
+    Get-OMTags -Path "album" | Set-OMTags -Transform { 
         $_.Genres = @("Classical","Requiem")
         $_
     } -WhatIf -PassThru
@@ -110,7 +110,7 @@ function Set-AudioFileTags {
     TRANSFORM MODE: Set genres using scriptblock. Preview with -WhatIf, return results with -PassThru.
 
 .EXAMPLE
-    Get-AudioFileTags -Path "album" | Set-AudioFileTags -Transform {
+    Get-OMTags -Path "album" | Set-OMTags -Transform {
         if ($_.Title -match "^\d+\s+") {
             $_.Title = $_.Title -replace "^\d+\s+", ""
         }
@@ -120,7 +120,7 @@ function Set-AudioFileTags {
     CONDITIONAL TRANSFORM: Remove leading track numbers from titles only where they exist.
 
 .EXAMPLE
-    Get-AudioFileTags -Path "album" | Set-AudioFileTags -Transform {
+    Get-OMTags -Path "album" | Set-OMTags -Transform {
         # Fix common misspellings
         if ($_.Artists -contains "Gorecki") {
             $_.Artists = @("Henryk Górecki")
@@ -139,7 +139,7 @@ function Set-AudioFileTags {
     COMPLEX TRANSFORM: Multiple conditional modifications in one pass.
 
 .EXAMPLE
-    Get-AudioFileTags -Path "album" | Set-AudioFileTags -Transform {
+    Get-OMTags -Path "album" | Set-OMTags -Transform {
         # Classical music: use composer as album artist
         if ($_.Genres -contains "Classical" -and $_.Composers.Count -gt 0) {
             $_.AlbumArtists = @($_.Composers[0])
@@ -150,7 +150,7 @@ function Set-AudioFileTags {
     Classical album artist optimization with preview and formatted output.
 
 .EXAMPLE
-    $results = Get-AudioFileTags -Path "album" | Set-AudioFileTags -Transform {
+    $results = Get-OMTags -Path "album" | Set-OMTags -Transform {
         # Standardize genre capitalization
         $_.Genres = $_.Genres | ForEach-Object { 
             (Get-Culture).TextInfo.ToTitleCase($_.ToLower()) 
@@ -161,7 +161,7 @@ function Set-AudioFileTags {
     Transform genres to Title Case and capture results in a variable.
 
 .EXAMPLE
-    Get-AudioFileTags -Path "album" | Set-AudioFileTags -Transform {
+    Get-OMTags -Path "album" | Set-OMTags -Transform {
         # Ensure track numbers are sequential
         $_.Track = $script:trackNumber++
         $_
@@ -171,17 +171,17 @@ function Set-AudioFileTags {
 
 .EXAMPLE
     # Fix incomplete multi-disc tags
-    $disc1 = Get-AudioFileTags -Path "album\Disc 1"
-    $disc2 = Get-AudioFileTags -Path "album\Disc 2"
+    $disc1 = Get-OMTags -Path "album\Disc 1"
+    $disc2 = Get-OMTags -Path "album\Disc 2"
     
-    $disc1 | Set-AudioFileTags -Tags @{Disc=1; DiscCount=2}
-    $disc2 | Set-AudioFileTags -Tags @{Disc=2; DiscCount=2}
+    $disc1 | Set-OMTags -Tags @{Disc=1; DiscCount=2}
+    $disc2 | Set-OMTags -Tags @{Disc=2; DiscCount=2}
     
     Set disc numbers across multiple directories.
 
 .NOTES
     Requirements:
-    - TagLib-Sharp assembly must be loaded (automatically loaded by Get-AudioFileTags)
+    - TagLib-Sharp assembly must be loaded (automatically loaded by Get-OMTags)
     - Supported formats: FLAC, MP3, M4A, OGG, WMA, WAV (format-dependent)
     
     Important:
@@ -230,7 +230,7 @@ function Set-AudioFileTags {
         $tagLibLoaded = [System.AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $_.FullName -like '*TagLib*' }
         
         if (-not $tagLibLoaded) {
-            Write-Error "TagLib-Sharp is required but not loaded. Please run Get-AudioFileTags first to load it, or install: Install-Package TagLibSharp"
+            Write-Error "TagLib-Sharp is required but not loaded. Please run Get-OMTags first to load it, or install: Install-Package TagLibSharp"
             return
         }
         
@@ -264,7 +264,7 @@ function Set-AudioFileTags {
         try {
             # Read current tags
             Write-Verbose "Reading current tags from: $(Split-Path $filePath -Leaf)"
-            $currentTags = Get-AudioFileTags -Path $filePath
+            $currentTags = Get-OMTags -Path $filePath
             
             if (-not $currentTags) {
                 Write-Warning "Could not read tags from: $(Split-Path $filePath -Leaf)"
@@ -564,7 +564,7 @@ function Set-AudioFileTags {
                     # Return updated tags if requested
                     if ($PassThru) {
                         if (-not $WhatIfPreference) {
-                            $updatedTags = Get-AudioFileTags -Path $filePath
+                            $updatedTags = Get-OMTags -Path $filePath
                             $results += $updatedTags
                         } else {
                             # In WhatIf mode, return the proposed tags

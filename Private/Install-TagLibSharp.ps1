@@ -65,7 +65,7 @@ function Install-TagLibSharp {
         }
         
         if ($found) {
-            Write-Host "TagLib-Sharp is available. Run Read-AudioFileTags or Get-AudioFileTags to use it." -ForegroundColor Green
+            Write-Host "TagLib-Sharp is available. Run Read-AudioFileTags or Get-OMTags to use it." -ForegroundColor Green
             return
         }
     }
