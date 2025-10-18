@@ -69,13 +69,15 @@ function Invoke-ProviderSearchAlbums {
                 Write-Warning "Qobuz album search requires ArtistId (artist URL)"
                 return @()
             }
-            $results = Search-QAlbumsByName -ArtistId $ArtistId -AlbumName $AlbumName -ArtistName $ArtistName
+            
+            $results = Search-QAlbum -ArtistName $ArtistName -AlbumName $AlbumName
+            #$results = Search-QAlbumsByName -ArtistId $ArtistId -AlbumName $AlbumName -ArtistName $ArtistName
             @($results)
         }
         'Discogs' {
             $searchParams = @{
                 ArtistName = $ArtistName
-                AlbumName = $AlbumName
+                AlbumName  = $AlbumName
             }
             if ($ArtistId) {
                 $searchParams.ArtistId = $ArtistId
@@ -90,17 +92,99 @@ function Invoke-ProviderSearchAlbums {
             @($results)
         }
         'MusicBrainz' {
-            # MusicBrainz: If we have cached albums, filter them locally
-            # Otherwise fetch all albums and filter (no direct album name search API)
-            # Normalize cache to array before checking Count
-            $cache = @($AllAlbumsCache)
-            if ($cache -and $cache.Count -gt 0) {
-                Write-Verbose "Filtering $($cache.Count) cached albums for: $AlbumName"
-                $cache | Where-Object { $_.title -like "*$AlbumName*" -or $_.name -like "*$AlbumName*" }
-            } else {
-                Write-Verbose "No cache provided, fetching all albums and filtering for: $AlbumName"
-                $allAlbums = Get-MBArtistAlbums -ArtistId $ArtistId
-                @($allAlbums) | Where-Object { $_.title -like "*$AlbumName*" -or $_.name -like "*$AlbumName*" }
+            # Use release-group search to find canonical albums, avoiding duplicate editions
+            if (-not $ArtistId) {
+                Write-Warning "MusicBrainz album search requires ArtistId (MBID)"
+                return @()
+            }
+            
+            Write-Verbose "Searching MusicBrainz release-groups: ArtistId='$ArtistId', Album='$AlbumName'"
+            $query = "releasegroup:""$AlbumName"" AND arid:$ArtistId"
+
+            try {
+                $response = Invoke-MusicBrainzRequest -Endpoint 'release-group' -Query @{ query = $query; limit = 100 }
+                
+                if (-not $response -or -not (Get-IfExists $response 'release-groups')) {
+                    Write-Verbose "No release-groups found for query: $query"
+                    return @()
+                }
+                
+                $releaseGroups = $response.'release-groups'
+                Write-Verbose "Found $($releaseGroups.Count) release-groups matching query"
+                
+                # Normalize to consistent format, fetching track count from one release per group
+                $normalizedReleaseGroups = foreach ($rg in $releaseGroups) {
+                    $track_count = 0
+                    
+                    try {
+                        # Fetch one release for this release-group to get track count
+                        $relResponse = Invoke-MusicBrainzRequest -Endpoint 'release' -Query @{ 'release-group' = $rg.id; inc = 'media' }
+                        
+                        if ($relResponse -and (Get-IfExists $relResponse 'releases') -and $relResponse.releases.Count -gt 0) {
+                            foreach ($release in $relResponse.releases) {
+                                # Calculate track count from media
+                                $track_count = 0
+                                if (Get-IfExists $release 'media') {
+                                    $track_count = ($release.media | ForEach-Object { 
+                                            if (Get-IfExists $_ 'track-count') { [int]$_.'track-count' } 
+                                            else { 0 } 
+                                        } | Measure-Object -Sum).Sum
+                                }
+                                
+                                # Get genre from release-group tags
+                                $genre = if (Get-IfExists $rg 'tags') {
+                                    ($rg.tags | ForEach-Object { $_.name }) -join ', '
+                                }
+                                else { $null }
+                                
+                                # Get artist from artist-credits, fallback to passed ArtistName
+                                $artist = if (Get-IfExists $release 'artist-credit') {
+                                    ($release.'artist-credit' | ForEach-Object { $_.name }) -join ', '
+                                }
+                                else { $ArtistName }
+                                
+                                # Get release date from release.date
+                                $release_date = if (Get-IfExists $release 'date') { $release.date } else { $null }
+                                
+                                [PSCustomObject]@{
+                                    id           = $release.id
+                                    name         = $release.title
+                                    title        = $release.title
+                                    genre        = $genre
+                                    artist       = $artist
+                                    track_count  = $track_count
+                                    release_date = $release_date
+                                }
+                            }
+                        }
+                    }
+                    catch {
+                        Write-Verbose "Failed to get track count for release-group $($rg.id): $_"
+                    }
+                    
+                    # [PSCustomObject]@{
+                    #     id           = $rg.id
+                    #     name         = $rg.title
+                    #     title        = $rg.title  # Keep original title for filtering
+                    #     release_date = if (Get-IfExists $rg 'first-release-date') { $rg.'first-release-date' } else { $null }
+                    #     track_count  = $track_count
+                    # }
+                }
+                
+                # Sort by first-release-date (newest first), then by title
+                $normalizedReleaseGroups | Sort-Object -Property @{Expression = { 
+                        if ($_.release_date) { 
+                            try { [DateTime]::Parse($_.release_date) } catch { [DateTime]::MinValue } 
+                        }
+                        else { 
+                            [DateTime]::MinValue 
+                        } 
+                    }; Descending                                             = $true
+                }, title
+            }
+            catch {
+                Write-Warning "MusicBrainz release-group search failed: $_"
+                return @()
             }
         }
     }

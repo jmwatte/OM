@@ -89,20 +89,19 @@ function Get-MBArtistAlbums {
             }
             $displayName += $country + $label
             
-            [PSCustomObject]@{
-                id = $release.id  # MBID
-                name = $displayName
-                title = $release.title  # Clean title without extra info
-                release_date = $releaseDate
-                year = $year
-                country = if (Get-IfExists $release 'country') { $release.country } else { $null }
-                barcode = if (Get-IfExists $release 'barcode') { $release.barcode } else { $null }
-                status = if (Get-IfExists $release 'status') { $release.status } else { 'Official' }
-               track_count = if (Get-IfExists $release 'medium-list') { 
-                    ($release.'medium-list' | ForEach-Object { if (Get-IfExists $_ 'track-count') { $_.'track-count' } else { 0 } } | Measure-Object -Sum).Sum 
-                } else { 0 }
-               
-                _rawMusicBrainzObject = $release
+            # Get track count by querying the release endpoint with inc=recordings
+            $track_count = 0
+            try {
+                $releaseResponse = Invoke-MusicBrainzRequest -Endpoint 'release' -Id $release.id -Inc 'recordings'
+                if ($releaseResponse -and (Get-IfExists $releaseResponse 'media')) {
+                    $track_count = ($releaseResponse.media | ForEach-Object { 
+                        if (Get-IfExists $_ 'track-count') { [int]$_.'track-count' } 
+                        elseif (Get-IfExists $_ 'tracks') { $_.tracks.Count } 
+                        else { 0 } 
+                    } | Measure-Object -Sum).Sum
+                }
+            } catch {
+                Write-Verbose "Failed to get track count for release $($release.id): $_"
             }
         }
         

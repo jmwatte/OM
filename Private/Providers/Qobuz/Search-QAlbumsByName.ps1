@@ -35,6 +35,10 @@ function Search-QAlbumsByName {
     Write-Verbose "Fetching Qobuz albums for artist: $ArtistId"
     Write-Verbose "Filtering for album name: $AlbumName"
 
+
+
+
+
     try {
         $allAlbums = Get-QArtistAlbums -Id $ArtistId
         # Normalize to array before checking Count
@@ -74,10 +78,37 @@ function Search-QAlbumsByName {
 
     # Sort by similarity score (if available) or keep original order
     if ($filteredAlbums.Count -gt 0 -and $filteredAlbums[0].PSObject.Properties['_similarity']) {
-        $filteredAlbums = $filteredAlbums | Sort-Object { -$_._similarity }
+        $filteredAlbums = $filteredAlbums | Sort-Object { - $_._similarity }
     }
 
     Write-Verbose "Found $($filteredAlbums.Count) matching albums out of $($allAlbums.Count) total albums"
     
+
+
+    $filteredAlbums | ForEach-Object {
+
+
+        try {
+            Write-Verbose "Fetching track count for Qobuz album: $($_.id)"
+            $trackCount = Get-QAlbumTrackCount -Id $_.id
+            if ($trackCount) {
+                # Cache the track count on the album object for future use
+                $_ | Add-Member -MemberType NoteProperty -Name 'track_count' -Value $trackCount -Force
+            }
+        }
+        catch {
+            Write-Verbose "Failed to fetch track count for Qobuz album $($_.id): $_"
+        }
+
+
+
+
+    }
+
+
+
+
+
+
     return $filteredAlbums
 }

@@ -11,7 +11,7 @@ function Wait-ForFileUnlock {
             return @{Unlocked = $false; Action = 'skip' }
         }
 
-        if (-not (Test-FileLocked -Path $Path)) {
+        if (-not (Assert-FileLocked -Path $Path)) {
             return @{ Unlocked = $true; Action = 'proceed' }
         }
 

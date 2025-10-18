@@ -106,7 +106,7 @@ function Invoke-StageB-AlbumSelection {
     
     Clear-Host
     if ($ShowHeader) {
-        & $ShowHeader -Provider $Provider -Artist $Artist -AlbumName $AlbumName -trackCount $trackCount
+        & $ShowHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -trackCount $script:trackCount
     }
     
     # Initialize pagination
@@ -117,184 +117,229 @@ function Invoke-StageB-AlbumSelection {
 
 
 
-if($FetchAlbums)
-{
-    Write-Host "Fetching albums from provider: $Provider"
-    # Enhance artist with full details (including genres) if needed
-    if ($Provider -eq 'Spotify' -and $ProviderArtist -and $ProviderArtist.id) {
-        if (-not $ProviderArtist.genres -or $ProviderArtist.genres.Count -eq 0) {
-            Write-Verbose "Fetching full artist details with genres for $($ProviderArtist.name)..."
-            $fullArtist = Invoke-ProviderGetArtist -Provider $Provider -ArtistId $ProviderArtist.id
-            if ($fullArtist) {
-                $ProviderArtist = $fullArtist
+    if ($FetchAlbums) {
+        Write-Host "Fetching albums from provider: $Provider"
+        # Enhance artist with full details (including genres) if needed
+        if ($Provider -eq 'Spotify' -and $ProviderArtist -and $ProviderArtist.id) {
+            if (-not $ProviderArtist.genres -or $ProviderArtist.genres.Count -eq 0) {
+                Write-Verbose "Fetching full artist details with genres for $($ProviderArtist.name)..."
+                $fullArtist = Invoke-ProviderGetArtist -Provider $Provider -ArtistId $ProviderArtist.id
+                if ($fullArtist) {
+                    $ProviderArtist = $fullArtist
+                }
             }
         }
-    }
     
-    Write-Host "Original Artist: $Artist" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "Searching for albums for artist: $($ProviderArtist.name) (id: $($ProviderArtist.id))"
+        Write-Host "Original Artist: $Artist" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "Searching for albums for artist: $($ProviderArtist.name) (id: $($ProviderArtist.id))"
     
-    # Clear cache if artist changed
-    if ($CachedArtistId -ne $ProviderArtist.id) {
-        $CachedAlbums = $null
-        $CachedArtistId = $ProviderArtist.id
-    }
-    
-    # Try smart API search FIRST (fast, targeted results)
-    Write-Host "Searching for albums matching: $AlbumName..." -ForegroundColor Cyan
-    Write-Verbose "Trying smart search for: $AlbumName"
-    Write-Verbose "Parameters: Provider=$Provider, ArtistId=$($ProviderArtist.id), ArtistName=$($ProviderArtist.name), AlbumName=$AlbumName, MastersOnly=$($Provider -eq 'Discogs'), CacheProvided=$($null -ne $CachedAlbums)"
-    
-    try { 
-        $searchAlbumsParams = @{
-            Provider       = $Provider
-            ArtistId       = $ProviderArtist.id
-            ArtistName     = $ProviderArtist.name
-            AlbumName      = $AlbumName
-            MastersOnly    = ($Provider -eq 'Discogs')
-            AllAlbumsCache = $CachedAlbums
+        # Clear cache if artist changed
+        if ($CachedArtistId -ne $ProviderArtist.id) {
+            $CachedAlbums = $null
+            $CachedArtistId = $ProviderArtist.id
         }
+    
+        # Try smart API search FIRST (fast, targeted results)
+        Write-Host "Searching for albums matching: $AlbumName..." -ForegroundColor Cyan
+        Write-Verbose "Trying smart search for: $AlbumName"
+        Write-Verbose "Parameters: Provider=$Provider, ArtistId=$($ProviderArtist.id), ArtistName=$($ProviderArtist.name), AlbumName=$AlbumName, MastersOnly=$($Provider -eq 'Discogs'), CacheProvided=$($null -ne $CachedAlbums)"
+    
+        try { 
+            $searchAlbumsParams = @{
+                Provider       = $Provider
+                ArtistId       = $ProviderArtist.id
+                ArtistName     = $ProviderArtist.name
+                AlbumName      = $AlbumName
+                MastersOnly    = ($Provider -eq 'Discogs')
+                AllAlbumsCache = $CachedAlbums
+            }
 
-        $albumsForArtist = Invoke-ProviderSearchAlbums @searchAlbumsParams
-        $albumsForArtist = @($albumsForArtist)  # Ensure array
+            $albumsForArtist = Invoke-ProviderSearchAlbums @searchAlbumsParams
+            $albumsForArtist = @($albumsForArtist)  # Ensure array
         
-        Write-Verbose "Smart search returned: $($albumsForArtist.Count) albums"
-        if ($albumsForArtist.Count -gt 0) {
-            Write-Host "✓ Found $($albumsForArtist.Count) albums via smart search" -ForegroundColor Green
-        } else {
-            Write-Verbose "Smart search returned 0 albums - will fall back to fetching all"
-        }
-    } catch { 
-        Write-Warning "Smart search exception: $_"
-        Write-Verbose "Exception details: $($_.Exception.Message)"
-        $albumsForArtist = @() 
-    }
-    
-    # If smart search returned nothing, fetch all albums as fallback
-    if (-not $albumsForArtist -or $albumsForArtist.Count -eq 0) {
-        if (-not $CachedAlbums) {
-            Write-Host "Smart search returned no results, fetching all albums (this may take a while)..." -ForegroundColor Yellow
-            Write-Verbose "Fetching all albums for artist..."
-            try { 
-                $CachedAlbums = Invoke-ProviderGetAlbums -Provider $Provider -ArtistId $ProviderArtist.id -AlbumType 'Album'
-                $CachedAlbums = @($CachedAlbums)  # Ensure array
-                Write-Host "✓ Fetched $($CachedAlbums.Count) albums" -ForegroundColor Green
-            } catch { 
-                Write-Warning "Failed to fetch artist albums: $_"
-                $CachedAlbums = @() 
+            Write-Verbose "Smart search returned: $($albumsForArtist.Count) albums"
+            if ($albumsForArtist.Count -gt 0) {
+                Write-Host "✓ Found $($albumsForArtist.Count) albums via smart search" -ForegroundColor Green
+            }
+            else {
+                Write-Verbose "Smart search returned 0 albums - will fall back to fetching all"
             }
         }
-        
-        Write-Verbose "Using all cached albums ($($CachedAlbums.Count) albums)"
-        $albumsForArtist = $CachedAlbums
-    }
-    
-    # Normalize to array so .Count works reliably
-    $albumsForArtist = @($albumsForArtist)
-    
-    # Handle no albums found
-    if (-not $albumsForArtist -or $albumsForArtist.Count -eq 0) {
-        Write-Host "No albums found for artist id $($ProviderArtist.id)."
-        
-        if ($NonInteractive) {
-            Write-Warning "NonInteractive: skipping album because no albums found for artist id $($ProviderArtist.id)."
-            return @{
-                NextStage = 'Skip'
-                SelectedAlbum = $null
-                UpdatedCache = $CachedAlbums
-                UpdatedCachedArtistId = $CachedArtistId
-                UpdatedProvider = $Provider
-            }
+        catch { 
+            Write-Warning "Smart search exception: $_"
+            Write-Verbose "Exception details: $($_.Exception.Message)"
+            $albumsForArtist = @() 
         }
     
-        $inputF = Read-Host "Enter '(b)ack', '(s)kip', 'id:<id>' or album name to filter"
-        switch -Regex ($inputF) {
-            '^b$' {
-                return @{
-                    NextStage = 'A'
-                    SelectedAlbum = $null
-                    UpdatedCache = $CachedAlbums
-                    UpdatedCachedArtistId = $CachedArtistId
-                    UpdatedProvider = $Provider
+        # If smart search returned nothing, fetch all albums as fallback
+        if (-not $albumsForArtist -or $albumsForArtist.Count -eq 0) {
+            if (-not $CachedAlbums) {
+                Write-Host "Smart search returned no results, fetching all albums (this may take a while)..." -ForegroundColor Yellow
+                Write-Verbose "Fetching all albums for artist..."
+                try { 
+                    $CachedAlbums = Invoke-ProviderGetAlbums -Provider $Provider -ArtistId $ProviderArtist.id -AlbumType 'Album'
+                    $CachedAlbums = @($CachedAlbums)  # Ensure array
+                    Write-Host "✓ Fetched $($CachedAlbums.Count) albums" -ForegroundColor Green
+                }
+                catch { 
+                    Write-Warning "Failed to fetch artist albums: $_"
+                    $CachedAlbums = @() 
                 }
             }
-            '^s$' {
-                return @{
-                    NextStage = 'Skip'
-                    SelectedAlbum = $null
-                    UpdatedCache = $CachedAlbums
-                    UpdatedCachedArtistId = $CachedArtistId
-                    UpdatedProvider = $Provider
-                }
-            }
-            '^id:.*' {
-                $id = $inputF.Substring(3)
-                if ($Provider -eq 'Discogs') { $id = & $NormalizeDiscogsId $id }
-                return @{
-                    NextStage = 'C'
-                    SelectedAlbum = @{ id = $id; name = $id }
-                    UpdatedCache = $CachedAlbums
-                    UpdatedCachedArtistId = $CachedArtistId
-                    UpdatedProvider = $Provider
-                }
-            }
-            default {
-                if ($inputF) {
-                    # New artist search
-                    return @{
-                        NextStage = 'A'
-                        SelectedAlbum = $null
-                        UpdatedCache = $CachedAlbums
-                        UpdatedCachedArtistId = $CachedArtistId
-                        UpdatedProvider = $Provider
-                        NewArtistQuery = $inputF
+        
+            Write-Verbose "Using all cached albums ($($CachedAlbums.Count) albums)"
+            $albumsForArtist = $CachedAlbums
+            
+            # Filter to most likely matches based on album title similarity
+            if ($albumsForArtist.Count -gt 0) {
+                Write-Host "Filtering albums by similarity to '$AlbumName'..." -ForegroundColor Cyan
+                
+                # Calculate similarity scores and filter
+                $albumsWithSimilarity = $albumsForArtist | ForEach-Object {
+                    $similarity = Get-StringSimilarity-Jaccard -String1 $AlbumName -String2 $_.name
+                    [PSCustomObject]@{
+                        Album      = $_
+                        Similarity = $similarity
                     }
                 }
-                # Empty input, stay in loop (should not reach here)
-                return @{
-                    NextStage = 'B'
-                    SelectedAlbum = $null
-                    UpdatedCache = $CachedAlbums
-                    UpdatedCachedArtistId = $CachedArtistId
-                    UpdatedProvider = $Provider
+                
+                # Filter to albums with similarity >= 0.3 or top 20 most similar (whichever is larger)
+                $minSimilarity = 0.3
+                $maxResults = 20
+                $filteredAlbums = @(
+                    $albumsWithSimilarity | 
+                    Where-Object { $_.Similarity -ge $minSimilarity } | 
+                    Sort-Object -Property Similarity -Descending
+                )
+                
+                # If we have fewer than maxResults with minSimilarity, add more from the top
+                if ($filteredAlbums.Count -lt $maxResults) {
+                    $topAlbums = @(
+                        $albumsWithSimilarity | 
+                        Sort-Object -Property Similarity -Descending | 
+                        Select-Object -First $maxResults
+                    )
+                    $filteredAlbums = @($topAlbums)
+                }
+                
+                $albumsForArtist = @($filteredAlbums | ForEach-Object { $_.Album })
+                
+                if ($albumsForArtist.Count -gt 0) {
+                    Write-Host "✓ Filtered to $($albumsForArtist.Count) most similar albums" -ForegroundColor Green
+                }
+                else {
+                    Write-Warning "No albums found with sufficient similarity to '$AlbumName'"
                 }
             }
         }
+    
+        # Normalize to array so .Count works reliably
+        $albumsForArtist = @($albumsForArtist)
+    
+        # Handle no albums found
+        if (-not $albumsForArtist -or $albumsForArtist.Count -eq 0) {
+            Write-Host "No albums found for artist id $($ProviderArtist.id)."
+        
+            if ($NonInteractive) {
+                Write-Warning "NonInteractive: skipping album because no albums found for artist id $($ProviderArtist.id)."
+                return @{
+                    NextStage             = 'Skip'
+                    SelectedAlbum         = $null
+                    UpdatedCache          = $CachedAlbums
+                    UpdatedCachedArtistId = $CachedArtistId
+                    UpdatedProvider       = $Provider
+                }
+            }
+    
+            $inputF = Read-Host "Enter '(b)ack', '(s)kip', 'id:<id>' or album name to filter"
+            switch -Regex ($inputF) {
+                '^b$' {
+                    return @{
+                        NextStage             = 'A'
+                        SelectedAlbum         = $null
+                        UpdatedCache          = $CachedAlbums
+                        UpdatedCachedArtistId = $CachedArtistId
+                        UpdatedProvider       = $Provider
+                    }
+                }
+                '^s$' {
+                    return @{
+                        NextStage             = 'Skip'
+                        SelectedAlbum         = $null
+                        UpdatedCache          = $CachedAlbums
+                        UpdatedCachedArtistId = $CachedArtistId
+                        UpdatedProvider       = $Provider
+                    }
+                }
+                '^id:.*' {
+                    $id = $inputF.Substring(3)
+                    if ($Provider -eq 'Discogs') { $id = & $NormalizeDiscogsId $id }
+                    return @{
+                        NextStage             = 'C'
+                        SelectedAlbum         = @{ id = $id; name = $id }
+                        UpdatedCache          = $CachedAlbums
+                        UpdatedCachedArtistId = $CachedArtistId
+                        UpdatedProvider       = $Provider
+                    }
+                }
+                default {
+                    if ($inputF) {
+                        # New artist search
+                        return @{
+                            NextStage             = 'A'
+                            SelectedAlbum         = $null
+                            UpdatedCache          = $CachedAlbums
+                            UpdatedCachedArtistId = $CachedArtistId
+                            UpdatedProvider       = $Provider
+                            NewArtistQuery        = $inputF
+                        }
+                    }
+                    # Empty input, stay in loop (should not reach here)
+                    return @{
+                        NextStage             = 'B'
+                        SelectedAlbum         = $null
+                        UpdatedCache          = $CachedAlbums
+                        UpdatedCachedArtistId = $CachedArtistId
+                        UpdatedProvider       = $Provider
+                    }
+                }
+            }
+        }
+    
+        Clear-Host
+    
+        # Sort by Jaccard similarity descending
+        $albumsForArtist = $albumsForArtist | Sort-Object { - (Get-StringSimilarity-Jaccard -String1 $AlbumName -String2 $_.Name) }
+
+
+
+
     }
-    
-    Clear-Host
-    
-    # Sort by Jaccard similarity descending
-    $albumsForArtist = $albumsForArtist | Sort-Object { - (Get-StringSimilarity-Jaccard -String1 $AlbumName -String2 $_.Name) }
 
-
-
-
-}
-
-$CachedAlbums=$albumsForArtist
+    $CachedAlbums = $albumsForArtist
 
 
     # Main album selection loop
     while ($true) {
         Clear-Host
         if ($ShowHeader) {
-            & $ShowHeader -Provider $Provider -Artist $Artist -AlbumName $AlbumName -trackCount $trackCount
+            & $ShowHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -trackCount $script:trackCount
         }
         
         # Show filter mode indicator for Discogs
         if ($Provider -eq 'Discogs') {
             $modeIndicator = if ($mastersOnlyMode) { 
                 "[Filter: MASTERS ONLY - type '*' to include all releases]" 
-            } else { 
+            }
+            else { 
                 "[Filter: ALL RELEASES - type '*' for masters only]" 
             }
             Write-Host $modeIndicator -ForegroundColor Yellow
         }
         
         
-    Write-Host "$Provider Albums for artist $($ProviderArtist.name):"
+        Write-Host "$Provider Albums for artist $($ProviderArtist.name):"
         Write-Host "for local album: $($AlbumName) (year: $Year)"
         
         
@@ -303,57 +348,56 @@ $CachedAlbums=$albumsForArtist
         $endIdx = [math]::Min($startIdx + $pageSize - 1, $albumsForArtist.Count - 1)
 
         for ($i = $startIdx; $i -le $endIdx; $i++) {
- $album = $albumsForArtist[$i]
+            $album = $albumsForArtist[$i]
             $trackInfo = ""
-            if ($album.PSObject.Properties.Match('total_tracks')) {
-                $trackInfo = " ($($album.total_tracks) tracks)"
-            } elseif ($album.PSObject.Properties.Match('track_count')) {
-                $trackInfo = " ($($album.track_count) tracks)"
-            } elseif ($album.PSObject.Properties.Match('tracks_count')) {
-                $trackInfo = " ($($album.tracks_count) tracks)"
+            $trackCount = Get-IfExists $album 'total_tracks'
+            if (-not $trackCount) { $trackCount = Get-IfExists $album 'track_count' }
+            if (-not $trackCount) { $trackCount = Get-IfExists $album 'tracks_count' }
+            if ($trackCount) {
+                $trackInfo = " ($trackCount tracks)"
             }
             Write-Host "[$($i+1)] $($album.name)  (id: $($album.id)) (year: $($album.release_date))$trackInfo"
-       }
+        }
 
         # Non-interactive album selection
         if ($AlbumId) {
             return @{
-                NextStage = 'C'
-                SelectedAlbum = @{ id = $AlbumId; name = $AlbumId }
-                UpdatedCache = $CachedAlbums
+                NextStage             = 'C'
+                SelectedAlbum         = @{ id = $AlbumId; name = $AlbumId }
+                UpdatedCache          = $CachedAlbums
                 UpdatedCachedArtistId = $CachedArtistId
-                UpdatedProvider = $Provider
+                UpdatedProvider       = $Provider
             }
         }
         if ($GoB) {
             return @{
-                NextStage = 'C'
-                SelectedAlbum = $albumsForArtist[0]
-                UpdatedCache = $CachedAlbums
+                NextStage             = 'C'
+                SelectedAlbum         = $albumsForArtist[0]
+                UpdatedCache          = $CachedAlbums
                 UpdatedCachedArtistId = $CachedArtistId
-                UpdatedProvider = $Provider
+                UpdatedProvider       = $Provider
             }
         }
         if ($AutoSelect -or $NonInteractive) {
             return @{
-                NextStage = 'C'
-                SelectedAlbum = $albumsForArtist[0]
-                UpdatedCache = $CachedAlbums
+                NextStage             = 'C'
+                SelectedAlbum         = $albumsForArtist[0]
+                UpdatedCache          = $CachedAlbums
                 UpdatedCachedArtistId = $CachedArtistId
-                UpdatedProvider = $Provider
+                UpdatedProvider       = $Provider
             }
         }
 
         $inputF = Read-Host "Select album(s) [1] (Enter=first), number(s) (e.g., 1,3,5-8), '(b)ack', '(n)ext', '(p)rev', '(s)kip', 'id:<id>', '(cp)' change provider [$Provider], '*' (all albums), or text to search:"
         
         switch -Regex ($inputF) {
-             '^s$' {
+            '^s$' {
                 return @{
-                    NextStage = 'Skip'
-                    SelectedAlbum = $null
-                    UpdatedCache = $CachedAlbums
+                    NextStage             = 'Skip'
+                    SelectedAlbum         = $null
+                    UpdatedCache          = $CachedAlbums
                     UpdatedCachedArtistId = $CachedArtistId
-                    UpdatedProvider = $Provider
+                    UpdatedProvider       = $Provider
                 }
             }
             '^n$' {
@@ -374,62 +418,65 @@ $CachedAlbums=$albumsForArtist
                     $Provider = $matched
                     Write-Host "Switched to provider: $Provider" -ForegroundColor Green
                     return @{
-                        NextStage = 'A'
-                        SelectedAlbum = $null
-                        UpdatedCache = $CachedAlbums
+                        NextStage             = 'A'
+                        SelectedAlbum         = $null
+                        UpdatedCache          = $CachedAlbums
                         UpdatedCachedArtistId = $CachedArtistId
-                        UpdatedProvider = $Provider
+                        UpdatedProvider       = $Provider
                     }
-                } else {
+                }
+                else {
                     Write-Warning "Invalid provider: $newProvider. Staying with $Provider."
                     continue
                 }
             }
             '^b$' {
                 return @{
-                    NextStage = 'A'
-                    SelectedAlbum = $null
-                    UpdatedCache = $null
+                    NextStage             = 'A'
+                    SelectedAlbum         = $null
+                    UpdatedCache          = $null
                     UpdatedCachedArtistId = $null
-                    UpdatedProvider = $Provider
+                    UpdatedProvider       = $Provider
                 }
             }
             '^$' {
                 return @{
-                    NextStage = 'C'
-                    SelectedAlbum = $albumsForArtist[0]
-                    UpdatedCache = $CachedAlbums
+                    NextStage             = 'C'
+                    SelectedAlbum         = $albumsForArtist[0]
+                    UpdatedCache          = $CachedAlbums
                     UpdatedCachedArtistId = $CachedArtistId
-                    UpdatedProvider = $Provider
+                    UpdatedProvider       = $Provider
                 }
             }
             '^id:(.+)$' {
                 $id = $matches[1].Trim()
                 if ($Provider -eq 'Discogs') { $id = & $NormalizeDiscogsId $id }
-                 if ($Provider -eq 'MusicBrainz') {
+                if ($Provider -eq 'MusicBrainz') {
                     Write-Host "Fetching MusicBrainz release information..." -ForegroundColor Cyan
                     try {
                         $release = Invoke-MusicBrainzRequest -Endpoint 'release' -Id $id -Inc 'artist-credits'
                         if ($release) {
                             $selectedAlbum = @{
-                                id = $id
-                                name = if (Get-IfExists $release 'title') { $release.title } else { $id }
+                                id           = $id
+                                name         = if (Get-IfExists $release 'title') { $release.title } else { $id }
                                 release_date = if (Get-IfExists $release 'date') { $release.date } else { $null }
                             }
                             Write-Host "✓ Found release: $($selectedAlbum.name)" -ForegroundColor Green
-                        } else {
+                        }
+                        else {
                             Write-Warning "Could not fetch release information for ID: $id"
                         }
-                    } catch {
+                    }
+                    catch {
                         Write-Warning "Failed to fetch MusicBrainz release information: $_"
                     }
                 }
                 return @{
-                    NextStage = 'C'
-                    SelectedAlbum = @{ id = $id; name = $id }
-                    UpdatedCache = $CachedAlbums
+                    NextStage             = 'C'
+                    SelectedAlbum         = @{ id = $id; name = $id }
+                    UpdatedCache          = $CachedAlbums
                     UpdatedCachedArtistId = $CachedArtistId
-                    UpdatedProvider = $Provider
+                    UpdatedProvider       = $Provider
                 }
             }
             '^\*$' {
@@ -439,14 +486,15 @@ $CachedAlbums=$albumsForArtist
                     $modeText = if ($mastersOnlyMode) { "MASTER releases only" } else { "ALL release types" }
                     Write-Host "`nToggling to: $modeText" -ForegroundColor Yellow
                     Write-Host "Fetching albums..." -ForegroundColor Cyan
-                } else {
+                }
+                else {
                     Write-Host "Fetching all albums for artist..." -ForegroundColor Cyan
                 }
                 
                 try {
                     $fetchParams = @{
-                        Provider = $Provider
-                        ArtistId = $ProviderArtist.id
+                        Provider  = $Provider
+                        ArtistId  = $ProviderArtist.id
                         AlbumType = 'Album'
                     }
                     
@@ -463,11 +511,13 @@ $CachedAlbums=$albumsForArtist
                     
                     $statusMsg = if ($Provider -eq 'Discogs') {
                         "✓ Loaded $($albumsForArtist.Count) albums [$modeText]"
-                    } else {
+                    }
+                    else {
                         "✓ Loaded $($albumsForArtist.Count) albums"
                     }
                     Write-Host $statusMsg -ForegroundColor Green
-                } catch {
+                }
+                catch {
                     Write-Warning "Failed to fetch all albums: $_"
                 }
                 continue
@@ -483,7 +533,8 @@ $CachedAlbums=$albumsForArtist
                         $start = [int]$matches[1]
                         $end = [int]$matches[2]
                         $selectedIndices += $start..$end
-                    } elseif ($part -match '^\d+$') {
+                    }
+                    elseif ($part -match '^\d+$') {
                         # Single number: 3
                         $selectedIndices += [int]$part
                     }
@@ -492,9 +543,9 @@ $CachedAlbums=$albumsForArtist
                 # Validate all indices
                 $validIndices = @(
                     $selectedIndices |
-                        Where-Object { $_ -ge 1 -and $_ -le $albumsForArtist.Count } |
-                        Select-Object -Unique |
-                        Sort-Object
+                    Where-Object { $_ -ge 1 -and $_ -le $albumsForArtist.Count } |
+                    Select-Object -Unique |
+                    Sort-Object
                 )
                 
                 if ($validIndices.Count -eq 0) {
@@ -534,7 +585,8 @@ $CachedAlbums=$albumsForArtist
                                 $selectedRelease = $null
                                 if ($relInput -eq '') {
                                     $selectedRelease = $releases[0]
-                                } elseif ($relInput -eq '0' -or $relInput -eq 'main') {
+                                }
+                                elseif ($relInput -eq '0' -or $relInput -eq 'main') {
                                     # Fetch master details to get main_release
                                     try {
                                         $masterDetails = Invoke-DiscogsRequest -Uri "/masters/$($selectedAlbum.id)"
@@ -543,23 +595,28 @@ $CachedAlbums=$albumsForArtist
                                             Write-Host "Using main_release: $mainReleaseId" -ForegroundColor Green
                                             # Create a minimal release object with the main_release ID
                                             $selectedRelease = @{ id = $mainReleaseId; title = $selectedAlbum.name }
-                                        } else {
+                                        }
+                                        else {
                                             Write-Warning "Master has no main_release, using first release"
                                             $selectedRelease = $releases[0]
                                         }
-                                    } catch {
+                                    }
+                                    catch {
                                         Write-Warning "Failed to fetch main_release: $_. Using first release."
                                         $selectedRelease = $releases[0]
                                     }
-                                } elseif ($relInput -match '^\d+$') {
+                                }
+                                elseif ($relInput -match '^\d+$') {
                                     $idx = [int]$relInput
                                     if ($idx -ge 1 -and $idx -le $releases.Count) {
                                         $selectedRelease = $releases[$idx - 1]
-                                    } else {
+                                    }
+                                    else {
                                         Write-Warning "Invalid selection, using first release"
                                         $selectedRelease = $releases[0]
                                     }
-                                } else {
+                                }
+                                else {
                                     Write-Warning "Invalid input, using first release"
                                     $selectedRelease = $releases[0]
                                 }
@@ -567,34 +624,36 @@ $CachedAlbums=$albumsForArtist
                                 # Return the selected release instead of the master
                                 Write-Host "✓ Selected release: $($selectedRelease.id) - $($selectedRelease.title)" -ForegroundColor Green
                                 return @{
-                                    NextStage = 'C'
-                                    SelectedAlbum = @{
-                                        id = [string]$selectedRelease.id
-                                        name = $selectedRelease.title
-                                        type = 'release'  # Mark as release, not master
+                                    NextStage             = 'C'
+                                    SelectedAlbum         = @{
+                                        id                  = [string]$selectedRelease.id
+                                        name                = $selectedRelease.title
+                                        type                = 'release'  # Mark as release, not master
                                         _resolvedFromMaster = $selectedAlbum.id
-                                        _masterReleases = $releases  # Store releases for potential retry
-                                        _masterName = $selectedAlbum.name
+                                        _masterReleases     = $releases  # Store releases for potential retry
+                                        _masterName         = $selectedAlbum.name
                                     }
-                                    UpdatedCache = $CachedAlbums
+                                    UpdatedCache          = $CachedAlbums
                                     UpdatedCachedArtistId = $CachedArtistId
-                                    UpdatedProvider = $Provider
+                                    UpdatedProvider       = $Provider
                                 }
-                            } else {
+                            }
+                            else {
                                 Write-Warning "No releases found for master $($selectedAlbum.id), attempting to use master ID directly"
                             }
-                        } catch {
+                        }
+                        catch {
                             Write-Warning "Failed to fetch releases for master: $_. Will attempt to use master ID."
                         }
                     }
                     
                     # Normal path: return selected album (non-master or master resolution failed)
                     return @{
-                        NextStage = 'C'
-                        SelectedAlbum = $selectedAlbum
-                        UpdatedCache = $CachedAlbums
+                        NextStage             = 'C'
+                        SelectedAlbum         = $selectedAlbum
+                        UpdatedCache          = $CachedAlbums
                         UpdatedCachedArtistId = $CachedArtistId
-                        UpdatedProvider = $Provider
+                        UpdatedProvider       = $Provider
                     }
                 }
                 
@@ -616,7 +675,8 @@ $CachedAlbums=$albumsForArtist
                         if ($tracks) {
                             $combinedTracks += $tracks
                             Write-Host "    ✓ Added $($tracks.Count) tracks" -ForegroundColor Green
-                        } else {
+                        }
+                        else {
                             Write-Warning "    ✗ No tracks returned for album: $($currentAlbum.name)"
                             $failedAlbums++
                         }
@@ -635,19 +695,20 @@ $CachedAlbums=$albumsForArtist
                 # Create a synthetic combined album object
                 $firstAlbum = $albumsForArtist[$validIndices[0] - 1]
                 $combinedAlbum = [PSCustomObject]@{
-                    id = "combined_$($validIndices -join '_')"
-                    name = if ($validIndices.Count -eq 2) { 
+                    id               = "combined_$($validIndices -join '_')"
+                    name             = if ($validIndices.Count -eq 2) { 
                         "$($albumNames[0]) + $($albumNames[1])" 
-                    } else { 
+                    }
+                    else { 
                         "$($albumNames[0]) + $($validIndices.Count - 1) more albums" 
                     }
-                    release_date = $firstAlbum.release_date
-                     track_count = $combinedTracks.Count
-                    _isCombined = $true
-                    _albumCount = $validIndices.Count
-                    _albumNames = $albumNames
+                    release_date     = $firstAlbum.release_date
+                    track_count      = $combinedTracks.Count
+                    _isCombined      = $true
+                    _albumCount      = $validIndices.Count
+                    _albumNames      = $albumNames
                     _selectedIndices = $validIndices
-                    _tracks = $combinedTracks
+                    _tracks          = $combinedTracks
                 }
                 
                 Write-Host "`n✓ Combined $($combinedTracks.Count) tracks from $($validIndices.Count) albums" -ForegroundColor Green
@@ -656,11 +717,11 @@ $CachedAlbums=$albumsForArtist
                 }
                 
                 return @{
-                    NextStage = 'C'
-                    SelectedAlbum = $combinedAlbum
-                    UpdatedCache = $CachedAlbums
+                    NextStage             = 'C'
+                    SelectedAlbum         = $combinedAlbum
+                    UpdatedCache          = $CachedAlbums
                     UpdatedCachedArtistId = $CachedArtistId
-                    UpdatedProvider = $Provider
+                    UpdatedProvider       = $Provider
                 }
             }
             default {
@@ -668,10 +729,10 @@ $CachedAlbums=$albumsForArtist
                 Write-Host "Searching for albums matching: '$inputF'..." -ForegroundColor Cyan
                 try {
                     $searchParams = @{
-                        Provider    = $Provider
-                        ArtistId    = $ProviderArtist.id
-                        ArtistName  = $ProviderArtist.name
-                        AlbumName   = $inputF
+                        Provider   = $Provider
+                        ArtistId   = $ProviderArtist.id
+                        ArtistName = $ProviderArtist.name
+                        AlbumName  = $inputF
                     }
                     
                     # Add MastersOnly parameter for Discogs, respecting toggle state
@@ -693,7 +754,8 @@ $CachedAlbums=$albumsForArtist
                         Write-Host "Found $($albumsForArtist.Count) albums matching '$inputF'" -ForegroundColor Green
                         continue
                     }
-                } catch {
+                }
+                catch {
                     Write-Verbose "Search failed: $_"
                 }
                 

@@ -10,7 +10,7 @@ function Save-TagsForFile {
         throw "File does not exist: $FilePath"
     }
 
-    $locked = Test-FileLocked -Path $FilePath
+    $locked = Assert-FileLocked -Path $FilePath
     if ($locked) {
         $result = Wait-ForFileUnlock -Path $FilePath
         if ($result.Action -eq 'skip') {

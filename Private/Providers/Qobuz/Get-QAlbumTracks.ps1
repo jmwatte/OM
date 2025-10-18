@@ -868,3 +868,55 @@ function Get-QAlbumTracks {
     }
 }
 
+function Get-QAlbumTrackCount {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true, Position = 0)]
+        [string]$Id
+    )
+
+    begin {
+        if (-not (Get-Module -Name PowerHTML -ListAvailable)) {
+            throw "PowerHTML module is required but not installed. Install it with: Install-Module PowerHTML"
+        }
+        Import-Module PowerHTML -ErrorAction Stop
+    }
+
+    process {
+        # Normalize album URL (best-effort)
+        if ($Id -match '^https?://') { $url = $Id.TrimEnd('/') }
+        elseif ($Id -match '^/be-fr/album/') { $url = "https://www.qobuz.com$($Id.TrimEnd('/'))" }
+        else { $url = "https://www.qobuz.com/be-fr/album/$Id"; Write-Verbose "Best-effort album URL built: $url" }
+
+        Write-Verbose ("Fetching Qobuz album page for track count: {0}" -f $url)
+        try {
+            $resp = Invoke-WebRequest -Uri $url -UseBasicParsing -ErrorAction Stop
+            $html = $resp.Content
+        }
+        catch {
+            Write-Warning ("Failed to download album page {0}: {1}" -f $url, $_.Exception.Message)
+            return $null
+        }
+
+        try {
+            $doc = ConvertFrom-Html -Content $html
+        }
+        catch {
+            Write-Warning ("Failed to parse HTML: {0}" -f $_.Exception.Message)
+            return $null
+        }
+
+        # Extract track count from data-nbtracks attribute on playerTracks div
+        $playerTracksDiv = $doc.SelectSingleNode("//div[@id='playerTracks']")
+        if ($playerTracksDiv) {
+            $nbtracks = $playerTracksDiv.GetAttributeValue("data-nbtracks", $null)
+            if ($nbtracks -and $nbtracks -match '^\d+$') {
+                return [int]$nbtracks
+            }
+        }
+
+        Write-Warning "Could not extract track count from data-nbtracks attribute"
+        return $null
+    }
+}
+# ...existing code...

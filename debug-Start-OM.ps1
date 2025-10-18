@@ -5,4 +5,4 @@
 Import-Module "$PSScriptRoot\OM.psd1" -Force
 
 # Call Start-OM with the desired parameters
-Start-OM -Verbose -Path "E:\Paul Weller"
+Start-OM  -Path "E:\Paul Weller" 

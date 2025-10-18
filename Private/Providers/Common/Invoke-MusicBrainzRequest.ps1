@@ -100,10 +100,10 @@ function Invoke-MusicBrainzRequest {
         Write-Verbose "Full URL: $fullUrl"
         
         $requestParams = @{
-            Uri = $baseUri
+            Uri = $fullUrl
             Method = 'Get'
             Headers = $headers
-            Body = $queryParams
+           # Body = $queryParams
             ErrorAction = 'Stop'
         }
         

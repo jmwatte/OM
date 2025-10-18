@@ -59,18 +59,18 @@ function Search-DAlbumsByName {
         
         # Filter albums by name using case-insensitive matching
         $filtered = @($allAlbums | Where-Object { 
-            $_.name -like "*$AlbumName*" 
-        })
+                $_.name -like "*$AlbumName*" 
+            })
 
         # If no direct matches, try fuzzy matching with Jaccard similarity
         if ($filtered.Count -eq 0 -and (Get-Command Get-StringSimilarity-Jaccard -ErrorAction SilentlyContinue)) {
             Write-Verbose "No direct matches, trying fuzzy matching with Jaccard similarity"
             $filtered = @($allAlbums | ForEach-Object {
-                $similarity = Get-StringSimilarity-Jaccard -String1 $AlbumName -String2 $_.name
-                if ($similarity -gt 0.3) {
-                    $_ | Add-Member -NotePropertyName '_similarity' -NotePropertyValue $similarity -Force -PassThru
-                }
-            } | Sort-Object { -$_._similarity })
+                    $similarity = Get-StringSimilarity-Jaccard -String1 $AlbumName -String2 $_.name
+                    if ($similarity -gt 0.3) {
+                        $_ | Add-Member -NotePropertyName '_similarity' -NotePropertyValue $similarity -Force -PassThru
+                    }
+                } | Sort-Object { - $_._similarity })
         }
 
         Write-Verbose "Found $($filtered.Count) matching albums from cache"
@@ -84,12 +84,16 @@ function Search-DAlbumsByName {
     try {
         $searchParams = @{
             artist = $ArtistName
-            title = $AlbumName
-            type = 'release'  # Always search for releases (broader results)
+            title  = $AlbumName
+            type   = 'master'
+            #type   = 'release'  # Always search for releases (broader results)
         }
-        
+        $queryString = ($searchParams.GetEnumerator() | ForEach-Object {
+                [System.Web.HttpUtility]::UrlEncode($_.Key) + '=' + [System.Web.HttpUtility]::UrlEncode($_.Value)
+            }) -join '&'
+        $uri = "https://api.discogs.com/database/search?$queryString" 
         Write-Debug "Calling Invoke-DiscogsRequest..."
-        $searchResult = Invoke-DiscogsRequest -Uri 'https://api.discogs.com/database/search' -Body $searchParams
+        $searchResult = Invoke-DiscogsRequest -Uri $uri -Method GET
         Write-Debug "API call completed, processing results..."
         
         if (-not $searchResult.results -or $searchResult.results.Count -eq 0) {
@@ -114,24 +118,32 @@ function Search-DAlbumsByName {
             if ($albumTitle -match '^\s*(.+?)\s*[-–]\s*(.+?)\s*$') {
                 $albumTitle = $matches[2].Trim()
             }
-            
+            $releaseUri = $result.resource_url
+            Write-Host "Fetching release details for track count from $releaseUri" -ForegroundColor DarkGray
+             Start-Sleep -Milliseconds 850
+            $releaseDetails = Invoke-DiscogsRequest -Uri $releaseUri -Method 'GET'
+            $trackCount = $releaseDetails.tracklist.Count
+
             $album = [PSCustomObject]@{
-                id = $result.id
-                name = $albumTitle
+                #if $result=release id ="r$result.id" if master id="m$result.id"
+                id           = if ($result.type -eq 'master') { "m$($result.id)" } else { "r$($result.id)" }
+                name         = $albumTitle
                 release_date = if ($result.PSObject.Properties['year']) { $result.year } else { '' }
-                type = $result.type
-                format = if ($result.PSObject.Properties['format']) { $result.format -join ', ' } else { '' }
-                label = if ($result.PSObject.Properties['label']) { $result.label -join ', ' } else { '' }
-                country = if ($result.PSObject.Properties['country']) { $result.country } else { '' }
-                thumb = if ($result.PSObject.Properties['thumb']) { $result.thumb } else { '' }
-                genres = if ($result.PSObject.Properties['genre']) { @($result.genre) } else { @() }
-                artist = if ($result.PSObject.Properties['user_data']) { 
+                type         = $result.type
+                format       = if ($result.PSObject.Properties['format']) { $result.format -join ', ' } else { '' }
+                label        = if ($result.PSObject.Properties['label']) { $result.label -join ', ' } else { '' }
+                country      = if ($result.PSObject.Properties['country']) { $result.country } else { '' }
+                thumb        = if ($result.PSObject.Properties['thumb']) { $result.thumb } else { '' }
+                genres       = if ($result.PSObject.Properties['genre']) { @($result.genre) } else { @() }
+                artist       = if ($result.PSObject.Properties['user_data']) { 
                     # Extract artist from title
                     if ($result.title -match '^\s*(.+?)\s*[-–]\s*') { $matches[1].Trim() } else { $ArtistName }
-                } else { 
+                }
+                else { 
                     $ArtistName 
                 }
                 resource_url = if ($result.PSObject.Properties['resource_url']) { $result.resource_url } else { '' }
+                track_count  = $trackCount
             }
             
             $albums += $album
@@ -141,7 +153,8 @@ function Search-DAlbumsByName {
         Write-Verbose "Returning $($albums.Count) albums"
         return $albums
         
-    } catch {
+    }
+    catch {
         Write-Warning "Discogs API search failed: $_"
         
         # Fallback to fetching all albums if ArtistId provided
@@ -154,7 +167,8 @@ function Search-DAlbumsByName {
                 $filtered = @($allAlbums | Where-Object { $_.name -like "*$AlbumName*" })
                 Write-Verbose "Found $($filtered.Count) albums via fallback method"
                 return $filtered
-            } catch {
+            }
+            catch {
                 Write-Warning "Fallback album fetch failed: $_"
                 return @()
             }

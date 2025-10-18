@@ -27,7 +27,7 @@ function Start-OM {
     )
 
     begin {
-        $taglibloaded = Test-taglibloaded -ThrowOnError 
+        $taglibloaded = Assert-TagLibLoaded -ThrowOnError 
         if (-not $taglibloaded) {
             Install-TagLibSharp | Out-Null
         }
@@ -64,30 +64,31 @@ function Start-OM {
             $id = $id -replace '^\[|\]$', ''
             
             # Check if it's a master release (m prefix)
-            if ($id -match '^m(\d+)$') {
-                Write-Host "Detected Discogs master release: $id" -ForegroundColor Yellow
-                Write-Host "Fetching master to resolve main release..." -ForegroundColor Cyan
-                try {
-                    $masterId = $matches[1]
-                    $master = Invoke-DiscogsRequest -Uri "/masters/$masterId"
-                    if ($master -and $master.main_release) {
-                        $id = [string]$master.main_release
-                        Write-Host "✓ Resolved to main release: $id" -ForegroundColor Green
-                    }
-                    else {
-                        Write-Warning "Could not resolve master $masterId to main release, using master ID"
-                        $id = $masterId
-                    }
-                }
-                catch {
-                    Write-Warning "Failed to fetch master release: $_"
-                    $id = $masterId
-                }
-            }
-            # Strip 'r' prefix if present: r2388472 → 2388472
-            elseif ($id -match '^r(\d+)$') {
-                $id = $matches[1]
-            }
+            # if ($id -match '^m(\d+)$') {
+            #     Write-Host "Detected Discogs master release: $id" -ForegroundColor Yellow
+            #     Write-Host "Fetching master to resolve main release..." -ForegroundColor Cyan
+            #     try {
+            #         $masterId = $matches[1]
+            #         $master = Invoke-DiscogsRequest -Uri "/masters/$masterId"
+            #         if ($master -and $master.main_release) {
+            #             $id ="r"+[string]$master.main_release
+            #             Write-Host "✓ Resolved to main release: $id" -ForegroundColor Green
+            #         }
+            #         else {
+            #             Write-Warning "Could not resolve master $masterId to main release, using master ID"
+            #             $id = $masterId
+            #         }
+            #     }
+            #     catch {
+            #         Write-Warning "Failed to fetch master release: $_"
+            #         $id = $masterId
+            #     }
+            # }
+            # # Strip 'r' prefix if present: r2388472 → 2388472
+            # elseif ($id -match '^r(\d+)$') {
+
+            #     #$id = $matches[1]
+            # }
             
             return $id
         }
@@ -110,7 +111,8 @@ function Start-OM {
             Write-Host $AlbumName -NoNewline -ForegroundColor White
             if ($TrackCount -gt 0) {
                 Write-Host " ($TrackCount tracks)" -ForegroundColor White
-            } else {
+            }
+            else {
                 Write-Host ""  # Ensure newline
             }
             Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
@@ -213,6 +215,7 @@ function Start-OM {
             }
         }
         $script:album = $null
+        $script:artist= Split-Path -Leaf $Path
         $artist = Split-Path -Leaf $Path
         $albums = Get-ChildItem -LiteralPath $Path -Directory
         foreach ($albumOriginal in $albums) {
@@ -227,9 +230,11 @@ function Start-OM {
             if ($script:album.Name -match '^(\d{4})\s*[-]?\s*(.+)') {
                 $year = $matches[1]
                 $albumName = $matches[2].Trim()
+                $script:albumName = $matches[2].Trim()
             }
             else {
                 $year = $null
+                $script:albumName = $script:album.Name.Trim()
                 $albumName = $script:album.Name.Trim()
 
             }
@@ -238,7 +243,7 @@ function Start-OM {
                 Write-Warning "No supported audio files found in album folder: $($script:album.FullName). Skipping album."
                 continue
             }
-$trackCount = $audioFilesCheck.Count
+            $script:trackCount = $audioFilesCheck.Count
             $artistQuery = $artist
             $stage = "A"
             $cachedAlbums = $null
@@ -254,7 +259,7 @@ $trackCount = $audioFilesCheck.Count
                     "A" {
                         $loadStageBResults = $true
                         Clear-Host
-                        & $showHeader -Provider $Provider -Artist $artist -AlbumName $albumName -TrackCount $trackCount
+                        & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
                         
                         if ($artistQuery -ne $artist) {
                             Write-Host "Searching for: $artistQuery" -ForegroundColor Yellow
@@ -344,19 +349,28 @@ $trackCount = $audioFilesCheck.Count
                             $stage = 'B'; continue
                         }
 
-                        $inputF = Read-Host "Select artist [1] (Enter=first), number, '(s)kip' album, 'id:<id>', '(cp)' change provider [$Provider], or new search term:"
+                        $inputF = Read-Host "Select artist [1] (Enter=first), number, '(s)kip' album, 'id:<id>', '(cp)' change provider [$Provider],'al:<albumName>' or new search term:"
                         if ($inputF -eq '') { $ProviderArtist = $candidates[0]; $stage = 'B'; continue }
                         if ($inputF -like 'id:*') { 
                             $id = $inputF.Substring(3)
                             if ($Provider -eq 'Discogs') { $id = & $normalizeDiscogsId $id }
                             $ProviderArtist = @{ id = $id; name = $id }; $stage = 'B'; continue 
                         }
+                        if ($inputF -like 'al:*') {
+                            $newAlbumName = $inputF.Substring(3).Trim()
+                            if ($newAlbumName) {
+                                $albumName = $newAlbumName
+                                #$script:albumName = $newAlbumName
+                                Write-Verbose "Updated albumName to: '$albumName' (from al: prompt)"
+                            }
+                            continue stageLoop
+                        }
                         if ($inputF -match '^\d+$') { $idx = [int]$inputF; if ($idx -ge 1 -and $idx -le $candidates.Count) { $ProviderArtist = $candidates[$idx - 1]; $stage = 'B'; continue } else { Write-Warning "Invalid"; continue stageLoop } }
                         if ($inputF -eq 's' -or $inputF -eq 'skip') { 
                             # Skip this album folder entirely
                             $albumDone = $true
-                         break stageLoop
-                         #   break 
+                            break stageLoop
+                            #   break 
                         }
                         if ($inputF -eq 'cp') {
                             Write-Host "`nCurrent provider: $Provider" -ForegroundColor Cyan
@@ -382,7 +396,7 @@ $trackCount = $audioFilesCheck.Count
                     "B" {
                         # Stage B: Album selection
                         
-                         $stageBParams = @{
+                        $stageBParams = @{
                             Provider           = $Provider
                             ProviderArtist     = $ProviderArtist
                             AlbumName          = $albumName
@@ -425,14 +439,14 @@ $trackCount = $audioFilesCheck.Count
                         if ($stage -eq 'Skip') {
                             $albumDone = $true
                             break stageLoop
-                           # break
+                            # break
                         }
                         
                         continue stageLoop
                     }
                     "C" {
                         Clear-Host
-                        & $showHeader -Provider $Provider -Artist $artist -AlbumName $albumName -TrackCount $trackCount
+                        & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
                         
                         if ($useWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
                         
@@ -730,7 +744,7 @@ $trackCount = $audioFilesCheck.Count
                         
                         # Auto-prompt for ambiguous album artist (classical music with multiple artists)
                         if (-not $NonInteractive -and $tracksForAlbum -and $tracksForAlbum.Count -gt 0) {
-                            $isAmbiguous = Test-AlbumArtistAmbiguity -Artist $ProviderArtist -Album $ProviderAlbum -Tracks $tracksForAlbum
+                            $isAmbiguous = Assert-AlbumArtistAmbiguity -Artist $ProviderArtist -Album $ProviderAlbum -Tracks $tracksForAlbum
                             if ($isAmbiguous) {
                                 Write-Host "`n⚠️  This classical album has ambiguous album artist assignment." -ForegroundColor Yellow
                                 # Try different property names for album artist across providers

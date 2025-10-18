@@ -7,6 +7,28 @@
             "request": "launch",
             "script": "${workspaceFolder}\\debug-Start-OM.ps1",
             "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "PowerShell: test-searchQAlbum",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "${workspaceFolder}\\Private\\Providers\\Qobuz\\test-searchQAlbum.ps1",
+            "cwd": "${workspaceFolder}\\Private\\Providers\\Qobuz",
+            "args": [
+                "help",
+                "the beatles"
+            ]
+        },
+        {
+            "name": "PowerShell: Debug Search-QAlbum (harness)",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "${workspaceFolder}\\debug-test-searchQAlbum-run.ps1",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "help",
+                "the beatles"
+            ]
         }
     ]
 }
