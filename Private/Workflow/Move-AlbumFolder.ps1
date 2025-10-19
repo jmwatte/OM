@@ -58,6 +58,21 @@ function Move-AlbumFolder {
         }
 
         $destAlbumPath = Get-UniqueAlbumPath -ArtistPath $targetArtistPath -BaseAlbumName $baseAlbumName -OriginalAlbumPath $AlbumPath
+
+        # If the source and destination paths are the same, no action is needed.
+        if ((Resolve-Path -LiteralPath $destAlbumPath).Path -eq (Resolve-Path -LiteralPath $AlbumPath).Path) {
+            Write-Verbose "Source and destination album paths are identical. No move or rename necessary."
+            return [PSCustomObject]@{
+                Success           = $true
+                OldAlbumPath      = $AlbumPath
+                NewAlbumPath      = $destAlbumPath
+                OldArtistPath     = $currentArtistPath
+                NewArtistPath     = $targetArtistPath
+                CollisionAdjusted = $false
+                Action            = 'None'
+            }
+        }
+
         $renamingOnly = ($currentArtistPath -eq $targetArtistPath)
 
         # build concise action description

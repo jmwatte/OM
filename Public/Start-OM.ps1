@@ -276,8 +276,7 @@ function Start-OM {
                             $pairedTracks[$i].AudioFile.FilePath = $audioFiles[$i].FilePath
                             $pairedTracks[$i].AudioFile.TagFile = $audioFiles[$i].TagFile
                         }
-                    }
-                    $refreshTracks = $false
+                        $refreshTracks = $true
 
                     if ($reloadPath -eq $oldpath) {
                         Write-Verbose "Move result indicates no change to album path; tags reloaded."
