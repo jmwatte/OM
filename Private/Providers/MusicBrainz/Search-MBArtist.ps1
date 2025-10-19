@@ -98,7 +98,8 @@ function Search-MBArtist {
             
             [PSCustomObject]@{
                 id = $artist.id  # MBID
-                name = $artist.name + $disambiguation
+                name = $artist.name
+                displayName = $artist.name + $disambiguation
                 type = $artistType
                 genres = $genres
                 score = if ($artist.PSObject.Properties['score']) { $artist.score } else { 0 }

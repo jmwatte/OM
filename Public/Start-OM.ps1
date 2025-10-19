@@ -408,7 +408,8 @@ function Start-OM {
                             Write-Warning "No candidates returned from search (this should not happen - should have been caught above)"
                         }
                         for ($i = 0; $i -lt $candidates.Count; $i++) {
-                            Write-Host "[$($i+1)] $($candidates[$i].name) - $($candidates[$i].genres -join ', ') (id: $($candidates[$i].id))"
+                            $displayName = if ($candidates[$i].PSObject.Properties['displayName']) { $candidates[$i].displayName } else { $candidates[$i].name }
+                            Write-Host "[$($i+1)] $displayName - $($candidates[$i].genres -join ', ') (id: $($candidates[$i].id))"
                         }
     
                         # Non-interactive selection: prefer explicit ArtistId, then goA, then AutoSelect/NonInteractive
