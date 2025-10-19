@@ -28,9 +28,18 @@ function Move-AlbumFolder {
         if ($NewYear) { $baseAlbumName = "$NewYear - $NewAlbumName" } else { $baseAlbumName = $NewAlbumName }
 
         function Get-UniqueAlbumPath {
-            param([string]$ArtistPath, [string]$BaseAlbumName)
+            param([string]$ArtistPath, [string]$BaseAlbumName, [string]$OriginalAlbumPath)
             $candidate = Join-Path -Path $ArtistPath -ChildPath $BaseAlbumName
+
+            # If the desired path doesn't exist, we're good.
             if (-not (Test-Path -LiteralPath $candidate)) { return $candidate }
+
+            # If the path exists, check if it's the SAME folder we are trying to move.
+            if ((Resolve-Path -LiteralPath $candidate).Path -eq (Resolve-Path -LiteralPath $OriginalAlbumPath).Path) {
+                return $candidate # It's the same folder, so no rename is needed.
+            }
+
+            # If it exists and it's a DIFFERENT folder, then we have a real collision.
             $n = 2
             while ($true) {
                 $candidateName = "$BaseAlbumName ($n)"
@@ -48,7 +57,7 @@ function Move-AlbumFolder {
             }
         }
 
-        $destAlbumPath = Get-UniqueAlbumPath -ArtistPath $targetArtistPath -BaseAlbumName $baseAlbumName
+        $destAlbumPath = Get-UniqueAlbumPath -ArtistPath $targetArtistPath -BaseAlbumName $baseAlbumName -OriginalAlbumPath $AlbumPath
         $renamingOnly = ($currentArtistPath -eq $targetArtistPath)
 
         # build concise action description
