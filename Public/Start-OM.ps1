@@ -1,3 +1,80 @@
+<#
+.SYNOPSIS
+    Interactively organizes music albums by matching them with online databases.
+
+.DESCRIPTION
+    Start-OM is a comprehensive, interactive function that guides you through organizing your music library.
+    It processes a directory of album folders, and for each album, it helps you find the correct artist and
+    album information from providers like Spotify, Qobuz, Discogs, or MusicBrainz.
+
+    The workflow is divided into three main stages:
+    A: Artist Selection - Searches for the artist and lets you choose the correct one.
+    B: Album Selection - Fetches albums for the selected artist and lets you choose the matching album.
+    C: Track Matching & Tagging - Displays a side-by-side view of your local files and the provider's tracks,
+       allowing you to match them, save tags, and rename the album folder.
+
+    This function is designed to be used interactively, but it also provides parameters for automation.
+
+.PARAMETER Path
+    The path to the base directory containing the album folders you want to organize.
+    This parameter is mandatory and can be provided via the pipeline.
+
+.PARAMETER Provider
+    Specifies the online music database to use for fetching metadata.
+    Valid values are 'Spotify', 'Qobuz', 'Discogs', and 'MusicBrainz'.
+    Defaults to 'Spotify'.
+
+.PARAMETER ArtistId
+    Allows you to skip the interactive artist search by providing the artist's ID directly.
+
+.PARAMETER AlbumId
+    Allows you to skip the interactive album search by providing the album's ID directly.
+    Requires ArtistId to be specified as well.
+
+.PARAMETER AutoSelect
+    If specified, the function will automatically select the first search result for artist and album,
+    making the process faster but potentially less accurate.
+
+.PARAMETER NonInteractive
+    If specified, the function will run in a non-interactive mode. It will not prompt for user input
+    and will skip the interactive track selection stage.
+
+.PARAMETER goA
+    A debugging switch that automatically selects the first artist candidate in Stage A.
+
+.PARAMETER goB
+    A debugging switch that automatically selects the first album candidate in Stage B.
+
+.PARAMETER goC
+    A debugging switch that automatically applies all changes (Save All) in Stage C.
+
+.PARAMETER ReverseSource
+    A switch to reverse the source and target columns in the track matching UI (Stage C).
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\MyArtist"
+
+    Starts the interactive organization process for all album folders inside "C:\Music\MyArtist".
+
+.EXAMPLE
+    "C:\Music\MyArtist" | Start-OM -Provider Discogs
+
+    Starts the interactive process using Discogs as the provider, with the path provided via the pipeline.
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\MyArtist\MyAlbum" -ArtistId "..." -AlbumId "..." -NonInteractive
+
+    Runs the process non-interactively for a specific album, using the provided artist and album IDs.
+
+.NOTES
+    This function requires the TagLib-Sharp library for reading and writing audio file tags.
+    It will attempt to install it automatically if it's missing.
+    For Spotify integration, the 'Spotishell' module is required.
+    The function supports -WhatIf to preview changes without applying them.
+
+.LINK
+    https://github.com/jmwatte/OM
+#>
 function Start-OM {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -218,6 +295,8 @@ function Start-OM {
         $script:artist= Split-Path -Leaf $Path
         $artist = Split-Path -Leaf $Path
         $albums = Get-ChildItem -LiteralPath $Path -Directory
+        $cachedAlbums = $null
+        $cachedArtistId = $null
         foreach ($albumOriginal in $albums) {
             $script:album = $albumOriginal
             # Initialize album artist override for this album
@@ -246,8 +325,6 @@ function Start-OM {
             $script:trackCount = $audioFilesCheck.Count
             $artistQuery = $artist
             $stage = "A"
-            $cachedAlbums = $null
-            $cachedArtistId = $null
             $loadStageBResults = $true 
             $page = 1
             $pageSize = 25
