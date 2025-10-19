@@ -82,11 +82,20 @@ function Search-DAlbumsByName {
     Write-Verbose "Searching Discogs API with title='$AlbumName' and artist='$ArtistName'"
     
     try {
-        $searchParams = @{
-            artist = $ArtistName
-            title  = $AlbumName
-            type   = 'master'
-            #type   = 'release'  # Always search for releases (broader results)
+        if ($MastersOnly) {
+            $searchParams = @{
+                artist = $ArtistName
+                title  = $AlbumName
+                type   = 'master'
+
+            }
+        }
+        else {
+            $searchParams = @{
+                artist = $ArtistName
+                title  = $AlbumName
+                type   = 'release'  # Always search for releases (broader results)
+            }
         }
         $queryString = ($searchParams.GetEnumerator() | ForEach-Object {
                 [System.Web.HttpUtility]::UrlEncode($_.Key) + '=' + [System.Web.HttpUtility]::UrlEncode($_.Value)
@@ -120,7 +129,7 @@ function Search-DAlbumsByName {
             }
             $releaseUri = $result.resource_url
             Write-Host "Fetching release details for track count from $releaseUri" -ForegroundColor DarkGray
-             Start-Sleep -Milliseconds 850
+            Start-Sleep -Milliseconds 850
             $releaseDetails = Invoke-DiscogsRequest -Uri $releaseUri -Method 'GET'
             $trackCount = $releaseDetails.tracklist.Count
 

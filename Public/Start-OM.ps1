@@ -1182,7 +1182,8 @@ function Start-OM {
 
 
                                     foreach ($pair in $pairedTracks) {
-                                        if ($null -ne $pair.AudioFile) {
+                                        # check if pair has audio and spotify track with get-ifexists
+                                        if ($null -ne (Get-IfExists $pair 'AudioFile') -and $null -ne (Get-IfExists $pair 'SpotifyTrack')) {
                                             $filePath = $pair.AudioFile.FilePath
                                             $tagsParams = @{
                                                 Artist       = $ProviderArtist
@@ -1218,7 +1219,13 @@ function Start-OM {
                                             }
                                         }
                                         else {
-                                            Write-Verbose ("Skipping track '{0}' - no matching audio file" -f $pair.SpotifyTrack.name)
+                                            #let the user know what is missing for this pair
+                                            if ($null -eq $pair.AudioFile) {
+                                                Write-Verbose ("Skipping track '{0}' - no matching audio file" -f $pair.SpotifyTrack.name)
+                                            }
+                                            if ($null -eq $pair.SpotifyTrack) {
+                                                Write-Verbose ("Skipping track '{0}' - no matching Spotify track" -f $pair.AudioFile.name)
+                                            }
                                         }
                                     }
                                     
@@ -1227,8 +1234,9 @@ function Start-OM {
                                     # dispose any lingering TagFile handles only when actually applying changes (not in -WhatIf)
                                     if (-not $useWhatIf) {
                                         foreach ($a in $audioFiles) {
-                                            if ($a.TagFile) {
-                                                try { $a.TagFile.Dispose() } catch { Write-Verbose "Failed disposing TagFile for $($a.FilePath): $_" }
+                                            #rewrite with get-ifexists
+                                            if ($value =Get-IfExists $a 'TagFile') {
+                                                try { $value.Dispose() } catch { Write-Verbose "Failed disposing TagFile for $($a.FilePath): $_" }
                                                 $a.TagFile = $null
                                             }
                                         }

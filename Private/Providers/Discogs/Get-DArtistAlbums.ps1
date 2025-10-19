@@ -7,7 +7,7 @@ function Get-DArtistAlbums {
     Retrieves the list of releases (albums) for a given Discogs artist ID.
     Handles pagination automatically.
     
-    .PARAMETER Id
+    .PARAMETER ArtistId
     The Discogs artist ID (numeric).
     
     .PARAMETER Album
@@ -20,14 +20,15 @@ function Get-DArtistAlbums {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [string]$Id,
-
+        [string]$ArtistId,
+        [Parameter(Mandatory = $false)]
+        [string]$ArtistName,
         [Parameter(Mandatory = $false)]
         [ValidateSet('Album')]
-        [string]$Album = 'Album',
+        [string]$AlbumName = 'Album',
 
         [Parameter(Mandatory = $false)]
-        [switch]$MastersOnly = $true,  # DEFAULT: Only get master releases (canonical versions) - reduces duplicates
+        [switch]$MastersOnly,  # DEFAULT: Only get master releases (canonical versions) - reduces duplicates
 
         [Parameter(Mandatory = $false)]
         [switch]$IncludeSingles,  # Include singles
@@ -48,8 +49,8 @@ function Get-DArtistAlbums {
             Write-Verbose "Fetching Discogs artist releases page $page..."
             
             # Get releases page
-            $response = Invoke-DiscogsRequest -Uri "/artists/$Id/releases?page=$page&per_page=$perPage&sort=year&sort_order=asc"
-            
+            $response = Invoke-DiscogsRequest -Uri "/artists/$ArtistId/releases?page=$page&per_page=$perPage&sort=year&sort_order=asc"
+
             if ($response.releases) {
                 foreach ($release in $response.releases) {
                     # Apply filters based on parameters
@@ -89,7 +90,7 @@ function Get-DArtistAlbums {
                         # Handle optional properties that may not be present
                         $albumObj = [PSCustomObject]@{
                             name         = if ($release.PSObject.Properties['title']) { $release.title } else { "Unknown Album" }
-                            id           = $release.id
+                            id           =  if ($release.type -eq 'master') { "m$($release.id)" } else { "r$($release.id)" }
                             release_date = if ($release.PSObject.Properties['year']) { $release.year } else { "" }
                             type         = if ($release.PSObject.Properties['type']) { $release.type } else { "release" }
                             artist       = if ($release.PSObject.Properties['artist']) { $release.artist } else { "" }
@@ -116,11 +117,11 @@ function Get-DArtistAlbums {
             }
             
             $page++
-            Start-Sleep -Milliseconds 250  # Small delay between requests
-            
+            Start-Sleep -Milliseconds 550  # Small delay between requests
+            write-Host "Fetching next page $page..." -ForegroundColor DarkGray
         } while ($true)
         
-        Write-Verbose "Found $($allReleases.Count) releases for artist $Id"
+        Write-Verbose "Found $($allReleases.Count) releases for artist $ArtistId"
         return $allReleases
     }
     catch {

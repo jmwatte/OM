@@ -44,6 +44,11 @@ function Get-DAlbumTracks {
         }
         
         # Get release details using resolved release ID
+        #remove the r prefix if present
+        if ($releaseId -match '^r?(\d+)$') {
+            $releaseId = $matches[1]
+        }
+        
         $release = Invoke-DiscogsRequest -Uri "/releases/$releaseId"
         
         if (-not $release) {

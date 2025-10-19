@@ -88,6 +88,8 @@ function Invoke-ProviderSearchAlbums {
             if ($AllAlbumsCache) {
                 $searchParams.AllAlbumsCache = $AllAlbumsCache
             }
+          #  $searchParams.AlbumName='Album'
+           # $results=Get-DArtistAlbums @searchParams
             $results = Search-DAlbumsByName @searchParams
             @($results)
         }

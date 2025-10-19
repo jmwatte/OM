@@ -26,7 +26,7 @@ function Invoke-ProviderGetAlbums {
         'Qobuz'   { Get-QArtistAlbums -Id $ArtistId }  # $ArtistId is $href
         'Discogs' { 
             $discogsParams = @{
-                Id                   = $ArtistId
+                ArtistId                   = $ArtistId
                 MastersOnly          = $MastersOnly
                 IncludeSingles       = $IncludeSingles
                 IncludeCompilations  = $IncludeCompilations
