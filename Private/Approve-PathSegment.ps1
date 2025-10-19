@@ -49,6 +49,13 @@ function Approve-PathSegment {
     process {
         $s = $Segment
 
+        # Decode HTML entities (e.g., &amp; -> &)
+        try {
+            $s = [System.Net.WebUtility]::HtmlDecode($s)
+        } catch {
+            Write-Verbose "HtmlDecode failed: $_"
+        }
+
         # Optional transliteration: remove diacritics (normalize + strip NonSpacingMark)
         if ($Transliterate) {
             try {

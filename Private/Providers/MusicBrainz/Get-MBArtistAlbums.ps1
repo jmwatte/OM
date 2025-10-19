@@ -32,9 +32,9 @@ function Get-MBArtistAlbums {
         # We want official albums (not singles, compilations by default)
         $queryParams = @{
             artist = $ArtistId
-            type = 'album'  # Focus on albums
+            type   = 'album'  # Focus on albums
             status = 'official'  # Only official releases
-            limit = $Limit
+            limit  = $Limit
         }
         
         $response = Invoke-MusicBrainzRequest -Endpoint 'release' -Query $queryParams
@@ -49,11 +49,13 @@ function Get-MBArtistAlbums {
         
         # Normalize to Spotify-like structure
         $normalizedReleases = foreach ($release in $releases) {
+            write-host "extracting release: $($release.title)" -ForegroundColor Cyan
             # Extract release date (MusicBrainz has various date formats)
             $releaseDate = $null
             if (Get-IfExists $release 'date') {
                 $releaseDate = $release.date
-            } elseif (Get-IfExists $release 'release-events' -and $release.'release-events'.Count -gt 0) {
+            }
+            elseif (Get-IfExists $release 'release-events' -and $release.'release-events'.Count -gt 0) {
                 $firstEvent = $release.'release-events'[0]
                 if (Get-IfExists $firstEvent 'date') {
                     $releaseDate = $firstEvent.date
@@ -69,7 +71,8 @@ function Get-MBArtistAlbums {
             # Get country
             $country = if (Get-IfExists $release 'country') { 
                 " [$($release.country)]" 
-            } else { 
+            }
+            else { 
                 "" 
             }
             
@@ -95,18 +98,32 @@ function Get-MBArtistAlbums {
                 $releaseResponse = Invoke-MusicBrainzRequest -Endpoint 'release' -Id $release.id -Inc 'recordings'
                 if ($releaseResponse -and (Get-IfExists $releaseResponse 'media')) {
                     $track_count = ($releaseResponse.media | ForEach-Object { 
-                        if (Get-IfExists $_ 'track-count') { [int]$_.'track-count' } 
-                        elseif (Get-IfExists $_ 'tracks') { $_.tracks.Count } 
-                        else { 0 } 
-                    } | Measure-Object -Sum).Sum
+                            if (Get-IfExists $_ 'track-count') { [int]$_.'track-count' } 
+                            elseif (Get-IfExists $_ 'tracks') { $_.tracks.Count } 
+                            else { 0 } 
+                        } | Measure-Object -Sum).Sum
                 }
-            } catch {
+            }
+            catch {
                 Write-Verbose "Failed to get track count for release $($release.id): $_"
             }
+            [PSCustomObject]@{
+                id           = $release.id
+                name         = $release.title
+                displayName  = $displayName
+                year         = $year
+                release_date = $releaseDate
+                track_count  = $track_count
+                type         = 'album'  # Assuming all are albums as per query
+            }
+
+
+
+
         }
         
         # Sort by year (newest first), then by title
-        return $normalizedReleases | Sort-Object -Property @{Expression = {$_.year}; Descending = $true}, title
+        return $normalizedReleases | Sort-Object -Property @{Expression = { $_.year }; Descending = $true }, title
     }
     catch {
         Write-Warning "MusicBrainz get artist albums failed: $_"

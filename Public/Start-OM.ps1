@@ -269,14 +269,13 @@ function Start-OM {
                         }
                     }
 
-                    # Update file paths in existing paired tracks to avoid re-pairing
+                    # Update paired tracks with reloaded audio files to reflect updated tags
                     if ($pairedTracks -and $pairedTracks.Count -gt 0) {
                         for ($i = 0; $i -lt [Math]::Min($pairedTracks.Count, $audioFiles.Count); $i++) {
                             if ($pairedTracks[$i].AudioFile.TagFile) {
                                 try { $pairedTracks[$i].AudioFile.TagFile.Dispose() } catch { }
                             }
-                            $pairedTracks[$i].AudioFile.FilePath = $audioFiles[$i].FilePath
-                            $pairedTracks[$i].AudioFile.TagFile = $audioFiles[$i].TagFile
+                            $pairedTracks[$i].AudioFile = $audioFiles[$i]
                         }
                     }
                     $refreshTracks = $false

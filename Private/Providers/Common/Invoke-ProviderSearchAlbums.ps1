@@ -83,14 +83,27 @@ function Invoke-ProviderSearchAlbums {
                 $searchParams.ArtistId = $ArtistId
             }
             if ($MastersOnly) {
-                $searchParams.MastersOnly = $true
+                $searchParams.MastersOnly = "Masters"
             }
             if ($AllAlbumsCache) {
                 $searchParams.AllAlbumsCache = $AllAlbumsCache
             }
-          #  $searchParams.AlbumName='Album'
-           # $results=Get-DArtistAlbums @searchParams
+            #  $searchParams.AlbumName='Album'
+            # $results=Get-DArtistAlbums @searchParams
             $results = Search-DAlbumsByName @searchParams
+            #is this rewritable with get-ifexists
+
+            if ($null -eq $results -or $results.Count -eq 0 ) {
+                $searchParams.MastersOnly = 'Release'
+                $results = Search-DAlbumsByName @searchParams
+
+            }
+            if ( $null -eq $results -or $results.Count -eq 0 ) {
+                $searchParams.MastersOnly = 'All'
+                $results = Search-DAlbumsByName @searchParams
+
+            }
+
             @($results)
         }
         'MusicBrainz' {

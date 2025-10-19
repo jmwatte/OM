@@ -40,9 +40,11 @@ function Search-DAlbumsByName {
 
         [Parameter()]
         [string]$ArtistId,
+        #MastersOnly should be a string from Masters,Release, all
 
         [Parameter()]
-        [switch]$MastersOnly,
+        [ValidateSet('Masters', 'Release', 'All')]
+        [string]$MastersOnly = 'Masters',
 
         [Parameter()]
         [array]$AllAlbumsCache
@@ -82,19 +84,30 @@ function Search-DAlbumsByName {
     Write-Verbose "Searching Discogs API with title='$AlbumName' and artist='$ArtistName'"
     
     try {
-        if ($MastersOnly) {
-            $searchParams = @{
-                artist = $ArtistName
-                title  = $AlbumName
-                type   = 'master'
 
+        #switch on MastersOnly parameter to set search type
+        switch ($MastersOnly) {
+            'Masters' {
+                $searchParams = @{
+                    artist = $ArtistName
+                    title  = $AlbumName
+                    type   = 'master'
+
+                }
             }
-        }
-        else {
-            $searchParams = @{
-                artist = $ArtistName
-                title  = $AlbumName
-                type   = 'release'  # Always search for releases (broader results)
+            'Release' {
+                $searchParams = @{
+                    artist = $ArtistName
+                    title  = $AlbumName
+                    type   = 'release'  # Always search for releases (broader results)
+                }
+            }
+            'All' {
+                #we need to construct something like this https://api.discogs.com/database/search?q=Lullabies+to+Paralyze+Queens+Of+The+Stone+Age&type=release
+                $searchParams = @{
+                    q    = "$AlbumName $ArtistName"
+                    type = 'release'
+                }
             }
         }
         $queryString = ($searchParams.GetEnumerator() | ForEach-Object {

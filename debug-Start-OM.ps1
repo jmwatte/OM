@@ -5,4 +5,4 @@
 Import-Module "$PSScriptRoot\OM.psd1" -Force
 
 # Call Start-OM with the desired parameters
-Start-OM  -Path "E:\Paul Weller" -Provider Discogs
+Start-OM  -Path "E:\Queens Of The Stone Age" -Provider Discogs
