@@ -238,13 +238,15 @@ function Start-OM {
                     # continue doTracks
                 }
                 else {
-                    # Determine the path to reload from. If move happened, use new path, otherwise use old path.
-                    $reloadPath = $moveResult.NewAlbumPath
-                    
-                    # Update the global album object
-                    $script:album = Get-Item -LiteralPath $reloadPath
+                    if ($moveResult.NewAlbumPath -eq $oldpath) {
+                        Write-Verbose "Move result indicates no change to album path; continuing."
+                        Write-Host "Album saved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
+                        #  continue doTracks
+                    }
+                    # Folder was moved - update $album and reload audio files from new location
+                    $script:album = Get-Item -LiteralPath $moveResult.NewAlbumPath
             
-                    # Reload audio files with fresh TagLib handles from the correct album path
+                    # Reload audio files with fresh TagLib handles from the NEW album path
                     $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
                     $audioFiles = foreach ($f in $audioFiles) {
                         try {
@@ -276,14 +278,13 @@ function Start-OM {
                             $pairedTracks[$i].AudioFile.FilePath = $audioFiles[$i].FilePath
                             $pairedTracks[$i].AudioFile.TagFile = $audioFiles[$i].TagFile
                         }
-                        $refreshTracks = $true
-
-                    if ($reloadPath -eq $oldpath) {
-                        Write-Verbose "Move result indicates no change to album path; tags reloaded."
-                    } else {
-                        Write-Host "Album saved and folder moved."
                     }
-                    Write-Host "Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
+                    $refreshTracks = $false
+
+
+                    # $refreshTracks = $true
+                    Write-Host "Album saved and folder moved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
+                    #  continue doTracks
                 }
             }
             else {
@@ -294,8 +295,6 @@ function Start-OM {
         $script:artist= Split-Path -Leaf $Path
         $artist = Split-Path -Leaf $Path
         $albums = Get-ChildItem -LiteralPath $Path -Directory
-        $cachedAlbums = $null
-        $cachedArtistId = $null
         foreach ($albumOriginal in $albums) {
             $script:album = $albumOriginal
             # Initialize album artist override for this album
@@ -324,6 +323,8 @@ function Start-OM {
             $script:trackCount = $audioFilesCheck.Count
             $artistQuery = $artist
             $stage = "A"
+            $cachedAlbums = $null
+            $cachedArtistId = $null
             $loadStageBResults = $true 
             $page = 1
             $pageSize = 25
@@ -408,8 +409,11 @@ function Start-OM {
                             Write-Warning "No candidates returned from search (this should not happen - should have been caught above)"
                         }
                         for ($i = 0; $i -lt $candidates.Count; $i++) {
-                            $displayName = if ($candidates[$i].PSObject.Properties['displayName']) { $candidates[$i].displayName } else { $candidates[$i].name }
-                            Write-Host "[$($i+1)] $displayName - $($candidates[$i].genres -join ', ') (id: $($candidates[$i].id))"
+                            $nameToDisplay = Get-IfExists $candidates[$i] 'displayName'
+                            if ($nameToDisplay -eq $null) {
+                                $nameToDisplay = $candidates[$i].name
+                            }
+                            Write-Host "[$($i+1)] $nameToDisplay - $($candidates[$i].genres -join ', ') (id: $($candidates[$i].id))"
                         }
     
                         # Non-interactive selection: prefer explicit ArtistId, then goA, then AutoSelect/NonInteractive
@@ -1024,64 +1028,7 @@ function Start-OM {
                                     & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath
                                     #& $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath -album $album -audioFiles $audioFiles -refreshTracks $refreshTracks
                                     continue doTracks                         
-                                    # if ($moveResult -and $moveResult.Success) {
-                                    #     # If the move would not change the path, don't prompt or attempt to re-open.
-                                    #     if ($useWhatIf) {
-                                    #         Write-Host "WhatIf: album would be moved:" -ForegroundColor Yellow
-                                    #         Write-Host -NoNewline -ForegroundColor Green "Old: "
-                                    #         Write-Host $oldpath
-                                    #         Write-Host -NoNewline -ForegroundColor Green "New: "
-                                    #         Write-Host $moveResult.NewAlbumPath
-                                    #         if ($moveResult.NewAlbumPath -ne $oldpath -and -not ($NonInteractive -or $goC) -and -not $useWhatIf) {
-                                    #             # Only pause for an explicit interactive run. In preview/WhatIf or when
-                                    #             # NonInteractive/goC is set, skip the blocking prompt so unattended
-                                    #             # runs don't hang.
-                                    #             Read-Host -Prompt "Press Enter to continue"
-                                    #         }
-                                    #         else {
-                                    #             Write-Verbose "NonInteractive/goC/WhatIf or no-path-change: skipping pause after move."
-                                    #         }
-                                    #         # Stay in doTracks loop to avoid re-fetching tracks
-                                    #         continue doTracks
-                                    #     }
-                                    #     else {
-                                    #         # If the new path is identical to the current one, avoid reloading
-                                    #         if ($moveResult.NewAlbumPath -eq $oldpath) {
-                                    #             Write-Verbose "Move result indicates no change to album path; continuing."
-                                    #             # Stay in doTracks loop to avoid re-fetching tracks
-                                    #             continue doTracks
-                                    #         }
-                                    #         $album = Get-Item -LiteralPath $moveResult.NewAlbumPath
-                                    #         # Reload audio files from new location
-                                    #         $audioFiles = Get-ChildItem -LiteralPath $album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
-                                    #         $audioFiles = foreach ($f in $audioFiles) {
-                                    #             try {
-                                    #                 $tagFile = [TagLib.File]::Create($f.FullName)
-                                    #                 [PSCustomObject]@{
-                                    #                     FilePath    = $f.FullName
-                                    #                     DiscNumber  = $tagFile.Tag.Disc
-                                    #                     TrackNumber = $tagFile.Tag.Track
-                                    #                     Title       = $tagFile.Tag.Title
-                                    #                     TagFile     = $tagFile
-                                    #                     Composer    = if ($tagFile.Tag.Composers) { $tagFile.Tag.Composers -join '; ' } else { 'Unknown Composer' }
-                                    #                     Artist      = if ($tagFile.Tag.Performers) { $tagFile.Tag.Performers -join '; ' } else { 'Unknown Artist' }
-                                    #                     Name        = if ($tagFile.Tag.Title) { $tagFile.Tag.Title } else { $f.BaseName }
-                                    #                     Duration    = $tagFile.Properties.Duration.TotalMilliseconds
-                                    #                 }
-                                    #             }
-                                    #             catch {
-                                    #                 Write-Warning "Skipping corrupted or invalid audio file: $($f.FullName) - Error: $($_.Exception.Message)"
-                                    #                 continue
-                                    #             }
-                                    #         }
-                                    #         $refreshTracks = $true
-                                    #         # Stay in doTracks loop to avoid re-fetching tracks
-                                    #         continue doTracks
-                                    #     }
-                                    # }
-                                    # else {
-                                    #     Write-Warning "Move failed or was skipped. Move result: $moveResult"
-                                    # }
+                                    
                                 }
                                 '^st\s+(?<range>.+)$' {
                                     if (-not $pairedTracks -or $pairedTracks.Count -eq 0) {
@@ -1195,16 +1142,7 @@ function Start-OM {
                                             }
                                         }
                                        
-                                        <# for ($i = 0; $i -lt $tracksForAlbum.Count; $i++) {
-                                            $audioFile = $audioFiles[$i]
-                                            $filePath = $audioFile.FilePath
-                                            $tags = get-Tags -Artist $ProviderArtist -Album $ProviderAlbum -SpotifyTrack $tracksForAlbum[$i]                        
-                                            Write-Verbose ("Saving tags to: {0}" -f $filePath)
-                                            Write-Verbose ("Tag values:\n{0}" -f ($tags | Out-String))
-                                            $res = Save-TagsForFile -FilePath $filePath -TagValues $tags -WhatIf:$isWhatIf
-                                            if ($res.Success) { Write-Host ("Saved tags: {0} -> {1:D2}.{2:D2}: {3}" -f (Split-Path -Leaf $filePath), $tags.Disc, $tags.Track, $tags.Title) -ForegroundColor Green }
-                                            else { Write-Warning ("Skipped/Failed: {0} ({1})" -f $filePath, ($res.Reason -or 'unknown')) }
-                                        } #>
+                                        
                                         
                                         # Dispose old TagFile handles and reload to show updated tags
                                         if (-not $useWhatIf) {
@@ -1348,61 +1286,7 @@ function Start-OM {
                                     #   & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath -album $album -audioFiles $audioFiles -refreshTracks $refreshTracks
                                     & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath
                                     continue                                   
-                                    # if ($moveResult -and $moveResult.Success) {
-                                    #     if ($useWhatIf) {
-                                    #         Write-Host "WhatIf: album would be moved:" -ForegroundColor Yellow
-                                    #         Write-Host -NoNewline -ForegroundColor Green "Old: "
-                                    #         Write-Host $oldpath
-                                    #         Write-Host -NoNewline -ForegroundColor Green "New: "
-                                    #         Write-Host $moveResult.NewAlbumPath
-                                    #         if ($moveResult.NewAlbumPath -ne $oldpath -and -not ($NonInteractive -or $goC) -and -not $useWhatIf) {
-                                    #             Read-Host -Prompt "Press Enter to continue"
-                                    #         }
-                                    #         else {
-                                    #             Write-Verbose "NonInteractive/goC/WhatIf or no-path-change: skipping pause after move."
-                                    #         }
-                                    #         Write-Host "Album saved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
-                                    #         continue
-                                    #     }
-                                    #     else {
-                                    #         if ($moveResult.NewAlbumPath -eq $oldpath) {
-                                    #             Write-Verbose "Move result indicates no change to album path; continuing."
-                                    #             Write-Host "Album saved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
-                                    #             continue
-                                    #         }
-                                    #         # Folder was moved - update $album and reload audio files from new location
-                                    #         $album = Get-Item -LiteralPath $moveResult.NewAlbumPath
-                                            
-                                    #         # Reload audio files with fresh TagLib handles from the NEW album path
-                                    #         $audioFiles = Get-ChildItem -LiteralPath $album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
-                                    #         $audioFiles = foreach ($f in $audioFiles) {
-                                    #             try {
-                                    #                 $tagFile = [TagLib.File]::Create($f.FullName)
-                                    #                 [PSCustomObject]@{
-                                    #                     FilePath    = $f.FullName
-                                    #                     DiscNumber  = $tagFile.Tag.Disc
-                                    #                     TrackNumber = $tagFile.Tag.Track
-                                    #                     Title       = $tagFile.Tag.Title
-                                    #                     TagFile     = $tagFile
-                                    #                     Composer    = if ($tagFile.Tag.Composers) { $tagFile.Tag.Composers -join '; ' } else { 'Unknown Composer' }
-                                    #                     Artist      = if ($tagFile.Tag.Performers) { $tagFile.Tag.Performers -join '; ' } else { 'Unknown Artist' }
-                                    #                     Name        = if ($tagFile.Tag.Title) { $tagFile.Tag.Title } else { $f.BaseName }
-                                    #                     Duration    = $tagFile.Properties.Duration.TotalMilliseconds
-                                    #                 }
-                                    #             }
-                                    #             catch {
-                                    #                 Write-Warning "Skipping corrupted or invalid audio file: $($f.FullName) - Error: $($_.Exception.Message)"
-                                    #                 continue
-                                    #             }
-                                    #         }
-                                    #         $refreshTracks = $true
-                                    #         Write-Host "Album saved and folder moved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
-                                    #         continue 
-                                    #     }
-                                    # }
-                                    # else {
-                                    #     Write-Warning "Move failed or was skipped. Move result: $moveResult"
-                                    # }
+                                    
                                 }
     
                                 '^(\d+(?:\.\.\d+|\-\d+)) (\+?\w+) (.+)$' {
