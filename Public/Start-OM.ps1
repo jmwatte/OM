@@ -238,15 +238,13 @@ function Start-OM {
                     # continue doTracks
                 }
                 else {
-                    if ($moveResult.NewAlbumPath -eq $oldpath) {
-                        Write-Verbose "Move result indicates no change to album path; continuing."
-                        Write-Host "Album saved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
-                        #  continue doTracks
-                    }
-                    # Folder was moved - update $album and reload audio files from new location
-                    $script:album = Get-Item -LiteralPath $moveResult.NewAlbumPath
+                    # Determine the path to reload from. If move happened, use new path, otherwise use old path.
+                    $reloadPath = $moveResult.NewAlbumPath
+                    
+                    # Update the global album object
+                    $script:album = Get-Item -LiteralPath $reloadPath
             
-                    # Reload audio files with fresh TagLib handles from the NEW album path
+                    # Reload audio files with fresh TagLib handles from the correct album path
                     $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
                     $audioFiles = foreach ($f in $audioFiles) {
                         try {
@@ -281,10 +279,12 @@ function Start-OM {
                     }
                     $refreshTracks = $false
 
-
-                    # $refreshTracks = $true
-                    Write-Host "Album saved and folder moved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
-                    #  continue doTracks
+                    if ($reloadPath -eq $oldpath) {
+                        Write-Verbose "Move result indicates no change to album path; tags reloaded."
+                    } else {
+                        Write-Host "Album saved and folder moved."
+                    }
+                    Write-Host "Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
                 }
             }
             else {
