@@ -348,7 +348,6 @@ function Invoke-StageB-AlbumSelection {
         $endIdx = [math]::Min($startIdx + $pageSize - 1, $albumsForArtist.Count - 1)
 
         for ($i = $startIdx; $i -le $endIdx; $i++) {
-#if provider -eq discogs and $albumsForArtist[$i] has no trackcount try to get it from release details
             if ($Provider -eq 'Discogs' -and -not (Get-IfExists $albumsForArtist[$i] 'track_count')) {
                 Write-Host "Fetching track count for album id $($albumsForArtist[$i].id)..." -ForegroundColor DarkGray
                 try {

@@ -79,24 +79,45 @@ function Get-DArtistAlbums {
                         }
                         
                         # If MastersOnly, skip non-master releases
+                        if (-not $MastersOnly -and $releaseType -eq 'master') {
+                            Write-Verbose "Skipping non-master release: $($release.title)"
+                            $includeRelease = $false
+                        }
                         if ($MastersOnly -and $releaseType -ne 'master') {
                             Write-Verbose "Skipping non-master release: $($release.title)"
                             $includeRelease = $false
                         }
+
                     }
                     
                     if ($includeRelease) {
+                        $releaseUri = $release.resource_url
+                        Write-Host "Fetching release details for track count from $releaseUri" -ForegroundColor DarkGray
+                        Start-Sleep -Milliseconds 850
+                        $releaseDetails = Invoke-DiscogsRequest -Uri $releaseUri -Method 'GET'
+                        $trackCount = $releaseDetails.tracklist.Count
+                    
+
                         # Transform to match Spotify-like structure
                         # Handle optional properties that may not be present
                         $albumObj = [PSCustomObject]@{
                             name         = if ($release.PSObject.Properties['title']) { $release.title } else { "Unknown Album" }
-                            id           =  if ($release.type -eq 'master') { "m$($release.id)" } else { "r$($release.id)" }
+                            id           = if ($release.type -eq 'master') { "m$($release.id)" } else { "r$($release.id)" }
                             release_date = if ($release.PSObject.Properties['year']) { $release.year } else { "" }
                             type         = if ($release.PSObject.Properties['type']) { $release.type } else { "release" }
                             artist       = if ($release.PSObject.Properties['artist']) { $release.artist } else { "" }
                             format       = if ($release.PSObject.Properties['format']) { $release.format } else { "" }
                             label        = if ($release.PSObject.Properties['label']) { $release.label } else { "" }
+                            genres       = if ($release.PSObject.Properties['genre']) { @($release.genre) } else { @() }
                             resource_url = if ($release.PSObject.Properties['resource_url']) { $release.resource_url } else { "" }
+                            track_count  = $trackCount
+                            # artist       = if ($result.PSObject.Properties['user_data']) { 
+                            #     # Extract artist from title
+                            #     if ($result.title -match '^\s*(.+?)\s*[-–]\s*') { $matches[1].Trim() } else { $ArtistName }
+                            # }
+                            # else { 
+                            #     $ArtistName 
+                            # }
                         }
                         
                         $allReleases += $albumObj
@@ -112,7 +133,8 @@ function Get-DArtistAlbums {
                 if ($page -ge $totalPages) {
                     break
                 }
-            } else {
+            }
+            else {
                 break
             }
             

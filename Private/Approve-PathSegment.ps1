@@ -121,7 +121,7 @@ function Approve-PathSegment {
     }
 }
 
-function Sanitize-Path {
+function Format-Path {
     <#
     .SYNOPSIS
         Sanitize each segment of a filesystem path.
@@ -137,7 +137,7 @@ function Sanitize-Path {
     .PARAMETER Transliterate
     .PARAMETER MaxSegmentLength
     .EXAMPLE
-        Sanitize-Path -Path "Tchaikovsky: Symphonies\No. 6" -Transliterate -CollapseRepeating
+        Format-Path -Path "Tchaikovsky: Symphonies\No. 6" -Transliterate -CollapseRepeating
     #>
     [CmdletBinding()]
     param(

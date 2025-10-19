@@ -409,7 +409,7 @@ function Start-OM {
                         }
                         for ($i = 0; $i -lt $candidates.Count; $i++) {
                             $nameToDisplay = Get-IfExists $candidates[$i] 'displayName'
-                            if ($nameToDisplay -eq $null) {
+                            if ($null -eq $nameToDisplay) {
                                 $nameToDisplay = $candidates[$i].name
                             }
                             Write-Host "[$($i+1)] $nameToDisplay - $($candidates[$i].genres -join ', ') (id: $($candidates[$i].id))"
