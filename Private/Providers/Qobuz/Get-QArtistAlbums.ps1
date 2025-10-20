@@ -20,25 +20,6 @@ function Get-QArtistAlbums {
         # Load System.Web for HTML decoding
         Add-Type -AssemblyName System.Web
 
-        # Function to map culture code to Qobuz URL locale
-        function Get-QobuzUrlLocale {
-            param([string]$CultureCode)
-            $localeMap = @{
-                'fr-FR' = 'fr-fr'
-                'en-US' = 'us-en'
-                'en-GB' = 'gb-en'
-                'de-DE' = 'de-de'
-                'es-ES' = 'es-es'
-                'it-IT' = 'it-it'
-                'nl-BE' = 'be-nl'
-                'nl-NL' = 'nl-nl'
-                'pt-PT' = 'pt-pt'
-                'pt-BR' = 'br-pt'
-                'ja-JP' = 'jp-ja'
-            }
-            return $localeMap[$CultureCode] ?? 'us-en'  # Default to us-en
-        }
-
         # Get configured Qobuz locale, default to 'en-US' -> 'us-en'
         $config = Get-OMConfig
         $configuredLocale = $config.Qobuz?.Locale ?? 'en-US'
