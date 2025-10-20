@@ -57,12 +57,23 @@ function Get-OMConfig {
         }
     }
 
-    # Load configuration from file
-    $config = $null
+    # Load configuration from file and normalize to a hashtable for safe access
+    $config = @{}
     if (Test-Path $configPath) {
         try {
             $configContent = Get-Content -Path $configPath -Raw -ErrorAction Stop
-            $config = $configContent | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+            try {
+                # Preferred on PS7+: return a hashtable directly
+                $config = $configContent | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+            }
+            catch {
+                # Fallback for older PowerShell: parse to PSCustomObject then convert to hashtable
+                $tmp = $configContent | ConvertFrom-Json -ErrorAction Stop
+                $config = @{}
+                if ($tmp -and $tmp.PSObject -and $tmp.PSObject.Properties) {
+                    foreach ($p in $tmp.PSObject.Properties) { $config[$p.Name] = $p.Value }
+                }
+            }
             Write-Verbose "Loaded configuration from: $configPath"
         }
         catch {
@@ -78,31 +89,31 @@ function Get-OMConfig {
     # Merge with environment variables (environment variables take precedence)
     # Spotify
     if ($env:SPOTIFY_CLIENT_ID) {
-        if (-not $config.Spotify) { $config.Spotify = @{} }
-        $config.Spotify.ClientId = $env:SPOTIFY_CLIENT_ID
+        if (-not $config.ContainsKey('Spotify')) { $config['Spotify'] = @{} }
+        $config['Spotify']['ClientId'] = $env:SPOTIFY_CLIENT_ID
         Write-Verbose "Using Spotify ClientId from environment variable"
     }
     if ($env:SPOTIFY_CLIENT_SECRET) {
-        if (-not $config.Spotify) { $config.Spotify = @{} }
-        $config.Spotify.ClientSecret = $env:SPOTIFY_CLIENT_SECRET
+        if (-not $config.ContainsKey('Spotify')) { $config['Spotify'] = @{} }
+        $config['Spotify']['ClientSecret'] = $env:SPOTIFY_CLIENT_SECRET
         Write-Verbose "Using Spotify ClientSecret from environment variable"
     }
 
     # Qobuz
     if ($env:QOBUZ_APP_ID) {
-        if (-not $config.Qobuz) { $config.Qobuz = @{} }
-        $config.Qobuz.AppId = $env:QOBUZ_APP_ID
+        if (-not $config.ContainsKey('Qobuz')) { $config['Qobuz'] = @{} }
+        $config['Qobuz']['AppId'] = $env:QOBUZ_APP_ID
         Write-Verbose "Using Qobuz AppId from environment variable"
     }
     if ($env:QOBUZ_SECRET) {
-        if (-not $config.Qobuz) { $config.Qobuz = @{} }
-        $config.Qobuz.Secret = $env:QOBUZ_SECRET
+        if (-not $config.ContainsKey('Qobuz')) { $config['Qobuz'] = @{} }
+        $config['Qobuz']['Secret'] = $env:QOBUZ_SECRET
         Write-Verbose "Using Qobuz Secret from environment variable"
     }
     if ($env:QOBUZ_LOCALE) {
-        if (-not $config.Qobuz) { $config.Qobuz = @{} }
+        if (-not $config.ContainsKey('Qobuz')) { $config['Qobuz'] = @{} }
         # Use consistent property name 'Locale' (culture code), support env var override
-        $config.Qobuz.Locale = $env:QOBUZ_LOCALE
+        $config['Qobuz']['Locale'] = $env:QOBUZ_LOCALE
         Write-Verbose "Using Qobuz Locale from environment variable"
     }
 
@@ -138,24 +149,30 @@ function Get-OMConfig {
     }
 
     # Set defaults for missing configurations
-    if (-not $config.Qobuz) {
-        $config.Qobuz = @{}
-    }
+    if (-not $config.ContainsKey('Qobuz')) { $config['Qobuz'] = @{} }
     # Backward compatibility: if an older 'QobuzLocale' key is present, map it
-    if ($config.Qobuz.ContainsKey('QobuzLocale') -and -not $config.Qobuz.Locale) {
-        $config.Qobuz.Locale = $config.Qobuz.QobuzLocale
+    if ($config['Qobuz'].ContainsKey('QobuzLocale') -and -not $config['Qobuz'].ContainsKey('Locale')) {
+        $config['Qobuz']['Locale'] = $config['Qobuz']['QobuzLocale']
     }
 
     # Default to system culture code (e.g. en-US); mapping to the URL form is done by helper functions
-    if (-not $config.Qobuz.Locale) {
-        $config.Qobuz.Locale = $PSCulture
+    if (-not $config['Qobuz'].ContainsKey('Locale') -or [string]::IsNullOrWhiteSpace($config['Qobuz']['Locale'])) {
+        $config['Qobuz']['Locale'] = $PSCulture
     }
 
     # Return specific provider or full config
     if ($Provider) {
-        if ($config.$Provider) {
-            return [PSCustomObject]$config.$Provider
+        # Support both hashtable and PSCustomObject shapes for $config
+        $provData = $null
+        if ($config -is [hashtable]) {
+            if ($config.ContainsKey($Provider)) { $provData = $config[$Provider] }
         }
+        else {
+            $prop = $config.PSObject.Properties[$Provider]
+            if ($prop) { $provData = $prop.Value }
+        }
+
+        if ($provData) { return [PSCustomObject]$provData }
         else {
             Write-Warning "No configuration found for provider: $Provider"
             return $null
@@ -163,7 +180,7 @@ function Get-OMConfig {
     }
     else {
         # Convert hashtables to PSCustomObjects for easier property access
-        $result = @{}
+        $result = @{ }
         foreach ($key in $config.Keys) {
             $result[$key] = [PSCustomObject]$config[$key]
         }

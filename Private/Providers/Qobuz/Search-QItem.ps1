@@ -22,6 +22,12 @@ function Search-QItem {
 
     # Load System.Web for HTML decoding
     Add-Type -AssemblyName System.Web
+    # When debugging (dot-sourcing single files), ensure helper functions are available
+    # if (-not (Get-Command -Name Get-QobuzUrlLocale -ErrorAction SilentlyContinue)) {
+    #     $privateDir = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+    #     $localesPath = Join-Path $privateDir 'QobuzLocales.ps1'
+    #     if (Test-Path $localesPath) { . $localesPath }
+    # }
 
 
 

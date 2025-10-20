@@ -5,10 +5,10 @@
 Import-Module "$PSScriptRoot\OM.psd1" -Force
 
 # Call Start-OM with the desired parameters
-#Start-OM  -Path "E:\Tangerine Dream" -provider Qobuz
+Start-OM  -Path "E:\swans" -provider Qobuz
 #start get-Qartistalbums with -ArtistId "https://www.qobuz.com/be-fr/interpreter/paul-weller/53535" so I can debug that function
-. .\Private\Providers\Qobuz\Search-GQArtist.ps1
-. .\Private\QobuzLocales.ps1
-. .\Private\Get-IfExists.ps1
-$a =Search-GQArtist -Query "Paul Weller" -Verbose
-$a.artists.items | Format-List
+# . .\Private\Providers\Qobuz\Search-GQArtist.ps1
+# . .\Private\QobuzLocales.ps1
+# . .\Private\Get-IfExists.ps1
+# $a =Search-GQArtist -Query "swans" -Verbose
+# $a.artists.items | Format-List

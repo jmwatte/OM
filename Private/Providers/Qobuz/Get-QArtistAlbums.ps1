@@ -112,6 +112,7 @@ function Get-QArtistAlbums {
             foreach ($li in @($albumLis)) {
                 # Extract nodes using relative XPaths
                 $artistNode = $li.SelectSingleNode('div/div[2]/p[1]/a')
+                $artist = if ($artistNode) { [System.Web.HttpUtility]::HtmlDecode($artistNode.InnerText.Trim()) } else { '' }
                 $albumNode = $li.SelectSingleNode('div/div[2]/a/h3')
                 $genreNode = $li.SelectSingleNode('div/div[1]/a/div/p[1]')
                 $dateNode = $li.SelectSingleNode('div/div[1]/a/div/p[2]')
@@ -190,6 +191,7 @@ function Get-QArtistAlbums {
                     foreach ($li in @($albumLis2)) {
                         # Extract nodes using relative XPaths
                         $artistNode = $li.SelectSingleNode('div/div[2]/p[1]/a')
+                        $artist = if ($artistNode) { [System.Web.HttpUtility]::HtmlDecode($artistNode.InnerText.Trim()) } else { '' }
                         $albumNode = $li.SelectSingleNode('div/div[2]/a/h3')
                         $genreNode = $li.SelectSingleNode('div/div[1]/a/div/p[1]')
                         $dateNode = $li.SelectSingleNode('div/div[1]/a/div/p[2]')

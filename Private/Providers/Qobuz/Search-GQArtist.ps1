@@ -13,25 +13,32 @@ function Search-GQArtist {
     Import-Module PowerHTML -ErrorAction Stop
     Add-Type -AssemblyName System.Web
 
+    # When debugging (dot-sourcing single files), ensure helper functions are available
+    if (-not (Get-Command -Name Get-IfExists -ErrorAction SilentlyContinue)) {
+        $privateDir = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+        $getIfExistsPath = Join-Path $privateDir 'Get-IfExists.ps1'
+        if (Test-Path $getIfExistsPath) { . $getIfExistsPath }
+    }
+
     # Cache results in script scope
     if (-not (Get-Variable -Name QobuzGQCache -Scope Script -ErrorAction SilentlyContinue) -or -not ($script:QobuzGQCache -is [hashtable])) {
         Set-Variable -Name QobuzGQCache -Value @{} -Scope Script -Force
     }
-   # $cacheKey = $Query
-   # if ($script:QobuzGQCache.ContainsKey($cacheKey)) { return $script:QobuzGQCache[$cacheKey] }
+    # Use the query as cache key
+    $cacheKey = $Query
+    if ($script:QobuzGQCache.ContainsKey($cacheKey)) { return $script:QobuzGQCache[$cacheKey] }
 
     # Resolve configured locale (culture) -> URL locale
-    $qobuzConfig = Get-OMConfig -Provider Qobuz
     # Use Get-IfExists to safely obtain the configured locale
-    $configuredLocale = Get-IfExists -target $qobuzConfig -path 'Locale'
+    $configuredLocale = Get-IfExists -target (Get-OMConfig -Provider Qobuz) -path 'Locale'
     if (-not $configuredLocale -or [string]::IsNullOrWhiteSpace($configuredLocale)) {
         $configuredLocale = $PSCulture
     }
     Write-Verbose "Using Qobuz configured locale: $configuredLocale (PSCulture: $PSCulture)"
-    $urlLocale = Get-QobuzUrlLocale -CultureCode $configuredLocale
+    # (URL locale not needed for this quick web search)
 
     # Prefer qobuz interpreter pages for artists
-    $searchQuery = "site:qobuz.com/interpreter \"+$($Query)+"\"
+        $searchQuery = "site:qobuz.com `"$Query`""
     $targetUrl = $null
 
     # Try Google Custom Search API first (if configured via config or env)
@@ -41,60 +48,7 @@ function Search-GQArtist {
     $gCse = Get-IfExists -target $google -path 'Cse'
     if (-not $gCse) { $gCse = $env:GOOGLE_CSE }
     Write-Verbose "Google API key present: $([bool]$gApiKey); Google CSE present: $([bool]$gCse)"
-    if ($gApiKey -and $gCse) {
-        try {
-            $csq = [uri]::EscapeDataString($searchQuery)
-            $num = 10
-            # Hint the search by country based on configured locale (e.g., en-US -> us)
-            $country = if ($configuredLocale -and ($configuredLocale -match '-')) { ($configuredLocale.Split('-')[-1]).ToLower() } else { $PSCulture.Split('-')[-1].ToLower() }
-            $apiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=$num&gl=$country"
-            $apiResp = Invoke-RestMethod -Uri $apiUrl -Method Get -ErrorAction Stop
-            Write-Verbose "Google CSE API URL: $apiUrl"
-            $count = 0
-            if ($apiResp.items) { $count = $apiResp.items.Count }
-            Write-Verbose ("Google CSE returned {0} items" -f $count)
-            if ($apiResp.items -and $apiResp.items.Count -gt 0) {
-                foreach ($it in $apiResp.items) {
-                    Write-Verbose ("CSE item: {0}" -f $it.link)
-                    if ($it.link -match '/interpreter/') { $targetUrl = $it.link; break }
-                }
-                if (-not $targetUrl) { $targetUrl = $apiResp.items[0].link }
-                Write-Verbose "Google CSE selected url: $targetUrl"
-            }
-            else {
-                Write-Verbose "Google CSE returned 0 items; retrying with siteSearch restriction..."
-                try {
-                    $siteApiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=$num&gl=$country&siteSearch=qobuz.com"
-                    $apiResp2 = Invoke-RestMethod -Uri $siteApiUrl -Method Get -ErrorAction Stop
-                    $count2 = 0
-                    if ($apiResp2.items) { $count2 = $apiResp2.items.Count }
-                    Write-Verbose ("Google CSE siteSearch returned {0} items" -f $count2)
-                    if ($apiResp2.items -and $apiResp2.items.Count -gt 0) {
-                        foreach ($it2 in $apiResp2.items) {
-                            Write-Verbose ("CSE siteSearch item: {0}" -f $it2.link)
-                            if ($it2.link -match '/interpreter/') { $targetUrl = $it2.link; break }
-                        }
-                        if (-not $targetUrl) { $targetUrl = $apiResp2.items[0].link }
-                        Write-Verbose "Google CSE siteSearch selected url: $targetUrl"
-                    }
-                }
-                catch {
-                    Write-Verbose "Google CSE siteSearch retry failed: $_"
-                }
-            }
-            Write-Verbose "Google CSE API URL: $apiUrl"
-            $count = 0
-            if ($apiResp.items) { $count = $apiResp.items.Count }
-            Write-Verbose ("Google CSE response items: {0}" -f $count)
-            if ($apiResp.items -and $apiResp.items.Count -gt 0) {
-                $targetUrl = $apiResp.items[0].link
-                Write-Verbose "Google CSE selected url: $targetUrl"
-            }
-        }
-        catch {
-            Write-Verbose "Google CSE failed: $_"
-        }
-    }
+    # (Google CSE call removed here; we'll try HTML-first then fallback to CSE later)
 
     # DuckDuckGo HTML fallback
     if (-not $targetUrl) {
@@ -107,8 +61,36 @@ function Search-GQArtist {
                 Write-Verbose "DuckDuckGo quick regex selected: $targetUrl"
             }
             else {
-                $doc = ConvertFrom-Html -Content $html
-                $linkNode = $doc.SelectSingleNode("//a[contains(@href,'qobuz.com')]")
+                # Parse the DuckDuckGo HTML to find redirect links like //duckduckgo.com/l/?uddg=<encoded-url>
+                try {
+                    $ddgDoc = ConvertFrom-Html -Content $html
+                    $ddgAnchors = $ddgDoc.SelectNodes('//a[contains(@href,"uddg=") or contains(@href,"qobuz.com")]')
+                    if ($ddgAnchors) {
+                        foreach ($a in $ddgAnchors) {
+                            $href = $a.GetAttributeValue('href','')
+                            if (-not $href) { continue }
+                            $candidate = $null
+                            # Extract encoded uddg param (preferred) and decode
+                            $m = [regex]::Match($href, 'uddg=([^&]+)')
+                            if ($m.Success) {
+                                try {
+                                    $candidate = [System.Web.HttpUtility]::HtmlDecode([uri]::UnescapeDataString($m.Groups[1].Value))
+                                }
+                                catch {
+                                    $candidate = [System.Web.HttpUtility]::HtmlDecode($m.Groups[1].Value)
+                                }
+                            }
+                            elseif ($href -match '^//') { $candidate = "https:$href" }
+                            else { $candidate = [System.Web.HttpUtility]::HtmlDecode($href) }
+
+                            if ($candidate) { Write-Verbose "DuckDuckGo candidate: $candidate" }
+                            if ($candidate -and $candidate -match 'qobuz\.com/interpreter/') { $targetUrl = $candidate; break }
+                        }
+                    }
+                }
+                catch {
+                    Write-Verbose "Failed to parse DuckDuckGo HTML: $_"
+                }
                 # Try direct Google HTML search (faster/more reliable for this use-case)
                 try {
                     $hl = if ($configuredLocale -and ($configuredLocale -match '-')) { ($configuredLocale.Split('-')[0]).ToLower() } else { $PSCulture.Split('-')[0].ToLower() }
@@ -116,23 +98,32 @@ function Search-GQArtist {
                     Write-Verbose "Google HTML search URL: $gUrl"
                     $gResp = Invoke-WebRequest -Uri $gUrl -Headers @{ 'User-Agent' = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } -UseBasicParsing -ErrorAction Stop
                     $gHtml = $gResp.Content
-                    $gDoc = ConvertFrom-Html -Content $gHtml
-                    $gLinks = $gDoc.SelectNodes('//a[contains(@href,"/url?q=") or contains(@href,"qobuz.com")]')
-                    if ($gLinks) {
-                        foreach ($l in $gLinks) {
-                            $href = $l.GetAttributeValue('href','')
-                            $url = $null
-                            if ($href -match '/url\?q=(https?://[^&]+)') { $url = [uri]::UnescapeDataString($matches[1]) }
-                            elseif ($href -match '^https?://') { $url = $href }
-                            else { $url = "https://www.qobuz.com$href" }
-                            Write-Verbose "Google result link: $url"
-                            if ($url -match '/interpreter/') { $targetUrl = $url; break }
+                        $gDoc = ConvertFrom-Html -Content $gHtml
+                        # Select links and extract the real URL from '/url?q=' results
+                        $gLinks = $gDoc.SelectNodes('//a[@href]')
+                        if ($gLinks) {
+                            foreach ($l in $gLinks) {
+                                $href = $l.GetAttributeValue('href','')
+                                if (-not $href) { continue }
+                                $url = $null
+                                $m = [regex]::Match($href, '/url\?q=(https?://[^&]+)')
+                                if ($m.Success) { $url = [uri]::UnescapeDataString($m.Groups[1].Value) }
+                                elseif ($href -match '^https?://') { $url = $href }
+                                else { continue }
+                                Write-Verbose "Google result link: $url"
+                                if ($url -match 'qobuz\.com/interpreter/') { $targetUrl = $url; break }
+                            }
                         }
-                    }
                 }
                 catch {
                     Write-Verbose "Google HTML search failed: $_"
                 }
+            }
+        }
+        catch {
+            Write-Verbose "DuckDuckGo search failed: $_"
+        }
+    }
 
                 # If Google HTML didn't find results, fall back to CSE when configured
                 if (-not $targetUrl -and $gApiKey -and $gCse) {
@@ -181,6 +172,14 @@ function Search-GQArtist {
                         Write-Verbose "Google CSE failed: $_"
                     }
                 }
+
+    # If nothing found, return empty result
+    if (-not $targetUrl) {
+        Write-Verbose "No Qobuz interpreter URL found via HTML search or CSE; returning empty result."
+        $res = [PSCustomObject]@{ artists = [PSCustomObject]@{ items = @() } }
+        $script:QobuzGQCache[$cacheKey] = $res
+        return $res
+    }
 
     # Fetch artist page and extract properties
     try {
