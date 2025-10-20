@@ -30,7 +30,8 @@ function Search-GQArtist {
     Write-Verbose "Using Qobuz configured locale: $configuredLocale (PSCulture: $PSCulture)"
     $urlLocale = Get-QobuzUrlLocale -CultureCode $configuredLocale
 
-    $searchQuery = "site:qobuz.com $Query artist"
+    # Prefer qobuz interpreter pages for artists
+    $searchQuery = "site:qobuz.com/interpreter \"$Query\""
     $targetUrl = $null
 
     # Try Google Custom Search API first (if configured via config or env)
@@ -45,7 +46,14 @@ function Search-GQArtist {
             $csq = [uri]::EscapeDataString($searchQuery)
             $apiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=1"
             $apiResp = Invoke-RestMethod -Uri $apiUrl -Method Get -ErrorAction Stop
-            if ($apiResp.items -and $apiResp.items.Count -gt 0) { $targetUrl = $apiResp.items[0].link }
+            Write-Verbose "Google CSE API URL: $apiUrl"
+            $count = 0
+            if ($apiResp.items) { $count = $apiResp.items.Count }
+            Write-Verbose ("Google CSE response items: {0}" -f $count)
+            if ($apiResp.items -and $apiResp.items.Count -gt 0) {
+                $targetUrl = $apiResp.items[0].link
+                Write-Verbose "Google CSE selected url: $targetUrl"
+            }
         }
         catch {
             Write-Verbose "Google CSE failed: $_"
@@ -60,6 +68,7 @@ function Search-GQArtist {
             $html = $ddgResp.Content
             if ($html -match 'https?://(?:www\.)?qobuz\.com[^\s"<>]+') {
                 $targetUrl = $matches[0]
+                Write-Verbose "DuckDuckGo quick regex selected: $targetUrl"
             }
             else {
                 $doc = ConvertFrom-Html -Content $html
@@ -69,6 +78,7 @@ function Search-GQArtist {
                     if ($href -match 'uddg=([^&]+)') { $targetUrl = [uri]::UnescapeDataString($matches[1]) }
                     elseif ($href -match '^https?://') { $targetUrl = $href }
                     else { $targetUrl = "https://www.qobuz.com$href" }
+                    Write-Verbose "DuckDuckGo link node href: $href -> $targetUrl"
                 }
             }
         }
