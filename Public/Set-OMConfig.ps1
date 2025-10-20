@@ -23,6 +23,9 @@ function Set-OMConfig {
     .PARAMETER QobuzSecret
     Qobuz API Secret
     
+    .PARAMETER QobuzLocale
+    Qobuz locale for regional/language preferences (e.g., 'en-US' for US English). Valid values: fr-FR, en-US, en-GB, de-DE, es-ES, it-IT, nl-BE, nl-NL, pt-PT, pt-BR, ja-JP
+    
     .PARAMETER DiscogsConsumerKey
     Discogs API Consumer Key (from https://www.discogs.com/settings/developers)
     
@@ -60,6 +63,10 @@ function Set-OMConfig {
 
         [Parameter(Mandatory = $false)]
         [string]$QobuzSecret,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('fr-FR', 'en-US', 'en-GB', 'de-DE', 'es-ES', 'it-IT', 'nl-BE', 'nl-NL', 'pt-PT', 'pt-BR', 'ja-JP')]
+        [string]$QobuzLocale,
 
         [Parameter(Mandatory = $false)]
         [string]$DiscogsConsumerKey,
@@ -123,7 +130,7 @@ function Set-OMConfig {
     }
 
     # Update Qobuz configuration
-    if ($QobuzAppId -or $QobuzSecret) {
+    if ($QobuzAppId -or $QobuzSecret -or $QobuzLocale) {
         if (-not $config.Qobuz) { $config.Qobuz = @{} }
         
         if ($QobuzAppId) {
@@ -133,6 +140,10 @@ function Set-OMConfig {
         if ($QobuzSecret) {
             $config.Qobuz.Secret = $QobuzSecret
             Write-Verbose "Set Qobuz Secret"
+        }
+        if ($QobuzLocale) {
+            $config.Qobuz.Locale = $QobuzLocale
+            Write-Verbose "Set Qobuz Locale to $QobuzLocale"
         }
     }
 

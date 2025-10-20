@@ -20,14 +20,41 @@ function Get-QArtistAlbums {
         # Load System.Web for HTML decoding
         Add-Type -AssemblyName System.Web
 
+        # Function to map culture code to Qobuz URL locale
+        function Get-QobuzUrlLocale {
+            param([string]$CultureCode)
+            $localeMap = @{
+                'fr-FR' = 'fr-fr'
+                'en-US' = 'us-en'
+                'en-GB' = 'gb-en'
+                'de-DE' = 'de-de'
+                'es-ES' = 'es-es'
+                'it-IT' = 'it-it'
+                'nl-BE' = 'be-nl'
+                'nl-NL' = 'nl-nl'
+                'pt-PT' = 'pt-pt'
+                'pt-BR' = 'br-pt'
+                'ja-JP' = 'jp-ja'
+            }
+            return $localeMap[$CultureCode] ?? 'us-en'  # Default to us-en
+        }
+
+        # Get configured Qobuz locale, default to 'en-US' -> 'us-en'
+        $config = Get-OMConfig
+        $configuredLocale = $config.Qobuz?.Locale ?? 'en-US'
+        $urlLocale = Get-QobuzUrlLocale -CultureCode $configuredLocale
+
         # Normalize base URL: accept either the full URL or the relative interpreter path
         if ($Id -match '^https?://') {
             $baseUrl = $Id.TrimEnd('/')
         } elseif ($Id -match '^/be-fr/interpreter/') {
             $baseUrl = "https://www.qobuz.com$Id".TrimEnd('/')
         } else {
-            throw "Id must be either a full Qobuz interpreter URL or a path starting with '/be-fr/interpreter/'. Example: /be-fr/interpreter/artist-slug/12345"
+            throw "Id must be either a full Qobuz interpreter URL or a path starting with a locale-prefixed interpreter path (e.g., /us-en/interpreter/artist-slug/12345). Configured locale: $urlLocale"
         }
+
+        # Replace any existing locale in the URL with the configured one
+        $baseUrl = $baseUrl -replace '/[a-z]{2}-[a-z]{2}/interpreter/', "/$urlLocale/interpreter/"
 
         # Remove any trailing /page/N if the user supplied a paged URL
         $artistBase = $baseUrl -replace '/page/\d+$', ''
@@ -95,64 +122,68 @@ function Get-QArtistAlbums {
             }
 
             # Functionality to parse album nodes from a loaded $doc
-            $albumNodes = $doc.SelectNodes('//h3[contains(concat(" ", normalize-space(@class), " "), " product__name ")]')
-            if (-not $albumNodes) { Write-Verbose "No album name nodes found on page $page"; }
+            # Albums are found in xpath //*[@id="artist"]/section[2]/div[2]/ul/li/div
+            $albumLis = $doc.SelectNodes('//*[@id="artist"]/section[2]/div[2]/ul/li')
+            if (-not $albumLis) { Write-Verbose "No album li elements found on page $page"; }
 
-            foreach ($nameNode in @($albumNodes)) {
+            foreach ($li in @($albumLis)) {
+                # Extract nodes using relative XPaths
+                $artistNode = $li.SelectSingleNode('div/div[2]/p[1]/a')
+                $albumNode = $li.SelectSingleNode('div/div[2]/a/h3')
+                $genreNode = $li.SelectSingleNode('div/div[1]/a/div/p[1]')
+                $dateNode = $li.SelectSingleNode('div/div[1]/a/div/p[2]')
+                $urlNode = $li.SelectSingleNode('div/div[1]/a')
+
+                if (-not $albumNode -or -not $urlNode) { continue }
+
                 # Album name
-                $albumName = $nameNode.InnerText.Trim()
+                $albumName = $albumNode.InnerText.Trim()
                 if ([string]::IsNullOrWhiteSpace($albumName)) { continue }
 
-                # Decode HTML entities in the album name
+                # Decode HTML entities
                 $albumName = [System.Web.HttpUtility]::HtmlDecode($albumName)
 
-                # The <h3> is inside <a href="..."> — get the ancestor <a> (parent)
-                $linkNode = $nameNode.ParentNode
-                if (-not $linkNode) { continue }
-                $href = $linkNode.GetAttributeValue('href', '')
+                # Album URL and ID extraction
+                $href = $urlNode.GetAttributeValue('href', '')
                 if (-not $href -or -not $href.Contains('/album/')) { continue }
 
-                # Clean href (remove query/fragment)
                 if ($href -match '^[^?#]+') { $hrefClean = $matches[0] } else { $hrefClean = $href }
-
-                # Extract last path segment (slug/id) after /album/whatever/<slug>
                 if ($hrefClean -match '/album/[^/]+/([^/?#]+)$') {
                     $albumId = $matches[1]
-                }
-                else {
-                    # fallback: try last segment of path
+                } else {
                     $parts = $hrefClean.TrimEnd('/').Split('/')
                     $albumId = $parts[-1]
                     if (-not $albumId) { continue }
                 }
-
-                # Build full album URL
                 if ($hrefClean -match '^https?://') { $albumUrl = $hrefClean } else { $albumUrl = "https://www.qobuz.com$hrefClean" }
 
-                # Navigate up to the product__item to find release/genre info (sibling area)
-                $parent = $linkNode.ParentNode   # product__container
-                $item = if ($parent) { $parent.ParentNode } else { $null }  # product__item
-
-                $releaseNode = $null
-                $genreNode = $null
-                if ($item) {
-                    $releaseNode = $item.SelectSingleNode('.//p[contains(concat(" ", normalize-space(@class), " "), " product__data--release ")]')
-                    $genreNode = $item.SelectSingleNode('.//p[contains(concat(" ", normalize-space(@class), " "), " product__data--genre ")]')
-                }
-
-                $releaseDate = if ($releaseNode) { $releaseNode.InnerText.Trim() } else { '' }
+                # Genre
                 $genre = if ($genreNode) { $genreNode.InnerText.Trim() } else { '' }
 
-                # Skip duplicates by id
+                # Date - extract year
+                $releaseDateText = if ($dateNode) { $dateNode.InnerText.Trim() } else { '' }
+                if ($releaseDateText -match '(\d{4})') {
+                    $year = $matches[1]
+                } else {
+                    $year = ''
+                }
+
+                # Cover URL from data-src
+                $coverDiv = $li.SelectSingleNode('div/div[1]')
+                $coverUrl = if ($coverDiv) { $coverDiv.GetAttributeValue('data-src', '') } else { '' }
+
+                # Skip duplicates
                 if ($seenIds.ContainsKey($albumId)) { continue }
                 $seenIds[$albumId] = $true
 
                 $albumObj = [PSCustomObject]@{
                     name         = $albumName
                     id           = $albumId
-                    release_date = $releaseDate
+                    release_date = $year
                     genre        = $genre
                     url          = $albumUrl
+                    artist       = $artist
+                    cover_url    = $coverUrl
                 }
 
                 $allAlbums += $albumObj
@@ -172,49 +203,65 @@ function Get-QArtistAlbums {
                         break
                     }
 
-                    $albumNodes2 = $doc2.SelectNodes('//h3[contains(concat(" ", normalize-space(@class), " "), " product__name ")]')
-                    foreach ($nameNode in @($albumNodes2)) {
-                        $albumName = $nameNode.InnerText.Trim()
+                    $albumLis2 = $doc2.SelectNodes('//*[@id="artist"]/section[2]/div[2]/ul/li')
+                    foreach ($li in @($albumLis2)) {
+                        # Extract nodes using relative XPaths
+                        $artistNode = $li.SelectSingleNode('div/div[2]/p[1]/a')
+                        $albumNode = $li.SelectSingleNode('div/div[2]/a/h3')
+                        $genreNode = $li.SelectSingleNode('div/div[1]/a/div/p[1]')
+                        $dateNode = $li.SelectSingleNode('div/div[1]/a/div/p[2]')
+                        $urlNode = $li.SelectSingleNode('div/div[1]/a')
+
+                        if (-not $albumNode -or -not $urlNode) { continue }
+
+                        # Album name
+                        $albumName = $albumNode.InnerText.Trim()
                         if ([string]::IsNullOrWhiteSpace($albumName)) { continue }
 
-                        # Decode HTML entities in the album name
+                        # Decode HTML entities
                         $albumName = [System.Web.HttpUtility]::HtmlDecode($albumName)
 
-                        $linkNode = $nameNode.ParentNode
-                        if (-not $linkNode) { continue }
-                        $href = $linkNode.GetAttributeValue('href', '')
+                        # Album URL and ID extraction
+                        $href = $urlNode.GetAttributeValue('href', '')
                         if (-not $href -or -not $href.Contains('/album/')) { continue }
+
                         if ($href -match '^[^?#]+') { $hrefClean = $matches[0] } else { $hrefClean = $href }
-                        if ($hrefClean -match '/album/[^/]+/([^/?#]+)$') { $albumId = $matches[1] }
-                        else {
+                        if ($hrefClean -match '/album/[^/]+/([^/?#]+)$') {
+                            $albumId = $matches[1]
+                        } else {
                             $parts = $hrefClean.TrimEnd('/').Split('/')
                             $albumId = $parts[-1]
                             if (-not $albumId) { continue }
                         }
                         if ($hrefClean -match '^https?://') { $albumUrl = $hrefClean } else { $albumUrl = "https://www.qobuz.com$hrefClean" }
 
-                        $parent = $linkNode.ParentNode
-                        $item = if ($parent) { $parent.ParentNode } else { $null }
-
-                        $releaseNode = $null
-                        $genreNode = $null
-                        if ($item) {
-                            $releaseNode = $item.SelectSingleNode('.//p[contains(concat(" ", normalize-space(@class), " "), " product__data--release ")]')
-                            $genreNode = $item.SelectSingleNode('.//p[contains(concat(" ", normalize-space(@class), " "), " product__data--genre ")]')
-                        }
-
-                        $releaseDate = if ($releaseNode) { $releaseNode.InnerText.Trim() } else { '' }
+                        # Genre
                         $genre = if ($genreNode) { $genreNode.InnerText.Trim() } else { '' }
 
+                        # Date - extract year
+                        $releaseDateText = if ($dateNode) { $dateNode.InnerText.Trim() } else { '' }
+                        if ($releaseDateText -match '(\d{4})') {
+                            $year = $matches[1]
+                        } else {
+                            $year = ''
+                        }
+
+                        # Cover URL from data-src
+                        $coverDiv = $li.SelectSingleNode('div/div[1]')
+                        $coverUrl = if ($coverDiv) { $coverDiv.GetAttributeValue('data-src', '') } else { '' }
+
+                        # Skip duplicates
                         if ($seenIds.ContainsKey($albumId)) { continue }
                         $seenIds[$albumId] = $true
 
                         $albumObj = [PSCustomObject]@{
                             name         = $albumName
                             id           = $albumId
-                            release_date = $releaseDate
+                            release_date = $year
                             genre        = $genre
                             url          = $albumUrl
+                            artist       = $artist
+                            cover_url    = $coverUrl
                         }
 
                         $allAlbums += $albumObj
