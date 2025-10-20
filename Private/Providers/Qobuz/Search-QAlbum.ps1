@@ -32,17 +32,18 @@ function Search-QAlbum {
         }
         Import-Module PowerHTML -ErrorAction Stop
         # Ensure OM module is loaded so helpers are available
-       # try { Import-Module OM -Force -ErrorAction Stop } catch { Write-Verbose "Failed to import OM module: $_" }
+        # try { Import-Module OM -Force -ErrorAction Stop } catch { Write-Verbose "Failed to import OM module: $_" }
         # Load System.Web for HTML decoding
         Add-Type -AssemblyName System.Web
     }
 
     process {
+        $locale = Get-QobuzUrlLocale
         # Construct search query by combining artist and album name
         $searchQuery = "$ArtistName $AlbumName".Trim()
         # Use URI escaping so spaces become %20 instead of '+' (matches desired URL format)
         $encodedQuery = [System.Uri]::EscapeDataString($searchQuery)
-        $url = "https://www.qobuz.com/be-fr/search/albums/$encodedQuery"
+        $url = "https://www.qobuz.com/$locale/search/albums/$encodedQuery"
 
         Write-Verbose "Searching Qobuz albums with query: $searchQuery"
         Write-Verbose "Search URL: $url"
@@ -65,7 +66,7 @@ function Search-QAlbum {
         }
 
         # Find all ReleaseCard divs
-        $releaseCards = $doc.SelectNodes("//div[contains(concat(' ', normalize-space(@class), ' '), ' ReleaseCard ')]")
+        $releaseCards = $doc.SelectNodes("//*[@id='search']/section[2]/div/ul/li/div")
         
         if (-not $releaseCards -or $releaseCards.Count -eq 0) {
             Write-Verbose "No ReleaseCard elements found in search results"
@@ -79,12 +80,14 @@ function Search-QAlbum {
         foreach ($card in $releaseCards) {
             try {
                 # Extract album title
-                $titleLink = $card.SelectSingleNode(".//a[contains(concat(' ', normalize-space(@class), ' '), ' ReleaseCardInfosTitle ')]")
+                $titleLink = $card.SelectSingleNode("./div[1]/a")
                 $QalbumName = if ($titleLink) { 
                     $titleLink.GetAttributeValue("data-title", "").Trim() 
                 } else { 
                     "" 
                 }
+                # Decode HTML entities (e.g. &#039; -> ')
+                if ($QalbumName) { $QalbumName = [System.Web.HttpUtility]::HtmlDecode($QalbumName).Trim() }
 
                 if (-not $QalbumName) {
                     Write-Verbose "Skipping card without album title"
@@ -92,7 +95,8 @@ function Search-QAlbum {
                 }
 
                 # Extract album ID from href (last path segment)
-                $albumHref = if ($titleLink) { $titleLink.GetAttributeValue("href", "") } else { "" }
+                $albumLink = $card.SelectSingleNode("./a")
+                $albumHref = if ($albumLink) { $albumLink.GetAttributeValue("href", "") } else { "" }
                 # Clean href (remove query/fragment)
                 if ($albumHref -match '^[^?#]+') { $hrefClean = $matches[0] } else { $hrefClean = $albumHref }
                 if ($hrefClean -match '/album/[^/]+/([^/?#]+)$') { $albumId = $matches[1] } else {
@@ -102,34 +106,46 @@ function Search-QAlbum {
                 }
 
                 # Extract artist name
-                $artistLink = $card.SelectSingleNode(".//p[contains(concat(' ', normalize-space(@class), ' '), ' ReleaseCardInfosSubtitle ')]//a")
+                $artistLink = $card.SelectSingleNode("./div[1]/p[1]/a")
                 $QartistName = if ($artistLink) { $artistLink.InnerText.Trim() } else { "" }
+                if ($QartistName) { $QartistName = [System.Web.HttpUtility]::HtmlDecode($QartistName).Trim() }
 
-                # Extract genre
-                $genreElement = $card.SelectSingleNode(".//p[contains(concat(' ', normalize-space(@class), ' '), ' CoverModelDataBold ') and contains(concat(' ', normalize-space(@class), ' '), ' ReleaseCardInfosSubtitle ')]")
-                $genre = if ($genreElement) { $genreElement.InnerText.Trim() } else { "" }
+                # Extract genre (first paragraph inside the album anchor/cover block)
+                $genreElement = $card.SelectSingleNode("./a/div/p[1]")
+                $genre = if ($genreElement) { [System.Web.HttpUtility]::HtmlDecode($genreElement.InnerText.Trim()) } else { "" }
 
-                # Extract release date and track count from CoverModelDataDefault elements
-                $dataElements = $card.SelectNodes(".//p[contains(concat(' ', normalize-space(@class), ' '), ' CoverModelDataDefault ') and contains(concat(' ', normalize-space(@class), ' '), ' ReleaseCardActionsText ')]")
-                
-                $releaseDate = ""
+                # Extract release date and track count using specific XPath nodes when available
+                $dateNode = $card.SelectSingleNode("./a/div/p[2]")
+                $releaseDate = if ($dateNode) { [System.Web.HttpUtility]::HtmlDecode($dateNode.InnerText.Trim()) } else { "" }
+
+                $trackNode = $card.SelectSingleNode("./a/div/p[3]")
                 $trackCount = $null
-                
-                foreach ($element in $dataElements) {
-                    $text = $element.InnerText.Trim()
-                    
-                    # Check if it's a date (contains month names or numbers)
-                    if ($text -match '\b(janv|févr|mars|avr|mai|juin|juil|août|sept|oct|nov|déc|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{1,2}\s+\w+\s+\d{4}|\d{4})\b') {
-                        $releaseDate = $text
-                    }
-                    # Check if it's track count (contains "piste" or "track")
-                    elseif ($text -match '(\d+)\s*(piste|pistes|track|tracks)') {
+                if ($trackNode) {
+                    if ($trackNode.InnerText -match '(\d{1,3})') {
                         $trackCount = [int]$matches[1]
                     }
                 }
 
+                # Fallback: older class-based markup
+                if (-not $releaseDate -or -not $trackCount) {
+                    $dataElements = $card.SelectNodes(".//p[contains(concat(' ', normalize-space(@class), ' '), ' CoverModelDataDefault ') and contains(concat(' ', normalize-space(@class), ' '), ' ReleaseCardActionsText ')]")
+                    if ($dataElements) {
+                        foreach ($element in $dataElements) {
+                            $text = [System.Web.HttpUtility]::HtmlDecode($element.InnerText.Trim())
+                            if (-not $releaseDate -and ($text -match '\b(janv|févr|mars|avr|mai|juin|juil|août|sept|oct|nov|déc|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{1,2}\s+\w+\s+\d{4}|\d{4})\b')) {
+                                $releaseDate = $text
+                            }
+                            elseif (-not $trackCount -and ($text -match '(\d{1,3})')) {
+                                # Avoid interpreting a 4-digit year as a track count
+                                $candidate = [int]$matches[1]
+                                if ($candidate -lt 1000) { $trackCount = $candidate }
+                            }
+                        }
+                    }
+                }
+
                 # Extract cover image
-                $coverImg = $card.SelectSingleNode(".//img[contains(concat(' ', normalize-space(@class), ' '), ' CoverModel ')]")
+                $coverImg = $card.SelectSingleNode("./img")
                 $coverUrl = if ($coverImg) { $coverImg.GetAttributeValue("src", "") } else { "" }
 
                 # Create album object
@@ -145,7 +161,7 @@ function Search-QAlbum {
                 }
 
                 $albums += $album
-                Write-Verbose "Extracted album: $($Qalbum.name) by $($Qartist.name)"
+                Write-Verbose "Extracted album: $($album.name) by $($album.artist)"
 
             }
             catch {
@@ -161,18 +177,20 @@ function Search-QAlbum {
                 $nameSim = Get-StringSimilarity-Jaccard -String1 $a.name -String2 $AlbumName
                 $artistSim = Get-StringSimilarity-Jaccard -String1 $a.artist -String2 $ArtistName
                 $a | Add-Member -MemberType NoteProperty -Name '__similarity' -Value (($nameSim * 0.7) + ($artistSim * 0.3)) -Force
-            } else {
+            }
+            else {
                 $a | Add-Member -MemberType NoteProperty -Name '__similarity' -Value 0 -Force
             }
         }
 
         $albums = $albums | Sort-Object -Property '__similarity' -Descending
         #take the albums where the artist is similar to the artist provided
-$albums = $albums | Where-Object {
+        $albums = $albums | Where-Object {
             if (Get-Command -Name Get-StringSimilarity-Jaccard -ErrorAction SilentlyContinue) {
                 $artistSim = Get-StringSimilarity-Jaccard -String1 $_.artist -String2 $ArtistName
                 return $artistSim -ge 0.3
-            } else {
+            }
+            else {
                 return $true
             }
         }

@@ -141,10 +141,11 @@ function Get-QAlbumTracks {
             }
         }
         else {
+            $locale = Get-QobuzUrlLocale
             # Normalize album URL (best-effort)
-            if ($Id -match '^https?://') { $url = $Id.TrimEnd('/') }
-            elseif ($Id -match '^/be-fr/album/') { $url = "https://www.qobuz.com$($Id.TrimEnd('/'))" }
-            else { $url = "https://www.qobuz.com/be-fr/album/$Id"; Write-Verbose "Best-effort album URL built: $url" }
+            if ($Id -match '^https?://') { $url = ($Id.TrimEnd('/') -replace '/[a-z]{2}-[a-z]{2}/', "/$locale/") }
+            elseif ($Id -match '^/[a-z]{2}-[a-z]{2}/album/') { $url = ("https://www.qobuz.com$($Id.TrimEnd('/'))" -replace '/[a-z]{2}-[a-z]{2}/', "/$locale/") }
+            else { $url = "https://www.qobuz.com/$locale/album/$Id"; Write-Verbose "Best-effort album URL built: $url" }
 
             Write-Verbose ("Fetching Qobuz album page: {0}" -f $url)
             try {
@@ -883,10 +884,11 @@ function Get-QAlbumTrackCount {
     }
 
     process {
+        $locale = Get-QobuzUrlLocale
         # Normalize album URL (best-effort)
-        if ($Id -match '^https?://') { $url = $Id.TrimEnd('/') }
-        elseif ($Id -match '^/be-fr/album/') { $url = "https://www.qobuz.com$($Id.TrimEnd('/'))" }
-        else { $url = "https://www.qobuz.com/be-fr/album/$Id"; Write-Verbose "Best-effort album URL built: $url" }
+        if ($Id -match '^https?://') { $url = ($Id.TrimEnd('/') -replace '/[a-z]{2}-[a-z]{2}/', "/$locale/") }
+        elseif ($Id -match '^/[a-z]{2}-[a-z]{2}/album/') { $url = ("https://www.qobuz.com$($Id.TrimEnd('/'))" -replace '/[a-z]{2}-[a-z]{2}/', "/$locale/") }
+        else { $url = "https://www.qobuz.com/$locale/album/$Id"; Write-Verbose "Best-effort album URL built: $url" }
 
         Write-Verbose ("Fetching Qobuz album page for track count: {0}" -f $url)
         try {
