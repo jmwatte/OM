@@ -31,7 +31,7 @@ function Search-GQArtist {
     $urlLocale = Get-QobuzUrlLocale -CultureCode $configuredLocale
 
     # Prefer qobuz interpreter pages for artists
-    $searchQuery = "site:qobuz.com/interpreter \"$Query\""
+    $searchQuery = "site:qobuz.com/interpreter \"+$($Query)+"\"
     $targetUrl = $null
 
     # Try Google Custom Search API first (if configured via config or env)
@@ -44,8 +44,23 @@ function Search-GQArtist {
     if ($gApiKey -and $gCse) {
         try {
             $csq = [uri]::EscapeDataString($searchQuery)
-            $apiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=1"
+            $num = 10
+            # Hint the search by country based on configured locale (e.g., en-US -> us)
+            $country = if ($configuredLocale -and ($configuredLocale -match '-')) { ($configuredLocale.Split('-')[-1]).ToLower() } else { $PSCulture.Split('-')[-1].ToLower() }
+            $apiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=$num&gl=$country"
             $apiResp = Invoke-RestMethod -Uri $apiUrl -Method Get -ErrorAction Stop
+            Write-Verbose "Google CSE API URL: $apiUrl"
+            $count = 0
+            if ($apiResp.items) { $count = $apiResp.items.Count }
+            Write-Verbose ("Google CSE returned {0} items" -f $count)
+            if ($apiResp.items -and $apiResp.items.Count -gt 0) {
+                foreach ($it in $apiResp.items) {
+                    Write-Verbose ("CSE item: {0}" -f $it.link)
+                    if ($it.link -match '/interpreter/') { $targetUrl = $it.link; break }
+                }
+                if (-not $targetUrl) { $targetUrl = $apiResp.items[0].link }
+                Write-Verbose "Google CSE selected url: $targetUrl"
+            }
             Write-Verbose "Google CSE API URL: $apiUrl"
             $count = 0
             if ($apiResp.items) { $count = $apiResp.items.Count }

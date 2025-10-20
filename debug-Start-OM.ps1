@@ -10,5 +10,5 @@ Import-Module "$PSScriptRoot\OM.psd1" -Force
 . .\Private\Providers\Qobuz\Search-GQArtist.ps1
 . .\Private\QobuzLocales.ps1
 . .\Private\Get-IfExists.ps1
-$a =Search-GQArtist -Query "Paul Weller"
+$a =Search-GQArtist -Query "Paul Weller" -Verbose
 $a.artists.items | Format-List
