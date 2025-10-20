@@ -37,18 +37,13 @@ function Search-QItem {
 
         # Select artist cards using explicit XPath; fallback to FollowingCard class
         $cards = $doc.SelectNodes("//*[@id='search']/section[2]/div/ul/li/div")
-        if (-not $cards -or $cards.Count -eq 0) {
-            $cards = $doc.SelectNodes('//div[@class="FollowingCard"]')
-        }
+       
 
         $items = @()
         foreach ($card in $cards) {
             $title = $card.GetAttributeValue('title', '')
             # fallback: some card variants embed the artist link in a child node
-            if (-not $title) {
-                $titleNode = $card.SelectSingleNode('./div[1]/p[1]/a')
-                if ($titleNode) { $title = $titleNode.InnerText.Trim() }
-            }
+            
             if (-not $title) { continue }
 
             # Decode HTML entities in the title
@@ -58,16 +53,55 @@ function Search-QItem {
             $link = $card.SelectSingleNode('.//a[contains(@href, "/interpreter/")]')
             if (-not $link) { continue }
 
-                        $href = $link.GetAttributeValue('href', '')
+            $href = $link.GetAttributeValue('href', '')
             if (-not $href) { continue }
-                        # Clean href (remove query/fragment)
-                        if ($href -match '^[^?#]+') { $hrefClean = $matches[0] } else { $hrefClean = $href }
-                        # Build full URL for convenience
-                        $fullUrl = if ($hrefClean -match '^https?://') { $hrefClean } else { "https://www.qobuz.com$hrefClean" }
+            # Clean href (remove query/fragment)
+            if ($href -match '^[^?#]+') { $hrefClean = $matches[0] } else { $hrefClean = $href }
+            # Build full URL for convenience
+            $fullUrl = if ($hrefClean -match '^https?://') { $hrefClean } else { "https://www.qobuz.com$hrefClean" }
+            # fetch first album genre from artist page (XPath: //*[@id="artist"]/section[2]/div[2]/ul/li[1]/div/div[1]/a/div/p[1])
+                        # Ensure script-level cache exists and is a hashtable
+            if (-not (Get-Variable -Name QobuzArtistGenresCache -Scope Script -ErrorAction SilentlyContinue) -or -not ($script:QobuzArtistGenresCache -is [hashtable])) {
+                Set-Variable -Name QobuzArtistGenresCache -Value @{} -Scope Script -Force
+            }
+            
             $genres = @()
+            $cacheKey = $fullUrl
+            
+            # Only call ContainsKey if the cache exists and is a hashtable
+            if ($cacheKey -and ($script:QobuzArtistGenresCache -is [hashtable]) -and $script:QobuzArtistGenresCache.ContainsKey($cacheKey)) {
+                $genres = $script:QobuzArtistGenresCache[$cacheKey]
+            }
+            elseif ($cacheKey) {
+                try {
+                    $artistResp = Invoke-WebRequest -Uri $fullUrl -UseBasicParsing -ErrorAction Stop -TimeoutSec 15
+                    $artistDoc  = ConvertFrom-Html -Content $artistResp.Content
+            
+                    $genreNode = $artistDoc.SelectSingleNode("//*[@id='artist']/section[2]/div[2]/ul/li[1]/div/div[1]/a/div/p[1]")
+                    if ($genreNode -and $genreNode.InnerText.Trim()) {
+                        $genres = @([System.Web.HttpUtility]::HtmlDecode($genreNode.InnerText.Trim()))
+                    }
+                    else {
+                        $altNode = $artistDoc.SelectSingleNode("//*[@id='artist']//ul/li[1]//a/div/p[1]")
+                        if ($altNode -and $altNode.InnerText.Trim()) {
+                            $genres = @([System.Web.HttpUtility]::HtmlDecode($altNode.InnerText.Trim()))
+                        }
+                    }
+                }
+                catch {
+                    Write-Verbose "Failed to fetch artist page for genres ($fullUrl): $_"
+                    $genres = @()
+                }
+            
+                # Ensure cache still a hashtable before writing
+                if (-not ($script:QobuzArtistGenresCache -is [hashtable])) {
+                    $script:QobuzArtistGenresCache = @{}
+                }
+                $script:QobuzArtistGenresCache[$cacheKey] = $genres
+            }
             # Extract artist image from card
             $imgNode = $card.SelectSingleNode('./div[1]/div[1]/img')
-            $artistImage = if ($imgNode) { $imgNode.GetAttributeValue('src','') } else { '' }
+            $artistImage = if ($imgNode) { $imgNode.GetAttributeValue('src', '') } else { '' }
  
 
             # Create the item object (similar to Spotify structure)

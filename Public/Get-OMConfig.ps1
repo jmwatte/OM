@@ -67,6 +67,7 @@ function Get-OMConfig {
         }
         catch {
             Write-Warning "Failed to load config from $configPath`: $_"
+            $config=@{}
         }
     }
     else {
@@ -100,7 +101,8 @@ function Get-OMConfig {
     }
     if ($env:QOBUZ_LOCALE) {
         if (-not $config.Qobuz) { $config.Qobuz = @{} }
-        $config.Qobuz.QobuzLocale = $env:QOBUZ_LOCALE
+        # Use consistent property name 'Locale' (culture code), support env var override
+        $config.Qobuz.Locale = $env:QOBUZ_LOCALE
         Write-Verbose "Using Qobuz Locale from environment variable"
     }
 
@@ -127,8 +129,14 @@ function Get-OMConfig {
     if (-not $config.Qobuz) {
         $config.Qobuz = @{}
     }
-    if (-not $config.Qobuz.QobuzLocale) {
-        $config.Qobuz.QobuzLocale = Get-QobuzUrlLocale $PSCulture
+    # Backward compatibility: if an older 'QobuzLocale' key is present, map it
+    if ($config.Qobuz.ContainsKey('QobuzLocale') -and -not $config.Qobuz.Locale) {
+        $config.Qobuz.Locale = $config.Qobuz.QobuzLocale
+    }
+
+    # Default to system culture code (e.g. en-US); mapping to the URL form is done by helper functions
+    if (-not $config.Qobuz.Locale) {
+        $config.Qobuz.Locale = $PSCulture
     }
 
     # Return specific provider or full config
