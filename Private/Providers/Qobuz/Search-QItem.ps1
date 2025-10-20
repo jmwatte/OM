@@ -65,14 +65,18 @@ function Search-QItem {
                         # Build full URL for convenience
                         $fullUrl = if ($hrefClean -match '^https?://') { $hrefClean } else { "https://www.qobuz.com$hrefClean" }
             $genres = @()
+            # Extract artist image from card
+            $imgNode = $card.SelectSingleNode('./div[1]/div[1]/img')
+            $artistImage = if ($imgNode) { $imgNode.GetAttributeValue('src','') } else { '' }
  
 
             # Create the item object (similar to Spotify structure)
             $item = [PSCustomObject]@{
-                name   = $title
-                id     = $hrefClean
-                url    = $fullUrl
-                genres = $genres
+                name      = $title
+                id        = $hrefClean
+                url       = $fullUrl
+                genres    = $genres
+                cover_url = $artistImage
             }
             $items += $item
         }
