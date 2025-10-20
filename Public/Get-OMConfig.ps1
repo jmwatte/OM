@@ -25,7 +25,7 @@ function Get-OMConfig {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $false)]
-        [ValidateSet('Spotify', 'Qobuz', 'Discogs')]
+        [ValidateSet('Spotify', 'Qobuz', 'Discogs', 'Google')]
         [string]$Provider
     )
 
