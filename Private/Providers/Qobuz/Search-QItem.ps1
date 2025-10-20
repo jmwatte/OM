@@ -71,9 +71,17 @@ function Search-QItem {
  
 
             # Create the item object (similar to Spotify structure)
+            # Extract artist id (numeric if possible) from href, fallback to last path segment
+            $artistId = $null
+            if ($hrefClean -match '/interpreter/[^/]+/(\d+)$') { $artistId = $matches[1] }
+            else { 
+                $parts = $hrefClean.TrimEnd('/').Split('/')
+                $artistId = if ($parts.Count -gt 0) { $parts[-1] } else { $hrefClean }
+            }
+
             $item = [PSCustomObject]@{
                 name      = $title
-                id        = $hrefClean
+                id        = $artistId
                 url       = $fullUrl
                 genres    = $genres
                 cover_url = $artistImage
