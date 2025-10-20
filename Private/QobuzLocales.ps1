@@ -32,5 +32,5 @@ function Get-QobuzUrlLocale {
         'pt-BR' = 'br-pt'
         'ja-JP' = 'jp-ja'
     }
-    return $localeMap[$CultureCode] ?? 'us-en'
+    if ($localeMap.ContainsKey($CultureCode)) { return $localeMap[$CultureCode] } else { return 'us-en' }
 }

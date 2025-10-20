@@ -22,7 +22,8 @@ function Get-QArtistAlbums {
 
         # Get configured Qobuz locale, default to 'en-US' -> 'us-en'
         $config = Get-OMConfig
-        $configuredLocale = $config.Qobuz?.Locale ?? 'en-US'
+        $configuredLocale = Get-IfExists -target $config.Qobuz -path 'Locale'
+        if (-not $configuredLocale -or [string]::IsNullOrWhiteSpace($configuredLocale)) { $configuredLocale = 'en-US' }
         $urlLocale = Get-QobuzUrlLocale -CultureCode $configuredLocale
 
         # Normalize base URL: accept either the full URL or the relative interpreter path

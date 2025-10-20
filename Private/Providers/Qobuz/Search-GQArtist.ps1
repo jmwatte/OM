@@ -117,7 +117,9 @@ function Search-GQArtist {
 
         $nameNode = $artistDoc.SelectSingleNode("//*[@id='artist']//h1")
         if (-not $nameNode) { $nameNode = $artistDoc.SelectSingleNode("//meta[@property='og:title']") }
-        $artistName = if ($nameNode) { ($nameNode.InnerText??$nameNode.GetAttributeValue('content','')).Trim() } else { $Query }
+        if ($nameNode) {
+            $artistName = if ($nameNode.InnerText -and $nameNode.InnerText.Trim()) { $nameNode.InnerText.Trim() } else { $nameNode.GetAttributeValue('content','').Trim() }
+        } else { $artistName = $Query }
         $artistName = [System.Web.HttpUtility]::HtmlDecode($artistName)
 
         $imgNode = $artistDoc.SelectSingleNode("//*[@id='artist']//img")
