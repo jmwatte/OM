@@ -8,4 +8,5 @@ Import-Module "$PSScriptRoot\OM.psd1" -Force
 #Start-OM  -Path "E:\Queens Of The Stone Age" -Provider Discogs
 #start get-Qartistalbums with -ArtistId "https://www.qobuz.com/be-fr/interpreter/paul-weller/53535" so I can debug that function
 . .\Private\Providers\Qobuz\Get-QArtistAlbums.ps1
+. .\Private\QobuzLocales.ps1
 Get-QArtistAlbums -Id "https://www.qobuz.com/be-fr/interpreter/paul-weller/53535"

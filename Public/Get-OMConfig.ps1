@@ -38,7 +38,8 @@ function Get-OMConfig {
         # Priority 2: User-specific config directory
         $userConfigDir = if ($IsLinux -or $IsMacOS) {
             Join-Path $env:HOME '.OM'
-        } else {
+        }
+        else {
             Join-Path $env:USERPROFILE '.OM'
         }
         
@@ -97,6 +98,12 @@ function Get-OMConfig {
         $config.Qobuz.Secret = $env:QOBUZ_SECRET
         Write-Verbose "Using Qobuz Secret from environment variable"
     }
+    if ($env:QOBUZ_LOCALE) {
+        if (-not $config.Qobuz) { $config.Qobuz = @{} }
+        $config.Qobuz.QobuzLocale = $env:QOBUZ_LOCALE
+        Write-Verbose "Using Qobuz Locale from environment variable"
+    }
+
 
     # Discogs
     if ($env:DISCOGS_CONSUMER_KEY) {
@@ -114,6 +121,14 @@ function Get-OMConfig {
         if (-not $config.Discogs) { $config.Discogs = @{} }
         $config.Discogs.Token = $env:DISCOGS_TOKEN
         Write-Verbose "Using Discogs Token from environment variable (legacy)"
+    }
+
+    # Set defaults for missing configurations
+    if (-not $config.Qobuz) {
+        $config.Qobuz = @{}
+    }
+    if (-not $config.Qobuz.QobuzLocale) {
+        $config.Qobuz.QobuzLocale = Get-QobuzUrlLocale $PSCulture
     }
 
     # Return specific provider or full config

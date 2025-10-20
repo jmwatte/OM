@@ -26,9 +26,10 @@ function Get-QArtistAlbums {
         $urlLocale = Get-QobuzUrlLocale -CultureCode $configuredLocale
 
         # Normalize base URL: accept either the full URL or the relative interpreter path
+                # Normalize base URL: accept either the full URL or the relative interpreter path
         if ($Id -match '^https?://') {
             $baseUrl = $Id.TrimEnd('/')
-        } elseif ($Id -match '^/be-fr/interpreter/') {
+        } elseif ($Id -match '^/[a-z]{2}-[a-z]{2}/interpreter/') {
             $baseUrl = "https://www.qobuz.com$Id".TrimEnd('/')
         } else {
             throw "Id must be either a full Qobuz interpreter URL or a path starting with a locale-prefixed interpreter path (e.g., /us-en/interpreter/artist-slug/12345). Configured locale: $urlLocale"
