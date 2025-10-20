@@ -7,6 +7,6 @@ Import-Module "$PSScriptRoot\OM.psd1" -Force
 # Call Start-OM with the desired parameters
 #Start-OM  -Path "E:\Queens Of The Stone Age" -Provider Discogs
 #start get-Qartistalbums with -ArtistId "https://www.qobuz.com/be-fr/interpreter/paul-weller/53535" so I can debug that function
-. .\Private\Providers\Qobuz\Search-QAlbum.ps1
+. .\Private\Providers\Qobuz\Search-QItem.ps1
 . .\Private\QobuzLocales.ps1
-Search-QAlbum -ArtistName "Paul Weller" -AlbumName "Heavy"
+Search-QItem  -Query "beatles" -type artist

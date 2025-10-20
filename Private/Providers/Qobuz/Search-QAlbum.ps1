@@ -127,22 +127,22 @@ function Search-QAlbum {
                 }
 
                 # Fallback: older class-based markup
-                if (-not $releaseDate -or -not $trackCount) {
-                    $dataElements = $card.SelectNodes(".//p[contains(concat(' ', normalize-space(@class), ' '), ' CoverModelDataDefault ') and contains(concat(' ', normalize-space(@class), ' '), ' ReleaseCardActionsText ')]")
-                    if ($dataElements) {
-                        foreach ($element in $dataElements) {
-                            $text = [System.Web.HttpUtility]::HtmlDecode($element.InnerText.Trim())
-                            if (-not $releaseDate -and ($text -match '\b(janv|févr|mars|avr|mai|juin|juil|août|sept|oct|nov|déc|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{1,2}\s+\w+\s+\d{4}|\d{4})\b')) {
-                                $releaseDate = $text
-                            }
-                            elseif (-not $trackCount -and ($text -match '(\d{1,3})')) {
-                                # Avoid interpreting a 4-digit year as a track count
-                                $candidate = [int]$matches[1]
-                                if ($candidate -lt 1000) { $trackCount = $candidate }
-                            }
-                        }
-                    }
-                }
+                # if (-not $releaseDate -or -not $trackCount) {
+                #     $dataElements = $card.SelectNodes(".//p[contains(concat(' ', normalize-space(@class), ' '), ' CoverModelDataDefault ') and contains(concat(' ', normalize-space(@class), ' '), ' ReleaseCardActionsText ')]")
+                #     if ($dataElements) {
+                #         foreach ($element in $dataElements) {
+                #             $text = [System.Web.HttpUtility]::HtmlDecode($element.InnerText.Trim())
+                #             if (-not $releaseDate -and ($text -match '\b(janv|févr|mars|avr|mai|juin|juil|août|sept|oct|nov|déc|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{1,2}\s+\w+\s+\d{4}|\d{4})\b')) {
+                #                 $releaseDate = $text
+                #             }
+                #             elseif (-not $trackCount -and ($text -match '(\d{1,3})')) {
+                #                 # Avoid interpreting a 4-digit year as a track count
+                #                 $candidate = [int]$matches[1]
+                #                 if ($candidate -lt 1000) { $trackCount = $candidate }
+                #             }
+                #         }
+                #     }
+                # }
 
                 # Extract cover image
                 $coverImg = $card.SelectSingleNode("./img")

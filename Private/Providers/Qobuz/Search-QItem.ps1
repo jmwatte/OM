@@ -23,8 +23,9 @@ function Search-QItem {
     # Load System.Web for HTML decoding
     Add-Type -AssemblyName System.Web
 
-    # Construct the search URL (using be-fr as default locale; could be parameterized)
-    $url = "https://www.qobuz.com/be-fr/search/artists/$([uri]::EscapeDataString($Query))"
+    # Construct the search URL (use configured Qobuz locale)
+    $locale = Get-QobuzUrlLocale
+    $url = "https://www.qobuz.com/$locale/search/artists/$([uri]::EscapeDataString($Query))"
    
     try {
         # Fetch the HTML
@@ -34,37 +35,43 @@ function Search-QItem {
         # Parse with PowerHTML
         $doc = ConvertFrom-Html -Content $html
 
-        # Select all FollowingCard divs
-        $cards = $doc.SelectNodes('//div[@class="FollowingCard"]')
+        # Select artist cards using explicit XPath; fallback to FollowingCard class
+        $cards = $doc.SelectNodes("//*[@id='search']/section[2]/div/ul/li/div")
+        if (-not $cards -or $cards.Count -eq 0) {
+            $cards = $doc.SelectNodes('//div[@class="FollowingCard"]')
+        }
 
         $items = @()
         foreach ($card in $cards) {
             $title = $card.GetAttributeValue('title', '')
+            # fallback: some card variants embed the artist link in a child node
+            if (-not $title) {
+                $titleNode = $card.SelectSingleNode('./div[1]/p[1]/a')
+                if ($titleNode) { $title = $titleNode.InnerText.Trim() }
+            }
             if (-not $title) { continue }
 
             # Decode HTML entities in the title
             $title = [System.Web.HttpUtility]::HtmlDecode($title)
 
-            # Extract the link
-            $link = $card.SelectSingleNode('.//a[@class="CoverModelOverlay"]')
+            # Extract the first artist link that looks like an interpreter link
+            $link = $card.SelectSingleNode('.//a[contains(@href, "/interpreter/")]')
             if (-not $link) { continue }
 
-            $href = $link.GetAttributeValue('href', '')
+                        $href = $link.GetAttributeValue('href', '')
             if (-not $href) { continue }
-
-            # Parse the href to extract ID (e.g., /be-fr/interpreter/zz-top/56332 -> 56332)
-            if ($href -match '/interpreter/[^/]+/(\d+)$') {
-              #  $id = $matches[1]
-            } else {
-                continue  # Skip if no ID
-            }
+                        # Clean href (remove query/fragment)
+                        if ($href -match '^[^?#]+') { $hrefClean = $matches[0] } else { $hrefClean = $href }
+                        # Build full URL for convenience
+                        $fullUrl = if ($hrefClean -match '^https?://') { $hrefClean } else { "https://www.qobuz.com$hrefClean" }
             $genres = @()
  
 
             # Create the item object (similar to Spotify structure)
             $item = [PSCustomObject]@{
                 name   = $title
-                id     = $href
+                id     = $hrefClean
+                url    = $fullUrl
                 genres = $genres
             }
             $items += $item
