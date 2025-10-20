@@ -23,6 +23,28 @@ function Search-QItem {
     # Load System.Web for HTML decoding
     Add-Type -AssemblyName System.Web
 
+
+
+
+
+
+
+
+
+
+
+    # Try a quick web search for the artist first (Google CSE or DuckDuckGo)
+    try {
+        $quick = Search-GQArtist -Query $Query
+        if ($quick -and $quick.artists -and $quick.artists.items -and $quick.artists.items.Count -gt 0) {
+            Write-Verbose "Found artist via web search; returning quick result."
+            return $quick
+        }
+    }
+    catch {
+        Write-Verbose "Quick web search failed or returned no results: $_"
+    }
+
     # Construct the search URL (use configured Qobuz locale)
     $locale = Get-QobuzUrlLocale
     $url = "https://www.qobuz.com/$locale/search/artists/$([uri]::EscapeDataString($Query))"
@@ -67,7 +89,7 @@ function Search-QItem {
             
             $genres = @()
             $cacheKey = $fullUrl
-            
+            write-host "getting genres for $fullUrl"
             # Only call ContainsKey if the cache exists and is a hashtable
             if ($cacheKey -and ($script:QobuzArtistGenresCache -is [hashtable]) -and $script:QobuzArtistGenresCache.ContainsKey($cacheKey)) {
                 $genres = $script:QobuzArtistGenresCache[$cacheKey]
