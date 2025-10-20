@@ -36,8 +36,11 @@ function Search-GQArtist {
 
     # Try Google Custom Search API first (if configured via config or env)
     $google = Get-OMConfig -Provider Google
-    $gApiKey = $google?.ApiKey ?? $env:GOOGLE_API_KEY
-    $gCse    = $google?.Cse ?? $env:GOOGLE_CSE
+    $gApiKey = Get-IfExists -target $google -path 'ApiKey'
+    if (-not $gApiKey) { $gApiKey = $env:GOOGLE_API_KEY }
+    $gCse = Get-IfExists -target $google -path 'Cse'
+    if (-not $gCse) { $gCse = $env:GOOGLE_CSE }
+    Write-Verbose "Google API key present: $([bool]$gApiKey); Google CSE present: $([bool]$gCse)"
     if ($gApiKey -and $gCse) {
         try {
             $csq = [uri]::EscapeDataString($searchQuery)
