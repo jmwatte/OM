@@ -17,8 +17,8 @@ function Search-GQArtist {
     if (-not (Get-Variable -Name QobuzGQCache -Scope Script -ErrorAction SilentlyContinue) -or -not ($script:QobuzGQCache -is [hashtable])) {
         Set-Variable -Name QobuzGQCache -Value @{} -Scope Script -Force
     }
-    $cacheKey = $Query
-    if ($script:QobuzGQCache.ContainsKey($cacheKey)) { return $script:QobuzGQCache[$cacheKey] }
+   # $cacheKey = $Query
+   # if ($script:QobuzGQCache.ContainsKey($cacheKey)) { return $script:QobuzGQCache[$cacheKey] }
 
     # Resolve configured locale (culture) -> URL locale
     $qobuzConfig = Get-OMConfig -Provider Qobuz

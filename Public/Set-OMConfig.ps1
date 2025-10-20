@@ -108,84 +108,96 @@ function Set-OMConfig {
         }
     }
 
-    # Load existing config or start fresh
+    # Load existing config (if present) so we merge new values by default
     $config = @{}
-    if ((Test-Path $ConfigPath) -and $Merge) {
+    if (Test-Path $ConfigPath) {
         try {
             $configContent = Get-Content -Path $ConfigPath -Raw -ErrorAction Stop
             $config = $configContent | ConvertFrom-Json -AsHashtable -ErrorAction Stop
-            Write-Verbose "Loaded existing config for merging"
+            Write-Verbose "Loaded existing config from: $ConfigPath"
         }
         catch {
             Write-Warning "Failed to load existing config, starting fresh: $_"
+            $config = @{}
         }
     }
 
-    # Update Spotify configuration
+    $modified = $false
+    # Update Spotify configuration (merge by default)
     if ($SpotifyClientId -or $SpotifyClientSecret) {
         if (-not $config.Spotify) { $config.Spotify = @{} }
         
         if ($SpotifyClientId) {
             $config.Spotify.ClientId = $SpotifyClientId
             Write-Verbose "Set Spotify ClientId"
+            $modified = $true
         }
         if ($SpotifyClientSecret) {
             $config.Spotify.ClientSecret = $SpotifyClientSecret
             Write-Verbose "Set Spotify ClientSecret"
+            $modified = $true
         }
     }
 
-    # Update Qobuz configuration
+    # Update Qobuz configuration (merge by default)
     if ($QobuzAppId -or $QobuzSecret -or $QobuzLocale) {
         if (-not $config.Qobuz) { $config.Qobuz = @{} }
         
         if ($QobuzAppId) {
             $config.Qobuz.AppId = $QobuzAppId
             Write-Verbose "Set Qobuz AppId"
+            $modified = $true
         }
         if ($QobuzSecret) {
             $config.Qobuz.Secret = $QobuzSecret
             Write-Verbose "Set Qobuz Secret"
+            $modified = $true
         }
         if ($QobuzLocale) {
             $config.Qobuz.Locale = $QobuzLocale
             Write-Verbose "Set Qobuz Locale to $QobuzLocale"
+            $modified = $true
         }
     }
 
-    # Update Discogs configuration
+    # Update Discogs configuration (merge by default)
     if ($DiscogsConsumerKey -or $DiscogsConsumerSecret -or $DiscogsToken) {
         if (-not $config.Discogs) { $config.Discogs = @{} }
         
         if ($DiscogsConsumerKey) {
             $config.Discogs.ConsumerKey = $DiscogsConsumerKey
             Write-Verbose "Set Discogs ConsumerKey"
+            $modified = $true
         }
         if ($DiscogsConsumerSecret) {
             $config.Discogs.ConsumerSecret = $DiscogsConsumerSecret
             Write-Verbose "Set Discogs ConsumerSecret"
+            $modified = $true
         }
         if ($DiscogsToken) {
             $config.Discogs.Token = $DiscogsToken
             Write-Verbose "Set Discogs Token (legacy)"
+            $modified = $true
         }
     }
 
-    # Update Google Custom Search configuration (API key and CSE id)
+    # Update Google Custom Search configuration (merge by default)
     if ($GoogleApiKey -or $GoogleCse) {
         if (-not $config.Google) { $config.Google = @{} }
         if ($GoogleApiKey) {
             $config.Google.ApiKey = $GoogleApiKey
             Write-Verbose "Set Google API key"
+            $modified = $true
         }
         if ($GoogleCse) {
             $config.Google.Cse = $GoogleCse
             Write-Verbose "Set Google CSE id"
+            $modified = $true
         }
     }
 
     # Validate that at least one value was provided
-    if ($config.Count -eq 0) {
+    if (-not $modified) {
         Write-Warning "No configuration values provided. Nothing to save."
         return
     }
