@@ -61,6 +61,27 @@ function Search-GQArtist {
                 if (-not $targetUrl) { $targetUrl = $apiResp.items[0].link }
                 Write-Verbose "Google CSE selected url: $targetUrl"
             }
+            else {
+                Write-Verbose "Google CSE returned 0 items; retrying with siteSearch restriction..."
+                try {
+                    $siteApiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=$num&gl=$country&siteSearch=qobuz.com"
+                    $apiResp2 = Invoke-RestMethod -Uri $siteApiUrl -Method Get -ErrorAction Stop
+                    $count2 = 0
+                    if ($apiResp2.items) { $count2 = $apiResp2.items.Count }
+                    Write-Verbose ("Google CSE siteSearch returned {0} items" -f $count2)
+                    if ($apiResp2.items -and $apiResp2.items.Count -gt 0) {
+                        foreach ($it2 in $apiResp2.items) {
+                            Write-Verbose ("CSE siteSearch item: {0}" -f $it2.link)
+                            if ($it2.link -match '/interpreter/') { $targetUrl = $it2.link; break }
+                        }
+                        if (-not $targetUrl) { $targetUrl = $apiResp2.items[0].link }
+                        Write-Verbose "Google CSE siteSearch selected url: $targetUrl"
+                    }
+                }
+                catch {
+                    Write-Verbose "Google CSE siteSearch retry failed: $_"
+                }
+            }
             Write-Verbose "Google CSE API URL: $apiUrl"
             $count = 0
             if ($apiResp.items) { $count = $apiResp.items.Count }
