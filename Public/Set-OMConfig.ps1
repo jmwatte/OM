@@ -78,6 +78,12 @@ function Set-OMConfig {
         [string]$DiscogsToken,
 
         [Parameter(Mandatory = $false)]
+        [string]$GoogleApiKey,
+
+        [Parameter(Mandatory = $false)]
+        [string]$GoogleCse,
+
+        [Parameter(Mandatory = $false)]
         [string]$ConfigPath,
 
         [Parameter(Mandatory = $false)]
@@ -162,6 +168,19 @@ function Set-OMConfig {
         if ($DiscogsToken) {
             $config.Discogs.Token = $DiscogsToken
             Write-Verbose "Set Discogs Token (legacy)"
+        }
+    }
+
+    # Update Google Custom Search configuration (API key and CSE id)
+    if ($GoogleApiKey -or $GoogleCse) {
+        if (-not $config.Google) { $config.Google = @{} }
+        if ($GoogleApiKey) {
+            $config.Google.ApiKey = $GoogleApiKey
+            Write-Verbose "Set Google API key"
+        }
+        if ($GoogleCse) {
+            $config.Google.Cse = $GoogleCse
+            Write-Verbose "Set Google CSE id"
         }
     }
 

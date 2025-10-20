@@ -28,11 +28,14 @@ function Search-GQArtist {
     $searchQuery = "site:qobuz.com $Query artist"
     $targetUrl = $null
 
-    # Try Google Custom Search API first (if configured)
-    if ($env:GOOGLE_API_KEY -and $env:GOOGLE_CSE) {
+    # Try Google Custom Search API first (if configured via config or env)
+    $google = Get-OMConfig -Provider Google
+    $gApiKey = $google?.ApiKey ?? $env:GOOGLE_API_KEY
+    $gCse    = $google?.Cse ?? $env:GOOGLE_CSE
+    if ($gApiKey -and $gCse) {
         try {
             $csq = [uri]::EscapeDataString($searchQuery)
-            $apiUrl = "https://www.googleapis.com/customsearch/v1?key=$($env:GOOGLE_API_KEY)&cx=$($env:GOOGLE_CSE)&q=$csq&num=1"
+            $apiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=1"
             $apiResp = Invoke-RestMethod -Uri $apiUrl -Method Get -ErrorAction Stop
             if ($apiResp.items -and $apiResp.items.Count -gt 0) { $targetUrl = $apiResp.items[0].link }
         }

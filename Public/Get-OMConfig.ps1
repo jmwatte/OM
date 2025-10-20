@@ -125,6 +125,18 @@ function Get-OMConfig {
         Write-Verbose "Using Discogs Token from environment variable (legacy)"
     }
 
+    # Google Custom Search (optional)
+    if ($env:GOOGLE_API_KEY) {
+        if (-not $config.Google) { $config.Google = @{} }
+        $config.Google.ApiKey = $env:GOOGLE_API_KEY
+        Write-Verbose "Using Google API key from environment variable"
+    }
+    if ($env:GOOGLE_CSE) {
+        if (-not $config.Google) { $config.Google = @{} }
+        $config.Google.Cse = $env:GOOGLE_CSE
+        Write-Verbose "Using Google CSE id from environment variable"
+    }
+
     # Set defaults for missing configurations
     if (-not $config.Qobuz) {
         $config.Qobuz = @{}
