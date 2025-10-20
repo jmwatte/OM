@@ -22,13 +22,12 @@ function Search-GQArtist {
 
     # Resolve configured locale (culture) -> URL locale
     $qobuzConfig = Get-OMConfig -Provider Qobuz
-        # Use a robust check for locale (compatible with PowerShell 5.x/7+)
-        if ($qobuzConfig -and -not [string]::IsNullOrWhiteSpace($qobuzConfig.Locale)) {
-            $configuredLocale = $qobuzConfig.Locale
-        }
-        else {
-            $configuredLocale = $PSCulture
-        }
+    # Use Get-IfExists to safely obtain the configured locale
+    $configuredLocale = Get-IfExists -target $qobuzConfig -path 'Locale'
+    if (-not $configuredLocale -or [string]::IsNullOrWhiteSpace($configuredLocale)) {
+        $configuredLocale = $PSCulture
+    }
+    Write-Verbose "Using Qobuz configured locale: $configuredLocale (PSCulture: $PSCulture)"
     $urlLocale = Get-QobuzUrlLocale -CultureCode $configuredLocale
 
     $searchQuery = "site:qobuz.com $Query artist"
