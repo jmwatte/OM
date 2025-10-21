@@ -19,10 +19,16 @@
     The root folder containing the disc subfolders. For single-disc albums, this is the folder containing the tracks.
 
 .PARAMETER discs
-    If specified, updates the disc number and total disc count for each file based on folder order.
+    If specified, updates the total disc count for each file and sets disc numbers only if they're not already set (0).
+
+.PARAMETER forceDiscs
+    If specified, updates both disc numbers and total disc count, overwriting any existing disc numbers.
 
 .PARAMETER tracks
-    If specified, updates the track number and total track count for files within each folder.
+    If specified, updates the total track count for each file and sets track numbers only if they're not already set (0).
+
+.PARAMETER forceTracks
+    If specified, updates both track numbers and total track count, overwriting any existing track numbers.
 
 .EXAMPLE
     Add-OMDiscNumbers -baseFolder "D:\Music\Rush - Moving Pictures (2011)" -tracks
@@ -67,7 +73,13 @@ function Add-OMDiscNumbers {
         [switch]$discs,
 
         [Parameter(Mandatory = $false)]
-        [switch]$tracks
+        [switch]$forceDiscs,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$tracks,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$forceTracks
     )
 
     # Ensure the base folder exists
@@ -105,19 +117,23 @@ function Add-OMDiscNumbers {
                 $tagFile = [TagLib.File]::Create($file.FullName)
                 $changes = @()
 
-                if ($discs) {
-                    $needsDiscUpdate = $tagFile.Tag.Disc -eq 0 -or $tagFile.Tag.DiscCount -ne $totalDiscs
+                if ($discs -or $forceDiscs) {
+                    $updateDiscNumber = $forceDiscs -or $tagFile.Tag.Disc -eq 0
+                    $needsDiscUpdate = $updateDiscNumber -or $tagFile.Tag.DiscCount -ne $totalDiscs
+                    
                     if ($needsDiscUpdate -and $PSCmdlet.ShouldProcess($file.Name, "Set DiscNumber to $($discNumber.ToString($discFormat))/$totalDiscs")) {
-                        if ($tagFile.Tag.Disc -eq 0) { $tagFile.Tag.Disc = $discNumber }
+                        if ($updateDiscNumber) { $tagFile.Tag.Disc = $discNumber }
                         $tagFile.Tag.DiscCount = $totalDiscs
                         $changes += "disc $($discNumber.ToString($discFormat))/$totalDiscs"
                     }
                 }
 
-                if ($tracks) {
-                    $needsTrackUpdate = $tagFile.Tag.Track -eq 0 -or $tagFile.Tag.TrackCount -ne $totalTracks
+                if ($tracks -or $forceTracks) {
+                    $updateTrackNumber = $forceTracks -or $tagFile.Tag.Track -eq 0
+                    $needsTrackUpdate = $updateTrackNumber -or $tagFile.Tag.TrackCount -ne $totalTracks
+                    
                     if ($needsTrackUpdate -and $PSCmdlet.ShouldProcess($file.Name, "Set TrackNumber to $($trackNumber.ToString($trackFormat))/$totalTracks")) {
-                        if ($tagFile.Tag.Track -eq 0) { $tagFile.Tag.Track = $trackNumber }
+                        if ($updateTrackNumber) { $tagFile.Tag.Track = $trackNumber }
                         $tagFile.Tag.TrackCount = $totalTracks
                         $changes += "track $($trackNumber.ToString($trackFormat))/$totalTracks"
                     }
