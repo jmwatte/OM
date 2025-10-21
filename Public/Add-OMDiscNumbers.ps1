@@ -1,52 +1,73 @@
-#this function add-discNumbers takes a folder checks the folders under it finds the audiofiles in eachfolder and for each folder adds the disctag to it counting up from 1 to length of folders...
-#see to it that is has whatif and accepts pipeline paths remember to use LiteralPath where possible
-
+# .EXTERNALHELP OM-help.xml
 <#
 .SYNOPSIS
-    Adds disc numbers to audio files in subfolders of a specified base folder.
+    Adds or updates disc and track numbers in audio files based on folder structure.
 
 .DESCRIPTION
-    The Add-OMDiscNumbers function scans the subfolders of the given base folder, sorts them alphabetically,
-    and assigns incremental disc numbers (starting from 1) to all audio files within each subfolder.
-    Only files with extensions .mp3, .flac, .wav, .m4a, or .aac are processed. If a file already has a disc number
-    (not 0), it is skipped. The function uses TagLib# to read and write audio tags.
+    The Add-OMDiscNumbers cmdlet updates the disc and track numbers of audio files in a folder structure.
+    It can handle both disc numbering (for multi-disc albums) and track numbering within each disc folder.
+    Numbers are zero-padded based on the total count (e.g., "01/12" for a 12-track disc).
 
-    Supports -WhatIf and -Confirm for safe operation, and accepts pipeline input for the base folder path.
+    Supported audio formats:
+    - MP3 (.mp3)
+    - FLAC (.flac)
+    - WAV (.wav)
+    - M4A (.m4a)
+    - AAC (.aac)
 
 .PARAMETER baseFolder
-    The path to the base folder containing subfolders with audio files. This parameter is mandatory and accepts pipeline input.
+    The root folder containing the disc subfolders. For single-disc albums, this is the folder containing the tracks.
+
+.PARAMETER discs
+    If specified, updates the disc number and total disc count for each file based on folder order.
+
+.PARAMETER tracks
+    If specified, updates the track number and total track count for files within each folder.
 
 .EXAMPLE
-    Add-OMDiscNumbers -baseFolder "C:\Music\Albums"
-
-    Processes all subfolders under "C:\Music\Albums", assigning disc numbers 1, 2, 3, etc., to audio files in each.
-
-.EXAMPLE
-    "C:\Music\Albums" | Add-OMDiscNumbers -WhatIf
-
-    Pipes the folder path and previews changes without applying them.
+    Add-OMDiscNumbers -baseFolder "D:\Music\Rush - Moving Pictures (2011)" -tracks
+    Updates only track numbers for all audio files in the album folder.
 
 .EXAMPLE
-    Add-OMDiscNumbers -baseFolder "C:\Music\Albums" -Confirm
+    Add-OMDiscNumbers -baseFolder "D:\Music\Pink Floyd - The Wall" -discs -tracks
+    Updates both disc and track numbers for a multi-disc album, with numbers formatted based on total counts.
 
-    Prompts for confirmation before updating each file.
+.EXAMPLE
+    Add-OMDiscNumbers -baseFolder "D:\Music\Beatles Box Set" -discs -tracks -WhatIf
+    Shows what changes would be made without actually modifying any files.
+
+.EXAMPLE
+    Add-OMDiscNumbers -baseFolder "D:\Music\Album" -discs -tracks -Verbose
+    Updates numbers with detailed progress output showing each file being processed.
 
 .NOTES
-    - Requires TagLib# library to be available in the OM module's lib folder.
-    - Subfolders are sorted alphabetically to ensure consistent disc numbering.
-    - Only updates files where the disc tag is currently 0.
-    - Use -WhatIf to preview changes without modifying files.
+    Requires TagLib# for audio file tag manipulation.
+    Files are sorted alphabetically within each folder to determine track order.
+    Numbers are zero-padded based on the total count in each folder.
+
+.INPUTS
+    System.String
+    You can pipe a folder path to Add-OMDiscNumbers.
+
+.OUTPUTS
+    None
+    This cmdlet does not generate any output.
 
 .LINK
     https://github.com/jmwatte/OM
 #>
-
 function Add-OMDiscNumbers {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param (
         [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
         [ValidateNotNullOrEmpty()]
-        [string]$baseFolder
+        [string]$baseFolder,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$discs,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$tracks
     )
 
     # Ensure the base folder exists
@@ -55,40 +76,70 @@ function Add-OMDiscNumbers {
         return
     }
 
-    #try to load load taglib else call 
-    Add-Type -Path ((Get-Module OM).ModuleBase + '\lib\TagLib.dll')
+    # Load TagLib
+    if (-not (Get-Command -Name Assert-TagLibLoaded -ErrorAction SilentlyContinue)) {
+        . "$PSScriptRoot\Private\Assert-TagLibLoaded.ps1"
+    }
+    Assert-TagLibLoaded
 
-    # Get all subfolders in the base folder
+    # Get all subfolders and sort them
     $subFolders = Get-ChildItem -LiteralPath $baseFolder -Directory | Sort-Object Name
+    $totalDiscs = $subFolders.Count
+    $discFormat = "d$($totalDiscs.ToString().Length)"  # Format string for disc numbers
 
     $discNumber = 1
-
     foreach ($folder in $subFolders) {
-        Write-Host "Processing folder: $($folder.FullName) with DiscNumber: $discNumber"
-
-        # Get all audio files in the current folder
-        $audioFiles = Get-ChildItem -LiteralPath $folder.FullName -File | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac)$' }
+        Write-Verbose "Processing folder: $($folder.FullName) (Disc $($discNumber.ToString($discFormat)) of $totalDiscs)"
+        
+        # Get all audio files in current folder
+        $audioFiles = Get-ChildItem -LiteralPath $folder.FullName -File | 
+                     Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac)$' } |
+                     Sort-Object Name
+        
+        $totalTracks = $audioFiles.Count
+        $trackFormat = "d$($totalTracks.ToString().Length)"  # Format string for track numbers
+        $trackNumber = 1
 
         foreach ($file in $audioFiles) {
             try {
-                # Use TagLib# to read and write tags
                 $tagFile = [TagLib.File]::Create($file.FullName)
-                if ($tagFile.Tag.Disc -eq0) {
-                    if ($PSCmdlet.ShouldProcess($file.Name, "Set DiscNumber to $discNumber")) {
+                $changes = @()
+
+                if ($discs -and $tagFile.Tag.Disc -eq 0) {
+                    if ($PSCmdlet.ShouldProcess($file.Name, "Set DiscNumber to $($discNumber.ToString($discFormat))/$totalDiscs")) {
                         $tagFile.Tag.Disc = $discNumber
-                        $tagFile.Save()
-                        Write-Host "Updated DiscNumber for file: $($file.Name) to $discNumber"
+                        $tagFile.Tag.DiscCount = $totalDiscs
+                        $changes += "disc $($discNumber.ToString($discFormat))/$totalDiscs"
                     }
-                } else {
-                    Write-Host "File: $($file.Name) already has a DiscNumber: $($tagFile.Tag.Disc)"
                 }
-            } catch {
+
+                if ($tracks) {
+                    if ($PSCmdlet.ShouldProcess($file.Name, "Set TrackNumber to $($trackNumber.ToString($trackFormat))/$totalTracks")) {
+                        $tagFile.Tag.Track = $trackNumber
+                        $tagFile.Tag.TrackCount = $totalTracks
+                        $changes += "track $($trackNumber.ToString($trackFormat))/$totalTracks"
+                    }
+                }
+
+                if ($changes.Count -gt 0) {
+                    $tagFile.Save()
+                    Write-Host "Updated $($file.Name): $($changes -join ', ')"
+                }
+                else {
+                    Write-Verbose "No changes needed for $($file.Name)"
+                }
+            }
+            catch {
                 Write-Warning "Failed to update file: $($file.Name). Error: $_"
             }
+            finally {
+                if ($tagFile) { $tagFile.Dispose() }
+            }
+
+            $trackNumber++
         }
 
         $discNumber++
+        Write-Verbose "Completed processing folder: $($folder.Name)"
     }
-
-    Write-Host "Completed adding DiscNumbers."
 }
