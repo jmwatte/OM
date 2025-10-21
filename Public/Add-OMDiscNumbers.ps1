@@ -105,17 +105,19 @@ function Add-OMDiscNumbers {
                 $tagFile = [TagLib.File]::Create($file.FullName)
                 $changes = @()
 
-                if ($discs -and $tagFile.Tag.Disc -eq 0) {
-                    if ($PSCmdlet.ShouldProcess($file.Name, "Set DiscNumber to $($discNumber.ToString($discFormat))/$totalDiscs")) {
-                        $tagFile.Tag.Disc = $discNumber
+                if ($discs) {
+                    $needsDiscUpdate = $tagFile.Tag.Disc -eq 0 -or $tagFile.Tag.DiscCount -ne $totalDiscs
+                    if ($needsDiscUpdate -and $PSCmdlet.ShouldProcess($file.Name, "Set DiscNumber to $($discNumber.ToString($discFormat))/$totalDiscs")) {
+                        if ($tagFile.Tag.Disc -eq 0) { $tagFile.Tag.Disc = $discNumber }
                         $tagFile.Tag.DiscCount = $totalDiscs
                         $changes += "disc $($discNumber.ToString($discFormat))/$totalDiscs"
                     }
                 }
 
                 if ($tracks) {
-                    if ($PSCmdlet.ShouldProcess($file.Name, "Set TrackNumber to $($trackNumber.ToString($trackFormat))/$totalTracks")) {
-                        $tagFile.Tag.Track = $trackNumber
+                    $needsTrackUpdate = $tagFile.Tag.Track -eq 0 -or $tagFile.Tag.TrackCount -ne $totalTracks
+                    if ($needsTrackUpdate -and $PSCmdlet.ShouldProcess($file.Name, "Set TrackNumber to $($trackNumber.ToString($trackFormat))/$totalTracks")) {
+                        if ($tagFile.Tag.Track -eq 0) { $tagFile.Tag.Track = $trackNumber }
                         $tagFile.Tag.TrackCount = $totalTracks
                         $changes += "track $($trackNumber.ToString($trackFormat))/$totalTracks"
                     }
