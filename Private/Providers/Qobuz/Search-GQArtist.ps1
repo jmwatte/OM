@@ -55,80 +55,102 @@ function Search-GQArtist {
     # (Google CSE call removed here; we'll try HTML-first then fallback to CSE later)
 
     # DuckDuckGo HTML fallback
-    if (-not $targetUrl) {
+    # Google CSE (preferred) - try this first if configured
+    if (-not $targetUrl -and $gApiKey -and $gCse) {
         try {
-            $ddgUrl = "https://duckduckgo.com/html?q=$([uri]::EscapeDataString($searchQueryDDG))"
-            $ddgResp = Invoke-WebRequest -Uri $ddgUrl -Headers @{ 'User-Agent' = 'Mozilla/5.0' } -UseBasicParsing -ErrorAction Stop
-            $html = $ddgResp.Content
-            if ($html -match 'https?://(?:www\.)?qobuz\.com[^\s"<>]+') {
-                $targetUrl = $matches[0]
-                Write-Verbose "DuckDuckGo quick regex selected: $targetUrl"
+            # Use the artist-only query for Google CSE
+            $csq = [uri]::EscapeDataString($searchQueryGoogle)
+            $num = 10
+            # Hint the search by country based on configured locale (e.g., en-US -> us)
+            $country = if ($configuredLocale -and ($configuredLocale -match '-')) { ($configuredLocale.Split('-')[-1]).ToLower() } else { $PSCulture.Split('-')[-1].ToLower() }
+            $apiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=$num&gl=$country"
+            $apiResp = Invoke-RestMethod -Uri $apiUrl -Method Get -ErrorAction Stop
+            Write-Verbose "Google CSE API URL: $apiUrl"
+            $count = 0
+            if ($apiResp.items) { $count = $apiResp.items.Count }
+            Write-Verbose ("Google CSE returned {0} items" -f $count)
+            if ($apiResp.items -and $apiResp.items.Count -gt 0) {
+                foreach ($it in $apiResp.items) {
+                    Write-Verbose ("CSE item: {0}" -f $it.link)
+                    if ($it.link -match '/interpreter/') { $targetUrl = $it.link; break }
+                }
+                if (-not $targetUrl) { $targetUrl = $apiResp.items[0].link }
+                Write-Verbose "Google CSE selected url: $targetUrl"
             }
             else {
-                # Parse the DuckDuckGo HTML to find redirect links like //duckduckgo.com/l/?uddg=<encoded-url>
+                Write-Verbose "Google CSE returned 0 items; retrying with siteSearch restriction..."
                 try {
-                    $ddgDoc = ConvertFrom-Html -Content $html
-                    $ddgAnchors = $ddgDoc.SelectNodes('//a[contains(@href,"uddg=") or contains(@href,"qobuz.com")]')
-                    if ($ddgAnchors) {
-                        foreach ($a in $ddgAnchors) {
-                            $href = $a.GetAttributeValue('href','')
-                            if (-not $href) { continue }
-                            $candidate = $null
-                            # Extract encoded uddg param (preferred) and decode
-                            $m = [regex]::Match($href, 'uddg=([^&]+)')
-                            if ($m.Success) {
-                                try {
-                                    $candidate = [System.Web.HttpUtility]::HtmlDecode([uri]::UnescapeDataString($m.Groups[1].Value))
-                                }
-                                catch {
-                                    $candidate = [System.Web.HttpUtility]::HtmlDecode($m.Groups[1].Value)
-                                }
-                            }
-                            elseif ($href -match '^//') { $candidate = "https:$href" }
-                            else { $candidate = [System.Web.HttpUtility]::HtmlDecode($href) }
-
-                            if ($candidate) { Write-Verbose "DuckDuckGo candidate: $candidate" }
-                            if ($candidate -and $candidate -match 'qobuz\.com/interpreter/') { $targetUrl = $candidate; break }
+                    $siteApiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=$num&gl=$country&siteSearch=qobuz.com"
+                    $apiResp2 = Invoke-RestMethod -Uri $siteApiUrl -Method Get -ErrorAction Stop
+                    $count2 = 0
+                    if ($apiResp2.items) { $count2 = $apiResp2.items.Count }
+                    Write-Verbose ("Google CSE siteSearch returned {0} items" -f $count2)
+                    if ($apiResp2.items -and $apiResp2.items.Count -gt 0) {
+                        foreach ($it2 in $apiResp2.items) {
+                            Write-Verbose ("CSE siteSearch item: {0}" -f $it2.link)
+                            if ($it2.link -match '/interpreter/') { $targetUrl = $it2.link; break }
                         }
+                        if (-not $targetUrl) { $targetUrl = $apiResp2.items[0].link }
+                        Write-Verbose "Google CSE siteSearch selected url: $targetUrl"
                     }
                 }
                 catch {
-                    Write-Verbose "Failed to parse DuckDuckGo HTML: $_"
-                }
-                # Try direct Google HTML search (faster/more reliable for this use-case)
-                try {
-                    $hl = if ($configuredLocale -and ($configuredLocale -match '-')) { ($configuredLocale.Split('-')[0]).ToLower() } else { $PSCulture.Split('-')[0].ToLower() }
-                    # Use the artist-only query for Google HTML search
-                    $gUrl = "https://www.google.com/search?q=$([uri]::EscapeDataString($searchQueryGoogle))&num=10&hl=$hl"
-                    Write-Verbose "Google HTML search URL: $gUrl"
-                    $gResp = Invoke-WebRequest -Uri $gUrl -Headers @{ 'User-Agent' = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } -UseBasicParsing -ErrorAction Stop
-                    $gHtml = $gResp.Content
-                        $gDoc = ConvertFrom-Html -Content $gHtml
-                        # Select links and extract the real URL from '/url?q=' results
-                        $gLinks = $gDoc.SelectNodes('//a[@href]')
-                        if ($gLinks) {
-                            foreach ($l in $gLinks) {
-                                $href = $l.GetAttributeValue('href','')
-                                if (-not $href) { continue }
-                                $url = $null
-                                $m = [regex]::Match($href, '/url\?q=(https?://[^&]+)')
-                                if ($m.Success) { $url = [uri]::UnescapeDataString($m.Groups[1].Value) }
-                                elseif ($href -match '^https?://') { $url = $href }
-                                else { continue }
-                                Write-Verbose "Google result link: $url"
-                                if ($url -match 'qobuz\.com/interpreter/') { $targetUrl = $url; break }
-                            }
-                        }
-                }
-                catch {
-                    Write-Verbose "Google HTML search failed: $_"
+                    Write-Verbose "Google CSE siteSearch retry failed: $_"
                 }
             }
         }
         catch {
-            Write-Verbose "DuckDuckGo search failed: $_"
+            Write-Verbose "Google CSE failed: $_"
         }
     }
+
+    # DuckDuckGo HTML fallback (disabled for now - kept for future reference)
+    # if (-not $targetUrl) {
+    #     try {
+    #         $ddgUrl = "https://duckduckgo.com/html?q=$([uri]::EscapeDataString($searchQueryDDG))"
+    #         $ddgResp = Invoke-WebRequest -Uri $ddgUrl -Headers @{ 'User-Agent' = 'Mozilla/5.0' } -UseBasicParsing -ErrorAction Stop
+    #         $html = $ddgResp.Content
+    #         if ($html -match 'https?://(?:www\.)?qobuz\.com[^\s"<>]+') {
+    #             $targetUrl = $matches[0]
+    #             Write-Verbose "DuckDuckGo quick regex selected: $targetUrl"
+    #         }
+    #         else {
+    #             # Parse the DuckDuckGo HTML to find redirect links like //duckduckgo.com/l/?uddg=<encoded-url>
+    #             try {
+    #                 $ddgDoc = ConvertFrom-Html -Content $html
+    #                 $ddgAnchors = $ddgDoc.SelectNodes('//a[contains(@href,"uddg=") or contains(@href,"qobuz.com")]')
+    #                 if ($ddgAnchors) {
+    #                     foreach ($a in $ddgAnchors) {
+    #                         $href = $a.GetAttributeValue('href','')
+    #                         if (-not $href) { continue }
+    #                         $candidate = $null
+    #                         # Extract encoded uddg param (preferred) and decode
+    #                         $m = [regex]::Match($href, 'uddg=([^&]+)')
+    #                         if ($m.Success) {
+    #                             try {
+    #                                 $candidate = [System.Web.HttpUtility]::HtmlDecode([uri]::UnescapeDataString($m.Groups[1].Value))
+    #                             }
+    #                             catch {
+    #                                 $candidate = [System.Web.HttpUtility]::HtmlDecode($m.Groups[1].Value)
+    #                             }
+    #                         }
+    #                         elseif ($href -match '^//') { $candidate = "https:$href" }
+    #                         else { $candidate = [System.Web.HttpUtility]::HtmlDecode($href) }
+    #
+    #                         if ($candidate) { Write-Verbose "DuckDuckGo candidate: $candidate" }
+    #                         if ($candidate -and $candidate -match 'qobuz\.com/interpreter/') { $targetUrl = $candidate; break }
+    #                     }
+    #                 }
+    #             }
+    #             catch {
+    #                 Write-Verbose "Failed to parse DuckDuckGo HTML: $_"
+    #             }
+    #         }
+    #     }
+    #     catch {
+    #         Write-Verbose "DuckDuckGo search failed: $_"
+    #     }
+    # }
 
                 # If Google HTML didn't find results, fall back to CSE when configured
                 if (-not $targetUrl -and $gApiKey -and $gCse) {
