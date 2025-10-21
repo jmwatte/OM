@@ -31,20 +31,40 @@
     If specified, updates both track numbers and total track count, overwriting any existing track numbers.
 
 .EXAMPLE
-    Add-OMDiscNumbers -baseFolder "D:\Music\Rush - Moving Pictures (2011)" -tracks
-    Updates only track numbers for all audio files in the album folder.
+    Add-OMDiscNumbers -baseFolder "D:\Music\Album" -tracks
+    Updates track count for all files and sets track numbers only for files that don't have them (track=0).
 
 .EXAMPLE
-    Add-OMDiscNumbers -baseFolder "D:\Music\Pink Floyd - The Wall" -discs -tracks
-    Updates both disc and track numbers for a multi-disc album, with numbers formatted based on total counts.
+    Add-OMDiscNumbers -baseFolder "D:\Music\Album" -forceTracks
+    Updates track count and renumbers all tracks sequentially, overwriting any existing track numbers.
 
 .EXAMPLE
-    Add-OMDiscNumbers -baseFolder "D:\Music\Beatles Box Set" -discs -tracks -WhatIf
+    Add-OMDiscNumbers -baseFolder "D:\Music\Pink Floyd - The Wall" -discs
+    Updates disc count for a multi-disc album and sets disc numbers only for discs that don't have them.
+
+.EXAMPLE
+    Add-OMDiscNumbers -baseFolder "D:\Music\Pink Floyd - The Wall" -forceDiscs
+    Updates disc count and renumbers all discs sequentially, overwriting any existing disc numbers.
+
+.EXAMPLE
+    Add-OMDiscNumbers -baseFolder "D:\Music\Box Set" -discs -tracks
+    Updates disc and track counts, preserving existing numbers but setting them where missing.
+
+.EXAMPLE
+    Add-OMDiscNumbers -baseFolder "D:\Music\Box Set" -forceDiscs -forceTracks
+    Completely renumbers discs and tracks, overwriting all existing numbers.
+
+.EXAMPLE
+    Add-OMDiscNumbers -baseFolder "D:\Music\Album" -discs -forceTracks
+    Preserves existing disc numbers (setting if missing) but forces track renumbering.
+
+.EXAMPLE
+    Add-OMDiscNumbers -baseFolder "D:\Music\Album" -discs -tracks -WhatIf
     Shows what changes would be made without actually modifying any files.
 
 .EXAMPLE
-    Add-OMDiscNumbers -baseFolder "D:\Music\Album" -discs -tracks -Verbose
-    Updates numbers with detailed progress output showing each file being processed.
+    Add-OMDiscNumbers -baseFolder "D:\Music\Album" -forceDiscs -forceTracks -Verbose
+    Renumbers everything with detailed progress output showing each file being processed.
 
 .NOTES
     Requires TagLib# for audio file tag manipulation.
