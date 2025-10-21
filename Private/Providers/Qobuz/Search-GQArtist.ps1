@@ -38,7 +38,11 @@ function Search-GQArtist {
     # (URL locale not needed for this quick web search)
 
     # Prefer qobuz interpreter pages for artists
-        $searchQuery = "site:qobuz.com `"$Query`""
+    # For DuckDuckGo we still hint site:qobuz.com to prioritize qobuz results.
+    $searchQueryDDG = "site:qobuz.com `"$Query`""
+    # For Google (HTML and CSE) prefer searching the artist name only (no site: filter)
+    # This helps Google return qobuz interpreter pages when configured to search qobuz.
+    $searchQueryGoogle = "`"$Query`""
     $targetUrl = $null
 
     # Try Google Custom Search API first (if configured via config or env)
@@ -53,7 +57,7 @@ function Search-GQArtist {
     # DuckDuckGo HTML fallback
     if (-not $targetUrl) {
         try {
-            $ddgUrl = "https://duckduckgo.com/html?q=$([uri]::EscapeDataString($searchQuery))"
+            $ddgUrl = "https://duckduckgo.com/html?q=$([uri]::EscapeDataString($searchQueryDDG))"
             $ddgResp = Invoke-WebRequest -Uri $ddgUrl -Headers @{ 'User-Agent' = 'Mozilla/5.0' } -UseBasicParsing -ErrorAction Stop
             $html = $ddgResp.Content
             if ($html -match 'https?://(?:www\.)?qobuz\.com[^\s"<>]+') {
@@ -94,7 +98,8 @@ function Search-GQArtist {
                 # Try direct Google HTML search (faster/more reliable for this use-case)
                 try {
                     $hl = if ($configuredLocale -and ($configuredLocale -match '-')) { ($configuredLocale.Split('-')[0]).ToLower() } else { $PSCulture.Split('-')[0].ToLower() }
-                    $gUrl = "https://www.google.com/search?q=$([uri]::EscapeDataString($searchQuery))&num=10&hl=$hl"
+                    # Use the artist-only query for Google HTML search
+                    $gUrl = "https://www.google.com/search?q=$([uri]::EscapeDataString($searchQueryGoogle))&num=10&hl=$hl"
                     Write-Verbose "Google HTML search URL: $gUrl"
                     $gResp = Invoke-WebRequest -Uri $gUrl -Headers @{ 'User-Agent' = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } -UseBasicParsing -ErrorAction Stop
                     $gHtml = $gResp.Content
@@ -128,7 +133,8 @@ function Search-GQArtist {
                 # If Google HTML didn't find results, fall back to CSE when configured
                 if (-not $targetUrl -and $gApiKey -and $gCse) {
                     try {
-                        $csq = [uri]::EscapeDataString($searchQuery)
+                        # Use the artist-only query for Google CSE as well
+                        $csq = [uri]::EscapeDataString($searchQueryGoogle)
                         $num = 10
                         # Hint the search by country based on configured locale (e.g., en-US -> us)
                         $country = if ($configuredLocale -and ($configuredLocale -match '-')) { ($configuredLocale.Split('-')[-1]).ToLower() } else { $PSCulture.Split('-')[-1].ToLower() }
