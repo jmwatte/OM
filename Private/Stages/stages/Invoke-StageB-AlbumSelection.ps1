@@ -113,7 +113,7 @@ function Invoke-StageB-AlbumSelection {
     $page = 1
     $pageSize = 25
     $mastersOnlyMode = $true  # Default for Discogs
-    $albumsForArtist = @($CachedAlbums)
+    $albumsForArtist = @($CachedAlbums) | Where-Object {$_ -ne $null}  # Ensure array
 
 
 
@@ -156,7 +156,7 @@ function Invoke-StageB-AlbumSelection {
             }
 
             $albumsForArtist = Invoke-ProviderSearchAlbums @searchAlbumsParams
-            $albumsForArtist = @($albumsForArtist)  # Ensure array
+            $albumsForArtist = @($albumsForArtist) | Where-Object {$_ -ne $null}  # Ensure array
         
             Write-Verbose "Smart search returned: $($albumsForArtist.Count) albums"
             if ($albumsForArtist.Count -gt 0) {
@@ -179,7 +179,8 @@ function Invoke-StageB-AlbumSelection {
                 Write-Verbose "Fetching all albums for artist..."
                 try { 
                     $CachedAlbums = Invoke-ProviderGetAlbums -Provider $Provider -ArtistId $ProviderArtist.id -AlbumType 'Album'
-                    $CachedAlbums = @($CachedAlbums)  # Ensure array
+                    $CachedAlbums = @($CachedAlbums) |Where-Object {$_ -ne $null}
+                     # Ensure array
                     Write-Host "✓ Fetched $($CachedAlbums.Count) albums" -ForegroundColor Green
                 }
                 catch { 
@@ -189,17 +190,82 @@ function Invoke-StageB-AlbumSelection {
             }
         
             Write-Verbose "Using all cached albums ($($CachedAlbums.Count) albums)"
-            $albumsForArtist = $CachedAlbums
+            if ($null -eq $CachedAlbums -or $CachedAlbums.Count -eq 0) {
+                Write-Verbose "Cache is empty or has no items (Count: $($CachedAlbums.Count))"
+                Write-Verbose "Cache type: $(if ($null -ne $CachedAlbums) { $CachedAlbums.GetType().FullName } else { 'null' })"
+                $albumsForArtist = @()
+            }
+            else {
+                Write-Verbose "Cache contents first item: $(if ($CachedAlbums[0]) { $CachedAlbums[0] | ConvertTo-Json -Compress } else { 'null' })"
+                $albumsForArtist = $CachedAlbums
+            }
             
             # Filter to most likely matches based on album title similarity
-            if ($albumsForArtist.Count -gt 0) {
+            if ($null -ne $albumsForArtist -and $albumsForArtist.Count -gt 0) {
                 Write-Host "Filtering albums by similarity to '$AlbumName'..." -ForegroundColor Cyan
+                Write-Verbose "Albums before filtering: $($albumsForArtist.Count)"
+                # wait till usere input a key
+                # Read-Host "Press Enter to continue..."
+                # Normalize to array so .Count works reliably
+                $albumsForArtist = @($albumsForArtist)
+
+                # Diagnostic: log count and a sample of types
                 
+                # Write-Verbose("album1 is $($albumsForArtist[0].GetType().FullName)")
+                # Diagnostic: log count and a sample of types
+                # Diagnostic: log count and a sample of types
+                Write-Verbose ("Albums fetched: {0}" -f $albumsForArtist.Count)
+                
+                # Add more defensive checks for type information
+                if ($null -ne $albumsForArtist -and $albumsForArtist.Count -gt 0) {
+                    $typeInfo = @()
+                    foreach ($album in ($albumsForArtist | Select-Object -First 10)) {
+                        if ($null -ne $album) {
+                            try {
+                                $typeInfo += $album.GetType().FullName
+                            }
+                            catch {
+                                $typeInfo += "Unable to get type: $($Error[0].Exception.Message)"
+                            }
+                        }
+                        else {
+                            $typeInfo += "null"
+                        }
+                    }
+                    
+                    if ($typeInfo.Count -gt 0) {
+                        Write-Verbose ("Album item types (first 10): {0}" -f ($typeInfo -join ', '))
+                    }
+                    else {
+                        Write-Verbose "No valid album types found in the first 10 items"
+                    }
+                    
+                    # Add debug information about the first album
+                    if ($null -ne $albumsForArtist[0]) {
+                        Write-Verbose "First album content: $($albumsForArtist[0] | ConvertTo-Json -Depth 1 -Compress)"
+                    }
+                } 
+                else {
+                    Write-Verbose "No albums or empty album array to check types"
+                }
+
                 # Calculate similarity scores and filter
-                $albumsWithSimilarity = $albumsForArtist | ForEach-Object {
-                    $similarity = Get-StringSimilarity-Jaccard -String1 $AlbumName -String2 $_.name
-                    [PSCustomObject]@{
-                        Album      = $_
+                # Calculate similarity scores and filter
+                $albumsWithSimilarity = @()
+                foreach ($candidate in $albumsForArtist) {
+                    # Use Get-IfExists to safely read 'name'
+                    $cName = Get-IfExists -target $candidate -path 'name'
+                    if (-not $cName) {
+                        Write-Verbose ("Skipping album item without 'name' property. Type: {0}. Value: {1}" -f ($candidate.GetType().FullName), ($candidate | ConvertTo-Json -Depth 2 -ErrorAction SilentlyContinue))
+                        continue
+                    }
+
+                    # Optionally trim HTML or decode entities if needed
+                    $cName = $cName.ToString().Trim()
+
+                    $similarity = Get-StringSimilarity-Jaccard -String1 $AlbumName -String2 $cName
+                    $albumsWithSimilarity += [PSCustomObject]@{
+                        Album      = $candidate
                         Similarity = $similarity
                     }
                 }
@@ -207,6 +273,7 @@ function Invoke-StageB-AlbumSelection {
                 # Filter to albums with similarity >= 0.3 or top 20 most similar (whichever is larger)
                 $minSimilarity = 0.3
                 $maxResults = 20
+                write-host "----> $($albumsForArtist[0])"
                 $filteredAlbums = @(
                     $albumsWithSimilarity | 
                     Where-Object { $_.Similarity -ge $minSimilarity } | 
@@ -236,9 +303,10 @@ function Invoke-StageB-AlbumSelection {
     
         # Normalize to array so .Count works reliably
         $albumsForArtist = @($albumsForArtist)
-    
+   
         # Handle no albums found
-        if (-not $albumsForArtist -or $albumsForArtist.Count -eq 0) {
+        if ($null -eq $albumsForArtist -or $albumsForArtist.Count -eq 0) {
+            Write-Verbose "No albums found - albumsForArtist is $(if ($null -eq $albumsForArtist) { 'null' } else { 'empty array' })"
             Write-Host "No albums found for artist id $($ProviderArtist.id)."
         
             if ($NonInteractive) {
