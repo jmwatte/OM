@@ -384,8 +384,33 @@ function Get-QAlbumTracks {
             }
 
             $dataGtm = $node.SelectSingleNode(".//div[contains(@class,'track')and @data-track]").GetAttributes('data-gtm').value  
-            $categoryGenre = Get-GtmProductField -GtmRaw $dataGtm  -FieldName 'category'
-            $subCategoryGenre = Get-GtmProductField -GtmRaw $dataGtm  -FieldName 'subCategory'
+           
+           
+           
+            # Extract genres from about section using XPath (prioritize this as it respects locale)
+            $categoryGenre = $null
+            $subCategoryGenre = $null
+            $genreContainer = $doc.SelectSingleNode('//*[@id="about"]/ul[2]/li[4]')
+            if ($genreContainer -and $genreContainer.InnerText -match 'genre:') {
+                $genreLinks = $genreContainer.SelectNodes('./a')
+                if ($genreLinks) {
+                    $htmlGenres = @($genreLinks | ForEach-Object { $_.InnerText.Trim() } | Where-Object { $_ })
+                    if ($htmlGenres.Count -gt 0) {
+                        $categoryGenre = $htmlGenres[0]
+                        if ($htmlGenres.Count -gt 1) {
+                            $subCategoryGenre = $htmlGenres[1]
+                        }
+                    }
+                }
+            }
+
+            # Fallback: If no genres found in HTML, try GTM data (though it may be in French)
+            if (-not $categoryGenre) {
+                $categoryGenre = Get-GtmProductField -GtmRaw $dataGtm -FieldName 'category'
+            }
+            if (-not $subCategoryGenre) {
+                $subCategoryGenre = Get-GtmProductField -GtmRaw $dataGtm -FieldName 'subCategory'
+            }
             
             # Extract additional metadata from data-track-v2 (label, quality, etc.)
             $dataTrackV2 = $node.SelectSingleNode(".//div[contains(@class,'track')and @data-track]").GetAttributes('data-track-v2').value
