@@ -39,7 +39,7 @@ function Get-OMTags {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
-        [string]$Path,
+        [object]$Path,
         
         [switch]$IncludeComposer,
         
@@ -181,13 +181,41 @@ function Get-OMTags {
             # Directory - scan for audio files, excluding system/library folders and non-audio files
             $files = Get-ChildItem -LiteralPath $Path -File -Recurse | 
                      Where-Object { 
-                         $_.Extension.ToLower() -in $supportedExtensions -and
-                         $_.FullName -notlike "*\lib\*" -and
-                         $_.FullName -notlike "*\bin\*" -and
-                         $_.FullName -notlike "*\.git\*"
+                         $_.Extension.ToLower() -in $supportedExtensions #-and
+                        #  $_.FullName -notlike "*\lib\*" -and
+                        #  $_.FullName -notlike "*\bin\*" -and
+                        #  $_.FullName -notlike "*\.git\*"
                      } | 
                      Select-Object -ExpandProperty FullName
-        } else {
+        } 
+        #if $path is an array of paths
+        elseif ($Path -is [System.Collections.IEnumerable]) {
+            $files = @()
+            foreach ($p in $Path) {
+                if (Test-Path -LiteralPath $p -PathType Leaf) {
+                    $fileExtension = [System.IO.Path]::GetExtension($p).ToLower()
+                    if ($excludedExtensions -contains $fileExtension) {
+                        Write-Verbose "Skipping non-audio file: $(Split-Path $p -Leaf)"
+                        continue
+                    } elseif ($supportedExtensions -contains $fileExtension) {
+                        $files += $p
+                    } else {
+                        Write-Warning "File '$p' is not a supported audio format"
+                        continue
+                    }
+                } elseif (Test-Path -LiteralPath $p -PathType Container) {
+                    $dirFiles = Get-ChildItem -LiteralPath $p -File -Recurse | 
+                                Where-Object { 
+                                    $_.Extension.ToLower() -in $supportedExtensions 
+                                } | 
+                                Select-Object -ExpandProperty FullName
+                    $files += $dirFiles
+                } else {
+                    Write-Warning "Path '$p' does not exist or is not accessible."
+                }
+            }
+        }
+        else {
             Write-Warning "Path '$Path' does not exist or is not accessible."
             return @()
         }
