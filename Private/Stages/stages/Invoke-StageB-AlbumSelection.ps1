@@ -407,7 +407,8 @@ function Invoke-StageB-AlbumSelection {
         }
         
         
-        Write-Host "$Provider Albums for artist $($ProviderArtist.name):"
+                $ThisManyAlbums = $albumsForArtist.Count
+        Write-Host "$ThisManyAlbums $Provider albums for artist $($ProviderArtist.name):"
         Write-Host "for local album: $($AlbumName) (year: $Year)"
         
         

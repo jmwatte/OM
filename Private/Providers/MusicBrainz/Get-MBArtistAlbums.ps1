@@ -55,7 +55,7 @@ function Get-MBArtistAlbums {
             if (Get-IfExists $release 'date') {
                 $releaseDate = $release.date
             }
-            elseif (Get-IfExists $release 'release-events' -and $release.'release-events'.Count -gt 0) {
+            elseif (Get-IfExists $release 'release-events') {
                 $firstEvent = $release.'release-events'[0]
                 if (Get-IfExists $firstEvent 'date') {
                     $releaseDate = $firstEvent.date
@@ -67,7 +67,7 @@ function Get-MBArtistAlbums {
             if ($releaseDate -and $releaseDate -match '^(\d{4})') {
                 $year = [int]$matches[1]
             }
-            
+            else{$year="0000"}
             # Get country
             $country = if (Get-IfExists $release 'country') { 
                 " [$($release.country)]" 

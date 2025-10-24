@@ -153,53 +153,53 @@ function Search-GQArtist {
     # }
 
                 # If Google HTML didn't find results, fall back to CSE when configured
-                if (-not $targetUrl -and $gApiKey -and $gCse) {
-                    try {
-                        # Use the artist-only query for Google CSE as well
-                        $csq = [uri]::EscapeDataString($searchQueryGoogle)
-                        $num = 10
-                        # Hint the search by country based on configured locale (e.g., en-US -> us)
-                        $country = if ($configuredLocale -and ($configuredLocale -match '-')) { ($configuredLocale.Split('-')[-1]).ToLower() } else { $PSCulture.Split('-')[-1].ToLower() }
-                        $apiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=$num&gl=$country"
-                        $apiResp = Invoke-RestMethod -Uri $apiUrl -Method Get -ErrorAction Stop
-                        Write-Verbose "Google CSE API URL: $apiUrl"
-                        $count = 0
-                        if ($apiResp.items) { $count = $apiResp.items.Count }
-                        Write-Verbose ("Google CSE returned {0} items" -f $count)
-                        if ($apiResp.items -and $apiResp.items.Count -gt 0) {
-                            foreach ($it in $apiResp.items) {
-                                Write-Verbose ("CSE item: {0}" -f $it.link)
-                                if ($it.link -match '/interpreter/') { $targetUrl = $it.link; break }
-                            }
-                            if (-not $targetUrl) { $targetUrl = $apiResp.items[0].link }
-                            Write-Verbose "Google CSE selected url: $targetUrl"
-                        }
-                        else {
-                            Write-Verbose "Google CSE returned 0 items; retrying with siteSearch restriction..."
-                            try {
-                                $siteApiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=$num&gl=$country&siteSearch=qobuz.com"
-                                $apiResp2 = Invoke-RestMethod -Uri $siteApiUrl -Method Get -ErrorAction Stop
-                                $count2 = 0
-                                if ($apiResp2.items) { $count2 = $apiResp2.items.Count }
-                                Write-Verbose ("Google CSE siteSearch returned {0} items" -f $count2)
-                                if ($apiResp2.items -and $apiResp2.items.Count -gt 0) {
-                                    foreach ($it2 in $apiResp2.items) {
-                                        Write-Verbose ("CSE siteSearch item: {0}" -f $it2.link)
-                                        if ($it2.link -match '/interpreter/') { $targetUrl = $it2.link; break }
-                                    }
-                                    if (-not $targetUrl) { $targetUrl = $apiResp2.items[0].link }
-                                    Write-Verbose "Google CSE siteSearch selected url: $targetUrl"
-                                }
-                            }
-                            catch {
-                                Write-Verbose "Google CSE siteSearch retry failed: $_"
-                            }
-                        }
-                    }
-                    catch {
-                        Write-Verbose "Google CSE failed: $_"
-                    }
-                }
+                # if (-not $targetUrl -and $gApiKey -and $gCse) {
+                #     try {
+                #         # Use the artist-only query for Google CSE as well
+                #         $csq = [uri]::EscapeDataString($searchQueryGoogle)
+                #         $num = 10
+                #         # Hint the search by country based on configured locale (e.g., en-US -> us)
+                #         $country = if ($configuredLocale -and ($configuredLocale -match '-')) { ($configuredLocale.Split('-')[-1]).ToLower() } else { $PSCulture.Split('-')[-1].ToLower() }
+                #         $apiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=$num&gl=$country"
+                #         $apiResp = Invoke-RestMethod -Uri $apiUrl -Method Get -ErrorAction Stop
+                #         Write-Verbose "Google CSE API URL: $apiUrl"
+                #         $count = 0
+                #         if ($apiResp.items) { $count = $apiResp.items.Count }
+                #         Write-Verbose ("Google CSE returned {0} items" -f $count)
+                #         if ($apiResp.items -and $apiResp.items.Count -gt 0) {
+                #             foreach ($it in $apiResp.items) {
+                #                 Write-Verbose ("CSE item: {0}" -f $it.link)
+                #                 if ($it.link -match '/interpreter/') { $targetUrl = $it.link; break }
+                #             }
+                #             if (-not $targetUrl) { $targetUrl = $apiResp.items[0].link }
+                #             Write-Verbose "Google CSE selected url: $targetUrl"
+                #         }
+                #         else {
+                #             Write-Verbose "Google CSE returned 0 items; retrying with siteSearch restriction..."
+                #             try {
+                #                 $siteApiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=$num&gl=$country&siteSearch=qobuz.com"
+                #                 $apiResp2 = Invoke-RestMethod -Uri $siteApiUrl -Method Get -ErrorAction Stop
+                #                 $count2 = 0
+                #                 if ($apiResp2.items) { $count2 = $apiResp2.items.Count }
+                #                 Write-Verbose ("Google CSE siteSearch returned {0} items" -f $count2)
+                #                 if ($apiResp2.items -and $apiResp2.items.Count -gt 0) {
+                #                     foreach ($it2 in $apiResp2.items) {
+                #                         Write-Verbose ("CSE siteSearch item: {0}" -f $it2.link)
+                #                         if ($it2.link -match '/interpreter/') { $targetUrl = $it2.link; break }
+                #                     }
+                #                     if (-not $targetUrl) { $targetUrl = $apiResp2.items[0].link }
+                #                     Write-Verbose "Google CSE siteSearch selected url: $targetUrl"
+                #                 }
+                #             }
+                #             catch {
+                #                 Write-Verbose "Google CSE siteSearch retry failed: $_"
+                #             }
+                #         }
+                #     }
+                #     catch {
+                #         Write-Verbose "Google CSE failed: $_"
+                #     }
+                # }
 
     # If nothing found, return empty result
     if (-not $targetUrl) {

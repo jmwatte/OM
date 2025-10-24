@@ -159,7 +159,7 @@ function Invoke-ProviderSearchAlbums {
                                 else { $ArtistName }
                                 
                                 # Get release date from release.date
-                                $release_date = if (Get-IfExists $release 'date') { $release.date } else { $null }
+                                $release_date = if (Get-IfExists $release 'date') { $release.date } else { "0000" }
                                 
                                 [PSCustomObject]@{
                                     id           = $release.id

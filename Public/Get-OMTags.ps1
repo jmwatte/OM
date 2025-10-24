@@ -236,7 +236,7 @@ function Get-OMTags {
                     Write-Verbose "Skipping large file: $(Split-Path $file -Leaf) ($([math]::Round($fileInfo.Length / 1MB, 1)) MB)"
                     continue
                 }
-                $fileObj = [TagLib.File]::Create($file)
+                $fileObj = [TagLib.File]::Create($fileInfo.FullName)
                 #$fileObj = $null
                 try {
                     $tag = $fileObj.Tag

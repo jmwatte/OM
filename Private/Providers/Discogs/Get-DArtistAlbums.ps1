@@ -78,9 +78,9 @@ function Get-DArtistAlbums {
                             $includeRelease = $false
                         }
                         
-                        # If MastersOnly, skip non-master releases
+                        # If MastersOnly=false, skip master releases
                         if (-not $MastersOnly -and $releaseType -eq 'master') {
-                            Write-Verbose "Skipping non-master release: $($release.title)"
+                            Write-Verbose "Skipping master release: $($release.title)"
                             $includeRelease = $false
                         }
                         if ($MastersOnly -and $releaseType -ne 'master') {
