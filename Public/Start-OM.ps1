@@ -892,6 +892,10 @@ function Start-OM {
                                 if ($reverseSource) { $param.Reverse = $true }
                                 $pairedTracks = Set-Tracks @param
                                 $refreshTracks = $false
+                                if ($sortMethod -eq 'Manual') {
+                                    # Reset sort method to 'byOrder' after manual selection to prevent re-prompting on refreshes
+                                    $sortMethod = 'byOrder'
+                                }
 
                                 if ($goC -and -not $goCDisplayShown) {
                                     Clear-Host

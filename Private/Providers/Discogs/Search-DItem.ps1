@@ -29,6 +29,12 @@ function Search-DItem {
         throw "Only 'artist' type is currently supported for Discogs search."
     }
 
+
+
+
+    
+
+
     try {
         # Use Invoke-DiscogsRequest which handles authentication automatically
         $escapedQuery = [uri]::EscapeDataString($Query)
@@ -59,6 +65,10 @@ function Search-DItem {
     }
     catch {
         Write-Warning "Discogs artist search failed: $_"
+        if ($_.Exception.Message -eq "The property 'Discogs' cannot be found on this object. Verify that the property exists.") {
+         
+            Write-Warning "It seems the Discogs module is not properly installed or configured. Please ensure you have set up the Discogs API credentials."
+         }
         return [PSCustomObject]@{
             artists = [PSCustomObject]@{
                 items = @()

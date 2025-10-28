@@ -13,9 +13,10 @@ function Select-matches {
         foreach ($audioFile in $AudioFiles) {
             $audioName = if ($audioFile.Name) { $audioFile.Name } else { Split-Path -Leaf $audioFile.FilePath }
             
-            $spotifyTrack = $SpotifyTracks | Out-GridView -Title "Select provider track for audio file: $audioName" -PassThru
+            $selected = $SpotifyTracks|Select-Object -Property Name, id | Out-GridView  -Title "Select provider track for audio file: $audioName" -PassThru
             
-            if ($spotifyTrack) {
+           if ($selected) {
+                $spotifyTrack = $SpotifyTracks | Where-Object { $_.id -eq $selected.id }
                 $pairedTracks += [PSCustomObject]@{
                     SpotifyTrack = $spotifyTrack
                     AudioFile    = $audioFile

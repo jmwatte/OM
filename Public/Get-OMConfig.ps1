@@ -175,6 +175,15 @@ function Get-OMConfig {
         if ($provData) { return [PSCustomObject]$provData }
         else {
             Write-Warning "No configuration found for provider: $Provider"
+            if ($Provider -eq 'Discogs') {
+                Write-Warning "Please ensure you have set up the Discogs API credentials."
+            }
+            elseif ($Provider -eq 'Spotify') {
+                Write-Warning "Please ensure you have set up the Spotify API credentials."
+            }
+            elseif ($Provider -eq 'Google') {
+                Write-Warning "Please ensure you have set up the Google search credentials."
+            }
             return $null
         }
     }

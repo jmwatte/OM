@@ -5,8 +5,7 @@
 Import-Module OM -Force -Verbose
 
 # Call Start-OM with the desired parameters
-cd "E:\"
-Got $(fzf) 
+som  "D:\The Beatles" -Provider Qobuz
  #start get-Qartistalbums with -ArtistId "https://www.qobuz.com/be-fr/interpreter/paul-weller/53535"
 # . .\Private\Providers\Qobuz\Search-GQArtist.ps1
 # . .\Private\QobuzLocales.ps1

@@ -34,6 +34,14 @@ function Set-OMConfig {
     
     .PARAMETER DiscogsToken
     Discogs Personal Access Token (legacy/optional - for simple token-based auth)
+     
+    .PARAMETER GoogleApiKey
+    Google API Key for accessing Google Custom Search API (used for fetching release details, track counts, or other metadata when other providers fail).
+    Obtain this from the Google Cloud Console: https://console.cloud.google.com/apis/credentials (create a project, enable the Custom Search API, and generate an API key).
+    
+    .PARAMETER GoogleCse
+    Google Custom Search Engine (CSE) ID for targeted searches (e.g., for album/track metadata).
+    Create and get this ID from: https://cse.google.com/cse/ (set up a custom search engine, note the "Search engine ID" from the setup page).
     
     .PARAMETER ConfigPath
     Optional. Custom path for config file. If not specified, uses default location.
