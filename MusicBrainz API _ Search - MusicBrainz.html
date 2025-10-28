@@ -1,0 +1,2503 @@
+<!DOCTYPE html>
+<!-- saved from url=(0050)https://musicbrainz.org/doc/MusicBrainz_API/Search -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta content="IE=edge" http-equiv="X-UA-Compatible"><meta content="width=device-width, initial-scale=1" name="viewport"><link href="https://musicbrainz.org/static/images/favicons/apple-touch-icon-57x57.png" rel="apple-touch-icon" sizes="57x57"><link href="https://musicbrainz.org/static/images/favicons/apple-touch-icon-60x60.png" rel="apple-touch-icon" sizes="60x60"><link href="https://musicbrainz.org/static/images/favicons/apple-touch-icon-72x72.png" rel="apple-touch-icon" sizes="72x72"><link href="https://musicbrainz.org/static/images/favicons/apple-touch-icon-76x76.png" rel="apple-touch-icon" sizes="76x76"><link href="https://musicbrainz.org/static/images/favicons/apple-touch-icon-114x114.png" rel="apple-touch-icon" sizes="114x114"><link href="https://musicbrainz.org/static/images/favicons/apple-touch-icon-120x120.png" rel="apple-touch-icon" sizes="120x120"><link href="https://musicbrainz.org/static/images/favicons/apple-touch-icon-144x144.png" rel="apple-touch-icon" sizes="144x144"><link href="https://musicbrainz.org/static/images/favicons/apple-touch-icon-152x152.png" rel="apple-touch-icon" sizes="152x152"><link href="https://musicbrainz.org/static/images/favicons/apple-touch-icon-180x180.png" rel="apple-touch-icon" sizes="180x180"><link href="https://musicbrainz.org/static/images/favicons/favicon-32x32.png" rel="icon" sizes="32x32" type="image/png"><link href="https://musicbrainz.org/static/images/favicons/favicon-16x16.png" rel="icon" sizes="16x16" type="image/png"><link href="https://musicbrainz.org/static/images/favicons/site.webmanifest" rel="manifest"><link href="https://musicbrainz.org/static/images/favicons/safari-pinned-tab.svg" rel="mask-icon"><link href="https://musicbrainz.org/favicon.ico" rel="shortcut icon"><meta content="#f1f1f1" name="msapplication-TileColor"><meta content="/static/images/favicons/mstile-144x144.png" name="msapplication-TileImage"><meta content="#ffffff" name="theme-color"><title>MusicBrainz API / Search - MusicBrainz</title><link href="./MusicBrainz API _ Search - MusicBrainz_files/common-0ebce5b.css" rel="stylesheet" type="text/css"><link href="https://musicbrainz.org/static/search_plugins/opensearch/musicbrainz_artist.xml" rel="search" title="MusicBrainz: Artist" type="application/opensearchdescription+xml"><link href="https://musicbrainz.org/static/search_plugins/opensearch/musicbrainz_label.xml" rel="search" title="MusicBrainz: Label" type="application/opensearchdescription+xml"><link href="https://musicbrainz.org/static/search_plugins/opensearch/musicbrainz_release.xml" rel="search" title="MusicBrainz: Release" type="application/opensearchdescription+xml"><link href="https://musicbrainz.org/static/search_plugins/opensearch/musicbrainz_track.xml" rel="search" title="MusicBrainz: Track" type="application/opensearchdescription+xml"><noscript><link href="https://static.metabrainz.org/MB/noscript-dfb70de.css" rel="stylesheet" type="text/css"/></noscript><script>Object.defineProperty(window,"__MB__",{value:Object.freeze({"DBDefs":Object.freeze({"CRITIQUEBRAINZ_SERVER":"https://critiquebrainz.org","DB_STAGING_TESTING_FEATURES":false,"DEVELOPMENT_SERVER":false,"DISABLE_IMAGE_EDITING":false,"GIT_BRANCH":"production","GIT_SHA":"2b0dab5e35","MAPBOX_ACCESS_TOKEN":"pk.eyJ1IjoibXVzaWNicmFpbnoiLCJhIjoiY203cWhwZXF1MHltNjJrb3BrZjRpZWw0MyJ9.ZWXLkOyrMfdxEVaFH_tdLw","MAPBOX_MAP_ID":"mapbox/streets-v11","MB_LANGUAGES":["de","fr","it","nl","en"],"MTCAPTCHA_PRIVATE_TEST_KEY":"[redacted]","MTCAPTCHA_PUBLIC_KEY":"MTPublic-BONLZu9KL","SENTRY_DSN_PUBLIC":"https://66ce4ddac265405f4bb80b23b4952c66@o4508558300676097.ingest.de.sentry.io/4509277087465552","STATIC_RESOURCES_LOCATION":"https://static.metabrainz.org/MB","WEB_SERVER":"musicbrainz.org","WIKITRANS_SERVER":"wiki.musicbrainz.org"}),"$c":Object.freeze({"action":{"name":"show"},"relative_uri":"/doc/MusicBrainz_API/Search","req":{"method":"GET","query_params":{},"uri":"https://musicbrainz.org/doc/MusicBrainz_API/Search"},"session":{},"stash":{"current_language":"en","server_languages":[{"native_language":"Deutsch","name":"de","id":null,"native_territory":null},{"native_language":"English","native_territory":null,"name":"en","id":null},{"name":"fr","id":null,"native_territory":null,"native_language":"français"},{"native_language":"italiano","native_territory":null,"name":"it","id":null},{"native_territory":null,"name":"nl","id":null,"native_language":"Nederlands"}]},"user":null}),"jedData":Object.seal({"en":null,"locale":"en"})})})</script><script src="./MusicBrainz API _ Search - MusicBrainz_files/public-path-a9743e6.js.download"></script><script src="./MusicBrainz API _ Search - MusicBrainz_files/runtime-03b6d49.js.download"></script><script src="./MusicBrainz API _ Search - MusicBrainz_files/whatwg-fetch-283a729.js.download"></script><script src="./MusicBrainz API _ Search - MusicBrainz_files/vendors-62692d6.js.download"></script><script src="./MusicBrainz API _ Search - MusicBrainz_files/common-chunks-6f0bb51.js.download"></script><script src="./MusicBrainz API _ Search - MusicBrainz_files/jquery-global-0aec8c5.js.download"></script><script src="./MusicBrainz API _ Search - MusicBrainz_files/sentry-6ed14f5.js.download"></script></head><body><div class="header"><a class="logo" href="https://musicbrainz.org/" title="MusicBrainz"><img alt="MusicBrainz" class="logo" src="./MusicBrainz API _ Search - MusicBrainz_files/header-logo-1f7dc2a.svg"></a><div class="right"><div class="top"><div class="links-container"><ul class="menu" tabindex="-1"><li><a href="https://musicbrainz.org/login?returnto=%2Fdoc%2FMusicBrainz_API%2FSearch">Log in</a></li><li><a href="https://musicbrainz.org/register?returnto=%2Fdoc%2FMusicBrainz_API%2FSearch">Create account</a></li></ul></div><div class="search-container"><form action="https://musicbrainz.org/search" method="get"><input id="headerid-query" name="query" placeholder="Search" required="" type="text"> <select id="headerid-type" name="type"><option value="artist">Artist</option><option value="event">Event</option><option value="recording">Recording</option><option value="release">Release</option><option value="release_group">Release group</option><option value="series">Series</option><option value="work">Work</option><option value="area">Area</option><option value="instrument">Instrument</option><option value="label">Label</option><option value="place">Place</option><option value="annotation">Annotation</option><option value="tag">Tag</option><option value="cdstub">CD stub</option><option value="editor">Editor</option><option value="doc">Documentation</option></select> <input id="headerid-method" name="method" type="hidden" value="indexed"><button type="submit"><img alt="Search" class="search" src="./MusicBrainz API _ Search - MusicBrainz_files/search-52f8034.svg"></button></form></div></div><div class="bottom"><ul class="menu"><li class="about" tabindex="-1"><span class="menu-header">About us<!-- -->&nbsp;▾</span><ul style="left: -10000px;"><li><a href="https://musicbrainz.org/doc/About">About MusicBrainz</a></li><li><a href="https://metabrainz.org/sponsors">Sponsors</a></li><li><a href="https://metabrainz.org/team">Team</a></li><li><a href="https://www.redbubble.com/people/metabrainz/shop">Shop</a></li><li><a href="https://metabrainz.org/contact">Contact us</a></li><li class="separator"><a href="https://musicbrainz.org/doc/About/Data_License">Data licenses</a></li><li><a href="https://metabrainz.org/social-contract">Social contract</a></li><li><a href="https://musicbrainz.org/doc/Code_of_Conduct">Code of Conduct</a></li><li><a href="https://metabrainz.org/privacy">Privacy policy</a></li><li><a href="https://metabrainz.org/gdpr">GDPR compliance</a></li><li><a href="https://musicbrainz.org/doc/Copyright_and_DMCA_Compliance">Copyright and DMCA compliance</a></li><li><a href="https://musicbrainz.org/doc/Data_Removal_Policy">Data removal policy</a></li><li class="separator"><a href="https://musicbrainz.org/elections">Auto-editor elections</a></li><li><a href="https://musicbrainz.org/privileged">Privileged user accounts</a></li><li><a href="https://musicbrainz.org/statistics">Statistics</a></li><li><a href="https://musicbrainz.org/statistics/timeline">Timeline graph</a></li><li><a href="https://musicbrainz.org/history">MusicBrainz history</a></li></ul></li><li class="products" tabindex="-1"><span class="menu-header">Products<!-- -->&nbsp;▾</span><ul style="left: -10000px;"><li><a href="https://picard.musicbrainz.org/">MusicBrainz Picard</a></li><li><a href="https://musicbrainz.org/doc/AudioRanger">AudioRanger</a></li><li><a href="https://musicbrainz.org/doc/Mp3tag">Mp3tag</a></li><li><a href="https://musicbrainz.org/doc/Yate_Music_Tagger">Yate Music Tagger</a></li><li class="separator"><a href="https://musicbrainz.org/doc/MusicBrainz_for_Android">MusicBrainz for Android</a></li><li class="separator"><a href="https://musicbrainz.org/doc/MusicBrainz_Server">MusicBrainz Server</a></li><li><a href="https://musicbrainz.org/doc/MusicBrainz_Database">MusicBrainz Database</a></li><li class="separator"><a href="https://musicbrainz.org/doc/Developer_Resources">Developer resources</a></li><li><a href="https://musicbrainz.org/doc/MusicBrainz_API">MusicBrainz API</a></li><li><a href="https://musicbrainz.org/doc/Live_Data_Feed">Live Data Feed</a></li></ul></li><li class="search" tabindex="-1"><span class="menu-header">Search<!-- -->&nbsp;▾</span><ul style="left: -10000px;"><li><a href="https://musicbrainz.org/search">Advanced search</a></li><li><a href="https://musicbrainz.org/search/edits">Edit search</a></li><li><a href="https://musicbrainz.org/tags">Tag cloud</a></li><li><a href="https://musicbrainz.org/cdstub/browse">Top CD stubs</a></li></ul></li><li class="documentation" tabindex="-1"><span class="menu-header">Documentation<!-- -->&nbsp;▾</span><ul style="left: -10000px;"><li><a href="https://musicbrainz.org/doc/Beginners_Guide">Beginners guide</a></li><li><a href="https://musicbrainz.org/doc/Style">Style guidelines</a></li><li><a href="https://musicbrainz.org/doc/How_To">How tos</a></li><li><a href="https://musicbrainz.org/doc/Frequently_Asked_Questions">FAQs</a></li><li><a href="https://musicbrainz.org/doc/MusicBrainz_Documentation">Documentation index</a></li><li class="separator"><a href="https://musicbrainz.org/doc/Edit_Types">Edit types</a></li><li><a href="https://musicbrainz.org/relationships">Relationship types</a></li><li><a href="https://musicbrainz.org/instruments">Instrument list</a></li><li><a href="https://musicbrainz.org/genres">Genre list</a></li><li class="separator"><a href="https://musicbrainz.org/doc/Development">Development</a></li></ul></li><li class="language-selector" tabindex="-1"><span class="menu-header">English ▾</span><ul style="left: -10000px;"><li><a href="https://musicbrainz.org/set-language/de?returnto=%2Fdoc%2FMusicBrainz_API%2FSearch">Deutsch</a></li><li><strong><a href="https://musicbrainz.org/set-language/en?returnto=%2Fdoc%2FMusicBrainz_API%2FSearch">English</a></strong></li><li><a href="https://musicbrainz.org/set-language/fr?returnto=%2Fdoc%2FMusicBrainz_API%2FSearch">Français</a></li><li><a href="https://musicbrainz.org/set-language/it?returnto=%2Fdoc%2FMusicBrainz_API%2FSearch">Italiano</a></li><li><a href="https://musicbrainz.org/set-language/nl?returnto=%2Fdoc%2FMusicBrainz_API%2FSearch">Nederlands</a></li><li><a href="https://musicbrainz.org/set-language/unset?returnto=%2Fdoc%2FMusicBrainz_API%2FSearch">(reset language)</a></li><li class="separator"><a href="https://translations.metabrainz.org/projects/musicbrainz/">Help translate</a></li></ul></li></ul></div></div><script src="./MusicBrainz API _ Search - MusicBrainz_files/Menu-9072f2f.js.download" async=""></script></div><script src="./MusicBrainz API _ Search - MusicBrainz_files/supported-browser-check.js.download"></script><div class="fullwidth " id="page"><div class="wikicontent" id="content"><div class="wikidoc-search"><form action="https://musicbrainz.org/search" method="get"><input name="type" type="hidden" value="doc"><input name="query" placeholder="Search the documentation..." type="text"> <span class="buttons inline"><button type="submit">Search</button></span></form></div><h1 class="hierarchy-links"><a href="https://musicbrainz.org/doc/MusicBrainz_API">MusicBrainz API</a> / <a href="https://musicbrainz.org/doc/MusicBrainz_API/Search" style="font-weight:bold">Search</a></h1><div><div class="mw-parser-output"><table class="wikitable " style="text-align:center; background:#FFFDDF; width:100%; margin-top:0.5em; margin-bottom:0.5em;"><tbody><tr><td style="border:1px solid #ffcc00;"><b>Status:</b> This includes features to be released soon as part of the <a class="external text" href="https://blog.metabrainz.org/2025/03/18/schema-change-release-may-19-2025/" rel="nofollow">MusicBrainz 2025 Q2 schema change</a>. </td></tr></tbody></table><p>The MusicBrainz API search requests provide a way to search for MusicBrainz entities based on different sorts of queries. The results are returned in either XML (matching the <a href="https://musicbrainz.org/doc/MusicBrainz_XML_Meta_Data">MMD</a>) or JSON format, and are provided by a <a href="https://musicbrainz.org/doc/Search_Server">search server</a> built using Lucene technology. </p><p>This sections lists the parameters common to all resources. </p><table border="1" class="wikitable "><tbody><tr><td><b>type</b></td><td>Selects the entity index to be searched: annotation, area, artist, cdstub, event, instrument, label, place, recording, release, release-group, series, tag, work, url </td></tr><tr><td><b>fmt</b></td><td>Selects the representation of the results. Defaults to <code>xml</code>, but can also be set to <code>json</code>. </td></tr><tr><td><b>query</b></td><td>Lucene search query. This is mandatory </td></tr><tr><td><b>limit</b></td><td>An integer value defining how many entries should be returned. Only values between 1 and 100 (both inclusive) are allowed. If not given, this defaults to 25. </td></tr><tr><td><b>offset</b></td><td>Return search results starting at a given offset. Used for paging through more than one page of results. </td></tr><tr><td><b>dismax</b></td><td>If set to "true", switches the Solr query parser from edismax to <a class="external text" href="https://lucene.apache.org/solr/guide/6_6/the-dismax-query-parser.html" rel="nofollow">dismax</a>, which will escape certain special query syntax characters by default for ease of use. This is equivalent to switching from the "Indexed search with advanced query syntax" method to the plain "Indexed search" method on the website. Defaults to "false". </td></tr><tr><td><b>version</b></td><td><a href="https://musicbrainz.org/doc/MusicBrainz_XML_Meta_Data">MMD</a> version, defaults to 2, version 1 is no longer supported since <a class="external text" href="https://blog.metabrainz.org/2018/06/15/musicbrainz-search-overhaul/" rel="nofollow">search overhaul in 2018</a>. </td></tr></tbody></table><p><br> The query field supports the full Lucene Search syntax; you can find a detailed guide at <a class="external text" href="https://lucene.apache.org/core/7_7_2/queryparser/org/apache/lucene/queryparser/classic/package-summary.html#package.description" rel="nofollow">Lucene Search Syntax</a>. For example, you can set conditions while searching for a name with the AND operator. </p><p>Example: <a class="external text" href="https://musicbrainz.org/ws/2/recording?query=%22we%20will%20rock%20you%22%20AND%20arid:0383dadf-2a4e-4d10-a46a-e9e041da8eb3" rel="nofollow">https://musicbrainz.org/ws/2/recording?query=%22we%20will%20rock%20you%22%20AND%20arid:0383dadf-2a4e-4d10-a46a-e9e041da8eb3</a> will find any recordings of "We Will Rock You" by Queen. </p><p><br> To search for fields that are unknown or null, use the following syntax - </p><p>-search_field:* </p><p>Example: For releases with no format set can be searched via: <a class="external text" href="https://musicbrainz.org/search?query=-format%3A*&amp;type=release&amp;limit=25&amp;method=advanced" rel="nofollow">-format:*</a></p><p><br> Numeric count based fields can be searched for by looking for 0 </p><p>Example: <a class="external text" href="https://musicbrainz.org/ws/2/release-group/?query=releases:0" rel="nofollow">https://musicbrainz.org/ws/2/release-group/?query=releases:0</a></p><p><br> To perform a literal search, you'll need to <a class="external text" href="https://lucene.apache.org/core/4_3_0/queryparser/org/apache/lucene/queryparser/classic/package-summary.html#Escaping_Special_Characters" rel="nofollow">escape characters special to Lucene</a>. This is in addition to any URL encoding. </p><p>Example: <a class="external text" href="https://musicbrainz.org/ws/2/artist/?query=ac%5C%2Fdc" rel="nofollow">https://musicbrainz.org/ws/2/artist/?query=ac%5C%2Fdc</a></p><p><br></p><div aria-labelledby="mw-toc-heading" class="toc" id="toc" role="navigation"><input class="toctogglecheckbox" id="toctogglecheckbox" role="button" style="display:none" type="checkbox"><div class="toctitle" dir="ltr" lang="en"><h2 id="mw-toc-heading">Contents</h2><span class="toctogglespan"><label class="toctogglelabel" for="toctogglecheckbox"></label></span></div><ul><li class="toclevel-1 tocsection-1"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Annotation"><span class="tocnumber">1</span> <span class="toctext">Annotation</span></a><ul><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Example"><span class="tocnumber">1.1</span> <span class="toctext">Example</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Search_Fields"><span class="tocnumber">1.2</span> <span class="toctext">Search Fields</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Xml"><span class="tocnumber">1.3</span> <span class="toctext">Xml</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Json"><span class="tocnumber">1.4</span> <span class="toctext">Json</span></a></li></ul></li><li class="toclevel-1 tocsection-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Area"><span class="tocnumber">2</span> <span class="toctext">Area</span></a><ul><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Example_2"><span class="tocnumber">2.1</span> <span class="toctext">Example</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Search_Fields_2"><span class="tocnumber">2.2</span> <span class="toctext">Search Fields</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Xml_2"><span class="tocnumber">2.3</span> <span class="toctext">Xml</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Json_2"><span class="tocnumber">2.4</span> <span class="toctext">Json</span></a></li></ul></li><li class="toclevel-1 tocsection-3"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Artist"><span class="tocnumber">3</span> <span class="toctext">Artist</span></a><ul><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Example_3"><span class="tocnumber">3.1</span> <span class="toctext">Example</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Search_Fields_3"><span class="tocnumber">3.2</span> <span class="toctext">Search Fields</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Xml_3"><span class="tocnumber">3.3</span> <span class="toctext">Xml</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Json_3"><span class="tocnumber">3.4</span> <span class="toctext">Json</span></a></li></ul></li><li class="toclevel-1 tocsection-4"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#CDStubs"><span class="tocnumber">4</span> <span class="toctext">CDStubs</span></a><ul><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Example_4"><span class="tocnumber">4.1</span> <span class="toctext">Example</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Search_Fields_4"><span class="tocnumber">4.2</span> <span class="toctext">Search Fields</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Xml_4"><span class="tocnumber">4.3</span> <span class="toctext">Xml</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Json_4"><span class="tocnumber">4.4</span> <span class="toctext">Json</span></a></li></ul></li><li class="toclevel-1 tocsection-5"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Event"><span class="tocnumber">5</span> <span class="toctext">Event</span></a><ul><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Example_5"><span class="tocnumber">5.1</span> <span class="toctext">Example</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Search_Fields_5"><span class="tocnumber">5.2</span> <span class="toctext">Search Fields</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Xml_5"><span class="tocnumber">5.3</span> <span class="toctext">Xml</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Json_5"><span class="tocnumber">5.4</span> <span class="toctext">Json</span></a></li></ul></li><li class="toclevel-1 tocsection-6"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Instrument"><span class="tocnumber">6</span> <span class="toctext">Instrument</span></a><ul><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Example_6"><span class="tocnumber">6.1</span> <span class="toctext">Example</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Search_Fields_6"><span class="tocnumber">6.2</span> <span class="toctext">Search Fields</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Xml_6"><span class="tocnumber">6.3</span> <span class="toctext">Xml</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Json_6"><span class="tocnumber">6.4</span> <span class="toctext">Json</span></a></li></ul></li><li class="toclevel-1 tocsection-7"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Label"><span class="tocnumber">7</span> <span class="toctext">Label</span></a><ul><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Example_7"><span class="tocnumber">7.1</span> <span class="toctext">Example</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Search_Fields_7"><span class="tocnumber">7.2</span> <span class="toctext">Search Fields</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Xml_7"><span class="tocnumber">7.3</span> <span class="toctext">Xml</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Json_7"><span class="tocnumber">7.4</span> <span class="toctext">Json</span></a></li></ul></li><li class="toclevel-1 tocsection-8"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Place"><span class="tocnumber">8</span> <span class="toctext">Place</span></a><ul><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Example_8"><span class="tocnumber">8.1</span> <span class="toctext">Example</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Search_Fields_8"><span class="tocnumber">8.2</span> <span class="toctext">Search Fields</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Xml_8"><span class="tocnumber">8.3</span> <span class="toctext">Xml</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Json_8"><span class="tocnumber">8.4</span> <span class="toctext">Json</span></a></li></ul></li><li class="toclevel-1 tocsection-9"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Recording"><span class="tocnumber">9</span> <span class="toctext">Recording</span></a><ul><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Example_9"><span class="tocnumber">9.1</span> <span class="toctext">Example</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Search_Fields_9"><span class="tocnumber">9.2</span> <span class="toctext">Search Fields</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Xml_9"><span class="tocnumber">9.3</span> <span class="toctext">Xml</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Json_9"><span class="tocnumber">9.4</span> <span class="toctext">Json</span></a></li></ul></li><li class="toclevel-1 tocsection-10"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Release_Group"><span class="tocnumber">10</span> <span class="toctext">Release Group</span></a><ul><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Example_10"><span class="tocnumber">10.1</span> <span class="toctext">Example</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Search_Fields_10"><span class="tocnumber">10.2</span> <span class="toctext">Search Fields</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Xml_10"><span class="tocnumber">10.3</span> <span class="toctext">Xml</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Json_10"><span class="tocnumber">10.4</span> <span class="toctext">Json</span></a></li></ul></li><li class="toclevel-1 tocsection-11"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Release"><span class="tocnumber">11</span> <span class="toctext">Release</span></a><ul><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Example_11"><span class="tocnumber">11.1</span> <span class="toctext">Example</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Search_Fields_11"><span class="tocnumber">11.2</span> <span class="toctext">Search Fields</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Xml_11"><span class="tocnumber">11.3</span> <span class="toctext">Xml</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Json_11"><span class="tocnumber">11.4</span> <span class="toctext">Json</span></a></li></ul></li><li class="toclevel-1 tocsection-12"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Series"><span class="tocnumber">12</span> <span class="toctext">Series</span></a><ul><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Example_12"><span class="tocnumber">12.1</span> <span class="toctext">Example</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Search_Fields_12"><span class="tocnumber">12.2</span> <span class="toctext">Search Fields</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Xml_12"><span class="tocnumber">12.3</span> <span class="toctext">Xml</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Json_12"><span class="tocnumber">12.4</span> <span class="toctext">Json</span></a></li></ul></li><li class="toclevel-1 tocsection-13"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Tag"><span class="tocnumber">13</span> <span class="toctext">Tag</span></a><ul><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Example_13"><span class="tocnumber">13.1</span> <span class="toctext">Example</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Search_Fields_13"><span class="tocnumber">13.2</span> <span class="toctext">Search Fields</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Xml_13"><span class="tocnumber">13.3</span> <span class="toctext">Xml</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Json_13"><span class="tocnumber">13.4</span> <span class="toctext">Json</span></a></li></ul></li><li class="toclevel-1 tocsection-14"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#URL"><span class="tocnumber">14</span> <span class="toctext">URL</span></a><ul><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Example_14"><span class="tocnumber">14.1</span> <span class="toctext">Example</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Search_Fields_14"><span class="tocnumber">14.2</span> <span class="toctext">Search Fields</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Xml_14"><span class="tocnumber">14.3</span> <span class="toctext">Xml</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Json_14"><span class="tocnumber">14.4</span> <span class="toctext">Json</span></a></li></ul></li><li class="toclevel-1 tocsection-15"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Work"><span class="tocnumber">15</span> <span class="toctext">Work</span></a><ul><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Example_15"><span class="tocnumber">15.1</span> <span class="toctext">Example</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Search_Fields_15"><span class="tocnumber">15.2</span> <span class="toctext">Search Fields</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Xml_15"><span class="tocnumber">15.3</span> <span class="toctext">Xml</span></a></li><li class="toclevel-2"><a href="https://musicbrainz.org/doc/MusicBrainz_API/Search#Json_15"><span class="tocnumber">15.4</span> <span class="toctext">Json</span></a></li></ul></li></ul></div><h2><span class="mw-headline" id="Annotation">Annotation</span></h2><h4><span class="mw-headline" id="Example">Example</span></h4><p><a class="external text" href="http://musicbrainz.org/ws/2/annotation/?query=entity:bdb24cb5-404b-4f60-bba4-7b730325ae47" rel="nofollow">http://musicbrainz.org/ws/2/annotation/?query=entity:bdb24cb5-404b-4f60-bba4-7b730325ae47</a></p><h4><span class="mw-headline" id="Search_Fields">Search Fields</span></h4><p>The <a href="https://musicbrainz.org/doc/Annotation">Annotation</a> index contains the following fields you can search </p><table border="1" class="wikitable wikitable sortable"><tbody><tr><th>Field</th><th>Description </th></tr><tr><td>entity</td><td>the annotated entity's MBID </td></tr><tr><td>id</td><td>the numeric ID of the annotation (e.g. <a class="external text" href="https://musicbrainz.org/artist/c130b0fb-5dce-449d-9f40-1437f889f7fe/annotation/703027" rel="nofollow">703027</a>) </td></tr><tr><td>name</td><td>the annotated entity's name or title (diacritics are ignored) </td></tr><tr><td>text</td><td>the annotation's content (includes <a href="https://musicbrainz.org/doc/Annotation#Wiki_formatting">wiki formatting</a>) </td></tr><tr><td>type</td><td>the annotated entity's entity type </td></tr></tbody></table><p>If you don't specify a field, the terms will be searched for in the <i>name</i>, <i>text</i> and <i>type</i> fields. </p><h4><span class="mw-headline" id="Xml">Xml</span></h4><pre>&lt;metadata created="2013-02-05T04:41:32.273Z" xmlns="http://musicbrainz.org/ns/mmd-2.0#" xmlns:ext="http://musicbrainz.org/ns/ext#-2.0"&gt;
+    &lt;annotation-list count="1" offset="0"&gt;
+        &lt;annotation type="release" ext:score="100"&gt;
+            &lt;entity&gt;bdb24cb5-404b-4f60-bba4-7b730325ae47&lt;/entity&gt;
+            &lt;name&gt;Pieds nus sur la braise&lt;/name&gt;
+            &lt;text&gt;Lyrics and music by Merzhin except:
+04, 08, 09, 10 (V. L'hour - Merzhin),
+03 (V. L'hour - P. Le Bourdonnec - Merzhin),
+05 &amp; 13 (P. Le Bourdonnec - Merzhin),
+06 ([http://musicbrainz.org/artist/38cfa519-21bb-4e79-8388-3bf798b8c076.html|JM. Poisson] - Merzhin),
+07 ([http://musicbrainz.org/artist/f2d7c07c-a8e7-45c9-a888-0b2e6e3a240d.html|Ignatus] - V. L'hour - Merzhin),
+11 ([http://musicbrainz.org/artist/f2d7c07c-a8e7-45c9-a888-0b2e6e3a240d.html|Ignatus] - Merzhin),
+12 ([http://musicbrainz.org/artist/38cfa519-21bb-4e79-8388-3bf798b8c076.html|JM. Poisson]).&lt;/text&gt;
+        &lt;/annotation&gt;
+    &lt;/annotation-list&gt;
+&lt;/metadata&gt;
+</pre><h4><span class="mw-headline" id="Json">Json</span></h4><pre>{
+  "created": "2017-03-12T16:27:16.317Z",
+  "count": 1,
+  "offset": 0,
+  "annotations": [
+    {
+      "type": "release",
+      "score": "100",
+      "entity": "bdb24cb5-404b-4f60-bba4-7b730325ae47",
+      "name": "Pieds nus sur la braise",
+      "text": "Lyrics and music by Merzhin except:\r\n04, 08, 09, 10 (V. L'hour - Merzhin),\r\n03 (V. L'hour - P. Le Bourdonnec - Merzhin),\r\n05 &amp; 13 (P. Le Bourdonnec - Merzhin),\r\n06 ([http://musicbrainz.org/artist/38cfa519-21bb-4e79-8388-3bf798b8c076.html|JM. Poisson] - Merzhin),\r\n07 ([http://musicbrainz.org/artist/f2d7c07c-a8e7-45c9-a888-0b2e6e3a240d.html|Ignatus] - V. L'hour - Merzhin),\r\n11 ([http://musicbrainz.org/artist/f2d7c07c-a8e7-45c9-a888-0b2e6e3a240d.html|Ignatus] - Merzhin),\r\n12 ([http://musicbrainz.org/artist/38cfa519-21bb-4e79-8388-3bf798b8c076.html|JM. Poisson])."
+    }
+  ]
+}
+</pre><h2><span class="mw-headline" id="Area">Area</span></h2><h4><span class="mw-headline" id="Example_2">Example</span></h4><p><a class="external free" href="http://musicbrainz.org/ws/2/area/?query=%22%C3%8Ele-de-France%22" rel="nofollow">http://musicbrainz.org/ws/2/area/?query=%22%C3%8Ele-de-France%22</a></p><h4><span class="mw-headline" id="Search_Fields_2">Search Fields</span></h4><p>The <a href="https://musicbrainz.org/doc/Area">Area</a> index contains the following fields you can search </p><table border="1" class="wikitable wikitable sortable"><tbody><tr><th>Field</th><th>Description </th></tr><tr><td>aid</td><td>the area's MBID </td></tr><tr><td>alias</td><td>(part of) any <a href="https://musicbrainz.org/doc/Aliases">alias</a> attached to the artist (diacritics are ignored) </td></tr><tr><td>area</td><td>(part of) the area's name (diacritics are ignored) </td></tr><tr><td>areaaccent</td><td>(part of) the area's name (with the specified diacritics) </td></tr><tr><td>begin</td><td>the area's begin date (e.g. "1980-01-22") </td></tr><tr><td>comment</td><td>(part of) the area's disambiguation comment </td></tr><tr><td>end</td><td>the area's end date (e.g. "1980-01-22") </td></tr><tr><td>ended</td><td>a boolean flag (true/false) indicating whether or not the area has ended (is no longer current) </td></tr><tr><td>iso</td><td>an <a class="extiw" href="https://en.wikipedia.org/wiki/ISO_3166">ISO 3166-1, 3166-2 or 3166-3</a> code attached to the area </td></tr><tr><td>iso1</td><td>an <a class="extiw" href="https://en.wikipedia.org/wiki/ISO_3166">ISO 3166-1</a> code attached to the area </td></tr><tr><td>iso2</td><td>an <a class="extiw" href="https://en.wikipedia.org/wiki/ISO_3166">ISO 3166-2</a> code attached to the area </td></tr><tr><td>iso3</td><td>an <a class="extiw" href="https://en.wikipedia.org/wiki/ISO_3166">ISO 3166-3</a> code attached to the area </td></tr><tr><td>sortname</td><td>equivalent to name (areas no longer have separate sort names) </td></tr><tr><td>tag</td><td>(part of) a tag attached to the area </td></tr><tr><td>type</td><td>the area's <a href="https://musicbrainz.org/doc/Area#Type">type</a></td></tr></tbody></table><p>If you don't specify a field, the terms will be searched for in the <i>area</i> field. </p><h4><span class="mw-headline" id="Xml_2">Xml</span></h4><pre>&lt;?xml version="1.0" encoding="UTF-8" standalone="yes"?&gt;
+&lt;metadata created="2013-06-12T10:51:14.668Z" xmlns="http://musicbrainz.org/ns/mmd-2.0#" xmlns:ext="http://musicbrainz.org/ns/ext#-2.0"&gt;
+    &lt;area-list count="1" offset="0"&gt;
+        &lt;area id="d79e4501-8cba-431b-96e7-bb9976f0ae76" type="Subdivision" ext:score="100"&gt;
+            &lt;name&gt;Île-de-France&lt;/name&gt;
+            &lt;sort-name&gt;Île-de-France&lt;/sort-name&gt;
+            &lt;iso-3166-2-code-list&gt;
+                &lt;iso-3166-2-code&gt;FR-J&lt;/iso-3166-2-code&gt;
+            &lt;/iso-3166-2-code-list&gt;
+            &lt;life-span&gt;
+                &lt;ended&gt;false&lt;/ended&gt;
+            &lt;/life-span&gt;
+            &lt;alias-list&gt;
+                &lt;alias locale="nl" sort-name="Île-de-France" type="Area name" primary="primary"&gt;Île-de-France&lt;/alias&gt;
+                &lt;alias locale="en" sort-name="Île-de-France" type="Area name" primary="primary"&gt;Île-de-France&lt;/alias&gt;
+                &lt;alias locale="fr" sort-name="Île-de-France" type="Area name" primary="primary"&gt;Île-de-France&lt;/alias&gt;
+                &lt;alias locale="it" sort-name="Île-de-France" type="Area name" primary="primary"&gt;Île-de-France&lt;/alias&gt;
+                &lt;alias locale="fi" sort-name="Île-de-France" type="Area name" primary="primary"&gt;Île-de-France&lt;/alias&gt;
+                &lt;alias locale="et" sort-name="Île-de-France" type="Area name" primary="primary"&gt;Île-de-France&lt;/alias&gt;
+                &lt;alias locale="de" sort-name="Île-de-France" type="Area name" primary="primary"&gt;Île-de-France&lt;/alias&gt;
+                &lt;alias locale="no" sort-name="Île-de-France" type="Area name" primary="primary"&gt;Île-de-France&lt;/alias&gt;
+                &lt;alias locale="es" sort-name="Isla de Francia" type="Area name" primary="primary"&gt;Isla de Francia&lt;/alias&gt;
+                &lt;alias locale="ja" sort-name="イル＝ド＝フランス地域圏" type="Area name" primary="primary"&gt;イル＝ド＝フランス地域圏&lt;/alias&gt;
+            &lt;/alias-list&gt;
+        &lt;/area&gt;
+    &lt;/area-list&gt;
+&lt;/metadata&gt;
+</pre><h4><span class="mw-headline" id="Json_2">Json</span></h4><pre>{
+  "created": "2017-03-12T16:59:34.096Z",
+  "count": 1,
+  "offset": 0,
+  "areas": [
+    {
+      "id": "d79e4501-8cba-431b-96e7-bb9976f0ae76",
+      "type": "Subdivision",
+      "score": "100",
+      "name": "Île-de-France",
+      "sort-name": "Île-de-France",
+      "iso-3166-2-codes": [
+        "FR-J"
+      ],
+      "life-span": {
+        "ended": null
+      },
+      "aliases": [
+        {
+          "sort-name": "Île-de-France",
+          "name": "Île-de-France",
+          "locale": "no",
+          "type": "Area name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Île-de-France",
+          "name": "Île-de-France",
+          "locale": "de",
+          "type": "Area name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Île-de-France",
+          "name": "Île-de-France",
+          "locale": "en",
+          "type": "Area name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Île-de-France",
+          "name": "Île-de-France",
+          "locale": "et",
+          "type": "Area name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Île-de-France",
+          "name": "Île-de-France",
+          "locale": "fi",
+          "type": "Area name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Île-de-France",
+          "name": "Île-de-France",
+          "locale": "fr",
+          "type": "Area name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Île-de-France",
+          "name": "Île-de-France",
+          "locale": "it",
+          "type": "Area name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Île-de-France",
+          "name": "Île-de-France",
+          "locale": "nl",
+          "type": "Area name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Isla de Francia",
+          "name": "Isla de Francia",
+          "locale": "es",
+          "type": "Area name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "イル＝ドフランス地域圏",
+          "name": "イル＝ド＝フランス地域圏",
+          "locale": "ja",
+          "type": "Area name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        }
+      ],
+      "relation-list": [
+        {
+          "relations": [
+            {
+              "type": "part of",
+              "type-id": "de7cc874-8b1b-3a05-8272-f3834c968fb7",
+              "target": "08310658-51eb-3801-80de-5a0739207115",
+              "direction": "backward",
+              "area": {
+                "id": "08310658-51eb-3801-80de-5a0739207115",
+                "type": "Country",
+                "name": "France",
+                "sort-name": "France",
+                "life-span": {
+                  "ended": null
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+</pre><h2><span class="mw-headline" id="Artist">Artist</span></h2><h4><span class="mw-headline" id="Example_3">Example</span></h4><p><a class="external free" href="http://musicbrainz.org/ws/2/artist/?query=artist:fred%20AND%20type:group%20AND%20country:US" rel="nofollow">http://musicbrainz.org/ws/2/artist/?query=artist:fred%20AND%20type:group%20AND%20country:US</a></p><h4><span class="mw-headline" id="Search_Fields_3">Search Fields</span></h4><p>The <a href="https://musicbrainz.org/doc/Artist">Artist</a> index contains the following fields you can search </p><table border="1" class="wikitable wikitable sortable"><tbody><tr><th>Field</th><th>Description </th></tr><tr><td>alias</td><td>(part of) any <a href="https://musicbrainz.org/doc/Aliases">alias</a> attached to the artist (diacritics are ignored) </td></tr><tr><td>primary_alias</td><td>(part of) any primary alias attached to the artist (diacritics are ignored) </td></tr><tr><td>area</td><td>(part of) the name of the artist's main associated area </td></tr><tr><td>arid</td><td>the artist's MBID </td></tr><tr><td>artist</td><td>(part of) the artist's name (diacritics are ignored) </td></tr><tr><td>artistaccent</td><td>(part of) the artist's name (with the specified diacritics) </td></tr><tr><td>begin</td><td>the artist's begin date (e.g. "1980-01-22") </td></tr><tr><td>beginarea</td><td>(part of) the name of the artist's begin area </td></tr><tr><td>comment</td><td>(part of) the artist's disambiguation comment </td></tr><tr><td>country</td><td>the 2-letter code (ISO 3166-1 alpha-2) for the artist's main associated country </td></tr><tr><td>end</td><td>the artist's end date (e.g. "1980-01-22") </td></tr><tr><td>endarea</td><td>(part of) the name of the artist's end area </td></tr><tr><td>ended</td><td>a boolean flag (true/false) indicating whether or not the artist has ended (is dissolved/deceased) </td></tr><tr><td>gender</td><td>the artist's gender (“male”, “female”, “other” or “not applicable”) </td></tr><tr><td>ipi</td><td>an IPI code associated with the artist </td></tr><tr><td>isni</td><td>an ISNI code associated with the artist </td></tr><tr><td>sortname</td><td>(part of) the artist's <a href="https://musicbrainz.org/doc/Artist#Sort_name">sort name</a></td></tr><tr><td>tag</td><td>(part of) a tag attached to the artist </td></tr><tr><td>type</td><td>the artist's <a href="https://musicbrainz.org/doc/Artist#Type">type</a> (“person”, “group”, etc.) </td></tr></tbody></table><p>If you don't specify a field, the terms will be searched for in the <i>alias</i>, <i>artist</i> and <i>sortname</i> fields. </p><h4><span class="mw-headline" id="Xml_3">Xml</span></h4><pre>&lt;?xml version="1.0" encoding="UTF-8" standalone="yes"?&gt;
+&lt;metadata created="2017-03-12T16:54:57.165Z" xmlns="http://musicbrainz.org/ns/mmd-2.0#" xmlns:ext="http://musicbrainz.org/ns/ext#-2.0"&gt;
+  &lt;artist-list count="11" offset="0"&gt;
+    &lt;artist id="e56fd97e-c18f-4e5e-9b4d-f9fc21b4973f" type="Group" ext:score="100"&gt;
+      &lt;name&gt;Fred&lt;/name&gt;
+      &lt;sort-name&gt;Fred&lt;/sort-name&gt;
+      &lt;country&gt;US&lt;/country&gt;
+      &lt;area id="489ce91b-6658-3307-9877-795b68554c98"&gt;
+        &lt;name&gt;United States&lt;/name&gt;
+        &lt;sort-name&gt;United States&lt;/sort-name&gt;
+      &lt;/area&gt;
+      &lt;begin-area id="489ce91b-6658-3307-9877-795b68554c98"&gt;
+        &lt;name&gt;United States&lt;/name&gt;
+        &lt;sort-name&gt;United States&lt;/sort-name&gt;
+      &lt;/begin-area&gt;
+      &lt;disambiguation&gt;US progressive rock band&lt;/disambiguation&gt;
+      &lt;life-span&gt;
+        &lt;begin&gt;1969&lt;/begin&gt;
+        &lt;end&gt;1974&lt;/end&gt;
+        &lt;ended&gt;true&lt;/ended&gt;
+      &lt;/life-span&gt;
+    &lt;/artist&gt;
+    &lt;artist id="4a024fd4-305e-4fea-9d3f-4ec858766e6e" type="Group" ext:score="100"&gt;
+      &lt;name&gt;Fred&lt;/name&gt;
+      &lt;sort-name&gt;Fred&lt;/sort-name&gt;
+      &lt;country&gt;US&lt;/country&gt;
+      &lt;area id="489ce91b-6658-3307-9877-795b68554c98"&gt;
+        &lt;name&gt;United States&lt;/name&gt;
+        &lt;sort-name&gt;United States&lt;/sort-name&gt;
+      &lt;/area&gt;
+      &lt;disambiguation&gt;US comic barbershop quartet&lt;/disambiguation&gt;
+      &lt;life-span&gt;
+        &lt;ended&gt;false&lt;/ended&gt;
+      &lt;/life-span&gt;
+    &lt;/artist&gt;
+    &lt;artist id="1065e6e0-b6b3-4224-9121-4502e52b9f9e" type="Group" ext:score="61"&gt;
+      &lt;name&gt;A Halo Called Fred&lt;/name&gt;
+      &lt;sort-name&gt;A Halo Called Fred&lt;/sort-name&gt;
+      &lt;country&gt;US&lt;/country&gt;
+      &lt;area id="489ce91b-6658-3307-9877-795b68554c98"&gt;
+        &lt;name&gt;United States&lt;/name&gt;
+        &lt;sort-name&gt;United States&lt;/sort-name&gt;
+      &lt;/area&gt;
+      &lt;life-span&gt;
+        &lt;ended&gt;false&lt;/ended&gt;
+      &lt;/life-span&gt;
+    &lt;/artist&gt;
+    &lt;artist id="6c843bf3-a854-47ea-b1cf-ba40675710b7" type="Group" ext:score="61"&gt;
+      &lt;name&gt;Fred Sherry String Quartet&lt;/name&gt;
+      &lt;sort-name&gt;Fred Sherry String Quartet&lt;/sort-name&gt;
+      &lt;country&gt;US&lt;/country&gt;
+      &lt;area id="489ce91b-6658-3307-9877-795b68554c98"&gt;
+        &lt;name&gt;United States&lt;/name&gt;
+        &lt;sort-name&gt;United States&lt;/sort-name&gt;
+      &lt;/area&gt;
+      &lt;life-span&gt;
+        &lt;ended&gt;false&lt;/ended&gt;
+      &lt;/life-span&gt;
+    &lt;/artist&gt;
+    &lt;artist id="be136e58-ccf5-47f0-a000-6e8d7eb3bae0" type="Group" ext:score="61"&gt;
+      &lt;name&gt;The Color Fred&lt;/name&gt;
+      &lt;sort-name&gt;Color Fred, The&lt;/sort-name&gt;
+      &lt;country&gt;US&lt;/country&gt;
+      &lt;area id="489ce91b-6658-3307-9877-795b68554c98"&gt;
+        &lt;name&gt;United States&lt;/name&gt;
+        &lt;sort-name&gt;United States&lt;/sort-name&gt;
+      &lt;/area&gt;
+      &lt;life-span&gt;
+        &lt;begin&gt;2003&lt;/begin&gt;
+        &lt;ended&gt;false&lt;/ended&gt;
+      &lt;/life-span&gt;
+    &lt;/artist&gt;
+    &lt;artist id="2cea1456-daef-4bb1-b63c-4b6df03ebbd5" type="Group" ext:score="61"&gt;
+      &lt;name&gt;The Fred Hersch Group&lt;/name&gt;
+      &lt;sort-name&gt;Hersch, Fred, The, Group&lt;/sort-name&gt;
+      &lt;country&gt;US&lt;/country&gt;
+      &lt;area id="489ce91b-6658-3307-9877-795b68554c98"&gt;
+        &lt;name&gt;United States&lt;/name&gt;
+        &lt;sort-name&gt;United States&lt;/sort-name&gt;
+      &lt;/area&gt;
+      &lt;life-span&gt;
+        &lt;ended&gt;false&lt;/ended&gt;
+      &lt;/life-span&gt;
+    &lt;/artist&gt;
+    &lt;artist id="28b020fa-d9b8-4d92-805c-54cd1b0197b7" type="Group" ext:score="61"&gt;
+      &lt;name&gt;Jacob Fred Jazz Odyssey&lt;/name&gt;
+      &lt;sort-name&gt;Jacob Fred Jazz Odyssey&lt;/sort-name&gt;
+      &lt;country&gt;US&lt;/country&gt;
+      &lt;area id="489ce91b-6658-3307-9877-795b68554c98"&gt;
+        &lt;name&gt;United States&lt;/name&gt;
+        &lt;sort-name&gt;United States&lt;/sort-name&gt;
+      &lt;/area&gt;
+      &lt;life-span&gt;
+        &lt;begin&gt;1994&lt;/begin&gt;
+        &lt;ended&gt;false&lt;/ended&gt;
+      &lt;/life-span&gt;
+      &lt;alias-list&gt;
+        &lt;alias sort-name="JFJO"&gt;JFJO&lt;/alias&gt;
+      &lt;/alias-list&gt;
+      &lt;tag-list&gt;
+        &lt;tag count="1"&gt;
+          &lt;name&gt;jazz&lt;/name&gt;
+        &lt;/tag&gt;
+        &lt;tag count="1"&gt;
+          &lt;name&gt;jazz fusion&lt;/name&gt;
+        &lt;/tag&gt;
+        &lt;tag count="1"&gt;
+          &lt;name&gt;free jazz&lt;/name&gt;
+        &lt;/tag&gt;
+        &lt;tag count="1"&gt;
+          &lt;name&gt;oklahoma&lt;/name&gt;
+        &lt;/tag&gt;
+        &lt;tag count="1"&gt;
+          &lt;name&gt;us&lt;/name&gt;
+        &lt;/tag&gt;
+        &lt;tag count="1"&gt;
+          &lt;name&gt;tulsa&lt;/name&gt;
+        &lt;/tag&gt;
+      &lt;/tag-list&gt;
+    &lt;/artist&gt;
+    &lt;artist id="4a903390-4381-4c32-90d0-803bd4f9ce34" type="Group" ext:score="56"&gt;
+      &lt;name&gt;Fred Waring &amp; His Pennsylvanians&lt;/name&gt;
+      &lt;sort-name&gt;Waring, Fred &amp; His Pennsylvanians&lt;/sort-name&gt;
+      &lt;country&gt;US&lt;/country&gt;
+      &lt;area id="489ce91b-6658-3307-9877-795b68554c98"&gt;
+        &lt;name&gt;United States&lt;/name&gt;
+        &lt;sort-name&gt;United States&lt;/sort-name&gt;
+      &lt;/area&gt;
+      &lt;life-span&gt;
+        &lt;ended&gt;false&lt;/ended&gt;
+      &lt;/life-span&gt;
+      &lt;alias-list&gt;
+        &lt;alias sort-name="Fred Waring and the Pennsylvanians"&gt;Fred Waring and the Pennsylvanians&lt;/alias&gt;
+        &lt;alias sort-name="Fred Waring &amp; Pennsylvanians"&gt;Fred Waring &amp; Pennsylvanians&lt;/alias&gt;
+        &lt;alias sort-name="Fred Waring's Pennsylvanians"&gt;Fred Waring's Pennsylvanians&lt;/alias&gt;
+        &lt;alias sort-name="Fred Waring's Pennyslvanians"&gt;Fred Waring's Pennyslvanians&lt;/alias&gt;
+        &lt;alias sort-name="Fred Waring &amp; the Pennsylvanians"&gt;Fred Waring &amp; the Pennsylvanians&lt;/alias&gt;
+        &lt;alias sort-name="Waring, Fred &amp; Pennsylvanians, The"&gt;Fred Waring &amp; The Pennsylvanians&lt;/alias&gt;
+        &lt;alias sort-name="Fred Warring &amp; His Pennsylvanians"&gt;Fred Warring &amp; His Pennsylvanians&lt;/alias&gt;
+        &lt;alias sort-name="Waring's Pensylvanians"&gt;Waring's Pensylvanians&lt;/alias&gt;
+      &lt;/alias-list&gt;
+    &lt;/artist&gt;
+    &lt;artist id="0980008b-f9cd-412e-b062-84212b756f4a" type="Group" ext:score="51"&gt;
+      &lt;name&gt;Fred Williams &amp; The Jewels Band&lt;/name&gt;
+      &lt;sort-name&gt;Williams, Fred &amp; Jewels Band, The&lt;/sort-name&gt;
+      &lt;country&gt;US&lt;/country&gt;
+      &lt;area id="489ce91b-6658-3307-9877-795b68554c98"&gt;
+        &lt;name&gt;United States&lt;/name&gt;
+        &lt;sort-name&gt;United States&lt;/sort-name&gt;
+      &lt;/area&gt;
+      &lt;life-span&gt;
+        &lt;ended&gt;false&lt;/ended&gt;
+      &lt;/life-span&gt;
+    &lt;/artist&gt;
+    &lt;artist id="985bdbe7-ebf2-42b1-8ad6-5bb619385e67" type="Group" ext:score="51"&gt;
+      &lt;name&gt;Fred Wesley and The J.B.’s&lt;/name&gt;
+      &lt;sort-name&gt;Wesley, Fred and J.B.’s, the&lt;/sort-name&gt;
+      &lt;country&gt;US&lt;/country&gt;
+      &lt;area id="489ce91b-6658-3307-9877-795b68554c98"&gt;
+        &lt;name&gt;United States&lt;/name&gt;
+        &lt;sort-name&gt;United States&lt;/sort-name&gt;
+      &lt;/area&gt;
+      &lt;life-span&gt;
+        &lt;ended&gt;false&lt;/ended&gt;
+      &lt;/life-span&gt;
+      &lt;alias-list&gt;
+        &lt;alias sort-name="Fred and the New J.B.'s"&gt;Fred and the New J.B.'s&lt;/alias&gt;
+        &lt;alias sort-name="Fred Wesley &amp; The J.B.'s"&gt;Fred Wesley &amp; The J.B.'s&lt;/alias&gt;
+        &lt;alias sort-name="Fred Wesley &amp; The JB's"&gt;Fred Wesley &amp; The JB's&lt;/alias&gt;
+        &lt;alias sort-name="Fred Wesley &amp; The New J.B.'s"&gt;Fred Wesley &amp; The New J.B.'s&lt;/alias&gt;
+        &lt;alias sort-name="Fred Wesley &amp; The New JB's"&gt;Fred Wesley &amp; The New JB's&lt;/alias&gt;
+      &lt;/alias-list&gt;
+    &lt;/artist&gt;
+    &lt;artist id="05cfb5c7-0152-41f4-a9c9-622e8f710dfa" type="Group" ext:score="51"&gt;
+      &lt;name&gt;John Fred &amp; His Playboy Band&lt;/name&gt;
+      &lt;sort-name&gt;Fred, John &amp; His Playboy Band&lt;/sort-name&gt;
+      &lt;country&gt;US&lt;/country&gt;
+      &lt;area id="489ce91b-6658-3307-9877-795b68554c98"&gt;
+        &lt;name&gt;United States&lt;/name&gt;
+        &lt;sort-name&gt;United States&lt;/sort-name&gt;
+      &lt;/area&gt;
+      &lt;begin-area id="34f02dc4-3173-4c68-86d1-c82504759342"&gt;
+        &lt;name&gt;Baton Rouge&lt;/name&gt;
+        &lt;sort-name&gt;Baton Rouge&lt;/sort-name&gt;
+      &lt;/begin-area&gt;
+      &lt;life-span&gt;
+        &lt;begin&gt;1956&lt;/begin&gt;
+        &lt;end&gt;1969&lt;/end&gt;
+        &lt;ended&gt;true&lt;/ended&gt;
+      &lt;/life-span&gt;
+      &lt;alias-list&gt;
+        &lt;alias sort-name="John Fred"&gt;John Fred&lt;/alias&gt;
+        &lt;alias sort-name="John Fred and His Playboyband"&gt;John Fred and His Playboyband&lt;/alias&gt;
+        &lt;alias sort-name="John Fred and His Play Boy Band"&gt;John Fred and His Play Boy Band&lt;/alias&gt;
+        &lt;alias sort-name="John Fred And His Playboy Band"&gt;John Fred And His Playboy Band&lt;/alias&gt;
+        &lt;alias sort-name="John Fred and His Playboys"&gt;John Fred and His Playboys&lt;/alias&gt;
+        &lt;alias sort-name="John Fred and the Play Boy Band"&gt;John Fred and the Play Boy Band&lt;/alias&gt;
+        &lt;alias sort-name="John Fred and the Playboys"&gt;John Fred and the Playboys&lt;/alias&gt;
+        &lt;alias sort-name="John Fred &amp; His Playboyband"&gt;John Fred &amp; His Playboyband&lt;/alias&gt;
+        &lt;alias sort-name="John Fred &amp; His Playboys"&gt;John Fred &amp; His Playboys&lt;/alias&gt;
+        &lt;alias sort-name="John Fred &amp; Hiss Playboy Band"&gt;John Fred &amp; Hiss Playboy Band&lt;/alias&gt;
+        &lt;alias sort-name="John Fred &amp; Playboyband"&gt;John Fred &amp; Playboyband&lt;/alias&gt;
+        &lt;alias sort-name="John Fred &amp; Playboy Band"&gt;John Fred &amp; Playboy Band&lt;/alias&gt;
+        &lt;alias sort-name="John Fred &amp; the Play Boy Band"&gt;John Fred &amp; the Play Boy Band&lt;/alias&gt;
+        &lt;alias sort-name="John Fred &amp; The Playboyband"&gt;John Fred &amp; The Playboyband&lt;/alias&gt;
+        &lt;alias sort-name="John Fred &amp; The Playboy Band"&gt;John Fred &amp; The Playboy Band&lt;/alias&gt;
+        &lt;alias sort-name="John Fred &amp; The Playboys"&gt;John Fred &amp; The Playboys&lt;/alias&gt;
+      &lt;/alias-list&gt;
+    &lt;/artist&gt;
+  &lt;/artist-list&gt;
+&lt;/metadata&gt;
+</pre><h4><span class="mw-headline" id="Json_3">Json</span></h4><pre>{
+  "created": "2017-03-12T16:54:57.165Z",
+  "count": 11,
+  "offset": 0,
+  "artists": [
+    {
+      "id": "e56fd97e-c18f-4e5e-9b4d-f9fc21b4973f",
+      "type": "Group",
+      "score": "100",
+      "name": "Fred",
+      "sort-name": "Fred",
+      "country": "US",
+      "area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States"
+      },
+      "begin-area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States"
+      },
+      "disambiguation": "US progressive rock band",
+      "life-span": {
+        "begin": "1969",
+        "end": "1974",
+        "ended": true
+      }
+    },
+    {
+      "id": "4a024fd4-305e-4fea-9d3f-4ec858766e6e",
+      "type": "Group",
+      "score": "100",
+      "name": "Fred",
+      "sort-name": "Fred",
+      "country": "US",
+      "area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States"
+      },
+      "disambiguation": "US comic barbershop quartet",
+      "life-span": {
+        "ended": null
+      }
+    },
+    {
+      "id": "1065e6e0-b6b3-4224-9121-4502e52b9f9e",
+      "type": "Group",
+      "score": "61",
+      "name": "A Halo Called Fred",
+      "sort-name": "A Halo Called Fred",
+      "country": "US",
+      "area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States"
+      },
+      "life-span": {
+        "ended": null
+      }
+    },
+    {
+      "id": "6c843bf3-a854-47ea-b1cf-ba40675710b7",
+      "type": "Group",
+      "score": "61",
+      "name": "Fred Sherry String Quartet",
+      "sort-name": "Fred Sherry String Quartet",
+      "country": "US",
+      "area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States"
+      },
+      "life-span": {
+        "ended": null
+      }
+    },
+    {
+      "id": "be136e58-ccf5-47f0-a000-6e8d7eb3bae0",
+      "type": "Group",
+      "score": "61",
+      "name": "The Color Fred",
+      "sort-name": "Color Fred, The",
+      "country": "US",
+      "area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States"
+      },
+      "life-span": {
+        "begin": "2003",
+        "ended": null
+      }
+    },
+    {
+      "id": "2cea1456-daef-4bb1-b63c-4b6df03ebbd5",
+      "type": "Group",
+      "score": "61",
+      "name": "The Fred Hersch Group",
+      "sort-name": "Hersch, Fred, The, Group",
+      "country": "US",
+      "area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States"
+      },
+      "life-span": {
+        "ended": null
+      }
+    },
+    {
+      "id": "28b020fa-d9b8-4d92-805c-54cd1b0197b7",
+      "type": "Group",
+      "score": "61",
+      "name": "Jacob Fred Jazz Odyssey",
+      "sort-name": "Jacob Fred Jazz Odyssey",
+      "country": "US",
+      "area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States"
+      },
+      "life-span": {
+        "begin": "1994",
+        "ended": null
+      },
+      "aliases": [
+        {
+          "sort-name": "JFJO",
+          "name": "JFJO",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        }
+      ],
+      "tags": [
+        {
+          "count": 1,
+          "name": "jazz"
+        },
+        {
+          "count": 1,
+          "name": "jazz fusion"
+        },
+        {
+          "count": 1,
+          "name": "free jazz"
+        },
+        {
+          "count": 1,
+          "name": "oklahoma"
+        },
+        {
+          "count": 1,
+          "name": "us"
+        },
+        {
+          "count": 1,
+          "name": "tulsa"
+        }
+      ]
+    },
+    {
+      "id": "4a903390-4381-4c32-90d0-803bd4f9ce34",
+      "type": "Group",
+      "score": "56",
+      "name": "Fred Waring &amp; His Pennsylvanians",
+      "sort-name": "Waring, Fred &amp; His Pennsylvanians",
+      "country": "US",
+      "area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States"
+      },
+      "life-span": {
+        "ended": null
+      },
+      "aliases": [
+        {
+          "sort-name": "Fred Waring and the Pennsylvanians",
+          "name": "Fred Waring and the Pennsylvanians",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Fred Waring &amp; Pennsylvanians",
+          "name": "Fred Waring &amp; Pennsylvanians",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Fred Waring's Pennsylvanians",
+          "name": "Fred Waring's Pennsylvanians",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Fred Waring's Pennyslvanians",
+          "name": "Fred Waring's Pennyslvanians",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Fred Waring &amp; the Pennsylvanians",
+          "name": "Fred Waring &amp; the Pennsylvanians",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Waring, Fred &amp; Pennsylvanians, The",
+          "name": "Fred Waring &amp; The Pennsylvanians",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Fred Warring &amp; His Pennsylvanians",
+          "name": "Fred Warring &amp; His Pennsylvanians",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Waring's Pensylvanians",
+          "name": "Waring's Pensylvanians",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        }
+      ]
+    },
+    {
+      "id": "0980008b-f9cd-412e-b062-84212b756f4a",
+      "type": "Group",
+      "score": "51",
+      "name": "Fred Williams &amp; The Jewels Band",
+      "sort-name": "Williams, Fred &amp; Jewels Band, The",
+      "country": "US",
+      "area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States"
+      },
+      "life-span": {
+        "ended": null
+      }
+    },
+    {
+      "id": "985bdbe7-ebf2-42b1-8ad6-5bb619385e67",
+      "type": "Group",
+      "score": "51",
+      "name": "Fred Wesley and The J.B.’s",
+      "sort-name": "Wesley, Fred and J.B.’s, the",
+      "country": "US",
+      "area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States"
+      },
+      "life-span": {
+        "ended": null
+      },
+      "aliases": [
+        {
+          "sort-name": "Fred and the New J.B.'s",
+          "name": "Fred and the New J.B.'s",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Fred Wesley &amp; The J.B.'s",
+          "name": "Fred Wesley &amp; The J.B.'s",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Fred Wesley &amp; The JB's",
+          "name": "Fred Wesley &amp; The JB's",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Fred Wesley &amp; The New J.B.'s",
+          "name": "Fred Wesley &amp; The New J.B.'s",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Fred Wesley &amp; The New JB's",
+          "name": "Fred Wesley &amp; The New JB's",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        }
+      ]
+    },
+    {
+      "id": "05cfb5c7-0152-41f4-a9c9-622e8f710dfa",
+      "type": "Group",
+      "score": "51",
+      "name": "John Fred &amp; His Playboy Band",
+      "sort-name": "Fred, John &amp; His Playboy Band",
+      "country": "US",
+      "area": {
+        "id": "489ce91b-6658-3307-9877-795b68554c98",
+        "name": "United States",
+        "sort-name": "United States"
+      },
+      "begin-area": {
+        "id": "34f02dc4-3173-4c68-86d1-c82504759342",
+        "name": "Baton Rouge",
+        "sort-name": "Baton Rouge"
+      },
+      "life-span": {
+        "begin": "1956",
+        "end": "1969",
+        "ended": true
+      },
+      "aliases": [
+        {
+          "sort-name": "John Fred",
+          "name": "John Fred",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "John Fred and His Playboyband",
+          "name": "John Fred and His Playboyband",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "John Fred and His Play Boy Band",
+          "name": "John Fred and His Play Boy Band",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "John Fred And His Playboy Band",
+          "name": "John Fred And His Playboy Band",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "John Fred and His Playboys",
+          "name": "John Fred and His Playboys",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "John Fred and the Play Boy Band",
+          "name": "John Fred and the Play Boy Band",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "John Fred and the Playboys",
+          "name": "John Fred and the Playboys",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "John Fred &amp; His Playboyband",
+          "name": "John Fred &amp; His Playboyband",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "John Fred &amp; His Playboys",
+          "name": "John Fred &amp; His Playboys",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "John Fred &amp; Hiss Playboy Band",
+          "name": "John Fred &amp; Hiss Playboy Band",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "John Fred &amp; Playboyband",
+          "name": "John Fred &amp; Playboyband",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "John Fred &amp; Playboy Band",
+          "name": "John Fred &amp; Playboy Band",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "John Fred &amp; the Play Boy Band",
+          "name": "John Fred &amp; the Play Boy Band",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "John Fred &amp; The Playboyband",
+          "name": "John Fred &amp; The Playboyband",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "John Fred &amp; The Playboy Band",
+          "name": "John Fred &amp; The Playboy Band",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "John Fred &amp; The Playboys",
+          "name": "John Fred &amp; The Playboys",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        }
+      ]
+    }
+  ]
+}
+</pre><h2><span class="mw-headline" id="CDStubs">CDStubs</span></h2><h4><span class="mw-headline" id="Example_4">Example</span></h4><p><a class="external text" href="http://musicbrainz.org/ws/2/cdstub/?query=title:Doo" rel="nofollow">http://musicbrainz.org/ws/2/cdstub/?query=title:Doo</a></p><h4><span class="mw-headline" id="Search_Fields_4">Search Fields</span></h4><p>The <a href="https://musicbrainz.org/doc/CD_Stub">CD stub</a> index contains the following fields you can search: </p><table border="1" class="wikitable wikitable sortable"><tbody><tr><th>Field</th><th>Description </th></tr><tr><td>added</td><td>the date the CD stub was added (e.g. "2020-01-22") </td></tr><tr><td>artist</td><td>(part of) the artist name set on the CD stub </td></tr><tr><td>barcode</td><td>the barcode set on the CD stub </td></tr><tr><td>comment</td><td>(part of) the comment set on the CD stub </td></tr><tr><td>discid</td><td>the CD stub's <a href="https://musicbrainz.org/doc/Disc_ID">Disc ID</a></td></tr><tr><td>title</td><td>(part of) the release title set on the CD stub </td></tr><tr><td>tracks</td><td>the number of tracks on the CD stub </td></tr></tbody></table><p>If you don't specify a field, the terms will be searched for in the <i>artist</i> and <i>title</i> fields. </p><h4><span class="mw-headline" id="Xml_4">Xml</span></h4><pre>&lt;?xml version="1.0" encoding="UTF-8" standalone="yes"?&gt;
+&lt;metadata created="2013-02-05T08:20:53.231Z" xmlns="http://musicbrainz.org/ns/mmd-2.0#" xmlns:ext="http://musicbrainz.org/ns/ext#-2.0"&gt;
+    &lt;cdstub-list count="1" offset="0"&gt;
+        &lt;cdstub id="NKpg6j_S6swmiKYEYsFhYrSwgQA-" ext:score="100"&gt;
+            &lt;title&gt;Stupid Doo Doo Dumb&lt;/title&gt;
+            &lt;artist&gt;Mac Dre&lt;/artist&gt;
+            &lt;barcode&gt;618763105025&lt;/barcode&gt;
+            &lt;comment&gt;CD Baby id:macdremusic5&lt;/comment&gt;
+            &lt;track-list count="15"/&gt;
+        &lt;/cdstub&gt;
+    &lt;/cdstub-list&gt;
+&lt;/metadata&gt;
+</pre><h4><span class="mw-headline" id="Json_4">Json</span></h4><pre>{
+    "created": "2017-02-14T11:00:32.046Z",
+    "count": 53,
+    "offset": 0,
+    "cdstubs": [
+        {
+            "id": "NKpg6j_S6swmiKYEYsFhYrSwgQA-",
+            "score": "100",
+            "count": 15,
+            "title": "Stupid Doo Doo Dumb",
+            "artist": "Mac Dre",
+            "barcode": "618763105025",
+            "comment": "CD Baby id:macdremusic5"
+        }
+    ]
+}
+</pre><h2><span class="mw-headline" id="Event">Event</span></h2><h4><span class="mw-headline" id="Example_5">Example</span></h4><p><a class="external free" href="https://musicbrainz.org/ws/2/event/?query=unique" rel="nofollow">https://musicbrainz.org/ws/2/event/?query=unique</a></p><h4><span class="mw-headline" id="Search_Fields_5">Search Fields</span></h4><p>The <a href="https://musicbrainz.org/doc/Event">Event</a> index contains the following fields you can search </p><table border="1" class="wikitable wikitable sortable"><tbody><tr><th>Field</th><th>Description </th></tr><tr><td>alias</td><td>(part of) any <a href="https://musicbrainz.org/doc/Aliases">alias</a> attached to the artist (diacritics are ignored) </td></tr><tr><td>aid</td><td>the MBID of an area related to the event </td></tr><tr><td>area</td><td>(part of) the name of an area related to the event </td></tr><tr><td>arid</td><td>the MBID of an artist related to the event </td></tr><tr><td>artist</td><td>(part of) the name of an artist related to the event </td></tr><tr><td>begin</td><td>the event's begin date (e.g. "1980-01-22") </td></tr><tr><td>comment</td><td>(part of) the artist's disambiguation comment </td></tr><tr><td>end</td><td>the event's end date (e.g. "1980-01-22") </td></tr><tr><td>ended</td><td>a boolean flag (true/false) indicating whether or not the event has an end date set </td></tr><tr><td>eid</td><td>the MBID of the event </td></tr><tr><td>event</td><td>(part of) the event's name (diacritics are ignored) </td></tr><tr><td>eventaccent</td><td>(part of) the event's name (with the specified diacritics) </td></tr><tr><td>pid</td><td>the MBID of a place related to the event </td></tr><tr><td>place</td><td>(part of) the name of a place related to the event </td></tr><tr><td>tag</td><td>(part of) a tag attached to the event </td></tr><tr><td>type</td><td>the event's <a href="https://musicbrainz.org/doc/Event#Type">type</a></td></tr></tbody></table><p>If you don't specify a field, the terms will be searched for in the <i>alias</i>, <i>artist</i> and <i>event</i> fields. </p><h3><span class="mw-headline" id="Xml_5">Xml</span></h3><pre>&lt;?xml version="1.0" encoding="UTF-8" standalone="yes"?&gt;
+&lt;metadata created="2017-03-12T18:04:50.830Z" xmlns="http://musicbrainz.org/ns/mmd-2.0#" xmlns:ext="http://musicbrainz.org/ns/ext#-2.0"&gt;
+  &lt;event-list count="1" offset="0"&gt;
+    &lt;event id="bc58d881-0b8e-45de-bee7-5d4a03d71190" type="Concert" ext:score="100"&gt;
+      &lt;name&gt;Dominique A at Le Lieu Unique, April 2012&lt;/name&gt;
+      &lt;life-span&gt;
+        &lt;begin&gt;2012-04-12&lt;/begin&gt;
+        &lt;end&gt;2012-04-12&lt;/end&gt;
+      &lt;/life-span&gt;
+      &lt;time&gt;20:30:00&lt;/time&gt;
+      &lt;relation-list target-type="artist"&gt;
+        &lt;relation type="main performer"&gt;
+          &lt;direction&gt;backward&lt;/direction&gt;
+          &lt;artist id="8ae5648d-d9b7-4083-b538-17f71672990f"&gt;
+            &lt;name&gt;Dominique A&lt;/name&gt;
+            &lt;sort-name&gt;A, Dominique&lt;/sort-name&gt;
+          &lt;/artist&gt;
+        &lt;/relation&gt;
+      &lt;/relation-list&gt;
+      &lt;relation-list target-type="place"&gt;
+        &lt;relation type="held at"&gt;
+          &lt;direction&gt;backward&lt;/direction&gt;
+          &lt;place id="ab7fd308-da33-4d01-8bdb-d8238bb3842a"&gt;
+            &lt;name&gt;Le Lieu Unique&lt;/name&gt;
+          &lt;/place&gt;
+        &lt;/relation&gt;
+      &lt;/relation-list&gt;
+    &lt;/event&gt;
+  &lt;/event-list&gt;
+&lt;/metadata&gt;
+</pre><h3><span class="mw-headline" id="Json_5">Json</span></h3><pre>{
+  "created": "2017-03-12T18:04:50.83Z",
+  "count": 1,
+  "offset": 0,
+  "events": [
+    {
+      "id": "bc58d881-0b8e-45de-bee7-5d4a03d71190",
+      "type": "Concert",
+      "score": "100",
+      "name": "Dominique A at Le Lieu Unique, April 2012",
+      "life-span": {
+        "begin": "2012-04-12",
+        "end": "2012-04-12"
+      },
+      "time": "20:30:00",
+      "relations": [
+        {
+          "type": "main performer",
+          "direction": "backward",
+          "artist": {
+            "id": "8ae5648d-d9b7-4083-b538-17f71672990f",
+            "name": "Dominique A",
+            "sort-name": "A, Dominique"
+          }
+        },
+        {
+          "type": "held at",
+          "direction": "backward",
+          "place": {
+            "id": "ab7fd308-da33-4d01-8bdb-d8238bb3842a",
+            "name": "Le Lieu Unique"
+          }
+        }
+      ]
+    }
+  ]
+}
+</pre><h2><span class="mw-headline" id="Instrument">Instrument</span></h2><h4><span class="mw-headline" id="Example_6">Example</span></h4><p><a class="external free" href="https://musicbrainz.org/ws/2/instrument/?query=Nose" rel="nofollow">https://musicbrainz.org/ws/2/instrument/?query=Nose</a></p><h4><span class="mw-headline" id="Search_Fields_6">Search Fields</span></h4><p>The <a href="https://musicbrainz.org/doc/Instrument">instrument</a> index contains these fields you can search: </p><table border="1" class="wikitable wikitable sortable"><tbody><tr><th>Field</th><th>Description </th></tr><tr><td>alias</td><td>(part of) any <a href="https://musicbrainz.org/doc/Aliases">alias</a> attached to the instrument (diacritics are ignored) </td></tr><tr><td>comment</td><td>(part of) the instrument's disambiguation comment </td></tr><tr><td>description</td><td>(part of) the description of the instrument (in English) </td></tr><tr><td>iid</td><td>the MBID of the instrument </td></tr><tr><td>instrument</td><td>(part of) the instrument's name (diacritics are ignored) </td></tr><tr><td>instrumentaccent</td><td>(part of) the instrument's name (with the specified diacritics) </td></tr><tr><td>tag</td><td>(part of) a tag attached to the instrument </td></tr><tr><td>type</td><td>the instrument's <a href="https://musicbrainz.org/doc/Instrument#Type">type</a></td></tr></tbody></table><p>If you don't specify a field, the terms will be searched for in the <i>alias</i>, <i>description</i> and <i>instrument</i> fields. </p><h3><span class="mw-headline" id="Xml_6">Xml</span></h3><pre>&lt;?xml version="1.0" encoding="UTF-8" standalone="yes"?&gt;
+&lt;metadata created="2017-03-12T18:06:29.271Z" xmlns="http://musicbrainz.org/ns/mmd-2.0#" xmlns:ext="http://musicbrainz.org/ns/ext#-2.0"&gt;
+  &lt;instrument-list count="2" offset="0"&gt;
+    &lt;instrument id="e2e7de25-20d5-4c3f-8a23-2b99d3e44730" type="Wind instrument" ext:score="100"&gt;
+      &lt;name&gt;nose flute&lt;/name&gt;
+      &lt;description&gt;The nose flute is a flute played by the nose commonly found in countries in and around the Pacific.&lt;/description&gt;
+      &lt;alias-list&gt;
+        &lt;alias locale="es" sort-name="flauta nasal" type="Instrument name" primary="primary"&gt;flauta nasal&lt;/alias&gt;
+        &lt;alias locale="fr" sort-name="flûte à nez" type="Instrument name" primary="primary"&gt;flûte à nez&lt;/alias&gt;
+        &lt;alias locale="de" sort-name="Nasenflöte (traditionell)" type="Instrument name" primary="primary"&gt;Nasenflöte (traditionell)&lt;/alias&gt;
+        &lt;alias locale="fi" sort-name="nenähuilu" type="Instrument name" primary="primary"&gt;nenähuilu&lt;/alias&gt;
+        &lt;alias locale="nl" sort-name="neusfluit" type="Instrument name" primary="primary"&gt;neusfluit&lt;/alias&gt;
+        &lt;alias locale="et" sort-name="ninaflööt" type="Instrument name" primary="primary"&gt;ninaflööt&lt;/alias&gt;
+        &lt;alias locale="en" sort-name="nose flute" type="Instrument name" primary="primary"&gt;nose flute&lt;/alias&gt;
+        &lt;alias locale="ja" sort-name="鼻笛" type="Instrument name" primary="primary"&gt;鼻笛&lt;/alias&gt;
+      &lt;/alias-list&gt;
+    &lt;/instrument&gt;
+    &lt;instrument id="3d082a7d-e8d9-4c7b-b8d0-513883a7d586" type="Wind instrument" ext:score="100"&gt;
+      &lt;name&gt;nose whistle&lt;/name&gt;
+      &lt;description&gt;The nose whistle (also known as the Humanatone) is a simple instrument played with the nose. The stream of air is directed over an edge in the instrument and the frequency of the notes produced is controlled by the volume of air.&lt;/description&gt;
+      &lt;alias-list&gt;
+        &lt;alias sort-name="Humanatone"&gt;Humanatone&lt;/alias&gt;
+        &lt;alias locale="de" sort-name="Nasenflöte" type="Instrument name" primary="primary"&gt;Nasenflöte&lt;/alias&gt;
+        &lt;alias locale="nl" sort-name="neusfluitje" type="Instrument name" primary="primary"&gt;neusfluitje&lt;/alias&gt;
+        &lt;alias locale="et" sort-name="ninavile" type="Instrument name" primary="primary"&gt;ninavile&lt;/alias&gt;
+        &lt;alias locale="en" sort-name="nose whistle" type="Instrument name" primary="primary"&gt;nose whistle&lt;/alias&gt;
+        &lt;alias locale="fr" sort-name="sifflet à nez" type="Instrument name" primary="primary"&gt;sifflet à nez&lt;/alias&gt;
+        &lt;alias locale="ja" sort-name="鼻ホイッスル" type="Instrument name" primary="primary"&gt;鼻ホイッスル&lt;/alias&gt;
+      &lt;/alias-list&gt;
+    &lt;/instrument&gt;
+  &lt;/instrument-list&gt;
+&lt;/metadata&gt;
+</pre><h3><span class="mw-headline" id="Json_6">Json</span></h3><pre>{
+  "created": "2017-03-12T18:06:29.271Z",
+  "count": 2,
+  "offset": 0,
+  "instruments": [
+    {
+      "id": "e2e7de25-20d5-4c3f-8a23-2b99d3e44730",
+      "type": "Wind instrument",
+      "score": "100",
+      "name": "nose flute",
+      "description": "The nose flute is a flute played by the nose commonly found in countries in and around the Pacific.",
+      "aliases": [
+        {
+          "sort-name": "flauta nasal",
+          "name": "flauta nasal",
+          "locale": "es",
+          "type": "Instrument name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "flûte à nez",
+          "name": "flûte à nez",
+          "locale": "fr",
+          "type": "Instrument name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Nasenflöte (traditionell)",
+          "name": "Nasenflöte (traditionell)",
+          "locale": "de",
+          "type": "Instrument name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "nenähuilu",
+          "name": "nenähuilu",
+          "locale": "fi",
+          "type": "Instrument name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "neusfluit",
+          "name": "neusfluit",
+          "locale": "nl",
+          "type": "Instrument name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "ninaflööt",
+          "name": "ninaflööt",
+          "locale": "et",
+          "type": "Instrument name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "nose flute",
+          "name": "nose flute",
+          "locale": "en",
+          "type": "Instrument name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "鼻笛",
+          "name": "鼻笛",
+          "locale": "ja",
+          "type": "Instrument name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        }
+      ]
+    },
+    {
+      "id": "3d082a7d-e8d9-4c7b-b8d0-513883a7d586",
+      "type": "Wind instrument",
+      "score": "100",
+      "name": "nose whistle",
+      "description": "The nose whistle (also known as the Humanatone) is a simple instrument played with the nose. The stream of air is directed over an edge in the instrument and the frequency of the notes produced is controlled by the volume of air.",
+      "aliases": [
+        {
+          "sort-name": "Humanatone",
+          "name": "Humanatone",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Nasenflöte",
+          "name": "Nasenflöte",
+          "locale": "de",
+          "type": "Instrument name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "neusfluitje",
+          "name": "neusfluitje",
+          "locale": "nl",
+          "type": "Instrument name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "ninavile",
+          "name": "ninavile",
+          "locale": "et",
+          "type": "Instrument name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "nose whistle",
+          "name": "nose whistle",
+          "locale": "en",
+          "type": "Instrument name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "sifflet à nez",
+          "name": "sifflet à nez",
+          "locale": "fr",
+          "type": "Instrument name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "鼻ホイッスル",
+          "name": "鼻ホイッスル",
+          "locale": "ja",
+          "type": "Instrument name",
+          "primary": true,
+          "begin-date": null,
+          "end-date": null
+        }
+      ]
+    }
+  ]
+}
+</pre><h2><span class="mw-headline" id="Label">Label</span></h2><h4><span class="mw-headline" id="Example_7">Example</span></h4><p><a class="external free" href="http://musicbrainz.org/ws/2/label/?query=%22Devil%27s%20Records%22" rel="nofollow">http://musicbrainz.org/ws/2/label/?query=%22Devil's%20Records%22</a></p><h4><span class="mw-headline" id="Search_Fields_7">Search Fields</span></h4><p>The <a href="https://musicbrainz.org/doc/Label">Label</a> index contains the following fields you can search </p><table border="1" class="wikitable wikitable sortable"><tbody><tr><th>Field</th><th>Description </th></tr><tr><td>alias</td><td>(part of) any <a href="https://musicbrainz.org/doc/Aliases">alias</a> attached to the label (diacritics are ignored) </td></tr><tr><td>area</td><td>(part of) the name of the label's main associated area </td></tr><tr><td>begin</td><td>the label's begin date (e.g. "1980-01-22") </td></tr><tr><td>code</td><td>the <a href="https://musicbrainz.org/doc/Label/Label_Code">label code</a> for the label (only the numbers, without "LC") </td></tr><tr><td>comment</td><td>(part of) the label's disambiguation comment </td></tr><tr><td>country</td><td>the 2-letter code (ISO 3166-1 alpha-2) for the label's associated country </td></tr><tr><td>end</td><td>the label's end date (e.g. "1980-01-22") </td></tr><tr><td>ended</td><td>a boolean flag (true/false) indicating whether or not the label has ended (is dissolved) </td></tr><tr><td>ipi</td><td>an IPI code associated with the label </td></tr><tr><td>isni</td><td>an ISNI code associated with the label </td></tr><tr><td>label</td><td>(part of) the label's name (diacritics are ignored) </td></tr><tr><td>labelaccent</td><td>(part of) the label's name (with the specified diacritics) </td></tr><tr><td>laid</td><td>the label's MBID </td></tr><tr><td>release_count</td><td>the amount of releases related to the label </td></tr><tr><td>sortname</td><td>equivalent to name (labels no longer have separate sort names) </td></tr><tr><td>tag</td><td>(part of) a tag attached to the label </td></tr><tr><td>type</td><td>the label's <a href="https://musicbrainz.org/doc/Label/Type">type</a></td></tr></tbody></table><p>If you don't specify a field, the terms will be searched for in the <i>alias</i> and <i>label</i> fields. </p><h4><span class="mw-headline" id="Xml_7">Xml</span></h4><pre>&lt;?xml version="1.0" encoding="UTF-8" standalone="yes"?&gt;
+&lt;metadata created="2017-03-12T16:59:29.160Z" xmlns="http://musicbrainz.org/ns/mmd-2.0#" xmlns:ext="http://musicbrainz.org/ns/ext#-2.0"&gt;
+  &lt;label-list count="1" offset="0"&gt;
+    &lt;label id="d2c296e3-10a4-4ba9-97b9-5620ff8a3ce0" type="Original Production" ext:score="100"&gt;
+      &lt;name&gt;Devil's Records&lt;/name&gt;
+      &lt;sort-name&gt;Devil's Records&lt;/sort-name&gt;
+      &lt;country&gt;FR&lt;/country&gt;
+      &lt;area id="08310658-51eb-3801-80de-5a0739207115"&gt;
+        &lt;name&gt;France&lt;/name&gt;
+        &lt;sort-name&gt;France&lt;/sort-name&gt;
+      &lt;/area&gt;
+      &lt;life-span&gt;
+        &lt;ended&gt;false&lt;/ended&gt;
+      &lt;/life-span&gt;
+      &lt;alias-list&gt;
+        &lt;alias sort-name="Devil Records"&gt;Devil Records&lt;/alias&gt;
+        &lt;alias sort-name="Devils Records"&gt;Devils Records&lt;/alias&gt;
+      &lt;/alias-list&gt;
+    &lt;/label&gt;
+  &lt;/label-list&gt;
+&lt;/metadata&gt;
+</pre><h4><span class="mw-headline" id="Json_7">Json</span></h4><pre>{
+  "created": "2017-03-12T17:31:38.969Z",
+  "count": 1,
+  "offset": 0,
+  "labels": [
+    {
+      "id": "d2c296e3-10a4-4ba9-97b9-5620ff8a3ce0",
+      "type": "Original Production",
+      "score": "100",
+      "name": "Devil's Records",
+      "sort-name": "Devil's Records",
+      "country": "FR",
+      "area": {
+        "id": "08310658-51eb-3801-80de-5a0739207115",
+        "name": "France",
+        "sort-name": "France"
+      },
+      "life-span": {
+        "ended": null
+      },
+      "aliases": [
+        {
+          "sort-name": "Devil Records",
+          "name": "Devil Records",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        },
+        {
+          "sort-name": "Devils Records",
+          "name": "Devils Records",
+          "locale": null,
+          "type": null,
+          "primary": null,
+          "begin-date": null,
+          "end-date": null
+        }
+      ]
+    }
+  ]
+}
+</pre><h2><span class="mw-headline" id="Place">Place</span></h2><h4><span class="mw-headline" id="Example_8">Example</span></h4><p><a class="external text" href="http://musicbrainz.org/ws/2/place/?query=chipping" rel="nofollow">http://musicbrainz.org/ws/2/place/?query=chipping</a></p><h4><span class="mw-headline" id="Search_Fields_8">Search Fields</span></h4><p>The <a href="https://musicbrainz.org/doc/Place">Place</a> index contains the following fields you can search </p><table border="1" class="wikitable wikitable sortable"><tbody><tr><th>Field</th><th>Description </th></tr><tr><td>address</td><td>(part of) the physical address for this place </td></tr><tr><td>alias</td><td>(part of) any <a href="https://musicbrainz.org/doc/Aliases">alias</a> attached to the place (diacritics are ignored) </td></tr><tr><td>area</td><td>(part of) the name of the place's main associated area </td></tr><tr><td>begin</td><td>the place's begin date (e.g. "1980-01-22") </td></tr><tr><td>comment</td><td>(part of) the place's disambiguation comment </td></tr><tr><td>end</td><td>the place's end date (e.g. "1980-01-22") </td></tr><tr><td>ended</td><td>a boolean flag (true/false) indicating whether or not the place has ended (is closed) </td></tr><tr><td>lat</td><td>the (WGS 84) latitude of the place's coordinates (e.g. "58.388226") </td></tr><tr><td>long</td><td>the (WGS 84) longitude of the place's coordinates (e.g. "26.702817") </td></tr><tr><td>place</td><td>(part of) the place's name (diacritics are ignored) </td></tr><tr><td>placeaccent</td><td>(part of) the place's name (with the specified diacritics) </td></tr><tr><td>pid</td><td>the place's MBID </td></tr><tr><td>type</td><td>the place's <a href="https://musicbrainz.org/doc/Place#Type">type</a></td></tr></tbody></table><p><br> If you don't specify a field, the terms will be searched for in the <i>address</i>, <i>alias</i>, <i>area</i> and <i>place</i> fields. </p><h4><span class="mw-headline" id="Xml_8">Xml</span></h4><pre>&lt;metadata created="2015-02-02T17:29:02.301Z"&gt;
+    &lt;place-list count="1" offset="0"&gt;
+        &lt;place id="d1ab65f8-d082-492a-bd70-ce375548dabf" type="Studio" ext:score="100"&gt;
+            &lt;name&gt;Chipping Norton Recording Studios&lt;/name&gt;
+            &lt;address&gt;28–30 New Street, Chipping Norton&lt;/address&gt;
+            &lt;area id="44e5e20e-8fbc-4b07-b3f2-22f2199186fd"&gt;
+                &lt;name&gt;Oxfordshire&lt;/name&gt;
+                &lt;sort-name&gt;Oxfordshire&lt;/sort-name&gt;
+            &lt;/area&gt;
+        &lt;life-span&gt;
+            &lt;begin&gt;1971&lt;/begin&gt;
+            &lt;end&gt;1999-10&lt;/end&gt;
+            &lt;ended&gt;true&lt;/ended&gt;
+        &lt;/life-span&gt;
+        &lt;/place&gt;
+    &lt;/place-list&gt;
+&lt;/metadata&gt;
+</pre><h4><span class="mw-headline" id="Json_8">Json</span></h4><pre>{
+  "created": "2017-03-12T16:59:39.959Z",
+  "count": 1,
+  "offset": 0,
+  "places": [
+    {
+      "id": "d1ab65f8-d082-492a-bd70-ce375548dabf",
+      "type": "Studio",
+      "score": "100",
+      "name": "Chipping Norton Recording Studios",
+      "address": "28–30 New Street, Chipping Norton",
+      "coordinates": {
+        "latitude": "51.9414",
+        "longitude": "-1.548"
+      },
+      "area": {
+        "id": "716234d3-b8ed-45ac-8983-e7219eb85956",
+        "name": "Chipping Norton",
+        "sort-name": "Chipping Norton"
+      },
+      "life-span": {
+        "begin": "1971",
+        "end": "1999-10",
+        "ended": true
+      }
+    }
+  ]
+}
+</pre><h2><span class="mw-headline" id="Recording">Recording</span></h2><h4><span class="mw-headline" id="Example_9">Example</span></h4><p><a class="external free" href="http://musicbrainz.org/ws/2/recording/?query=isrc:GBAHT1600302" rel="nofollow">http://musicbrainz.org/ws/2/recording/?query=isrc:GBAHT1600302</a></p><h4><span class="mw-headline" id="Search_Fields_9">Search Fields</span></h4><p>The <a href="https://musicbrainz.org/doc/Recording">Recording</a> index contains the following fields you can search </p><table border="1" class="wikitable wikitable sortable"><tbody><tr><th>Field</th><th>Description </th></tr><tr><td>alias</td><td>(part of) any <a href="https://musicbrainz.org/doc/Aliases">alias</a> attached to the recording (diacritics are ignored) </td></tr><tr><td>arid</td><td>the MBID of any of the recording artists </td></tr><tr><td>artist</td><td>(part of) the combined credited artist name for the recording, including join phrases (e.g. "Artist X feat.") </td></tr><tr><td>artistname</td><td>(part of) the name of any of the recording artists </td></tr><tr><td>comment</td><td>(part of) the recording's disambiguation comment </td></tr><tr><td>country</td><td>the 2-letter code (ISO 3166-1 alpha-2) for the country any release of this recording was released in </td></tr><tr><td>creditname</td><td>(part of) the credited name of any of the recording artists on this particular recording </td></tr><tr><td>date</td><td>the release date of any release including this recording (e.g. "1980-01-22") </td></tr><tr><td>dur</td><td>the recording duration in milliseconds </td></tr><tr><td>firstreleasedate</td><td>the release date of the earliest release including this recording (e.g. "1980-01-22") </td></tr><tr><td>format</td><td>the <a href="https://musicbrainz.org/doc/Release/Format">format</a> of any medium including this recording (insensitive to case, spaces, and separators) </td></tr><tr><td>isrc</td><td>any <a href="https://musicbrainz.org/doc/ISRC">ISRC</a> associated to the recording </td></tr><tr><td>number</td><td>the free-text number of the track on any medium including this recording (e.g. "A4") </td></tr><tr><td>position</td><td>the position inside its release of any medium including this recording (starts at 1) </td></tr><tr><td>primarytype</td><td>the <a href="https://musicbrainz.org/doc/Release_Group/Type#Primary_types">primary type</a> of any release group including this recording </td></tr><tr><td>qdur</td><td>the recording duration, quantized (duration in milliseconds / 2000) </td></tr><tr><td>recording</td><td>(part of) the recording's name, or the name of a track connected to this recording (diacritics are ignored) </td></tr><tr><td>recordingaccent</td><td>(part of) the recordings's name, or the name of a track connected to this recording (with the specified diacritics) </td></tr><tr><td>reid</td><td>the MBID of any release including this recording </td></tr><tr><td>release</td><td>(part of) the name of any release including this recording </td></tr><tr><td>rgid</td><td>the MBID of any release group including this recording </td></tr><tr><td>rid</td><td>the recording's MBID </td></tr><tr><td>secondarytype</td><td>any of the <a href="https://musicbrainz.org/doc/Release_Group/Type#Secondary_types">secondary types</a> of any release group including this recording </td></tr><tr><td>status</td><td>the <a href="https://musicbrainz.org/doc/Release#Status">status</a> of any release including this recording </td></tr><tr><td>tag</td><td>(part of) a tag attached to the recording </td></tr><tr><td>tid</td><td>the MBID of a track connected to this recording </td></tr><tr><td>tnum</td><td>the position of the track on any medium including this recording (starts at 1, pre-gaps at 0) </td></tr><tr><td>tracks</td><td>the number of tracks on any medium including this recording </td></tr><tr><td>tracksrelease</td><td>the number of tracks on any release (as a whole) including this recording </td></tr><tr><td>type</td><td>legacy <a href="https://musicbrainz.org/doc/Release_Group/Type">release group type</a> field that predates the ability to set multiple types (<a class="external text" href="https://github.com/metabrainz/musicbrainz-server/blob/f8bd7e9366eb6e836dfcee9b626e1ca969db1c4f/lib/MusicBrainz/Server/WebService/XMLSerializer.pm#L305-L326" rel="nofollow">see calculation code</a>) </td></tr><tr><td>video</td><td>a boolean flag (true/false) indicating whether or not the recording is a video recording </td></tr></tbody></table><p>If you don't specify a field, the terms will be searched for in the <i>recording</i> field. </p><h4><span class="mw-headline" id="Xml_9">Xml</span></h4><pre>&lt;?xml version="1.0" encoding="UTF-8" standalone="yes"?&gt;
+&lt;metadata created="2017-02-23T14:31:36.889Z" xmlns="http://musicbrainz.org/ns/mmd-2.0#" xmlns:ext="http://musicbrainz.org/ns/ext#-2.0"&gt;
+  &lt;recording-list count="1" offset="0"&gt;
+    &lt;recording id="026fa041-3917-4c73-9079-ed16e36f20f8" ext:score="100"&gt;
+      &lt;title&gt;Blow Your Mind (Mwah)&lt;/title&gt;
+      &lt;length&gt;178000&lt;/length&gt;
+      &lt;artist-credit id="4af83e24-f886-35c8-831f-5dde0163a6a0"&gt;
+        &lt;name-credit&gt;
+          &lt;artist id="6f1a58bf-9b1b-49cf-a44a-6cefad7ae04f"&gt;
+            &lt;name&gt;Dua Lipa&lt;/name&gt;
+            &lt;sort-name&gt;Lipa, Dua&lt;/sort-name&gt;
+          &lt;/artist&gt;
+        &lt;/name-credit&gt;
+      &lt;/artist-credit&gt;
+      &lt;first-release-date&gt;2016-08-26&lt;/first-release-date&gt;
+      &lt;release-list&gt;
+        &lt;release id="383be31c-37a0-4e08-8cda-cbcbbc587ae5"&gt;
+          &lt;title&gt;Blow Your Mind (Mwah)&lt;/title&gt;
+          &lt;status id="4e304316-386d-3409-af2e-78857eec5cfe"&gt;Official&lt;/status&gt;
+          &lt;release-group id="4a45bfa5-eb1e-49eb-a20c-1021389b2121" type="Single"&gt;
+            &lt;primary-type&gt;Single&lt;/primary-type&gt;
+          &lt;/release-group&gt;
+          &lt;date&gt;2016-08-26&lt;/date&gt;
+          &lt;country&gt;XW&lt;/country&gt;
+          &lt;release-event-list&gt;
+            &lt;release-event&gt;
+              &lt;date&gt;2016-08-26&lt;/date&gt;
+              &lt;area id="525d4e18-3d00-31b9-a58b-a146a916de8f"&gt;
+                &lt;name&gt;[Worldwide]&lt;/name&gt;
+                &lt;sort-name&gt;[Worldwide]&lt;/sort-name&gt;
+                &lt;iso-3166-1-code-list&gt;
+                  &lt;iso-3166-1-code&gt;XW&lt;/iso-3166-1-code&gt;
+                &lt;/iso-3166-1-code-list&gt;
+              &lt;/area&gt;
+            &lt;/release-event&gt;
+          &lt;/release-event-list&gt;
+          &lt;medium-list&gt;
+            &lt;track-count&gt;1&lt;/track-count&gt;
+            &lt;medium&gt;
+              &lt;position&gt;1&lt;/position&gt;
+              &lt;format&gt;Digital Media&lt;/format&gt;
+              &lt;track-list count="1" offset="0"&gt;
+                &lt;track id="0ef6e647-4aeb-438e-8c8a-50c22c511203"&gt;
+                  &lt;number&gt;1&lt;/number&gt;
+                  &lt;title&gt;Blow Your Mind (Mwah)&lt;/title&gt;
+                  &lt;length&gt;179000&lt;/length&gt;
+                &lt;/track&gt;
+              &lt;/track-list&gt;
+            &lt;/medium&gt;
+          &lt;/medium-list&gt;
+        &lt;/release&gt;
+        &lt;release id="8bd42e63-46cb-43e3-8294-c9c3b9793581"&gt;
+          &lt;title&gt;Now That’s What I Call Music! 95&lt;/title&gt;
+          &lt;status id="4e304316-386d-3409-af2e-78857eec5cfe"&gt;Official&lt;/status&gt;
+          &lt;artist-credit id="949a7fd5-fe73-3e8f-922e-01ff4ca958f7"&gt;
+            &lt;name-credit&gt;
+              &lt;artist id="89ad4ac3-39f7-470e-963a-56509c546377"&gt;
+                &lt;name&gt;Various Artists&lt;/name&gt;
+                &lt;sort-name&gt;Various Artists&lt;/sort-name&gt;
+              &lt;/artist&gt;
+            &lt;/name-credit&gt;
+          &lt;/artist-credit&gt;
+          &lt;release-group id="071a007b-b9cf-4e22-8646-03c30fc8dd87" type="Compilation"&gt;
+            &lt;primary-type&gt;Album&lt;/primary-type&gt;
+            &lt;secondary-type-list&gt;
+              &lt;secondary-type&gt;Compilation&lt;/secondary-type&gt;
+            &lt;/secondary-type-list&gt;
+          &lt;/release-group&gt;
+          &lt;date&gt;2016-11-18&lt;/date&gt;
+          &lt;country&gt;GB&lt;/country&gt;
+          &lt;release-event-list&gt;
+            &lt;release-event&gt;
+              &lt;date&gt;2016-11-18&lt;/date&gt;
+              &lt;area id="8a754a16-0027-3a29-b6d7-2b40ea0481ed"&gt;
+                &lt;name&gt;United Kingdom&lt;/name&gt;
+                &lt;sort-name&gt;United Kingdom&lt;/sort-name&gt;
+                &lt;iso-3166-1-code-list&gt;
+                  &lt;iso-3166-1-code&gt;GB&lt;/iso-3166-1-code&gt;
+                &lt;/iso-3166-1-code-list&gt;
+              &lt;/area&gt;
+            &lt;/release-event&gt;
+          &lt;/release-event-list&gt;
+          &lt;medium-list&gt;
+            &lt;track-count&gt;45&lt;/track-count&gt;
+            &lt;medium&gt;
+              &lt;position&gt;1&lt;/position&gt;
+              &lt;format&gt;Digital Media&lt;/format&gt;
+              &lt;track-list count="45" offset="35"&gt;
+                &lt;track id="e43cfb2f-fdd3-40a7-9396-25c9435ca8cb"&gt;
+                  &lt;number&gt;36&lt;/number&gt;
+                  &lt;title&gt;Blow Your Mind (Mwah)&lt;/title&gt;
+                  &lt;length&gt;178000&lt;/length&gt;
+                &lt;/track&gt;
+              &lt;/track-list&gt;
+            &lt;/medium&gt;
+          &lt;/medium-list&gt;
+        &lt;/release&gt;
+        &lt;release id="72a240b0-ca08-4d35-a15d-c1eded21c0ce"&gt;
+          &lt;title&gt;Now That’s What I Call Music! 95&lt;/title&gt;
+          &lt;status id="4e304316-386d-3409-af2e-78857eec5cfe"&gt;Official&lt;/status&gt;
+          &lt;artist-credit id="949a7fd5-fe73-3e8f-922e-01ff4ca958f7"&gt;
+            &lt;name-credit&gt;
+              &lt;artist id="89ad4ac3-39f7-470e-963a-56509c546377"&gt;
+                &lt;name&gt;Various Artists&lt;/name&gt;
+                &lt;sort-name&gt;Various Artists&lt;/sort-name&gt;
+              &lt;/artist&gt;
+            &lt;/name-credit&gt;
+          &lt;/artist-credit&gt;
+          &lt;release-group id="071a007b-b9cf-4e22-8646-03c30fc8dd87" type="Compilation"&gt;
+            &lt;primary-type&gt;Album&lt;/primary-type&gt;
+            &lt;secondary-type-list&gt;
+              &lt;secondary-type&gt;Compilation&lt;/secondary-type&gt;
+            &lt;/secondary-type-list&gt;
+          &lt;/release-group&gt;
+          &lt;date&gt;2016-11-18&lt;/date&gt;
+          &lt;country&gt;GB&lt;/country&gt;
+          &lt;release-event-list&gt;
+            &lt;release-event&gt;
+              &lt;date&gt;2016-11-18&lt;/date&gt;
+              &lt;area id="8a754a16-0027-3a29-b6d7-2b40ea0481ed"&gt;
+                &lt;name&gt;United Kingdom&lt;/name&gt;
+                &lt;sort-name&gt;United Kingdom&lt;/sort-name&gt;
+                &lt;iso-3166-1-code-list&gt;
+                  &lt;iso-3166-1-code&gt;GB&lt;/iso-3166-1-code&gt;
+                &lt;/iso-3166-1-code-list&gt;
+              &lt;/area&gt;
+            &lt;/release-event&gt;
+          &lt;/release-event-list&gt;
+          &lt;medium-list&gt;
+            &lt;track-count&gt;45&lt;/track-count&gt;
+            &lt;medium&gt;
+              &lt;position&gt;2&lt;/position&gt;
+              &lt;format&gt;CD&lt;/format&gt;
+              &lt;track-list count="24" offset="14"&gt;
+                &lt;track id="8c193afa-a867-46fb-8745-5168a8e16a75"&gt;
+                  &lt;number&gt;15&lt;/number&gt;
+                  &lt;title&gt;Blow Your Mind (Mwah)&lt;/title&gt;
+                  &lt;length&gt;178213&lt;/length&gt;
+                &lt;/track&gt;
+              &lt;/track-list&gt;
+            &lt;/medium&gt;
+          &lt;/medium-list&gt;
+        &lt;/release&gt;
+        &lt;release id="6313b666-6042-486b-b2aa-614e7542ff68"&gt;
+          &lt;title&gt;Life Is Music 2016.2&lt;/title&gt;
+          &lt;status id="4e304316-386d-3409-af2e-78857eec5cfe"&gt;Official&lt;/status&gt;
+          &lt;artist-credit id="949a7fd5-fe73-3e8f-922e-01ff4ca958f7"&gt;
+            &lt;name-credit&gt;
+              &lt;artist id="89ad4ac3-39f7-470e-963a-56509c546377"&gt;
+                &lt;name&gt;Various Artists&lt;/name&gt;
+                &lt;sort-name&gt;Various Artists&lt;/sort-name&gt;
+              &lt;/artist&gt;
+            &lt;/name-credit&gt;
+          &lt;/artist-credit&gt;
+          &lt;release-group id="406d765d-c5ca-43e9-b268-a33878927ff5" type="Compilation"&gt;
+            &lt;primary-type&gt;Album&lt;/primary-type&gt;
+            &lt;secondary-type-list&gt;
+              &lt;secondary-type&gt;Compilation&lt;/secondary-type&gt;
+            &lt;/secondary-type-list&gt;
+          &lt;/release-group&gt;
+          &lt;date&gt;2016-12-02&lt;/date&gt;
+          &lt;country&gt;BE&lt;/country&gt;
+          &lt;release-event-list&gt;
+            &lt;release-event&gt;
+              &lt;date&gt;2016-12-02&lt;/date&gt;
+              &lt;area id="5b8a5ee5-0bb3-34cf-9a75-c27c44e341fc"&gt;
+                &lt;name&gt;Belgium&lt;/name&gt;
+                &lt;sort-name&gt;Belgium&lt;/sort-name&gt;
+                &lt;iso-3166-1-code-list&gt;
+                  &lt;iso-3166-1-code&gt;BE&lt;/iso-3166-1-code&gt;
+                &lt;/iso-3166-1-code-list&gt;
+              &lt;/area&gt;
+            &lt;/release-event&gt;
+          &lt;/release-event-list&gt;
+          &lt;medium-list&gt;
+            &lt;track-count&gt;39&lt;/track-count&gt;
+            &lt;medium&gt;
+              &lt;position&gt;1&lt;/position&gt;
+              &lt;format&gt;CD&lt;/format&gt;
+              &lt;track-list count="20" offset="7"&gt;
+                &lt;track id="7e93e73c-e8f2-4218-af5e-baae4ce98882"&gt;
+                  &lt;number&gt;8&lt;/number&gt;
+                  &lt;title&gt;Blow Your Mind (Mwah)&lt;/title&gt;
+                  &lt;length&gt;177266&lt;/length&gt;
+                &lt;/track&gt;
+              &lt;/track-list&gt;
+            &lt;/medium&gt;
+          &lt;/medium-list&gt;
+        &lt;/release&gt;
+        &lt;release id="b3a2bca0-faec-4e67-8cf3-fd3d01755a2d"&gt;
+          &lt;title&gt;Hits 2016&lt;/title&gt;
+          &lt;status id="4e304316-386d-3409-af2e-78857eec5cfe"&gt;Official&lt;/status&gt;
+          &lt;artist-credit id="949a7fd5-fe73-3e8f-922e-01ff4ca958f7"&gt;
+            &lt;name-credit&gt;
+              &lt;artist id="89ad4ac3-39f7-470e-963a-56509c546377"&gt;
+                &lt;name&gt;Various Artists&lt;/name&gt;
+                &lt;sort-name&gt;Various Artists&lt;/sort-name&gt;
+              &lt;/artist&gt;
+            &lt;/name-credit&gt;
+          &lt;/artist-credit&gt;
+          &lt;release-group id="7678ff0a-9446-4d5f-b46e-56c84fc68654" type="Compilation"&gt;
+            &lt;primary-type&gt;Album&lt;/primary-type&gt;
+            &lt;secondary-type-list&gt;
+              &lt;secondary-type&gt;Compilation&lt;/secondary-type&gt;
+            &lt;/secondary-type-list&gt;
+          &lt;/release-group&gt;
+          &lt;date&gt;2016-12-23&lt;/date&gt;
+          &lt;country&gt;MX&lt;/country&gt;
+          &lt;release-event-list&gt;
+            &lt;release-event&gt;
+              &lt;date&gt;2016-12-23&lt;/date&gt;
+              &lt;area id="3e08b2cd-69f3-317c-b1e4-e71be581839e"&gt;
+                &lt;name&gt;Mexico&lt;/name&gt;
+                &lt;sort-name&gt;Mexico&lt;/sort-name&gt;
+                &lt;iso-3166-1-code-list&gt;
+                  &lt;iso-3166-1-code&gt;MX&lt;/iso-3166-1-code&gt;
+                &lt;/iso-3166-1-code-list&gt;
+              &lt;/area&gt;
+            &lt;/release-event&gt;
+          &lt;/release-event-list&gt;
+          &lt;medium-list&gt;
+            &lt;track-count&gt;23&lt;/track-count&gt;
+            &lt;medium&gt;
+              &lt;position&gt;1&lt;/position&gt;
+              &lt;format&gt;Digital Media&lt;/format&gt;
+              &lt;track-list count="23" offset="22"&gt;
+                &lt;track id="3b466997-8bda-410f-82aa-02b703c931c5"&gt;
+                  &lt;number&gt;23&lt;/number&gt;
+                  &lt;title&gt;Blow Your Mind (Mwah)&lt;/title&gt;
+                  &lt;length&gt;178583&lt;/length&gt;
+                &lt;/track&gt;
+              &lt;/track-list&gt;
+            &lt;/medium&gt;
+          &lt;/medium-list&gt;
+        &lt;/release&gt;
+        &lt;release id="d02cce98-98fe-430c-b3c9-951c94f4fb1d"&gt;
+          &lt;title&gt;Now That's What I Call Music! 95&lt;/title&gt;
+          &lt;status id="4e304316-386d-3409-af2e-78857eec5cfe"&gt;Official&lt;/status&gt;
+          &lt;artist-credit id="949a7fd5-fe73-3e8f-922e-01ff4ca958f7"&gt;
+            &lt;name-credit&gt;
+              &lt;artist id="89ad4ac3-39f7-470e-963a-56509c546377"&gt;
+                &lt;name&gt;Various Artists&lt;/name&gt;
+                &lt;sort-name&gt;Various Artists&lt;/sort-name&gt;
+              &lt;/artist&gt;
+            &lt;/name-credit&gt;
+          &lt;/artist-credit&gt;
+          &lt;release-group id="071a007b-b9cf-4e22-8646-03c30fc8dd87" type="Compilation"&gt;
+            &lt;primary-type&gt;Album&lt;/primary-type&gt;
+            &lt;secondary-type-list&gt;
+              &lt;secondary-type&gt;Compilation&lt;/secondary-type&gt;
+            &lt;/secondary-type-list&gt;
+          &lt;/release-group&gt;
+          &lt;date&gt;2016-11-18&lt;/date&gt;
+          &lt;country&gt;GB&lt;/country&gt;
+          &lt;release-event-list&gt;
+            &lt;release-event&gt;
+              &lt;date&gt;2016-11-18&lt;/date&gt;
+              &lt;area id="8a754a16-0027-3a29-b6d7-2b40ea0481ed"&gt;
+                &lt;name&gt;United Kingdom&lt;/name&gt;
+                &lt;sort-name&gt;United Kingdom&lt;/sort-name&gt;
+                &lt;iso-3166-1-code-list&gt;
+                  &lt;iso-3166-1-code&gt;GB&lt;/iso-3166-1-code&gt;
+                &lt;/iso-3166-1-code-list&gt;
+              &lt;/area&gt;
+            &lt;/release-event&gt;
+          &lt;/release-event-list&gt;
+          &lt;medium-list&gt;
+            &lt;track-count&gt;45&lt;/track-count&gt;
+            &lt;medium&gt;
+              &lt;position&gt;2&lt;/position&gt;
+              &lt;format&gt;CD&lt;/format&gt;
+              &lt;track-list count="24" offset="14"&gt;
+                &lt;track id="4ae11ffe-5ac8-42ae-a321-1535136ff05c"&gt;
+                  &lt;number&gt;15&lt;/number&gt;
+                  &lt;title&gt;Blow Your Mind (Mwah)&lt;/title&gt;
+                  &lt;length&gt;178213&lt;/length&gt;
+                &lt;/track&gt;
+              &lt;/track-list&gt;
+            &lt;/medium&gt;
+          &lt;/medium-list&gt;
+        &lt;/release&gt;
+        &lt;release id="5496dc5f-a282-422e-b7c6-78575e5f7944"&gt;
+          &lt;title&gt;Dua Lipa (Deluxe)&lt;/title&gt;
+          &lt;status id="518ffc83-5cde-34df-8627-81bff5093d92"&gt;Promotion&lt;/status&gt;
+          &lt;release-group id="abbc4905-c25f-4c67-8e2d-19329ec48b1f" type="Album"&gt;
+            &lt;primary-type&gt;Album&lt;/primary-type&gt;
+          &lt;/release-group&gt;
+          &lt;date&gt;2017-06-02&lt;/date&gt;
+          &lt;country&gt;XW&lt;/country&gt;
+          &lt;release-event-list&gt;
+            &lt;release-event&gt;
+              &lt;date&gt;2017-06-02&lt;/date&gt;
+              &lt;area id="525d4e18-3d00-31b9-a58b-a146a916de8f"&gt;
+                &lt;name&gt;[Worldwide]&lt;/name&gt;
+                &lt;sort-name&gt;[Worldwide]&lt;/sort-name&gt;
+                &lt;iso-3166-1-code-list&gt;
+                  &lt;iso-3166-1-code&gt;XW&lt;/iso-3166-1-code&gt;
+                &lt;/iso-3166-1-code-list&gt;
+              &lt;/area&gt;
+            &lt;/release-event&gt;
+          &lt;/release-event-list&gt;
+          &lt;medium-list&gt;
+            &lt;track-count&gt;17&lt;/track-count&gt;
+            &lt;medium&gt;
+              &lt;position&gt;1&lt;/position&gt;
+              &lt;format&gt;Digital Media&lt;/format&gt;
+              &lt;track-list count="17" offset="5"&gt;
+                &lt;track id="a2fcb379-7638-4f27-b2e4-5242a69ed09c"&gt;
+                  &lt;number&gt;6&lt;/number&gt;
+                  &lt;title&gt;Blow Your Mind (Mwah)&lt;/title&gt;
+                  &lt;length&gt;178000&lt;/length&gt;
+                &lt;/track&gt;
+              &lt;/track-list&gt;
+            &lt;/medium&gt;
+          &lt;/medium-list&gt;
+        &lt;/release&gt;
+        &lt;release id="eb66eaa0-acb6-4317-91ea-ff65b7813ec0"&gt;
+          &lt;title&gt;Dua Lipa&lt;/title&gt;
+          &lt;status id="518ffc83-5cde-34df-8627-81bff5093d92"&gt;Promotion&lt;/status&gt;
+          &lt;release-group id="abbc4905-c25f-4c67-8e2d-19329ec48b1f" type="Album"&gt;
+            &lt;primary-type&gt;Album&lt;/primary-type&gt;
+          &lt;/release-group&gt;
+          &lt;date&gt;2017-06-02&lt;/date&gt;
+          &lt;country&gt;XW&lt;/country&gt;
+          &lt;release-event-list&gt;
+            &lt;release-event&gt;
+              &lt;date&gt;2017-06-02&lt;/date&gt;
+              &lt;area id="525d4e18-3d00-31b9-a58b-a146a916de8f"&gt;
+                &lt;name&gt;[Worldwide]&lt;/name&gt;
+                &lt;sort-name&gt;[Worldwide]&lt;/sort-name&gt;
+                &lt;iso-3166-1-code-list&gt;
+                  &lt;iso-3166-1-code&gt;XW&lt;/iso-3166-1-code&gt;
+                &lt;/iso-3166-1-code-list&gt;
+              &lt;/area&gt;
+            &lt;/release-event&gt;
+          &lt;/release-event-list&gt;
+          &lt;medium-list&gt;
+            &lt;track-count&gt;12&lt;/track-count&gt;
+            &lt;medium&gt;
+              &lt;position&gt;1&lt;/position&gt;
+              &lt;format&gt;Digital Media&lt;/format&gt;
+              &lt;track-list count="12" offset="5"&gt;
+                &lt;track id="b74b2a35-900a-446c-8a63-7a5b01c82a5e"&gt;
+                  &lt;number&gt;6&lt;/number&gt;
+                  &lt;title&gt;Blow Your Mind (Mwah)&lt;/title&gt;
+                  &lt;length&gt;178000&lt;/length&gt;
+                &lt;/track&gt;
+              &lt;/track-list&gt;
+            &lt;/medium&gt;
+          &lt;/medium-list&gt;
+        &lt;/release&gt;
+      &lt;/release-list&gt;
+      &lt;isrc-list&gt;
+        &lt;isrc id="GBAHT1600302"/&gt;
+      &lt;/isrc-list&gt;
+      &lt;tag-list&gt;
+        &lt;tag count="1"&gt;
+          &lt;name&gt;electropop&lt;/name&gt;
+        &lt;/tag&gt;
+        &lt;tag count="1"&gt;
+          &lt;name&gt;dance-pop&lt;/name&gt;
+        &lt;/tag&gt;
+        &lt;tag count="1"&gt;
+          &lt;name&gt;contemporary r&amp;b&lt;/name&gt;
+        &lt;/tag&gt;
+      &lt;/tag-list&gt;
+    &lt;/recording&gt;
+  &lt;/recording-list&gt;
+&lt;/metadata&gt;
+</pre><p>Note that if the recording belongs to a release that is a multiple-artist compilation then the release data includes an artist credit. </p><h4><span class="mw-headline" id="Json_9">Json</span></h4><pre>{
+  "created": "2017-02-23T14:31:36.889Z",
+  "count": 1,
+  "offset": 0,
+  "recordings": [
+    {
+      "id": "026fa041-3917-4c73-9079-ed16e36f20f8",
+      "score": "100",
+      "title": "Blow Your Mind (Mwah)",
+      "length": 178000,
+      "video": null,
+      "artist-credit": [
+        {
+          "artist": {
+            "id": "6f1a58bf-9b1b-49cf-a44a-6cefad7ae04f",
+            "name": "Dua Lipa",
+            "sort-name": "Lipa, Dua"
+          }
+        }
+      ],
+      "artist-credit-id": "4af83e24-f886-35c8-831f-5dde0163a6a0",
+      "first-release-date": "2016-08-26",
+      "releases": [
+        {
+          "id": "383be31c-37a0-4e08-8cda-cbcbbc587ae5",
+          "title": "Blow Your Mind (Mwah)",
+          "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+          "status": "Official",
+          "release-group": {
+            "id": "4a45bfa5-eb1e-49eb-a20c-1021389b2121",
+            "primary-type": "Single"
+          },
+          "date": "2016-08-26",
+          "country": "XW",
+          "release-events": [
+            {
+              "date": "2016-08-26",
+              "area": {
+                "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+                "name": "[Worldwide]",
+                "sort-name": "[Worldwide]",
+                "iso-3166-1-codes": [
+                  "XW"
+                ]
+              }
+            }
+          ],
+          "track-count": 1,
+          "media": [
+            {
+              "position": 1,
+              "format": "Digital Media",
+              "track": [
+                {
+                  "id": "0ef6e647-4aeb-438e-8c8a-50c22c511203",
+                  "number": "1",
+                  "title": "Blow Your Mind (Mwah)",
+                  "length": 179000
+                }
+              ],
+              "track-count": 1,
+              "track-offset": 0
+            }
+          ]
+        },
+        {
+          "id": "8bd42e63-46cb-43e3-8294-c9c3b9793581",
+          "title": "Now That’s What I Call Music! 95",
+          "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+          "status": "Official",
+          "artist-credit": [
+            {
+              "artist": {
+                "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+                "name": "Various Artists",
+                "sort-name": "Various Artists"
+              }
+            }
+          ],
+          "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+          "release-group": {
+            "id": "071a007b-b9cf-4e22-8646-03c30fc8dd87",
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ]
+          },
+          "date": "2016-11-18",
+          "country": "GB",
+          "release-events": [
+            {
+              "date": "2016-11-18",
+              "area": {
+                "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+                "name": "United Kingdom",
+                "sort-name": "United Kingdom",
+                "iso-3166-1-codes": [
+                  "GB"
+                ]
+              }
+            }
+          ],
+          "track-count": 45,
+          "media": [
+            {
+              "position": 1,
+              "format": "Digital Media",
+              "track": [
+                {
+                  "id": "e43cfb2f-fdd3-40a7-9396-25c9435ca8cb",
+                  "number": "36",
+                  "title": "Blow Your Mind (Mwah)",
+                  "length": 178000
+                }
+              ],
+              "track-count": 45,
+              "track-offset": 35
+            }
+          ]
+        },
+        {
+          "id": "72a240b0-ca08-4d35-a15d-c1eded21c0ce",
+          "title": "Now That’s What I Call Music! 95",
+          "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+          "status": "Official",
+          "artist-credit": [
+            {
+              "artist": {
+                "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+                "name": "Various Artists",
+                "sort-name": "Various Artists"
+              }
+            }
+          ],
+          "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+          "release-group": {
+            "id": "071a007b-b9cf-4e22-8646-03c30fc8dd87",
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ]
+          },
+          "date": "2016-11-18",
+          "country": "GB",
+          "release-events": [
+            {
+              "date": "2016-11-18",
+              "area": {
+                "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+                "name": "United Kingdom",
+                "sort-name": "United Kingdom",
+                "iso-3166-1-codes": [
+                  "GB"
+                ]
+              }
+            }
+          ],
+          "track-count": 45,
+          "media": [
+            {
+              "position": 2,
+              "format": "CD",
+              "track": [
+                {
+                  "id": "8c193afa-a867-46fb-8745-5168a8e16a75",
+                  "number": "15",
+                  "title": "Blow Your Mind (Mwah)",
+                  "length": 178213
+                }
+              ],
+              "track-count": 24,
+              "track-offset": 14
+            }
+          ]
+        },
+        {
+          "id": "6313b666-6042-486b-b2aa-614e7542ff68",
+          "title": "Life Is Music 2016.2",
+          "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+          "status": "Official",
+          "artist-credit": [
+            {
+              "artist": {
+                "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+                "name": "Various Artists",
+                "sort-name": "Various Artists"
+              }
+            }
+          ],
+          "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+          "release-group": {
+            "id": "406d765d-c5ca-43e9-b268-a33878927ff5",
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ]
+          },
+          "date": "2016-12-02",
+          "country": "BE",
+          "release-events": [
+            {
+              "date": "2016-12-02",
+              "area": {
+                "id": "5b8a5ee5-0bb3-34cf-9a75-c27c44e341fc",
+                "name": "Belgium",
+                "sort-name": "Belgium",
+                "iso-3166-1-codes": [
+                  "BE"
+                ]
+              }
+            }
+          ],
+          "track-count": 39,
+          "media": [
+            {
+              "position": 1,
+              "format": "CD",
+              "track": [
+                {
+                  "id": "7e93e73c-e8f2-4218-af5e-baae4ce98882",
+                  "number": "8",
+                  "title": "Blow Your Mind (Mwah)",
+                  "length": 177266
+                }
+              ],
+              "track-count": 20,
+              "track-offset": 7
+            }
+          ]
+        },
+        {
+          "id": "b3a2bca0-faec-4e67-8cf3-fd3d01755a2d",
+          "title": "Hits 2016",
+          "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+          "status": "Official",
+          "artist-credit": [
+            {
+              "artist": {
+                "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+                "name": "Various Artists",
+                "sort-name": "Various Artists"
+              }
+            }
+          ],
+          "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+          "release-group": {
+            "id": "7678ff0a-9446-4d5f-b46e-56c84fc68654",
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ]
+          },
+          "date": "2016-12-23",
+          "country": "MX",
+          "release-events": [
+            {
+              "date": "2016-12-23",
+              "area": {
+                "id": "3e08b2cd-69f3-317c-b1e4-e71be581839e",
+                "name": "Mexico",
+                "sort-name": "Mexico",
+                "iso-3166-1-codes": [
+                  "MX"
+                ]
+              }
+            }
+          ],
+          "track-count": 23,
+          "media": [
+            {
+              "position": 1,
+              "format": "Digital Media",
+              "track": [
+                {
+                  "id": "3b466997-8bda-410f-82aa-02b703c931c5",
+                  "number": "23",
+                  "title": "Blow Your Mind (Mwah)",
+                  "length": 178583
+                }
+              ],
+              "track-count": 23,
+              "track-offset": 22
+            }
+          ]
+        },
+        {
+          "id": "d02cce98-98fe-430c-b3c9-951c94f4fb1d",
+          "title": "Now That's What I Call Music! 95",
+          "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+          "status": "Official",
+          "artist-credit": [
+            {
+              "artist": {
+                "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+                "name": "Various Artists",
+                "sort-name": "Various Artists"
+              }
+            }
+          ],
+          "artist-credit-id": "949a7fd5-fe73-3e8f-922e-01ff4ca958f7",
+          "release-group": {
+            "id": "071a007b-b9cf-4e22-8646-03c30fc8dd87",
+            "primary-type": "Album",
+            "secondary-types": [
+              "Compilation"
+            ]
+          },
+          "date": "2016-11-18",
+          "country": "GB",
+          "release-events": [
+            {
+              "date": "2016-11-18",
+              "area": {
+                "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+                "name": "United Kingdom",
+                "sort-name": "United Kingdom",
+                "iso-3166-1-codes": [
+                  "GB"
+                ]
+              }
+            }
+          ],
+          "track-count": 45,
+          "media": [
+            {
+              "position": 2,
+              "format": "CD",
+              "track": [
+                {
+                  "id": "4ae11ffe-5ac8-42ae-a321-1535136ff05c",
+                  "number": "15",
+                  "title": "Blow Your Mind (Mwah)",
+                  "length": 178213
+                }
+              ],
+              "track-count": 24,
+              "track-offset": 14
+            }
+          ]
+        },
+        {
+          "id": "5496dc5f-a282-422e-b7c6-78575e5f7944",
+          "title": "Dua Lipa (Deluxe)",
+          "status-id": "518ffc83-5cde-34df-8627-81bff5093d92",
+          "status": "Promotion",
+          "release-group": {
+            "id": "abbc4905-c25f-4c67-8e2d-19329ec48b1f",
+            "primary-type": "Album"
+          },
+          "date": "2017-06-02",
+          "country": "XW",
+          "release-events": [
+            {
+              "date": "2017-06-02",
+              "area": {
+                "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+                "name": "[Worldwide]",
+                "sort-name": "[Worldwide]",
+                "iso-3166-1-codes": [
+                  "XW"
+                ]
+              }
+            }
+          ],
+          "track-count": 17,
+          "media": [
+            {
+              "position": 1,
+              "format": "Digital Media",
+              "track": [
+                {
+                  "id": "a2fcb379-7638-4f27-b2e4-5242a69ed09c",
+                  "number": "6",
+                  "title": "Blow Your Mind (Mwah)",
+                  "length": 178000
+                }
+              ],
+              "track-count": 17,
+              "track-offset": 5
+            }
+          ]
+        },
+        {
+          "id": "eb66eaa0-acb6-4317-91ea-ff65b7813ec0",
+          "title": "Dua Lipa",
+          "status-id": "518ffc83-5cde-34df-8627-81bff5093d92",
+          "status": "Promotion",
+          "release-group": {
+            "id": "abbc4905-c25f-4c67-8e2d-19329ec48b1f",
+            "primary-type": "Album"
+          },
+          "date": "2017-06-02",
+          "country": "XW",
+          "release-events": [
+            {
+              "date": "2017-06-02",
+              "area": {
+                "id": "525d4e18-3d00-31b9-a58b-a146a916de8f",
+                "name": "[Worldwide]",
+                "sort-name": "[Worldwide]",
+                "iso-3166-1-codes": [
+                  "XW"
+                ]
+              }
+            }
+          ],
+          "track-count": 12,
+          "media": [
+            {
+              "position": 1,
+              "format": "Digital Media",
+              "track": [
+                {
+                  "id": "b74b2a35-900a-446c-8a63-7a5b01c82a5e",
+                  "number": "6",
+                  "title": "Blow Your Mind (Mwah)",
+                  "length": 178000
+                }
+              ],
+              "track-count": 12,
+              "track-offset": 5
+            }
+          ]
+        }
+      ],
+      "isrcs": [
+        {
+          "id": "GBAHT1600302"
+        },
+        {
+          "id": "GBAHT1600331"
+        }
+      ],
+      "tags": [
+        {
+          "count": 1,
+          "name": "electropop"
+        },
+        {
+          "count": 1,
+          "name": "dance-pop"
+        },
+        {
+          "count": 1,
+          "name": "contemporary r&amp;b"
+        }
+      ]
+    }
+  ]
+}
+</pre><h2><span class="mw-headline" id="Release_Group">Release Group</span></h2><h4><span class="mw-headline" id="Example_10">Example</span></h4><p><a class="external text" href="http://musicbrainz.org/ws/2/release-group/?query=release:Tenance" rel="nofollow">http://musicbrainz.org/ws/2/release-group/?query=release:Tenance</a></p><h4><span class="mw-headline" id="Search_Fields_10">Search Fields</span></h4><p>The <a href="https://musicbrainz.org/doc/Release_Group">release group</a> index contains the following fields you can search: </p><table border="1" class="wikitable wikitable sortable"><tbody><tr><th>Field</th><th>Description </th></tr><tr><td>alias</td><td>(part of) any <a href="https://musicbrainz.org/doc/Aliases">alias</a> attached to the release group (diacritics are ignored) </td></tr><tr><td>arid</td><td>the MBID of any of the release group artists </td></tr><tr><td>artist</td><td>(part of) the combined credited artist name for the release group, including join phrases (e.g. "Artist X feat.") </td></tr><tr><td>artistname</td><td>(part of) the name of any of the release group artists </td></tr><tr><td>comment</td><td>(part of) the release group's disambiguation comment </td></tr><tr><td>creditname</td><td>(part of) the credited name of any of the release group artists on this particular release group </td></tr><tr><td>firstreleasedate</td><td>the release date of the earliest release in this release group (e.g. "1980-01-22") </td></tr><tr><td>primarytype</td><td>the <a href="https://musicbrainz.org/doc/Release_Group/Type#Primary_types">primary type</a> of the release group </td></tr><tr><td>reid</td><td>the MBID of any of the releases in the release group </td></tr><tr><td>release</td><td>(part of) the title of any of the releases in the release group </td></tr><tr><td>releasegroup</td><td>(part of) the release group's title (diacritics are ignored) </td></tr><tr><td>releasegroupaccent</td><td>(part of) the release group's title (with the specified diacritics) </td></tr><tr><td>releases</td><td>the number of releases in the release group </td></tr><tr><td>rgid</td><td>the release group's MBID </td></tr><tr><td>secondarytype</td><td>any of the <a href="https://musicbrainz.org/doc/Release_Group/Type#Secondary_types">secondary types</a> of the release group </td></tr><tr><td>status</td><td>the <a href="https://musicbrainz.org/doc/Release#Status">status</a> of any of the releases in the release group </td></tr><tr><td>tag</td><td>(part of) a tag attached to the release group </td></tr><tr><td>type</td><td>legacy <a href="https://musicbrainz.org/doc/Release_Group/Type">release group type</a> field that predates the ability to set multiple types (<a class="external text" href="https://github.com/metabrainz/musicbrainz-server/blob/f8bd7e9366eb6e836dfcee9b626e1ca969db1c4f/lib/MusicBrainz/Server/WebService/XMLSerializer.pm#L305-L326" rel="nofollow">see calculation code</a>) </td></tr></tbody></table><p>If you don't specify a field, the terms will be searched for in the <i>releasegroup</i> field. </p><h4><span class="mw-headline" id="Xml_10">Xml</span></h4><pre>&lt;metadata xmlns="http://musicbrainz.org/ns/mmd-2.0#" xmlns:ext="http://musicbrainz.org/ns/ext#-2.0"&gt;
+      &lt;release-group-list offset="0" count="1"&gt;
+          &lt;release-group ext:score="100" type="Single" id="70664047-2545-4e46-b75f-4556f2a7b83e"&gt;
+              &lt;title&gt;Main Tenance&lt;/title&gt;
+              &lt;first-release-date&gt;1998&lt;/first-release-date&gt;
+              &lt;artist-credit id="ce1e40a1-048d-3ffb-afd7-c9d6eb6984c5"&gt;
+                  &lt;name-credit&gt; 
+                      &lt;artist id="a8fa58d8-f60b-4b83-be7c-aea1af11596b"&gt;
+                          &lt;name&gt;Fred Giannelli&lt;/name&gt;
+                          &lt;sort-name&gt;Giannelli, Fred&lt;/sort-name&gt;
+                          &lt;disambiguation&gt;US electronic artist&lt;/disambiguation&gt;
+                      &lt;/artist&gt;
+                  &lt;/name-credit&gt;
+              &lt;/artist-credit&gt;
+              &lt;release-list count="1"&gt;
+                  &lt;release id="9168f4cc-a852-4ba5-bf85-602996625651"&gt;
+                      &lt;title&gt;Main Tenance&lt;/title&gt;
+                  &lt;/release&gt;
+              &lt;/release-list&gt;
+          &lt;/release-group&gt;
+    &lt;/release-group-list&gt;
+&lt;/metadata&gt;
+</pre><h4><span class="mw-headline" id="Json_10">Json</span></h4><pre>{
+  "created": "2017-03-12T17:27:52.777Z",
+  "count": 1,
+  "offset": 0,
+  "release-groups": [
+    {
+      "id": "70664047-2545-4e46-b75f-4556f2a7b83e",
+      "score": "100",
+      "count": 1,
+      "title": "Main Tenance",
+      "first-release-date": "1998",
+      "primary-type": "Single",
+      "artist-credit": [
+        {
+          "artist": {
+            "id": "a8fa58d8-f60b-4b83-be7c-aea1af11596b",
+            "name": "Fred Giannelli",
+            "sort-name": "Giannelli, Fred",
+            "disambiguation": "US electronic artist",
+            "aliases": [
+              {
+                "sort-name": "Fred",
+                "name": "Fred",
+                "locale": null,
+                "type": null,
+                "primary": null,
+                "begin-date": null,
+                "end-date": null
+              },
+              {
+                "sort-name": "Giannelli, Fred Domenic, II",
+                "name": "Fred Domenic Giannelli II",
+                "locale": null,
+                "type": "Legal name",
+                "primary": null,
+                "begin-date": null,
+                "end-date": null
+              },
+              {
+                "sort-name": "Fred Gianelli",
+                "name": "Fred Gianelli",
+                "locale": null,
+                "type": null,
+                "primary": null,
+                "begin-date": null,
+                "end-date": null
+              }
+            ]
+          }
+        }
+      ],
+      "artist-credit-id": "ce1e40a1-048d-3ffb-afd7-c9d6eb6984c5",
+      "releases": [
+        {
+          "id": "9168f4cc-a852-4ba5-bf85-602996625651",
+          "title": "Main Tenance",
+          "status": "Official"
+        }
+      ]
+    }
+  ]
+}
+</pre><h2><span class="mw-headline" id="Release">Release</span></h2><h4><span class="mw-headline" id="Example_11">Example</span></h4><p><a class="external free" href="http://musicbrainz.org/ws/2/release/?query=release:Schneider%20AND%20Shake" rel="nofollow">http://musicbrainz.org/ws/2/release/?query=release:Schneider%20AND%20Shake</a></p><h4><span class="mw-headline" id="Search_Fields_11">Search Fields</span></h4><p>The <a href="https://musicbrainz.org/doc/Release">Release</a> index contains the following fields you can search </p><table border="1" class="wikitable wikitable sortable"><tbody><tr><th>Field</th><th>Description </th></tr><tr><td>alias</td><td>(part of) any <a href="https://musicbrainz.org/doc/Aliases">alias</a> attached to the release (diacritics are ignored) </td></tr><tr><td>arid</td><td>the MBID of any of the release artists </td></tr><tr><td>artist</td><td>(part of) the combined credited artist name for the release, including join phrases (e.g. "Artist X feat.") </td></tr><tr><td>artistname</td><td>(part of) the name of any of the release artists </td></tr><tr><td>asin</td><td>an <a href="https://musicbrainz.org/doc/ASIN">Amazon ASIN</a> for the release </td></tr><tr><td>barcode</td><td>the barcode for the release </td></tr><tr><td>catno</td><td>any catalog number for this release (insensitive to case, spaces, and separators) </td></tr><tr><td>comment</td><td>(part of) the release's disambiguation comment </td></tr><tr><td>country</td><td>the 2-letter code (ISO 3166-1 alpha-2) for any country the release was released in </td></tr><tr><td>creditname</td><td>(part of) the credited name of any of the release artists on this particular release </td></tr><tr><td>date</td><td>a release date for the release (e.g. "1980-01-22") </td></tr><tr><td>discids</td><td>the total number of <a href="https://musicbrainz.org/doc/Disc_ID">disc IDs</a> attached to all mediums on the release </td></tr><tr><td>discidsmedium</td><td>the number of <a href="https://musicbrainz.org/doc/Disc_ID">disc IDs</a> attached to any one medium on the release </td></tr><tr><td>format</td><td>the <a href="https://musicbrainz.org/doc/Release/Format">format</a> of any medium in the release (insensitive to case, spaces, and separators) </td></tr><tr><td>laid</td><td>the MBID of any of the release labels </td></tr><tr><td>label</td><td>(part of) the name of any of the release labels </td></tr><tr><td>lang</td><td>the <a class="external text" href="https://iso639-3.sil.org/code_tables/639/data" rel="nofollow">ISO 639-3 code</a> for the release language </td></tr><tr><td>mediumid</td><td>the MBID of any of the mediums in the release </td></tr><tr><td>mediums</td><td>the number of mediums on the release </td></tr><tr><td>packaging</td><td>the <a href="https://musicbrainz.org/doc/Release/Packaging">format</a> of the release (insensitive to case, spaces, and separators) </td></tr><tr><td>primarytype</td><td>the <a href="https://musicbrainz.org/doc/Release_Group/Type#Primary_types">primary type</a> of the release group for this release </td></tr><tr><td>quality</td><td>the listed <a href="https://musicbrainz.org/doc/Release#Data_quality">quality</a> of the data for the release (2 for “high”, 1 for “normal”; cannot search for “low” at the moment; see the related <a class="external text" href="https://tickets.metabrainz.org/browse/SEARCH-666" rel="nofollow">bug report</a>) </td></tr><tr><td>reid</td><td>the release's MBID </td></tr><tr><td>release</td><td>(part of) the release's title (diacritics are ignored) </td></tr><tr><td>releaseaccent</td><td>(part of) the release's title (with the specified diacritics) </td></tr><tr><td>rgid</td><td>the MBID of the release group for this release </td></tr><tr><td>script</td><td>the <a class="external text" href="http://unicode.org/iso15924/iso15924-codes.html" rel="nofollow">ISO 15924 code</a> for the release script </td></tr><tr><td>secondarytype</td><td>any of the <a href="https://musicbrainz.org/doc/Release_Group/Type#Secondary_types">secondary types</a> of the release group for this release </td></tr><tr><td>status</td><td>the <a href="https://musicbrainz.org/doc/Release#Status">status</a> of the release </td></tr><tr><td>tag</td><td>(part of) a tag attached to the release </td></tr><tr><td>tracks</td><td>the total number of tracks on the release </td></tr><tr><td>tracksmedium</td><td>the number of tracks on any one medium on the release </td></tr><tr><td>type</td><td>legacy <a href="https://musicbrainz.org/doc/Release_Group/Type">release group type</a> field that predates the ability to set multiple types (<a class="external text" href="https://github.com/metabrainz/musicbrainz-server/blob/f8bd7e9366eb6e836dfcee9b626e1ca969db1c4f/lib/MusicBrainz/Server/WebService/XMLSerializer.pm#L305-L326" rel="nofollow">see calculation code</a>) </td></tr></tbody></table><p>If you don't specify a field, the terms will be searched for in the <i>release</i> field. </p><h4><span class="mw-headline" id="Xml_11">Xml</span></h4><pre>&lt;?xml version="1.0" encoding="UTF-8" standalone="yes"?&gt;
+&lt;metadata created="2017-03-12T17:20:00.235Z" xmlns="http://musicbrainz.org/ns/mmd-2.0#" xmlns:ext="http://musicbrainz.org/ns/ext#-2.0"&gt;
+  &lt;release-list count="1" offset="0"&gt;
+    &lt;release id="62d1c4ef-fc00-37af-8df7-485f6a31fcc4" ext:score="100"&gt;
+      &lt;title&gt;Fred Schneider &amp; The Shake Society&lt;/title&gt;
+      &lt;status id="4e304316-386d-3409-af2e-78857eec5cfe"&gt;Official&lt;/status&gt;
+      &lt;packaging&gt;Cardboard/Paper Sleeve&lt;/packaging&gt;
+      &lt;text-representation&gt;
+        &lt;language&gt;eng&lt;/language&gt;
+        &lt;script&gt;Latn&lt;/script&gt;
+      &lt;/text-representation&gt;
+      &lt;artist-credit id="04590110-2280-322a-a0c4-6d6bc8dc17e8"&gt;
+        &lt;name-credit&gt;
+          &lt;artist id="43bcca8b-9edc-4997-8343-122350e790bf"&gt;
+            &lt;name&gt;Fred Schneider&lt;/name&gt;
+            &lt;sort-name&gt;Schneider, Fred&lt;/sort-name&gt;
+            &lt;alias-list&gt;
+              &lt;alias sort-name="Schneider, Frederick William" type="Legal name"&gt;Frederick William Schneider&lt;/alias&gt;
+              &lt;alias sort-name="Fred Schneider &amp; the Shake Society"&gt;Fred Schneider &amp; the Shake Society&lt;/alias&gt;
+            &lt;/alias-list&gt;
+          &lt;/artist&gt;
+        &lt;/name-credit&gt;
+      &lt;/artist-credit&gt;
+      &lt;release-group id="0ef97d52-3f00-31bf-8413-f83ccb362675" type="Album"&gt;
+        &lt;primary-type&gt;Album&lt;/primary-type&gt;
+      &lt;/release-group&gt;
+      &lt;date&gt;1984&lt;/date&gt;
+      &lt;country&gt;US&lt;/country&gt;
+      &lt;release-event-list&gt;
+        &lt;release-event&gt;
+          &lt;date&gt;1984&lt;/date&gt;
+          &lt;area id="489ce91b-6658-3307-9877-795b68554c98"&gt;
+            &lt;name&gt;United States&lt;/name&gt;
+            &lt;sort-name&gt;United States&lt;/sort-name&gt;
+            &lt;iso-3166-1-code-list&gt;
+              &lt;iso-3166-1-code&gt;US&lt;/iso-3166-1-code&gt;
+            &lt;/iso-3166-1-code-list&gt;
+          &lt;/area&gt;
+        &lt;/release-event&gt;
+      &lt;/release-event-list&gt;
+      &lt;barcode&gt;07599251581&lt;/barcode&gt;
+      &lt;label-info-list&gt;
+        &lt;label-info&gt;
+          &lt;catalog-number&gt;1-25158&lt;/catalog-number&gt;
+          &lt;label id="c595c289-47ce-4fba-b999-b87503e8cb71"&gt;
+            &lt;name&gt;Warner Bros. Records&lt;/name&gt;
+          &lt;/label&gt;
+        &lt;/label-info&gt;
+      &lt;/label-info-list&gt;
+      &lt;medium-list count="1"&gt;
+        &lt;track-count&gt;9&lt;/track-count&gt;
+        &lt;medium id="a6280646-e0be-4a35-8550-50bab13de3b8"&gt;
+          &lt;format&gt;12" Vinyl&lt;/format&gt;
+          &lt;disc-list count="0"/&gt;
+          &lt;track-list count="9"/&gt;
+        &lt;/medium&gt;
+      &lt;/medium-list&gt;
+    &lt;/release&gt;
+  &lt;/release-list&gt;
+&lt;/metadata&gt;
+</pre><h4><span class="mw-headline" id="Json_11">Json</span></h4><pre>{
+  "created": "2017-03-12T17:20:00.235Z",
+  "count": 1,
+  "offset": 0,
+  "releases": [
+    {
+      "id": "62d1c4ef-fc00-37af-8df7-485f6a31fcc4",
+      "score": "100",
+      "count": 1,
+      "title": "Fred Schneider &amp; The Shake Society",
+      "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+      "status": "Official",
+      "packaging": "Cardboard/Paper Sleeve",
+      "text-representation": {
+        "language": "eng",
+        "script": "Latn"
+      },
+      "artist-credit": [
+        {
+          "artist": {
+            "id": "43bcca8b-9edc-4997-8343-122350e790bf",
+            "name": "Fred Schneider",
+            "sort-name": "Schneider, Fred",
+            "aliases": [
+              {
+                "sort-name": "Schneider, Frederick William",
+                "name": "Frederick William Schneider",
+                "locale": null,
+                "type": "Legal name",
+                "primary": null,
+                "begin-date": null,
+                "end-date": null
+              },
+              {
+                "sort-name": "Fred Schneider &amp; the Shake Society",
+                "name": "Fred Schneider &amp; the Shake Society",
+                "locale": null,
+                "type": null,
+                "primary": null,
+                "begin-date": null,
+                "end-date": null
+              }
+            ]
+          }
+        }
+      ],
+      "artist-credit-id": "04590110-2280-322a-a0c4-6d6bc8dc17e8",
+      "release-group": {
+        "id": "0ef97d52-3f00-31bf-8413-f83ccb362675",
+        "primary-type": "Album"
+      },
+      "date": "1984",
+      "country": "US",
+      "release-events": [
+        {
+          "date": "1984",
+          "area": {
+            "id": "489ce91b-6658-3307-9877-795b68554c98",
+            "name": "United States",
+            "sort-name": "United States",
+            "iso-3166-1-codes": [
+              "US"
+            ]
+          }
+        }
+      ],
+      "barcode": "07599251581",
+      "label-info": [
+        {
+          "catalog-number": "1-25158",
+          "label": {
+            "id": "c595c289-47ce-4fba-b999-b87503e8cb71",
+            "name": "Warner Bros. Records"
+          }
+        }
+      ],
+      "track-count": 9,
+      "media": [
+        {
+          "id": "a6280646-e0be-4a35-8550-50bab13de3b8",
+          "format": "12\" Vinyl",
+          "disc-count": 0,
+          "track-count": 9
+        }
+      ]
+    }
+  ]
+}
+</pre><h2><span class="mw-headline" id="Series">Series</span></h2><h4><span class="mw-headline" id="Example_12">Example</span></h4><p><a class="external free" href="https://musicbrainz.org/ws/2/series/?query=%22Studio%20Brussel%22" rel="nofollow">https://musicbrainz.org/ws/2/series/?query=%22Studio%20Brussel%22</a></p><h4><span class="mw-headline" id="Search_Fields_12">Search Fields</span></h4><p>The <a href="https://musicbrainz.org/doc/Series">Series</a> index contains the following fields you can search </p><table border="1" class="wikitable wikitable sortable"><tbody><tr><th>Field</th><th>Description </th></tr><tr><td>alias</td><td>(part of) any <a href="https://musicbrainz.org/doc/Aliases">alias</a> attached to the series (diacritics are ignored) </td></tr><tr><td>comment</td><td>(part of) the series' disambiguation comment </td></tr><tr><td>series</td><td>(part of) the series' name (diacritics are ignored) </td></tr><tr><td>seriesaccent</td><td>(part of) the series' name (with the specified diacritics) </td></tr><tr><td>sid</td><td>the series' MBID </td></tr><tr><td>tag</td><td>(part of) a tag attached to the series </td></tr><tr><td>type</td><td>the series' <a href="https://musicbrainz.org/doc/Series#Type">type</a></td></tr></tbody></table><p>If you don't specify a field, the terms will be searched for in the <i>alias</i> and <i>series</i> fields. </p><h3><span class="mw-headline" id="Xml_12">Xml</span></h3><pre>&lt;?xml version="1.0" encoding="UTF-8" standalone="yes"?&gt;
+&lt;metadata created="2017-03-12T18:06:29.595Z" xmlns="http://musicbrainz.org/ns/mmd-2.0#" xmlns:ext="http://musicbrainz.org/ns/ext#-2.0"&gt;
+  &lt;series-list count="2" offset="0"&gt;
+    &lt;series id="dab51ad0-48ba-4ff3-aa77-8b13bf5f40d9" type="Release group" ext:score="100"&gt;
+      &lt;name&gt;Studio Brussel: De Maxx&lt;/name&gt;
+      &lt;disambiguation&gt;radio show compilations&lt;/disambiguation&gt;
+    &lt;/series&gt;
+    &lt;series id="9b5b8690-8cd8-4f1e-942c-c2031c59d3ff" type="Release group" ext:score="87"&gt;
+      &lt;name&gt;Studio Brussel: Life Is Music&lt;/name&gt;
+      &lt;disambiguation&gt;radio show compilations&lt;/disambiguation&gt;
+      &lt;tag-list&gt;
+        &lt;tag count="1"&gt;
+          &lt;name&gt;stubru&lt;/name&gt;
+        &lt;/tag&gt;
+      &lt;/tag-list&gt;
+    &lt;/series&gt;
+  &lt;/series-list&gt;
+&lt;/metadata&gt;
+</pre><h3><span class="mw-headline" id="Json_12">Json</span></h3><pre>{
+  "created": "2017-03-12T18:06:29.595Z",
+  "count": 2,
+  "offset": 0,
+  "series": [
+    {
+      "id": "dab51ad0-48ba-4ff3-aa77-8b13bf5f40d9",
+      "type": "Release group",
+      "score": "100",
+      "name": "Studio Brussel: De Maxx",
+      "disambiguation": "radio show compilations"
+    },
+    {
+      "id": "9b5b8690-8cd8-4f1e-942c-c2031c59d3ff",
+      "type": "Release group",
+      "score": "87",
+      "name": "Studio Brussel: Life Is Music",
+      "disambiguation": "radio show compilations",
+      "tags": [
+        {
+          "count": 1,
+          "name": "stubru"
+        }
+      ]
+    }
+  ]
+}
+</pre><h2><span class="mw-headline" id="Tag">Tag</span></h2><h4><span class="mw-headline" id="Example_13">Example</span></h4><p><a class="external free" href="http://musicbrainz.org/ws/2/tag/?query=shoegaze" rel="nofollow">http://musicbrainz.org/ws/2/tag/?query=shoegaze</a></p><h4><span class="mw-headline" id="Search_Fields_13">Search Fields</span></h4><p>The <a href="https://musicbrainz.org/doc/Folksonomy_Tagging">tag</a> index contains these fields you can search: </p><table border="1" class="wikitable wikitable sortable"><tbody><tr><th>Field</th><th>Description </th></tr><tr><td>tag</td><td>(part of) the tag's name </td></tr></tbody></table><h4><span class="mw-headline" id="Xml_13">Xml</span></h4><pre>&lt;metadata xmlns="http://musicbrainz.org/ns/mmd-2.0#" xmlns:ext="http://musicbrainz.org/ns/ext#-2.0"&gt;
+    &lt;tag-list count="5" offset="0"&gt;
+        &lt;tag ext:score="100"&gt;
+            &lt;name&gt;shoegaze&lt;/name&gt;
+        &lt;/tag&gt;
+        &lt;tag ext:score="62"&gt;
+            &lt;name&gt;rock shoegaze&lt;/name&gt;
+        &lt;/tag&gt;
+        &lt;tag ext:score="62"&gt;
+            &lt;name&gt;indie shoegaze&lt;/name&gt;
+        &lt;/tag&gt;
+        &lt;tag ext:score="50"&gt;
+            &lt;name&gt;doom metal ethereal shoegaze&lt;/name&gt;
+        &lt;/tag&gt;
+        &lt;tag ext:score="31"&gt;
+            &lt;name&gt;ambient folk classical electronic shoegaze alternative rock indie&lt;/name&gt;
+        &lt;/tag&gt;
+    &lt;/tag-list&gt;
+&lt;/metadata&gt;
+</pre><h4><span class="mw-headline" id="Json_13">Json</span></h4><pre>{
+  "created": "2013-02-05T08:20:52.180Z",
+  "count": 5,
+  "offset": 0,
+  "tags": [
+    {
+      "score": "100",
+      "name": "shoegaze"
+    },
+    {
+      "score": "62",
+      "name": "rock shoegaze"
+    },
+    {
+      "score": "62",
+      "name": "indie shoegaze"
+    },
+    {
+      "score": "50",
+      "name": "doom metal ethereal shoegaze"
+    },
+    {
+      "score": "31",
+      "name": "ambient folk classical electronic shoegaze alternative rock indie"
+    }
+  ]
+}
+</pre><h2><span class="mw-headline" id="URL">URL</span></h2><h4><span class="mw-headline" id="Example_14">Example</span></h4><p><a class="external free" href="http://musicbrainz.org/ws/2/url/?query=Hello" rel="nofollow">http://musicbrainz.org/ws/2/url/?query=Hello</a></p><h4><span class="mw-headline" id="Search_Fields_14">Search Fields</span></h4><p>The <a href="https://musicbrainz.org/doc/URL">URL</a> index contains the following fields you can search </p><table border="1" class="wikitable wikitable sortable"><tbody><tr><th>Field</th><th>Description </th></tr><tr><td>relationtype</td><td>the type of a relationship the URL is in (e.g. "wikidata") </td></tr><tr><td>targetid</td><td>the MBID of an entity related to the URL </td></tr><tr><td>targettype</td><td>an entity type related to the URL (e.g. "artist") </td></tr><tr><td>uid</td><td>the URL's MBID </td></tr><tr><td>url</td><td>the actual URL string </td></tr><tr><td>url_ancestor</td><td>the actual URL string, but also returns any ancestor paths (e.g. "https://example.org/some/stuff" will match "https://example.org/some") </td></tr><tr><td>url_descendent</td><td>the actual URL string, but also returns any descendant paths (e.g. "https://example.org/some/stuff" will match "https://example.org/some/stuff/here") </td></tr></tbody></table><h4><span class="mw-headline" id="Xml_14">Xml</span></h4><pre>&lt;metadata created="2017-03-11T01:04:24.353Z" xmlns="http://musicbrainz.org/ns/mmd-2.0#" xmlns:ext="http://musicbrainz.org/ns/ext#-2.0"&gt;
+  &lt;url-list count="0" offset="0"/&gt;
+&lt;/metadata&gt;
+</pre><h4><span class="mw-headline" id="Json_14">Json</span></h4><pre>{
+  "created": "2017-03-11T01:04:24.353Z",
+  "count": 0,
+  "offset": 0,
+  "urls": [ ]
+}
+</pre><h2><span class="mw-headline" id="Work">Work</span></h2><h4><span class="mw-headline" id="Example_15">Example</span></h4><p><a class="external free" href="https://beta.musicbrainz.org/ws/2/work/?query=work:Frozen%20AND%20arid:4c006444-ccbf-425e-b3e7-03a98bab5997" rel="nofollow">https://beta.musicbrainz.org/ws/2/work/?query=work:Frozen%20AND%20arid:4c006444-ccbf-425e-b3e7-03a98bab5997</a></p><h4><span class="mw-headline" id="Search_Fields_15">Search Fields</span></h4><p>The <a href="https://musicbrainz.org/doc/Work">Work</a> index contains the following fields you can search </p><table border="1" class="wikitable wikitable sortable"><tbody><tr><th>Field</th><th>Description </th></tr><tr><td>alias</td><td>(part of) any <a href="https://musicbrainz.org/doc/Aliases">alias</a> attached to the work (diacritics are ignored) </td></tr><tr><td>arid</td><td>the MBID of an artist related to the event (e.g. a composer or lyricist) </td></tr><tr><td>artist</td><td>(part of) the name of an artist related to the work (e.g. a composer or lyricist) </td></tr><tr><td>comment</td><td>(part of) the work's disambiguation comment </td></tr><tr><td>iswc</td><td>any <a href="https://musicbrainz.org/doc/ISWC">ISWC</a> associated to the work </td></tr><tr><td>lang</td><td>the <a class="external text" href="https://iso639-3.sil.org/code_tables/639/data" rel="nofollow">ISO 639-3 code</a> for any of the languages of the work's lyrics </td></tr><tr><td>recording</td><td>(part of) the title of a recording related to the work </td></tr><tr><td>recording_count</td><td>the number of recordings related to the work </td></tr><tr><td>rid</td><td>the MBID of a recording related to the work </td></tr><tr><td>tag</td><td>(part of) a tag attached to the work </td></tr><tr><td>type</td><td>the work's type (e.g. "opera", "song", "symphony") </td></tr><tr><td>wid</td><td>the work's MBID </td></tr><tr><td>work</td><td>(part of) the work's title (diacritics are ignored) </td></tr><tr><td>workaccent</td><td>(part of) the work's title (with the specified diacritics) </td></tr></tbody></table><p>If you don't specify a field, the terms will be searched for in the <i>alias</i> and <i>work</i> fields. </p><h4><span class="mw-headline" id="Xml_15">Xml</span></h4><pre>&lt;metadata xmlns="http://musicbrainz.org/ns/mmd-2.0#" xmlns:ext="http://musicbrainz.org/ns/ext#-2.0"&gt;
+    &lt;work-list offset="0" count="1"&gt;
+        &lt;work ext:score="100" id="10c1a66a-8166-32ec-a00f-540f111ce7a3"&gt;
+            &lt;title&gt;Frozen Fred&lt;/title&gt;
+            &lt;relation-list&gt;
+                &lt;relation type="composer"&gt;
+                    &lt;artist id="4c006444-ccbf-425e-b3e7-03a98bab5997"&gt;
+                        &lt;name&gt;Michiel Peters&lt;/name&gt;             
+                        &lt;sort-name&gt;Peters, Michiel&lt;/sort-name&gt;
+                    &lt;/artist&gt;
+                &lt;/relation&gt;
+            &lt;/relation-list&gt;
+         &lt;/work&gt;
+    &lt;/work-list&gt;
+&lt;/metadata&gt;
+</pre><h4><span class="mw-headline" id="Json_15">Json</span></h4><pre>{
+  "created": "2017-03-12T17:25:03.53Z",
+  "count": 1,
+  "offset": 0,
+  "works": [
+    {
+      "id": "10c1a66a-8166-32ec-a00f-540f111ce7a3",
+      "score": "100",
+      "title": "Frozen Fred",
+      "relations": [
+        {
+          "type": "composer",
+          "direction": "backward",
+          "artist": {
+            "id": "4c006444-ccbf-425e-b3e7-03a98bab5997",
+            "name": "Michiel Peters",
+            "sort-name": "Peters, Michiel"
+          }
+        },
+        {
+          "type": "performance",
+          "direction": "backward",
+          "recording": {
+            "id": "17b376c8-68a8-43bb-a065-ff27c04cfd5f",
+            "title": "Frozen Fred",
+            "video": null
+          }
+        }
+      ]
+    }
+  ]
+}
+</pre></div></div><div class="wikidocs-footer">This page is <a href="https://musicbrainz.org/doc/WikiDocs">transcluded</a> from revision <a class="internal" href="https://wiki.musicbrainz.org/MusicBrainz_API/Search?oldid=78397">#78397</a> of <a class="internal" href="https://wiki.musicbrainz.org/MusicBrainz_API/Search">MusicBrainz API / Search</a>.</div></div></div><div id="footer"><p class="left" id="footer-menu"><a class="internal" href="https://metabrainz.org/donate">Donate</a><a class="internal" href="https://wiki.musicbrainz.org/">Wiki</a><a class="internal" href="https://community.metabrainz.org/">Forums</a><a class="internal" href="https://musicbrainz.org/doc/Communication/ChatBrainz">Chat</a><a class="internal" href="http://tickets.metabrainz.org/">Bug tracker</a><a class="internal" href="https://blog.metabrainz.org/">Blog</a><a class="internal" href="https://mastodon.social/@MusicBrainz">Mastodon</a><a class="internal" href="https://bsky.app/profile/musicbrainz.org">Bluesky</a><a class="internal" href="https://musicbrainz.org/set-beta-preference?returnto=%2Fdoc%2FMusicBrainz_API%2FSearch">Use beta site</a></p><p class="right">Brought to you by <a href="https://metabrainz.org/">MetaBrainz Foundation</a> and our <a href="https://metabrainz.org/sponsors">sponsors</a> and <a href="https://metabrainz.org/supporters">supporters</a>.</p></div><script src="./MusicBrainz API _ Search - MusicBrainz_files/banner-1d2a8bc.js.download" async=""></script></body></html>
