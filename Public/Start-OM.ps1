@@ -351,16 +351,16 @@ function Start-OM {
                 Clear-Host
                 Write-Host "🎵 OM Music Organizer" -ForegroundColor Cyan
                 Write-Host "Choose your search approach:" -ForegroundColor White
-                Write-Host "  (q)uick album search - Enter artist and album directly" -ForegroundColor Gray
-                Write-Host "  (a)rtist-first search - Traditional workflow (default)" -ForegroundColor Gray
+                Write-Host "  (q)uick album search - Enter artist and album directly (default)" -ForegroundColor Gray
+                Write-Host "  (a)rtist-first search - Traditional workflow" -ForegroundColor Gray
                 Write-Host ""
-                $modeChoice = Read-Host "Select mode [a] (Enter=a, q=quick)"
-                if ($modeChoice -eq 'q' -or $modeChoice -eq 'quick') {
-                    $script:findMode = 'quick'
-                    Write-Host "✓ Quick album search mode selected" -ForegroundColor Green
-                } else {
+                $modeChoice = Read-Host "Select mode [q] (Enter=q, a=artist-first)"
+                if ($modeChoice -eq 'a' -or $modeChoice -eq 'artist-first') {
                     $script:findMode = 'artist-first'
                     Write-Host "✓ Artist-first search mode selected" -ForegroundColor Green
+                } else {
+                    $script:findMode = 'quick'
+                    Write-Host "✓ Quick album search mode selected" -ForegroundColor Green
                 }
                 Write-Host ""
             }
