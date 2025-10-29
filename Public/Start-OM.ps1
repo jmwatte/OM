@@ -400,7 +400,7 @@ function Start-OM {
 
                         if ($albumCandidates.Count -eq 0) {
                             Write-Host "No albums found for '$quickAlbum' by '$quickArtist' with $Provider." -ForegroundColor Red
-                            $retryChoice = Read-Host "Press Enter to retry, '(cp)' change provider, or '(a)' switch to artist-first mode"
+                            $retryChoice = Read-Host "`nPress Enter to retry, '(cp)' change provider, '(a)' artist-first mode, '(na)' new artist, or enter new album name"
                             if ($retryChoice -eq 'cp') {
                                 Write-Host "`nCurrent provider: $Provider" -ForegroundColor Cyan
                                 Write-Host "Available providers: (S)potify, (Q)obuz, (D)iscogs, (M)usicBrainz" -ForegroundColor Gray
@@ -416,6 +416,15 @@ function Start-OM {
                                 $script:findMode = 'artist-first'
                                 $stage = 'A'
                                 break quickSearchLoop
+                            } elseif ($retryChoice -eq 'na') {
+                                $quickArtist = Read-Host "Enter new artist name"
+                                if (-not $quickArtist) {
+                                    Write-Host "Artist cannot be empty. Retrying." -ForegroundColor Yellow
+                                    continue quickSearchLoop
+                                }
+                            } elseif ($retryChoice) {
+                                # Assume it's a new album name
+                                $quickAlbum = $retryChoice
                             } else {
                                 continue quickSearchLoop
                             }
