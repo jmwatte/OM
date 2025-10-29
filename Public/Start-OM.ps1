@@ -1097,8 +1097,8 @@ function Start-OM {
                             else {
                                 if ($useWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
                                 $whatIfStatus = if ($useWhatIf) { "ON" } else { "OFF" }
-                                $optionsLine = "`nOptions: SortBy (o)rder, Tit(l)e, (d)uration, (t)rackNumber, (n)ame, (h)ybrid, (m)anual, (r)everse | Save: (st)Tags, (sf)Folder, (sa)All | (aa)AlbumArtist, (b)ack, (cp)ChangeProvider, (fm)FindMode, (w)hatIf:$whatIfStatus, (s)kip"
-                                $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'st', 'sf', 'sa', 'aa', 'b', 'cp', 'fm', 'w', 'whatif', 's')
+                                $optionsLine = "`nOptions: SortBy (o)rder, Tit(l)e, (d)uration, (t)rackNumber, (n)ame, (h)ybrid, (m)anual, (r)everse | Save: (st)Tags, (sf)Folder, (sa)All | (aa)AlbumArtist, (b)ack/(p)revious, (cp)ChangeProvider, (fm)FindMode, (w)hatIf:$whatIfStatus, (s)kip"
+                                $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'st', 'sf', 'sa', 'aa', 'b', 'p', 'cp', 'fm', 'w', 'whatif', 's')
                                 $paramshow = @{
                                     PairedTracks  = $pairedTracks
                                     AlbumName     = $ProviderAlbum.name
@@ -1146,6 +1146,18 @@ function Start-OM {
                                     continue
                                 }
                                 '^b$' { 
+                                    $script:ManualAlbumArtist = $null
+                                    # $AlbumId = $ProviderAlbum.id
+                                    $loadStageBResults = $false    # Use cache and preserve page
+                                    if ($script:findMode -eq 'quick') {
+                                        $cachedAlbums = $script:quickAlbumCandidates
+                                        $currentAlbumPage = $script:quickCurrentPage
+                                    }
+                                    $stage = 'B'
+                                    $exitdo = $true
+                                    break 
+                                }
+                                '^p$' { 
                                     $script:ManualAlbumArtist = $null
                                     # $AlbumId = $ProviderAlbum.id
                                     $loadStageBResults = $false    # Use cache and preserve page
