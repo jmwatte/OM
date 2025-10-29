@@ -565,6 +565,7 @@ function Invoke-StageB-AlbumSelection {
                         }
                     }
                     
+                    $CachedAlbums = $albumsForArtist
                     continue
                 } else {
                     Write-Host "No more pages available. Use text search for different results." -ForegroundColor Yellow
