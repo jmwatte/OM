@@ -342,6 +342,8 @@ function Start-OM {
             $script:findMode = 'artist-first'  # Track the current find mode: 'quick' or 'artist-first'
             $script:quickAlbumCandidates = $null
             $script:quickCurrentPage = 1
+            $currentArtist = $script:artist  # Persistent current artist for quick find mode
+            $currentAlbum = $script:albumName  # Persistent current album for quick find mode
 
             # NEW: Initial mode selection prompt
             if (-not $NonInteractive -and -not $goA -and -not $goB -and -not $goC) {
@@ -371,9 +373,10 @@ function Start-OM {
                     Write-Host ""
 
                     # Prompt for artist and album with pre-filled defaults
-                    Write-Host "Artist [$($script:artist)]: " -NoNewline
-                    $quickArtist = Read-Host
-                    if (-not $quickArtist) { $quickArtist = $script:artist }
+                    Write-Host "Artist [$currentArtist]: " -NoNewline
+                    $userInput = Read-Host
+                    if ($userInput) { $currentArtist = $userInput }
+                    $quickArtist = $currentArtist
                     if (-not $quickArtist) {
                         Write-Host "Artist is required. Switching to artist-first mode." -ForegroundColor Yellow
                         $script:findMode = 'artist-first'
@@ -381,9 +384,10 @@ function Start-OM {
                         continue stageLoop
                     }
                     
-                    Write-Host "Album [$($script:albumName)]: " -NoNewline
-                    $quickAlbum = Read-Host
-                    if (-not $quickAlbum) { $quickAlbum = $script:albumName }
+                    Write-Host "Album [$currentAlbum]: " -NoNewline
+                    $userInput = Read-Host
+                    if ($userInput) { $currentAlbum = $userInput }
+                    $quickAlbum = $currentAlbum
                     if (-not $quickAlbum) {
                         Write-Host "Album is required. Switching to artist-first mode." -ForegroundColor Yellow
                         $script:findMode = 'artist-first'
@@ -421,14 +425,15 @@ function Start-OM {
                                 $stage = 'A'
                                 break quickSearchLoop
                             } elseif ($retryChoice -eq 'na') {
-                                $quickArtist = Read-Host "Enter new artist name"
-                                if (-not $quickArtist) {
+                                $userInput = Read-Host "Enter new artist name"
+                                if (-not $userInput) {
                                     Write-Host "Artist cannot be empty. Retrying." -ForegroundColor Yellow
                                     continue quickSearchLoop
                                 }
+                                $currentArtist = $userInput
                             } elseif ($retryChoice) {
                                 # Assume it's a new album name
-                                $quickAlbum = $retryChoice
+                                $currentAlbum = $retryChoice
                             } else {
                                 continue quickSearchLoop
                             }
@@ -493,7 +498,7 @@ function Start-OM {
                         }
                     } else {
                         # New search term - update album name and retry
-                        $quickAlbum = $albumChoice
+                        $currentAlbum = $albumChoice
                         continue stageLoop
                     }
                 }
