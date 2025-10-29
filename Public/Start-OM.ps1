@@ -7,13 +7,19 @@
     It processes a directory of album folders, and for each album, it helps you find the correct artist and
     album information from providers like Spotify, Qobuz, Discogs, or MusicBrainz.
 
+    Choose between two search approaches:
+    - Quick Album Search: Enter artist and album directly for faster lookup and matching
+    - Artist-First Search: Traditional workflow starting with artist selection, then album selection
+
     The workflow is divided into three main stages:
-    A: Artist Selection - Searches for the artist and lets you choose the correct one.
+    A: Artist Selection - Searches for the artist and lets you choose the correct one (Artist-First mode only).
     B: Album Selection - Fetches albums for the selected artist and lets you choose the matching album.
     C: Track Matching & Tagging - Displays a side-by-side view of your local files and the provider's tracks,
        allowing you to match them, save tags, and rename the album folder.
 
     This function is designed to be used interactively, but it also provides parameters for automation.
+    During interactive use, you can switch between search modes, change providers, and use various sorting
+    and matching options in the track selection stage.
 
 .PARAMETER Path
     The path to the base directory containing the album folders you want to organize.
@@ -71,6 +77,8 @@
     It will attempt to install it automatically if it's missing.
     For Spotify integration, the 'Spotishell' module is required.
     The function supports -WhatIf to preview changes without applying them.
+    Interactive mode supports switching between Quick Album Search and Artist-First Search modes,
+    changing providers on the fly, and various track sorting and matching options.
 
 .LINK
     https://github.com/jmwatte/OM
@@ -302,6 +310,7 @@ function Start-OM {
         
         foreach ($albumOriginal in $albums) {
             $script:album = $albumOriginal
+            $script:ManualAlbumArtist = $null
             # derive album name and year
             # Try to extract year from the start of the folder name (e.g., "2023 - Album Name")
             if ($script:album.Name -match '^(\d{4})\s*[-]?\s*(.+)') {
