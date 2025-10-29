@@ -101,7 +101,20 @@ function Invoke-StageB-AlbumSelection {
         [Parameter()]
         [int]$trackCount,
         [Parameter()]
-        [switch]$FetchAlbums
+        [switch]$FetchAlbums,
+
+        [Parameter()]
+        [int]$Page = 1,
+
+        [Parameter()]
+        [ValidateRange(1, 100)]
+        [int]$PerPage = 10,
+
+        [Parameter()]
+        [int]$MaxResults = 10,
+
+        [Parameter()]
+        [int]$CurrentPage = 1
     )
     
     Clear-Host
@@ -110,8 +123,9 @@ function Invoke-StageB-AlbumSelection {
     }
     
     # Initialize pagination
-    $page = 1
-    $pageSize = 25
+    $currentPage = $CurrentPage
+    $pageSize = $PerPage  # Use PerPage for display pagination
+    $maxResults = $MaxResults
     $mastersOnlyMode = $true  # Default for Discogs
     $albumsForArtist = @($CachedAlbums) | Where-Object {$_ -ne $null}  # Ensure array
 
@@ -153,6 +167,9 @@ function Invoke-StageB-AlbumSelection {
                 AlbumName      = $AlbumName
                 MastersOnly    = ($Provider -eq 'Discogs')
                 AllAlbumsCache = $CachedAlbums
+                Page           = $currentPage
+                PerPage        = $pageSize
+                MaxResults     = $maxResults
             }
 
             $albumsForArtist = Invoke-ProviderSearchAlbums @searchAlbumsParams
@@ -317,6 +334,7 @@ function Invoke-StageB-AlbumSelection {
                     UpdatedCache          = $CachedAlbums
                     UpdatedCachedArtistId = $CachedArtistId
                     UpdatedProvider       = $Provider
+                    CurrentPage           = $currentPage
                 }
             }
     
@@ -329,6 +347,7 @@ function Invoke-StageB-AlbumSelection {
                         UpdatedCache          = $CachedAlbums
                         UpdatedCachedArtistId = $CachedArtistId
                         UpdatedProvider       = $Provider
+                        CurrentPage           = $currentPage
                     }
                 }
                 '^s$' {
@@ -338,6 +357,7 @@ function Invoke-StageB-AlbumSelection {
                         UpdatedCache          = $CachedAlbums
                         UpdatedCachedArtistId = $CachedArtistId
                         UpdatedProvider       = $Provider
+                        CurrentPage           = $currentPage
                     }
                 }
                 '^id:.*' {
@@ -349,6 +369,7 @@ function Invoke-StageB-AlbumSelection {
                         UpdatedCache          = $CachedAlbums
                         UpdatedCachedArtistId = $CachedArtistId
                         UpdatedProvider       = $Provider
+                        CurrentPage           = $currentPage
                     }
                 }
                 default {
@@ -361,6 +382,7 @@ function Invoke-StageB-AlbumSelection {
                             UpdatedCachedArtistId = $CachedArtistId
                             UpdatedProvider       = $Provider
                             NewArtistQuery        = $inputF
+                            CurrentPage           = $currentPage
                         }
                     }
                     # Empty input, stay in loop (should not reach here)
@@ -370,6 +392,7 @@ function Invoke-StageB-AlbumSelection {
                         UpdatedCache          = $CachedAlbums
                         UpdatedCachedArtistId = $CachedArtistId
                         UpdatedProvider       = $Provider
+                        CurrentPage           = $currentPage
                     }
                 }
             }
@@ -395,6 +418,14 @@ function Invoke-StageB-AlbumSelection {
             & $ShowHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -trackCount $script:trackCount
         }
         
+        # Show find mode indicator
+        if ($script:findMode -eq 'quick') {
+            Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
+        } else {
+            Write-Host "🔍 Find Mode: Artist-First Search" -ForegroundColor Magenta
+        }
+        Write-Host ""
+        
         # Show filter mode indicator for Discogs
         if ($Provider -eq 'Discogs') {
             $modeIndicator = if ($mastersOnlyMode) { 
@@ -413,7 +444,10 @@ function Invoke-StageB-AlbumSelection {
         
         
         $totalPages = [math]::Ceiling($albumsForArtist.Count / $pageSize)
-        $startIdx = ($page - 1) * $pageSize
+        # Ensure currentPage is within valid range
+        if ($currentPage -gt $totalPages) { $currentPage = $totalPages }
+        if ($currentPage -lt 1) { $currentPage = 1 }
+        $startIdx = ($currentPage - 1) * $pageSize
         $endIdx = [math]::Min($startIdx + $pageSize - 1, $albumsForArtist.Count - 1)
 
         for ($i = $startIdx; $i -le $endIdx; $i++) {
@@ -454,6 +488,7 @@ function Invoke-StageB-AlbumSelection {
                 UpdatedCache          = $CachedAlbums
                 UpdatedCachedArtistId = $CachedArtistId
                 UpdatedProvider       = $Provider
+                CurrentPage           = $currentPage
             }
         }
         if ($GoB) {
@@ -463,6 +498,7 @@ function Invoke-StageB-AlbumSelection {
                 UpdatedCache          = $CachedAlbums
                 UpdatedCachedArtistId = $CachedArtistId
                 UpdatedProvider       = $Provider
+                CurrentPage           = $currentPage
             }
         }
         if ($AutoSelect -or $NonInteractive) {
@@ -472,6 +508,7 @@ function Invoke-StageB-AlbumSelection {
                 UpdatedCache          = $CachedAlbums
                 UpdatedCachedArtistId = $CachedArtistId
                 UpdatedProvider       = $Provider
+                CurrentPage           = $currentPage
             }
         }
 
@@ -485,15 +522,63 @@ function Invoke-StageB-AlbumSelection {
                     UpdatedCache          = $CachedAlbums
                     UpdatedCachedArtistId = $CachedArtistId
                     UpdatedProvider       = $Provider
+                    CurrentPage           = $currentPage
                 }
             }
             '^n$' {
-                if ($page -lt $totalPages) { $page++ }
-                continue
+                if ($currentPage * $pageSize -lt $albumsForArtist.Count -or $currentPage * $pageSize -lt 100) {  # Allow fetching up to 100 results
+                    $currentPage++
+                    
+                    # If we need more results, fetch the next page
+                    if ($currentPage * $pageSize -gt $albumsForArtist.Count) {
+                        Write-Host "Fetching page $($currentPage)..." -ForegroundColor Cyan
+                        try {
+                            $searchParams = @{
+                                Provider   = $Provider
+                                ArtistId   = $ProviderArtist.id
+                                ArtistName = $ProviderArtist.name
+                                AlbumName  = $AlbumName
+                                Page       = $currentPage
+                                PerPage    = $pageSize
+                                MaxResults = $maxResults
+                            }
+                            
+                            # Add MastersOnly parameter for Discogs
+                            if ($Provider -eq 'Discogs') {
+                                $searchParams['MastersOnly'] = $mastersOnlyMode
+                            }
+
+                            $newResults = Invoke-ProviderSearchAlbums @searchParams
+                            $newResults = @($newResults)
+                            
+                            if ($newResults -and $newResults.Count -gt 0) {
+                                $albumsForArtist = $albumsForArtist + $newResults
+                                Write-Host "✓ Added $($newResults.Count) more albums (total: $($albumsForArtist.Count))" -ForegroundColor Green
+                            } else {
+                                Write-Host "No more results available from provider." -ForegroundColor Yellow
+                                $currentPage--  # Go back to previous page
+                            }
+                        }
+                        catch {
+                            Write-Warning "Failed to fetch page $($currentPage): $_"
+                            $currentPage--  # Go back to previous page
+                        }
+                    }
+                    
+                    continue
+                } else {
+                    Write-Host "No more pages available. Use text search for different results." -ForegroundColor Yellow
+                    continue
+                }
             }
             '^p$' {
-                if ($page -gt 1) { $page-- }
-                continue
+                if ($currentPage -gt 1) {
+                    $currentPage--
+                    continue
+                } else {
+                    Write-Host "Already on first page." -ForegroundColor Yellow
+                    continue
+                }
             }
             'cp' {
                 Write-Host "`nCurrent provider: $Provider" -ForegroundColor Cyan
@@ -510,6 +595,7 @@ function Invoke-StageB-AlbumSelection {
                         UpdatedCache          = $CachedAlbums
                         UpdatedCachedArtistId = $CachedArtistId
                         UpdatedProvider       = $Provider
+                        CurrentPage           = $currentPage
                     }
                 }
                 else {
@@ -524,15 +610,17 @@ function Invoke-StageB-AlbumSelection {
                     UpdatedCache          = $null
                     UpdatedCachedArtistId = $null
                     UpdatedProvider       = $Provider
+                    CurrentPage           = $currentPage
                 }
             }
             '^$' {
                 return @{
                     NextStage             = 'C'
-                    SelectedAlbum         = $albumsForArtist[0]
+                    SelectedAlbum         = $albumsForArtist[$startIdx]
                     UpdatedCache          = $CachedAlbums
                     UpdatedCachedArtistId = $CachedArtistId
                     UpdatedProvider       = $Provider
+                    CurrentPage           = $currentPage
                 }
             }
             '^id:(.+)$' {
@@ -564,6 +652,7 @@ function Invoke-StageB-AlbumSelection {
                     UpdatedCache          = $CachedAlbums
                     UpdatedCachedArtistId = $CachedArtistId
                     UpdatedProvider       = $Provider
+                    CurrentPage           = $currentPage
                 }
             }
             '^\*$' {
@@ -595,6 +684,7 @@ function Invoke-StageB-AlbumSelection {
                     $albumsForArtist = $albumsForArtist | Sort-Object { - (Get-StringSimilarity-Jaccard -String1 $AlbumName -String2 $_.Name) }
                     $CachedAlbums = $albumsForArtist
                     $page = 1
+                    $currentPage = 1
                     
                     $statusMsg = if ($Provider -eq 'Discogs') {
                         "✓ Loaded $($albumsForArtist.Count) albums [$modeText]"
@@ -723,6 +813,7 @@ function Invoke-StageB-AlbumSelection {
                                     UpdatedCache          = $CachedAlbums
                                     UpdatedCachedArtistId = $CachedArtistId
                                     UpdatedProvider       = $Provider
+                                    CurrentPage           = $currentPage
                                 }
                             }
                             else {
@@ -741,6 +832,7 @@ function Invoke-StageB-AlbumSelection {
                         UpdatedCache          = $CachedAlbums
                         UpdatedCachedArtistId = $CachedArtistId
                         UpdatedProvider       = $Provider
+                        CurrentPage           = $currentPage
                     }
                 }
                 
@@ -809,6 +901,7 @@ function Invoke-StageB-AlbumSelection {
                     UpdatedCache          = $CachedAlbums
                     UpdatedCachedArtistId = $CachedArtistId
                     UpdatedProvider       = $Provider
+                    CurrentPage           = $currentPage
                 }
             }
             default {
@@ -838,6 +931,7 @@ function Invoke-StageB-AlbumSelection {
                         $albumsForArtist = @($albumsForArtist | Sort-Object { - (Get-StringSimilarity-Jaccard -String1 $inputF -String2 $_.name) })
                         $CachedAlbums = $albumsForArtist
                         $page = 1
+                        $currentPage = 1  # Reset pagination when new search results are loaded
                         Write-Host "Found $($albumsForArtist.Count) albums matching '$inputF'" -ForegroundColor Green
                         continue
                     }
@@ -851,6 +945,7 @@ function Invoke-StageB-AlbumSelection {
                 if ($filtered.Count -gt 0) {
                     $albumsForArtist = $filtered
                     $page = 1
+                    $currentPage = 1
                     Write-Host "Filtered to $($filtered.Count) albums" -ForegroundColor Green
                     continue
                 }

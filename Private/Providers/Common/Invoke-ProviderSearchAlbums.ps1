@@ -54,7 +54,17 @@ function Invoke-ProviderSearchAlbums {
         [switch]$MastersOnly,  # Discogs-specific
 
         [Parameter()]
-        [array]$AllAlbumsCache  # Pre-fetched albums for cache-based filtering
+        [array]$AllAlbumsCache,  # Pre-fetched albums for cache-based filtering
+
+        [Parameter()]
+        [int]$Page = 1,
+
+        [Parameter()]
+        [ValidateRange(1, 100)]
+        [int]$PerPage = 10,
+
+        [Parameter()]
+        [int]$MaxResults = 10
     )
 
     Write-Verbose "Searching $Provider for albums: Artist='$ArtistName', Album='$AlbumName'"
@@ -78,6 +88,9 @@ function Invoke-ProviderSearchAlbums {
             $searchParams = @{
                 ArtistName = $ArtistName
                 AlbumName  = $AlbumName
+                Page       = $Page
+                PerPage    = $PerPage
+                MaxResults = $MaxResults
             }
             if ($ArtistId) {
                 $searchParams.ArtistId = $ArtistId

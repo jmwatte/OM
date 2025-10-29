@@ -294,13 +294,14 @@ function Start-OM {
         $script:artist= Split-Path -Leaf $Path
         $artist = Split-Path -Leaf $Path
         $albums = Get-ChildItem -LiteralPath $Path -Directory
+        
+        # Initialize WhatIf mode early
+        $useWhatIf = $isWhatIf
+        $script:findMode = 'artist-first'  # Default to artist-first mode
+        $currentAlbumPage = 1
+        
         foreach ($albumOriginal in $albums) {
             $script:album = $albumOriginal
-            # Initialize album artist override for this album
-            $script:ManualAlbumArtist = $null
-            
-            $useWhatIf = $isWhatIf
-            if ($useWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
             # derive album name and year
             # Try to extract year from the start of the folder name (e.g., "2023 - Album Name")
             if ($script:album.Name -match '^(\d{4})\s*[-]?\s*(.+)') {
@@ -329,18 +330,163 @@ function Start-OM {
             $pageSize = 25
             $albumDone = $false
             $mastersOnlyMode = $true  # Track Discogs filter state: true=masters only, false=all releases
+            $script:findMode = 'artist-first'  # Track the current find mode: 'quick' or 'artist-first'
+            $script:quickAlbumCandidates = $null
+            $script:quickCurrentPage = 1
+
+            # NEW: Initial mode selection prompt
+            if (-not $NonInteractive -and -not $goA -and -not $goB -and -not $goC) {
+                Clear-Host
+                Write-Host "🎵 OM Music Organizer" -ForegroundColor Cyan
+                Write-Host "Choose your search approach:" -ForegroundColor White
+                Write-Host "  (q)uick album search - Enter artist and album directly" -ForegroundColor Gray
+                Write-Host "  (a)rtist-first search - Traditional workflow (default)" -ForegroundColor Gray
+                Write-Host ""
+                $modeChoice = Read-Host "Select mode [a] (Enter=a, q=quick)"
+                if ($modeChoice -eq 'q' -or $modeChoice -eq 'quick') {
+                    $script:findMode = 'quick'
+                    Write-Host "✓ Quick album search mode selected" -ForegroundColor Green
+                } else {
+                    $script:findMode = 'artist-first'
+                    Write-Host "✓ Artist-first search mode selected" -ForegroundColor Green
+                }
+                Write-Host ""
+            }
+
             :stageLoop while ($true) {
+                # NEW: Handle quick find mode (only when not in track selection stage)
+                if ($script:findMode -eq 'quick' -and $stage -ne 'C') {
+                    Clear-Host
+                    & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
+                    Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
+                    Write-Host ""
+
+                    # Prompt for artist and album
+                    $quickArtist = Read-Host "Enter artist name"
+                    if (-not $quickArtist) {
+                        Write-Host "Artist is required. Switching to artist-first mode." -ForegroundColor Yellow
+                        $script:findMode = 'artist-first'
+                        $stage = 'A'
+                        continue stageLoop
+                    }
+                    
+                    $quickAlbum = Read-Host "Enter album name"
+                    if (-not $quickAlbum) {
+                        Write-Host "Album is required. Switching to artist-first mode." -ForegroundColor Yellow
+                        $script:findMode = 'artist-first'
+                        $stage = 'A'
+                        continue stageLoop
+                    }
+
+                    Write-Host "Searching for '$quickAlbum' by '$quickArtist'..." -ForegroundColor Cyan
+                    
+                    :quickSearchLoop while ($true) {
+                        try {
+                            $quickResults = Invoke-ProviderSearch -Provider $Provider -Album $quickAlbum -Artist $quickArtist -Type album
+                            $albumCandidates = @($quickResults.albums.items | Where-Object { $_ -ne $null })
+                        } catch {
+                            Write-Warning "Quick search failed: $_"
+                            $albumCandidates = @()
+                        }
+
+                        if ($albumCandidates.Count -eq 0) {
+                            Write-Host "No albums found for '$quickAlbum' by '$quickArtist' with $Provider." -ForegroundColor Red
+                            $retryChoice = Read-Host "Press Enter to retry, '(cp)' change provider, or '(a)' switch to artist-first mode"
+                            if ($retryChoice -eq 'cp') {
+                                Write-Host "`nCurrent provider: $Provider" -ForegroundColor Cyan
+                                Write-Host "Available providers: (S)potify, (Q)obuz, (D)iscogs, (M)usicBrainz" -ForegroundColor Gray
+                                $newProvider = Read-Host "Enter provider (full name or first letter)"
+                                $providerMap = @{ 's' = 'Spotify'; 'q' = 'Qobuz'; 'd' = 'Discogs'; 'm' = 'MusicBrainz'; 'spotify' = 'Spotify'; 'qobuz' = 'Qobuz'; 'discogs' = 'Discogs'; 'musicbrainz' = 'MusicBrainz' }
+                                $matched = $providerMap[$newProvider.ToLower()]
+                                if ($matched) {
+                                    $Provider = $matched
+                                    Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                                    continue quickSearchLoop
+                                }
+                            } elseif ($retryChoice -eq 'a') {
+                                $script:findMode = 'artist-first'
+                                $stage = 'A'
+                                break quickSearchLoop
+                            } else {
+                                continue quickSearchLoop
+                            }
+                        } else {
+                            break quickSearchLoop
+                        }
+                    }
+
+                    if ($script:findMode -ne 'quick') {
+                        continue stageLoop
+                    }
+
+                    # Store candidates for back navigation
+                    $script:quickAlbumCandidates = $albumCandidates
+                    $script:quickCurrentPage = 1
+
+                    # Display album candidates
+                    Write-Host "$Provider Album candidates for '$quickAlbum' by '$quickArtist':" -ForegroundColor Green
+                    for ($i = 0; $i -lt $albumCandidates.Count; $i++) {
+                        $album = $albumCandidates[$i]
+                        $artistDisplay = if ($album.artists -and $album.artists[0].name) { $album.artists[0].name } else { 'Unknown Artist' }
+                        
+                        # Get year and track count for consistent display with artist-first mode
+                        $year = Get-IfExists $album 'release_date'
+                        $trackCount = Get-IfExists $album 'total_tracks'
+                        if (-not $trackCount) { $trackCount = Get-IfExists $album 'track_count' }
+                        if (-not $trackCount) { $trackCount = Get-IfExists $album 'tracks_count' }
+                        $trackInfo = if ($trackCount) { " ($trackCount tracks)" } else { "" }
+                        
+                        Write-Host "[$($i+1)] $($album.name) - $artistDisplay (id: $($album.id)) (year: $year)$trackInfo"
+                    }
+
+                    $albumChoice = Read-Host "Select album [1] (Enter=first), number, '(cp)' change provider, '(a)' artist-first mode, or new search term"
+                    if ($albumChoice -eq '') { $albumChoice = '1' }
+                    
+                    if ($albumChoice -eq 'cp') {
+                        Write-Host "`nCurrent provider: $Provider" -ForegroundColor Cyan
+                        Write-Host "Available providers: (S)potify, (Q)obuz, (D)iscogs, (M)usicBrainz" -ForegroundColor Gray
+                        $newProvider = Read-Host "Enter provider (full name or first letter)"
+                        $providerMap = @{ 's' = 'Spotify'; 'q' = 'Qobuz'; 'd' = 'Discogs'; 'm' = 'MusicBrainz'; 'spotify' = 'Spotify'; 'qobuz' = 'Qobuz'; 'discogs' = 'Discogs'; 'musicbrainz' = 'MusicBrainz' }
+                        $matched = $providerMap[$newProvider.ToLower()]
+                        if ($matched) {
+                            $Provider = $matched
+                            Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                            continue stageLoop
+                        }
+                        continue stageLoop
+                    } elseif ($albumChoice -eq 'a') {
+                        $script:findMode = 'artist-first'
+                        $stage = 'A'
+                        continue stageLoop
+                    } elseif ($albumChoice -match '^\d+$') {
+                        $idx = [int]$albumChoice
+                        if ($idx -ge 1 -and $idx -le $albumCandidates.Count) {
+                            $ProviderAlbum = $albumCandidates[$idx - 1]
+                            $ProviderArtist = @{ name = $quickArtist; id = $quickArtist }  # Simplified artist object
+                            $stage = 'C'
+                            continue stageLoop
+                        } else {
+                            Write-Warning "Invalid selection"
+                            continue stageLoop
+                        }
+                    } else {
+                        # New search term - update album name and retry
+                        $quickAlbum = $albumChoice
+                        continue stageLoop
+                    }
+                }
                 switch ($stage) {
                     
                     "A" {
                         $loadStageBResults = $true
                         Clear-Host
                         & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
-                        
-                        if ($artistQuery -ne $artist) {
-                            Write-Host "Searching for: $artistQuery" -ForegroundColor Yellow
-                            Write-Host ""
+                        if ($script:findMode -eq 'quick') {
+                            Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
+                        } else {
+                            Write-Host "🔍 Find Mode: Artist-First Search" -ForegroundColor Magenta
                         }
+                        Write-Host ""
                         
                         # Always clear candidates and perform fresh search
                         $candidates = $null
@@ -429,7 +575,7 @@ function Start-OM {
                             $stage = 'B'; continue
                         }
 
-                        $inputF = Read-Host "Select artist [1] (Enter=first), number, '(s)kip' album, 'id:<id>', '(cp)' change provider [$Provider],'al:<albumName>' or new search term:"
+                        $inputF = Read-Host "Select artist [1] (Enter=first), number, '(s)kip' album, 'id:<id>', '(cp)' change provider [$Provider],'al:<albumName>', '(fm)' change find mode or new search term:"
                         if ($inputF -eq '') { $ProviderArtist = $candidates[0]; $stage = 'B'; continue }
                         if ($inputF -like 'id:*') { 
                             $id = $inputF.Substring(3)
@@ -468,6 +614,27 @@ function Start-OM {
                                 continue stageLoop
                             }
                         }
+                        if ($inputF -eq 'fm') {
+                            Write-Host "`nCurrent find mode: $($script:findMode)" -ForegroundColor Cyan
+                            Write-Host "Available modes: (q)uick album search, (a)rtist-first search" -ForegroundColor Gray
+                            $newMode = Read-Host "Select mode [q/a]"
+                            if ($newMode -eq 'q' -or $newMode -eq 'quick') {
+                                $script:findMode = 'quick'
+                                Write-Host "✓ Switched to Quick Album Search mode" -ForegroundColor Green
+                            } elseif ($newMode -eq 'a' -or $newMode -eq 'artist-first') {
+                                $script:findMode = 'artist-first'
+                                Write-Host "✓ Switched to Artist-First Search mode" -ForegroundColor Green
+                                # Reset search state when switching to artist-first mode
+                                $cachedAlbums = $null
+                                $cachedArtistId = $null
+                                $artistQuery = $artist
+                                $ProviderArtist = $null
+                                $ProviderAlbum = $null
+                            } else {
+                                Write-Warning "Invalid mode: $newMode. Staying with $($script:findMode)."
+                            }
+                            continue stageLoop
+                        }
                         $artistQuery = $inputF
                         Write-Verbose "Updated artistQuery to: '$artistQuery' (from selection prompt)"
                         continue stageLoop
@@ -492,6 +659,10 @@ function Start-OM {
                             AlbumId            = $albumId
                             GoB                = $goB
                             FetchAlbums        = $loadStageBResults
+                            Page               = 1
+                            PerPage            = 10
+                            MaxResults         = 10
+                            CurrentPage        = $currentAlbumPage
                         }
                         
                         $stageBResult = Invoke-StageB-AlbumSelection @stageBParams
@@ -504,6 +675,7 @@ function Start-OM {
                         $cachedArtistId = $stageBResult.UpdatedCachedArtistId
                         $stage = $stageBResult.NextStage
                         $ProviderAlbum = $stageBResult.SelectedAlbum
+                        $currentAlbumPage = $stageBResult.CurrentPage
                         
                         # Handle provider changes
                         if ($stageBResult.UpdatedProvider -and $stageBResult.UpdatedProvider -ne $Provider) {
@@ -527,6 +699,13 @@ function Start-OM {
                     "C" {
                         Clear-Host
                         & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
+                        
+                        if ($script:findMode -eq 'quick') {
+                            Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
+                        } else {
+                            Write-Host "🔍 Find Mode: Artist-First Search" -ForegroundColor Magenta
+                        }
+                        Write-Host ""
                         
                         if ($useWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
                         
@@ -918,8 +1097,8 @@ function Start-OM {
                             else {
                                 if ($useWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
                                 $whatIfStatus = if ($useWhatIf) { "ON" } else { "OFF" }
-                                $optionsLine = "`nOptions: SortBy (o)rder, Tit(l)e, (d)uration, (t)rackNumber, (n)ame, (h)ybrid, (m)anual, (r)everse | Save: (st)Tags, (sf)Folder, (sa)All | (aa)AlbumArtist, (b)ack, (cp)ChangeProvider, (w)hatIf:$whatIfStatus, (s)kip"
-                                $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'st', 'sf', 'sa', 'aa', 'b', 'cp', 'w', 'whatif', 's')
+                                $optionsLine = "`nOptions: SortBy (o)rder, Tit(l)e, (d)uration, (t)rackNumber, (n)ame, (h)ybrid, (m)anual, (r)everse | Save: (st)Tags, (sf)Folder, (sa)All | (aa)AlbumArtist, (b)ack, (cp)ChangeProvider, (fm)FindMode, (w)hatIf:$whatIfStatus, (s)kip"
+                                $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'st', 'sf', 'sa', 'aa', 'b', 'cp', 'fm', 'w', 'whatif', 's')
                                 $paramshow = @{
                                     PairedTracks  = $pairedTracks
                                     AlbumName     = $ProviderAlbum.name
@@ -969,7 +1148,11 @@ function Start-OM {
                                 '^b$' { 
                                     $script:ManualAlbumArtist = $null
                                     # $AlbumId = $ProviderAlbum.id
-                                    $loadStageBResults = $false    # NEW: Don't refetch, reuse cache
+                                    $loadStageBResults = $false    # Use cache and preserve page
+                                    if ($script:findMode -eq 'quick') {
+                                        $cachedAlbums = $script:quickAlbumCandidates
+                                        $currentAlbumPage = $script:quickCurrentPage
+                                    }
                                     $stage = 'B'
                                     $exitdo = $true
                                     break 
@@ -991,6 +1174,33 @@ function Start-OM {
                                     }
                                     else {
                                         Write-Warning "Invalid provider: $newProvider. Staying with $Provider."
+                                        continue
+                                    }
+                                }
+                                '^fm$' {
+                                    Write-Host "`nCurrent find mode: $($script:findMode)" -ForegroundColor Cyan
+                                    Write-Host "Available modes: (q)uick album search, (a)rtist-first search" -ForegroundColor Gray
+                                    $newMode = Read-Host "Select mode [q/a]"
+                                    if ($newMode -eq 'q' -or $newMode -eq 'quick') {
+                                        $script:findMode = 'quick'
+                                        Write-Host "✓ Switched to Quick Album Search mode" -ForegroundColor Green
+                                        $stage = 'A'
+                                        $exitdo = $true
+                                        break
+                                    } elseif ($newMode -eq 'a' -or $newMode -eq 'artist-first') {
+                                        $script:findMode = 'artist-first'
+                                        Write-Host "✓ Switched to Artist-First Search mode" -ForegroundColor Green
+                                        # Reset search state when switching to artist-first mode
+                                        $cachedAlbums = $null
+                                        $cachedArtistId = $null
+                                        $artistQuery = $artist
+                                        $ProviderArtist = $null
+                                        $ProviderAlbum = $null
+                                        $stage = 'A'
+                                        $exitdo = $true
+                                        break
+                                    } else {
+                                        Write-Warning "Invalid mode: $newMode. Staying with $($script:findMode)."
                                         continue
                                     }
                                 }

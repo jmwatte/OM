@@ -42,17 +42,24 @@ function Search-DItem {
         $items = @()
         if ($response.results) {
             foreach ($result in $response.results) {
+                $genres = Get-IfExists $result 'genre'
                 $item = [PSCustomObject]@{
-                    name   = $result.title
-                    id     = $result.id
-                    genres = @()  # Genres come from details page
-                    type   = $result.type
-                    thumb  = $result.thumb
-                    uri    = $result.uri  # Discogs resource URI
+                    release_date = Get-IfExists $result 'year'
+                    name         = Get-IfExists $result 'title'
+                    id           = Get-IfExists $result 'id'
+                    genres       = if ($genres) { $genres -join ', ' } else { '' }  # Genres come from details page
+                    type         = Get-IfExists $result 'type'
+                    thumb        = Get-IfExists $result 'thumb'
+                    uri          = Get-IfExists $result 'uri'  # Discogs resource URI
                 }
                 if ($Type -eq 'album') {
                     # Add artist info for albums
-                    $item | Add-Member -MemberType NoteProperty -Name 'artists' -Value @([PSCustomObject]@{ name = $result.title.Split(' - ')[0] }) -Force
+                    $title = Get-IfExists $result 'title'
+                    $artistName = if ($title) {
+                        $titleParts = $title.Split(' - ')
+                        if ($titleParts.Count -gt 1) { $titleParts[0] } else { 'Unknown Artist' }
+                    } else { 'Unknown Artist' }
+                    $item | Add-Member -MemberType NoteProperty -Name 'artists' -Value @([PSCustomObject]@{ name = $artistName }) -Force
                 }
                 $items += $item
             }

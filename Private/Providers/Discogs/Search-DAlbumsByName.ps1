@@ -5,6 +5,7 @@ function Search-DAlbumsByName {
     
     .DESCRIPTION
         Uses Discogs /database/search API with title and artist parameters to find matching albums.
+        Supports pagination and can be interrupted during processing.
         Falls back to cache-based filtering if API search fails or cache is provided.
     
     .PARAMETER ArtistName
@@ -22,6 +23,15 @@ function Search-DAlbumsByName {
     .PARAMETER AllAlbumsCache
         Optional: Pre-fetched list of all albums. If provided, skips API search and filters locally.
     
+    .PARAMETER Page
+        Page number for pagination (default: 1).
+    
+    .PARAMETER PerPage
+        Number of results per page (default: 10, max: 100).
+    
+    .PARAMETER MaxResults
+        Maximum number of albums to process with track counts (default: 10). Press 'Q' to stop early.
+    
     .EXAMPLE
         Search-DAlbumsByName -ArtistName "Fats Waller" -AlbumName "Complete Recorded Works"
         Searches Discogs API for albums matching the title.
@@ -29,6 +39,10 @@ function Search-DAlbumsByName {
     .EXAMPLE
         Search-DAlbumsByName -ArtistName "Fats Waller" -AlbumName "Keys" -AllAlbumsCache $cached
         Filters pre-cached albums locally (no API call).
+    
+    .EXAMPLE
+        Search-DAlbumsByName -ArtistName "The Beatles" -AlbumName "Help" -Page 2 -PerPage 20
+        Gets page 2 with 20 results per page.
     #>
     [CmdletBinding()]
     param(
@@ -40,18 +54,27 @@ function Search-DAlbumsByName {
 
         [Parameter()]
         [string]$ArtistId,
-        #MastersOnly should be a string from Masters,Release, all
 
         [Parameter()]
         [ValidateSet('Masters', 'Release', 'All')]
         [string]$MastersOnly = 'Masters',
 
         [Parameter()]
-        [array]$AllAlbumsCache
+        [array]$AllAlbumsCache,
+
+        [Parameter()]
+        [int]$Page = 1,
+
+        [Parameter()]
+        [ValidateRange(1, 100)]
+        [int]$PerPage = 10,
+
+        [Parameter()]
+        [int]$MaxResults = 10
     )
 
-    Write-Verbose "Searching Discogs for artist '$ArtistName' albums matching '$AlbumName'"
-    Write-Debug "Search-DAlbumsByName called: Artist='$ArtistName', Album='$AlbumName', MastersOnly=$MastersOnly, CacheProvided=$($null -ne $AllAlbumsCache)"
+    Write-Verbose "Searching Discogs for artist '$ArtistName' albums matching '$AlbumName' (Page: $Page, PerPage: $PerPage, MaxResults: $MaxResults)"
+    Write-Debug "Search-DAlbumsByName called: Artist='$ArtistName', Album='$AlbumName', MastersOnly=$MastersOnly, CacheProvided=$($null -ne $AllAlbumsCache), Page=$Page, PerPage=$PerPage, MaxResults=$MaxResults"
 
     # If cache provided, use cache-based filtering (fast, no API calls)
     if ($AllAlbumsCache) {
@@ -85,36 +108,34 @@ function Search-DAlbumsByName {
     
     try {
 
-        #switch on MastersOnly parameter to set search type
+        # Build search parameters with pagination
+        $searchParams = @{
+            page     = $Page
+            per_page = $PerPage
+        }
+
+        # Add search-specific parameters based on MastersOnly
         switch ($MastersOnly) {
             'Masters' {
-                $searchParams = @{
-                    artist = $ArtistName
-                    title  = $AlbumName
-                    type   = 'master'
-
-                }
+                $searchParams['artist'] = $ArtistName
+                $searchParams['title']  = $AlbumName
+                $searchParams['type']   = 'master'
             }
             'Release' {
-                $searchParams = @{
-                    artist = $ArtistName
-                    title  = $AlbumName
-                    type   = 'release'  # Always search for releases (broader results)
-                }
+                $searchParams['artist'] = $ArtistName
+                $searchParams['title']  = $AlbumName
+                $searchParams['type']   = 'release'
             }
             'All' {
-                #we need to construct something like this https://api.discogs.com/database/search?q=Lullabies+to+Paralyze+Queens+Of+The+Stone+Age&type=release
-                $searchParams = @{
-                    q    = "$AlbumName $ArtistName"
-                    type = 'release'
-                }
+                $searchParams['q']    = "$AlbumName $ArtistName"
+                $searchParams['type'] = 'release'
             }
         }
         $queryString = ($searchParams.GetEnumerator() | ForEach-Object {
                 [System.Web.HttpUtility]::UrlEncode($_.Key) + '=' + [System.Web.HttpUtility]::UrlEncode($_.Value)
             }) -join '&'
         $uri = "https://api.discogs.com/database/search?$queryString" 
-        Write-Debug "Calling Invoke-DiscogsRequest..."
+        Write-Debug "Calling Invoke-DiscogsRequest with pagination..."
         $searchResult = Invoke-DiscogsRequest -Uri $uri -Method GET
         Write-Debug "API call completed, processing results..."
         
@@ -123,56 +144,91 @@ function Search-DAlbumsByName {
             return @()
         }
         
-        Write-Verbose "Found $($searchResult.results.Count) albums via API search"
-        Write-Verbose "Converting $($searchResult.results.Count) search results to album objects..."
+        Write-Verbose "Found $($searchResult.results.Count) albums via API search (page $Page of $($searchResult.pagination.pages) total)"
+        Write-Verbose "Processing up to $MaxResults albums with track counts..."
         
         # Convert Discogs search results to album objects (Spotify-compatible format)
         $albums = @()
+        $processed = 0
+        $totalResults = $searchResult.results.Count
+        
         foreach ($result in $searchResult.results) {
-            Write-Verbose "Processing result: id=$($result.id), title=$($result.title), type=$($result.type)"
-            
-            # NOTE: Don't filter by MastersOnly here when searching by name
-            # User explicitly named the album, so return matching releases even if not masters
-            # The MastersOnly filter is for fetching ALL albums (Get-DArtistAlbums), not targeted search
+            # Check for user interruption
+            if ([Console]::KeyAvailable) {
+                $key = [Console]::ReadKey($true)
+                if ($key.Key -eq 'Q' -or $key.Key -eq 'q' -or $key.Key -eq 'Escape') {
+                    Write-Host "Processing interrupted by user. Returning $($albums.Count) albums processed so far." -ForegroundColor Yellow
+                    break
+                }
+            }
+
+            # Stop if we've reached MaxResults
+            if ($processed -ge $MaxResults) {
+                Write-Verbose "Reached MaxResults limit ($MaxResults). Stopping processing."
+                break
+            }
+
+            Write-Verbose "Processing result: id=$((Get-IfExists $result 'id')), title=$((Get-IfExists $result 'title')), type=$((Get-IfExists $result 'type'))"
+            Write-Host "Processing album $($processed + 1)/$([Math]::Min($totalResults, $MaxResults)): $((Get-IfExists $result 'title')) (Press Q to stop)" -ForegroundColor DarkGray
             
             # Extract album name from title (format: "Artist - Album Name")
-            $albumTitle = $result.title
+            $albumTitle = Get-IfExists $result 'title'
+            if (-not $albumTitle) { $albumTitle = 'Unknown Album' }
             if ($albumTitle -match '^\s*(.+?)\s*[-–]\s*(.+?)\s*$') {
                 $albumTitle = $matches[2].Trim()
             }
-            $releaseUri = $result.resource_url
-            Write-Host "Fetching release details for track count from $releaseUri" -ForegroundColor DarkGray
-            Start-Sleep -Milliseconds 850
-            $releaseDetails = Invoke-DiscogsRequest -Uri $releaseUri -Method 'GET'
-            $trackCount = $releaseDetails.tracklist.Count
+
+            # Get track count (with rate limiting)
+            $trackCount = 0
+            try {
+                $releaseUri = Get-IfExists $result 'resource_url'
+                if ($releaseUri) {
+                    Start-Sleep -Milliseconds 850  # Rate limiting
+                    $releaseDetails = Invoke-DiscogsRequest -Uri $releaseUri -Method 'GET'
+                    $trackCount = $releaseDetails.tracklist.Count
+                    Write-Host "$albumTitle with $trackCount tracks" -ForegroundColor DarkGray
+                }
+            }
+            catch {
+                Write-Verbose "Failed to get track count for $($albumTitle): $_"
+                $trackCount = 0
+            }
+
+            # Extract properties once for efficiency
+            $resultId = Get-IfExists $result 'id'
+            $resultType = Get-IfExists $result 'type'
+            $resultFormat = Get-IfExists $result 'format'
+            $resultLabel = Get-IfExists $result 'label'
+            $resultGenre = Get-IfExists $result 'genre'
+            $resultTitle = Get-IfExists $result 'title'
 
             $album = [PSCustomObject]@{
-                #if $result=release id ="r$result.id" if master id="m$result.id"
-                id           = if ($result.type -eq 'master') { "m$($result.id)" } else { "r$($result.id)" }
+                id           = if ($resultType -eq 'master') { "m$resultId" } else { "r$resultId" }
                 name         = $albumTitle
-                release_date = if ($result.PSObject.Properties['year']) { $result.year } else { '' }
-                type         = $result.type
-                format       = if ($result.PSObject.Properties['format']) { $result.format -join ', ' } else { '' }
-                label        = if ($result.PSObject.Properties['label']) { $result.label -join ', ' } else { '' }
-                country      = if ($result.PSObject.Properties['country']) { $result.country } else { '' }
-                thumb        = if ($result.PSObject.Properties['thumb']) { $result.thumb } else { '' }
-                genres       = if ($result.PSObject.Properties['genre']) { @($result.genre) } else { @() }
-                artist       = if ($result.PSObject.Properties['user_data']) { 
+                release_date = Get-IfExists $result 'year'
+                type         = $resultType
+                format       = if ($resultFormat) { $resultFormat -join ', ' } else { '' }
+                label        = if ($resultLabel) { $resultLabel -join ', ' } else { '' }
+                country      = Get-IfExists $result 'country'
+                thumb        = Get-IfExists $result 'thumb'
+                genres       = if ($resultGenre) { @($resultGenre) } else { @() }
+                artist       = if (Get-IfExists $result 'user_data') { 
                     # Extract artist from title
-                    if ($result.title -match '^\s*(.+?)\s*[-–]\s*') { $matches[1].Trim() } else { $ArtistName }
-                }
-                else { 
-                    $ArtistName 
-                }
-                resource_url = if ($result.PSObject.Properties['resource_url']) { $result.resource_url } else { '' }
+                    if ($resultTitle -match '^\s*(.+?)\s*[-–]\s*') { $matches[1].Trim() } else { $ArtistName }
+                } else { $ArtistName }
+                resource_url = Get-IfExists $result 'resource_url'
                 track_count  = $trackCount
             }
             
             $albums += $album
+            $processed++
             Write-Verbose "Added album: $albumTitle (id: $($album.id))"
         }
         
-        Write-Verbose "Returning $($albums.Count) albums"
+        Write-Verbose "Processed $processed albums, returning $($albums.Count) albums"
+        if ($processed -lt $totalResults) {
+            Write-Host "Note: Only processed $processed of $totalResults available results. Use -Page or -MaxResults to get more." -ForegroundColor Cyan
+        }
         return $albums
         
     }

@@ -70,6 +70,7 @@ function Invoke-MusicBrainzRequest {
     }
     
     # Build URI
+    
     $baseUri = "https://musicbrainz.org/ws/2/$Endpoint"
     if ($Id) {
         $baseUri = "$baseUri/$Id"

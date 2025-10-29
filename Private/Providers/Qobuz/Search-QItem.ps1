@@ -23,68 +23,17 @@ function Search-QItem {
     # Load System.Web for HTML decoding
     Add-Type -AssemblyName System.Web
 
-    # For album search, try Google CSE first
+    # For album search, use Google CSE and parsing
     if ($Type -eq 'album') {
         try {
-            $gApiKey = Get-OMConfig | Select-Object -ExpandProperty GoogleApiKey -ErrorAction SilentlyContinue
-            $gCse = Get-OMConfig | Select-Object -ExpandProperty GoogleCse -ErrorAction SilentlyContinue
-            $locale = Get-QobuzUrlLocale
-            $searchQuery = "site:qobuz.com/$locale/ `"$Query`" -playlist"
-            if ($gApiKey -and $gCse) {
-                $cseUrl = "https://www.googleapis.com/customsearch/v1?key=$gApiKey&cx=$gCse&q=$([uri]::EscapeDataString($searchQuery))"
-                $cseResp = Invoke-WebRequest -Uri $cseUrl -UseBasicParsing
-                $cseData = $cseResp.Content | ConvertFrom-Json
-                if ($cseData.items) {
-                    $albumUrls = @()
-                    foreach ($item in $cseData.items) {
-                        if ($item.link -match 'qobuz\.com') {
-                            $albumUrls += $item.link
-                        }
-                    }
-                    if ($albumUrls) {
-                        $targetUrl = $albumUrls[0]
-                        Write-Verbose "Google CSE selected album: $targetUrl"
-                        # Parse album details from URL (simplified)
-                        $albumName = $Query  # Placeholder
-                        $artistName = "Unknown"  # Placeholder
-                        $items = @([PSCustomObject]@{
-                            name = $albumName
-                            id = $targetUrl.Split('/')[-1]
-                            url = $targetUrl
-                            artists = @([PSCustomObject]@{ name = $artistName })
-                        })
-                        return [PSCustomObject]@{
-                            albums = [PSCustomObject]@{
-                                items = $items
-                            }
-                        }
-                    }
-                }
-            }
-            # Fallback to DuckDuckGo
-            $ddgUrl = "https://duckduckgo.com/html?q=$([uri]::EscapeDataString($searchQuery))"
-            $ddgResp = Invoke-WebRequest -Uri $ddgUrl -Headers @{ 'User-Agent' = 'Mozilla/5.0' } -UseBasicParsing
-            $html = $ddgResp.Content
-            if ($html -match 'https?://(?:www\.)?qobuz\.com[^\s"<>]+') {
-                $targetUrl = $matches[0]
-                Write-Verbose "DuckDuckGo selected album: $targetUrl"
-                $albumName = $Query
-                $artistName = "Unknown"
-                $items = @([PSCustomObject]@{
-                    name = $albumName
-                    id = $targetUrl.Split('/')[-1]
-                    url = $targetUrl
-                    artists = @([PSCustomObject]@{ name = $artistName })
-                })
-                return [PSCustomObject]@{
-                    albums = [PSCustomObject]@{
-                        items = $items
-                    }
-                }
+            $result = Search-GQAlbum -Query $Query
+            if ($result -and $result.albums -and $result.albums.items -and $result.albums.items.Count -gt 0) {
+                Write-Verbose "Found album via Google CSE and parsing; returning result."
+                return $result
             }
         }
         catch {
-            Write-Verbose "Album search via web failed: $_"
+            Write-Verbose "Album search via Google CSE failed: $_"
         }
         # If no results, return empty
         return [PSCustomObject]@{

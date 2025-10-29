@@ -8,7 +8,13 @@ function Search-MBItem {
     Returns normalized objects compatible with OM workflow.
 
     .PARAMETER Query
-    Search query (artist name or "artist album")
+    Search query (artist name for artist searches)
+
+    .PARAMETER Album
+    Album name for album searches
+
+    .PARAMETER Artist
+    Artist name for album searches
 
     .PARAMETER Type
     Type of search: 'artist' or 'album'
@@ -20,12 +26,18 @@ function Search-MBItem {
     Search-MBItem -Query "Henryk Górecki" -Type artist
 
     .EXAMPLE
-    Search-MBItem -Query "The Beatles Help" -Type album
+    Search-MBItem -Album "Help" -Artist "The Beatles" -Type album
     #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $false)]
         [string]$Query,
+
+        [Parameter(Mandatory = $false)]
+        [string]$Album,
+
+        [Parameter(Mandatory = $false)]
+        [string]$Artist,
 
         [Parameter(Mandatory = $true)]
         [ValidateSet('artist', 'album')]
@@ -36,23 +48,20 @@ function Search-MBItem {
     )
 
     try {
-        Write-Verbose "Searching MusicBrainz for $Type: $Query"
+        Write-Verbose "Searching MusicBrainz for $Type : $Query$Album$Artist"
 
         # Build MusicBrainz query
         if ($Type -eq 'artist') {
+            if (-not $Query) { throw "Query required for artist search" }
             $searchQuery = "artist:$Query"
             $endpoint = 'artist'
         }
         elseif ($Type -eq 'album') {
-            # For album, try to parse "artist album"
-            $parts = $Query -split ' ', 2
-            if ($parts.Count -eq 2) {
-                $artistPart = $parts[0]
-                $albumPart = $parts[1]
-                $searchQuery = "release:$albumPart AND artist:$artistPart AND format:CD"
-            }
-            else {
-                $searchQuery = "release:$Query AND format:CD"
+            if (-not $Album) { throw "Album required for album search" }
+            if ($Artist) {
+                $searchQuery = "release:$Album AND artist:$Artist AND format:CD"
+            } else {
+                $searchQuery = "release:$Album AND format:CD"
             }
             $endpoint = 'release'
         }
@@ -89,7 +98,7 @@ function Search-MBItem {
         }
 
         if ($items.Count -eq 0) {
-            Write-Verbose "No $Type found for query: $Query"
+            Write-Verbose "No $Type found for query: $Query$Album$Artist"
             return [PSCustomObject]@{
                 ($Type + 's') = [PSCustomObject]@{
                     items = @()
@@ -128,6 +137,7 @@ function Search-MBItem {
                     score = if ($item.PSObject.Properties['score']) { $item.score } else { 0 }
                 }
             }
+            $normalizedItem
         }
 
         # Sort by score

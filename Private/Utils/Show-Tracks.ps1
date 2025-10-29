@@ -46,7 +46,8 @@ function Show-Tracks {
                 $spotify = $pair.SpotifyTrack
                 $audio = $pair.AudioFile
 
-                Write-Host "[$num]"
+                $filenameDisplay = if ($audio) { "filename: $(Split-Path -Leaf $audio.FilePath)" } else { "" }
+                Write-Host "[$num] $filenameDisplay" -ForegroundColor DarkGray
 
                 $artistDisplay = 'Unknown'
                 if ($spotify) {
@@ -156,7 +157,7 @@ function Show-Tracks {
                         }
                     }
 
-                    Write-Host "filename: $(Split-Path -Leaf $audio.FilePath)"
+                    # Filename is now displayed in the header line above
                 }
                 else {
                     Write-Host "_ No matching audio file" -ForegroundColor Red
