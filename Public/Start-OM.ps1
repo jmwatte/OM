@@ -1115,7 +1115,7 @@ function Start-OM {
                                 if ($null -eq $inputF) { continue }
                                 if ($inputF -eq 'q') {
                                     Write-Host $optionsLine -ForegroundColor $HostColor
-                                    $inputF = Read-Host "Select tracks or command"
+                                    $inputF = Read-Host "Select tracks(or option):"
                                 }
                             }
 

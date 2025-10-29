@@ -174,7 +174,7 @@ function Show-Tracks {
             Write-Host $OptionsText -ForegroundColor $PromptColor
         }
 
-        $promptMessage = if ($supportsCommands) { "Enter command (Enter=next, p=previous, q=classic options)" } else { "Press Enter for next page, 'p' for previous, 'q' to quit viewing" }
+        $promptMessage = if ($supportsCommands) { "Enter command (Enter=next, p=previous, q=tag tracks)" } else { "Press Enter for next page, 'p' for previous, 'q' to quit viewing" }
         $inputRaw = & $reader $promptMessage
         $inputText = if ($null -ne $inputRaw) { $inputRaw.Trim() } else { '' }
         $inputLower = $inputText.ToLowerInvariant()
