@@ -339,31 +339,12 @@ function Start-OM {
             $pageSize = 25
             $albumDone = $false
             $mastersOnlyMode = $true  # Track Discogs filter state: true=masters only, false=all releases
-            $script:findMode = 'artist-first'  # Track the current find mode: 'quick' or 'artist-first'
+            $script:findMode = 'quick'  # Always start in quick find mode
             $script:quickAlbumCandidates = $null
             $script:quickCurrentPage = 1
             $currentArtist = $script:artist  # Persistent current artist for quick find mode
             $currentAlbum = $script:albumName  # Persistent current album for quick find mode
             $skipQuickPrompts = $false  # Flag to skip prompts when re-entering quick find after provider change
-
-            # NEW: Initial mode selection prompt
-            if (-not $NonInteractive -and -not $goA -and -not $goB -and -not $goC) {
-                Clear-Host
-                Write-Host "🎵 OM Music Organizer" -ForegroundColor Cyan
-                Write-Host "Choose your search approach:" -ForegroundColor White
-                Write-Host "  (q)uick album search - Enter artist and album directly (default)" -ForegroundColor Gray
-                Write-Host "  (a)rtist-first search - Traditional workflow" -ForegroundColor Gray
-                Write-Host ""
-                $modeChoice = Read-Host "Select mode [q] (Enter=q, a=artist-first)"
-                if ($modeChoice -eq 'a' -or $modeChoice -eq 'artist-first') {
-                    $script:findMode = 'artist-first'
-                    Write-Host "✓ Artist-first search mode selected" -ForegroundColor Green
-                } else {
-                    $script:findMode = 'quick'
-                    Write-Host "✓ Quick album search mode selected" -ForegroundColor Green
-                }
-                Write-Host ""
-            }
 
             :stageLoop while ($true) {
                 # NEW: Handle quick find mode (only when not in track selection stage)
@@ -372,6 +353,19 @@ function Start-OM {
                     & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
                     Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
                     Write-Host ""
+
+                    # Auto-detect artist and album from folder name if it matches "Artist - Album" pattern
+                    if (-not $skipQuickPrompts) {
+                        $folderName = $script:album.Name
+                        if ($folderName -match '^(.+)\s*-\s*(.+)$') {
+                            $detectedArtist = $matches[1].Trim()
+                            $detectedAlbum = $matches[2].Trim()
+                            Write-Host "📁 Auto-detected from folder name: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Green
+                            $currentArtist = $detectedArtist
+                            $currentAlbum = $detectedAlbum
+                            $skipQuickPrompts = $true
+                        }
+                    }
 
                     if (-not $skipQuickPrompts) {
                         # Prompt for artist and album with pre-filled defaults
