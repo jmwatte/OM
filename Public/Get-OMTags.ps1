@@ -164,6 +164,9 @@ function Get-OMTags {
     process {
         $results = @()
 
+        # Define default properties and their order
+        $defaultProperties = @('FileName', 'Artists', 'AlbumArtists', 'Genres', 'Composers', 'Comment', 'Lyrics', 'Composer', 'Track', 'TrackCount', 'Disc', 'DiscCount', 'Title', 'Genre', 'Artist', 'AlbumArtist', 'Album', 'Year')
+
         # Determine if Path is a file or folder
         if (Test-Path -LiteralPath $Path -PathType Leaf) {
             # Single file - validate it's an audio file
@@ -491,12 +494,11 @@ function Get-OMTags {
             Write-Verbose "All $successCount files processed successfully"
         }
 
-        # If Summary is requested, create a summary object with unique values
+        # If Summary is requested, create a summary object with unique values in default order
         if ($Summary) {
             $summaryObj = [PSCustomObject]@{}
             if ($results.Count -gt 0) {
-                $properties = $results[0].PSObject.Properties.Name
-                foreach ($prop in $properties) {
+                foreach ($prop in $defaultProperties) {
                     $allValues = @()
                     foreach ($result in $results) {
                         $value = $result.$prop
@@ -512,6 +514,9 @@ function Get-OMTags {
             }
             return $summaryObj
         } else {
+            if (-not $AllTags) {
+                $results = $results | Select-Object $defaultProperties
+            }
             return $results
         }
     }
