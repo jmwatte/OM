@@ -370,8 +370,10 @@ function Start-OM {
                     Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
                     Write-Host ""
 
-                    # Prompt for artist and album
-                    $quickArtist = Read-Host "Enter artist name"
+                    # Prompt for artist and album with pre-filled defaults
+                    Write-Host "Artist [$($script:artist)]: " -NoNewline
+                    $quickArtist = Read-Host
+                    if (-not $quickArtist) { $quickArtist = $script:artist }
                     if (-not $quickArtist) {
                         Write-Host "Artist is required. Switching to artist-first mode." -ForegroundColor Yellow
                         $script:findMode = 'artist-first'
@@ -379,7 +381,9 @@ function Start-OM {
                         continue stageLoop
                     }
                     
-                    $quickAlbum = Read-Host "Enter album name"
+                    Write-Host "Album [$($script:albumName)]: " -NoNewline
+                    $quickAlbum = Read-Host
+                    if (-not $quickAlbum) { $quickAlbum = $script:albumName }
                     if (-not $quickAlbum) {
                         Write-Host "Album is required. Switching to artist-first mode." -ForegroundColor Yellow
                         $script:findMode = 'artist-first'
