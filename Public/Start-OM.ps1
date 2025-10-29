@@ -354,16 +354,27 @@ function Start-OM {
                     Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
                     Write-Host ""
 
-                    # Auto-detect artist and album from folder name if it matches "Artist - Album" pattern
+                    # Auto-detect artist and album from folder name if it matches patterns
                     if (-not $skipQuickPrompts) {
                         $folderName = $script:album.Name
-                        if ($folderName -match '^(.+)\s*-\s*(.+)$') {
-                            $detectedArtist = $matches[1].Trim()
-                            $detectedAlbum = $matches[2].Trim()
-                            Write-Host "📁 Auto-detected from folder name: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Green
-                            $currentArtist = $detectedArtist
-                            $currentAlbum = $detectedAlbum
-                            $skipQuickPrompts = $true
+                        if ($folderName -match '^(.+?)\s*-\s*(.+)$') {
+                            $part1 = $matches[1].Trim()
+                            $part2 = $matches[2].Trim()
+                            if ($part1 -match '^\d{4}$') {
+                                # Year - Album pattern (finished OM structure)
+                                $detectedAlbum = $part2
+                                Write-Host "📁 Auto-detected from folder name: Album='$detectedAlbum' (year stripped)" -ForegroundColor Green
+                                $currentAlbum = $detectedAlbum
+                                # Artist not detected, will prompt for it
+                            } else {
+                                # Artist - Album pattern
+                                $detectedArtist = $part1
+                                $detectedAlbum = $part2
+                                Write-Host "📁 Auto-detected from folder name: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Green
+                                $currentArtist = $detectedArtist
+                                $currentAlbum = $detectedAlbum
+                                $skipQuickPrompts = $true  # Skip prompts since both detected
+                            }
                         }
                     }
 
