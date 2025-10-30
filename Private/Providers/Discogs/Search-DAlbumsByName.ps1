@@ -202,6 +202,25 @@ function Search-DAlbumsByName {
             $resultGenre = Get-IfExists $result 'genre'
             $resultTitle = Get-IfExists $result 'title'
 
+            # Extract cover art URL (prefer larger images over thumb)
+            $coverUrl = ""
+            if ($result.PSObject.Properties['images'] -and $result.images.Count -gt 0) {
+                # Find primary image or use first image
+                $primaryImage = $result.images | Where-Object { $_.type -eq 'primary' } | Select-Object -First 1
+                if (-not $primaryImage) { $primaryImage = $result.images[0] }
+                
+                # Use largest available size (uri1200 > uri500 > uri250 > uri150 > uri)
+                if ($primaryImage.PSObject.Properties['uri1200']) { $coverUrl = $primaryImage.uri1200 }
+                elseif ($primaryImage.PSObject.Properties['uri500']) { $coverUrl = $primaryImage.uri500 }
+                elseif ($primaryImage.PSObject.Properties['uri250']) { $coverUrl = $primaryImage.uri250 }
+                elseif ($primaryImage.PSObject.Properties['uri150']) { $coverUrl = $primaryImage.uri150 }
+                elseif ($primaryImage.PSObject.Properties['uri']) { $coverUrl = $primaryImage.uri }
+            }
+            # Fallback to thumb if no images array
+            if (-not $coverUrl) {
+                $coverUrl = Get-IfExists $result 'thumb'
+            }
+
             $album = [PSCustomObject]@{
                 id           = if ($resultType -eq 'master') { "m$resultId" } else { "r$resultId" }
                 name         = $albumTitle
@@ -210,7 +229,8 @@ function Search-DAlbumsByName {
                 format       = if ($resultFormat) { $resultFormat -join ', ' } else { '' }
                 label        = if ($resultLabel) { $resultLabel -join ', ' } else { '' }
                 country      = Get-IfExists $result 'country'
-                thumb        = Get-IfExists $result 'thumb'
+                thumb        = $coverUrl  # Keep thumb property for backward compatibility, but use higher quality image
+                cover_url    = $coverUrl  # Add cover_url for consistency with other providers
                 genres       = if ($resultGenre) { @($resultGenre) } else { @() }
                 artist       = if (Get-IfExists $result 'user_data') { 
                     # Extract artist from title

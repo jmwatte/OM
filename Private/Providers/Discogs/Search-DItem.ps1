@@ -43,13 +43,34 @@ function Search-DItem {
         if ($response.results) {
             foreach ($result in $response.results) {
                 $genres = Get-IfExists $result 'genre'
+                
+                # Extract cover art URL (prefer larger images over thumb)
+                $coverUrl = ""
+                if ($result.PSObject.Properties['images'] -and $result.images.Count -gt 0) {
+                    # Find primary image or use first image
+                    $primaryImage = $result.images | Where-Object { $_.type -eq 'primary' } | Select-Object -First 1
+                    if (-not $primaryImage) { $primaryImage = $result.images[0] }
+                    
+                    # Use largest available size (uri1200 > uri500 > uri250 > uri150 > uri)
+                    if ($primaryImage.PSObject.Properties['uri1200']) { $coverUrl = $primaryImage.uri1200 }
+                    elseif ($primaryImage.PSObject.Properties['uri500']) { $coverUrl = $primaryImage.uri500 }
+                    elseif ($primaryImage.PSObject.Properties['uri250']) { $coverUrl = $primaryImage.uri250 }
+                    elseif ($primaryImage.PSObject.Properties['uri150']) { $coverUrl = $primaryImage.uri150 }
+                    elseif ($primaryImage.PSObject.Properties['uri']) { $coverUrl = $primaryImage.uri }
+                }
+                # Fallback to thumb if no images array
+                if (-not $coverUrl) {
+                    $coverUrl = Get-IfExists $result 'thumb'
+                }
+                
                 $item = [PSCustomObject]@{
                     release_date = Get-IfExists $result 'year'
                     name         = Get-IfExists $result 'title'
                     id           = Get-IfExists $result 'id'
                     genres       = if ($genres) { $genres -join ', ' } else { '' }  # Genres come from details page
                     type         = Get-IfExists $result 'type'
-                    thumb        = Get-IfExists $result 'thumb'
+                    thumb        = $coverUrl  # Keep thumb property for backward compatibility, but use higher quality image
+                    cover_url    = $coverUrl  # Add cover_url for consistency with other providers
                     uri          = Get-IfExists $result 'uri'  # Discogs resource URI
                 }
                 if ($Type -eq 'album') {

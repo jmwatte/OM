@@ -98,6 +98,25 @@ function Get-DArtistAlbums {
                         $trackCount = $releaseDetails.tracklist.Count
                     
 
+                        # Extract cover art URL (prefer larger images over thumb)
+                        $coverUrl = ""
+                        if ($releaseDetails.PSObject.Properties['images'] -and $releaseDetails.images.Count -gt 0) {
+                            # Find primary image or use first image
+                            $primaryImage = $releaseDetails.images | Where-Object { $_.type -eq 'primary' } | Select-Object -First 1
+                            if (-not $primaryImage) { $primaryImage = $releaseDetails.images[0] }
+                            
+                            # Use largest available size (uri1200 > uri500 > uri250 > uri150 > uri)
+                            if ($primaryImage.PSObject.Properties['uri1200']) { $coverUrl = $primaryImage.uri1200 }
+                            elseif ($primaryImage.PSObject.Properties['uri500']) { $coverUrl = $primaryImage.uri500 }
+                            elseif ($primaryImage.PSObject.Properties['uri250']) { $coverUrl = $primaryImage.uri250 }
+                            elseif ($primaryImage.PSObject.Properties['uri150']) { $coverUrl = $primaryImage.uri150 }
+                            elseif ($primaryImage.PSObject.Properties['uri']) { $coverUrl = $primaryImage.uri }
+                        }
+                        # Fallback to thumb if no images array
+                        if (-not $coverUrl -and $releaseDetails.PSObject.Properties['thumb']) {
+                            $coverUrl = $releaseDetails.thumb
+                        }
+
                         # Transform to match Spotify-like structure
                         # Handle optional properties that may not be present
                         $albumObj = [PSCustomObject]@{
@@ -111,7 +130,8 @@ function Get-DArtistAlbums {
                             genres       = if ($release.PSObject.Properties['genre']) { @($release.genre) } else { @() }
                             resource_url = if ($release.PSObject.Properties['resource_url']) { $release.resource_url } else { "" }
                             track_count  = $trackCount
-                            thumb        = if ($releaseDetails.PSObject.Properties['thumb']) { $releaseDetails.thumb } else { "" }
+                            thumb        = $coverUrl  # Keep thumb property for backward compatibility, but use higher quality image
+                            cover_url    = $coverUrl  # Add cover_url for consistency with other providers
                             # artist       = if ($result.PSObject.Properties['user_data']) { 
                             #     # Extract artist from title
                             #     if ($result.title -match '^\s*(.+?)\s*[-–]\s*') { $matches[1].Trim() } else { $ArtistName }
