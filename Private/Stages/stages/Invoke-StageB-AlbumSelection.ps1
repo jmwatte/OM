@@ -914,8 +914,12 @@ function Invoke-StageB-AlbumSelection {
                     $coverUrl = Get-IfExists $selectedAlbum 'cover_url'
                     
                     if ($coverUrl) {
-                        Write-Host "Displaying cover art from $coverUrl" -ForegroundColor Cyan
-                        # TODO: Implement actual image display here
+                        Write-Host "Displaying cover art from $coverUrl" -ForegroundColor Green
+                        try {
+                            Start-Process $coverUrl
+                        } catch {
+                            Write-Warning "Failed to open cover art URL: $_"
+                        }
                     } else {
                         Write-Warning "No cover art available for this album"
                     }

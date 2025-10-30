@@ -461,57 +461,78 @@ function Start-OM {
                     $script:quickAlbumCandidates = $albumCandidates
                     $script:quickCurrentPage = 1
 
-                    # Display album candidates
-                    Write-Host "$Provider Album candidates for '$quickAlbum' by '$quickArtist':" -ForegroundColor Green
-                    for ($i = 0; $i -lt $albumCandidates.Count; $i++) {
-                        $album = $albumCandidates[$i]
-                        $artistDisplay = if ($album.artists -and $album.artists[0].name) { $album.artists[0].name } else { 'Unknown Artist' }
-                        
-                        # Get year and track count for consistent display with artist-first mode
-                        $year = Get-IfExists $album 'release_date'
-                        $trackCount = Get-IfExists $album 'total_tracks'
-                        if (-not $trackCount) { $trackCount = Get-IfExists $album 'track_count' }
-                        if (-not $trackCount) { $trackCount = Get-IfExists $album 'tracks_count' }
-                        $trackInfo = if ($trackCount) { " ($trackCount tracks)" } else { "" }
-                        
-                        Write-Host "[$($i+1)] $($album.name) - $artistDisplay (id: $($album.id)) (year: $year)$trackInfo"
-                    }
+                    # Album selection loop
+                    :albumSelectionLoop while ($true) {
+                        # Display album candidates
+                        Write-Host "$Provider Album candidates for '$quickAlbum' by '$quickArtist':" -ForegroundColor Green
+                        for ($i = 0; $i -lt $albumCandidates.Count; $i++) {
+                            $album = $albumCandidates[$i]
+                            $artistDisplay = if ($album.artists -and $album.artists[0].name) { $album.artists[0].name } else { 'Unknown Artist' }
+                            
+                            # Get year and track count for consistent display with artist-first mode
+                            $year = Get-IfExists $album 'release_date'
+                            $trackCount = Get-IfExists $album 'total_tracks'
+                            if (-not $trackCount) { $trackCount = Get-IfExists $album 'track_count' }
+                            if (-not $trackCount) { $trackCount = Get-IfExists $album 'tracks_count' }
+                            $trackInfo = if ($trackCount) { " ($trackCount tracks)" } else { "" }
+                            
+                            Write-Host "[$($i+1)] $($album.name) - $artistDisplay (id: $($album.id)) (year: $year)$trackInfo"
+                        }
 
-                    $albumChoice = Read-Host "Select album [1] (Enter=first), number, '(cp)' change provider, '(a)' artist-first mode, or new search term"
-                    if ($albumChoice -eq '') { $albumChoice = '1' }
-                    
-                    if ($albumChoice -eq 'cp') {
-                        Write-Host "`nCurrent provider: $Provider" -ForegroundColor Cyan
-                        Write-Host "Available providers: (S)potify, (Q)obuz, (D)iscogs, (M)usicBrainz" -ForegroundColor Gray
-                        $newProvider = Read-Host "Enter provider (full name or first letter)"
-                        $providerMap = @{ 's' = 'Spotify'; 'q' = 'Qobuz'; 'd' = 'Discogs'; 'm' = 'MusicBrainz'; 'spotify' = 'Spotify'; 'qobuz' = 'Qobuz'; 'discogs' = 'Discogs'; 'musicbrainz' = 'MusicBrainz' }
-                        $matched = $providerMap[$newProvider.ToLower()]
-                        if ($matched) {
-                            $Provider = $matched
-                            Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                            $skipQuickPrompts = $true  # Skip prompts when re-entering quick find
+                        $albumChoice = Read-Host "Select album [1] (Enter=first), number, '(cp)' change provider, '(a)' artist-first mode, 'vc(ViewCover)', or new search term"
+                        if ($albumChoice -eq '') { $albumChoice = '1' }
+                        
+                        if ($albumChoice -eq 'cp') {
+                            Write-Host "`nCurrent provider: $Provider" -ForegroundColor Cyan
+                            Write-Host "Available providers: (S)potify, (Q)obuz, (D)iscogs, (M)usicBrainz" -ForegroundColor Gray
+                            $newProvider = Read-Host "Enter provider (full name or first letter)"
+                            $providerMap = @{ 's' = 'Spotify'; 'q' = 'Qobuz'; 'd' = 'Discogs'; 'm' = 'MusicBrainz'; 'spotify' = 'Spotify'; 'qobuz' = 'Qobuz'; 'discogs' = 'Discogs'; 'musicbrainz' = 'MusicBrainz' }
+                            $matched = $providerMap[$newProvider.ToLower()]
+                            if ($matched) {
+                                $Provider = $matched
+                                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                                $skipQuickPrompts = $true  # Skip prompts when re-entering quick find
+                                continue stageLoop
+                            }
+                            continue albumSelectionLoop
+                        } elseif ($albumChoice -eq 'a') {
+                            $script:findMode = 'artist-first'
+                            $stage = 'A'
                             continue stageLoop
-                        }
-                        continue stageLoop
-                    } elseif ($albumChoice -eq 'a') {
-                        $script:findMode = 'artist-first'
-                        $stage = 'A'
-                        continue stageLoop
-                    } elseif ($albumChoice -match '^\d+$') {
-                        $idx = [int]$albumChoice
-                        if ($idx -ge 1 -and $idx -le $albumCandidates.Count) {
-                            $ProviderAlbum = $albumCandidates[$idx - 1]
-                            $ProviderArtist = @{ name = $quickArtist; id = $quickArtist }  # Simplified artist object
-                            $stage = 'C'
-                            continue stageLoop
+                        } elseif ($albumChoice -match '^vc(\d*)$') {
+                            $albumIndex = if ($matches[1]) { [int]$matches[1] - 1 } else { 0 }
+                            if ($albumIndex -ge 0 -and $albumIndex -lt $albumCandidates.Count) {
+                                $selectedAlbum = $albumCandidates[$albumIndex]
+                                if ($selectedAlbum.cover_url) {
+                                    Write-Host "Displaying cover art from $($selectedAlbum.cover_url)" -ForegroundColor Green
+                                    try {
+                                        Start-Process $selectedAlbum.cover_url
+                                    } catch {
+                                        Write-Warning "Failed to open cover art URL: $_"
+                                    }
+                                } else {
+                                    Write-Warning "No cover art available for this album"
+                                }
+                            } else {
+                                Write-Warning "Invalid album index for vc command"
+                            }
+                            continue albumSelectionLoop
+                        } elseif ($albumChoice -match '^\d+$') {
+                            $idx = [int]$albumChoice
+                            if ($idx -ge 1 -and $idx -le $albumCandidates.Count) {
+                                $ProviderAlbum = $albumCandidates[$idx - 1]
+                                $ProviderArtist = @{ name = $quickArtist; id = $quickArtist }  # Simplified artist object
+                                $stage = 'C'
+                                continue stageLoop
+                            } else {
+                                Write-Warning "Invalid selection"
+                                continue albumSelectionLoop
+                            }
                         } else {
-                            Write-Warning "Invalid selection"
+                            # New search term - update album name and restart search
+                            $currentAlbum = $albumChoice
                             continue stageLoop
                         }
-                    } else {
-                        # New search term - update album name and retry
-                        $currentAlbum = $albumChoice
-                        continue stageLoop
                     }
                 }
                 switch ($stage) {
