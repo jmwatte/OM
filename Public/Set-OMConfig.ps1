@@ -43,6 +43,12 @@ function Set-OMConfig {
     Google Custom Search Engine (CSE) ID for targeted searches (e.g., for album/track metadata).
     Create and get this ID from: https://cse.google.com/cse/ (set up a custom search engine, note the "Search engine ID" from the setup page).
     
+    .PARAMETER FolderImageSize
+    Maximum dimension (width/height) in pixels for cover art saved to album folders. Default: 1000
+    
+    .PARAMETER TagImageSize
+    Maximum dimension (width/height) in pixels for cover art embedded in audio file tags. Default: 500
+    
     .PARAMETER ConfigPath
     Optional. Custom path for config file. If not specified, uses default location.
     
@@ -90,6 +96,12 @@ function Set-OMConfig {
 
         [Parameter(Mandatory = $false)]
         [string]$GoogleCse,
+
+        [Parameter(Mandatory = $false)]
+        [int]$FolderImageSize,
+
+        [Parameter(Mandatory = $false)]
+        [int]$TagImageSize,
 
         [Parameter(Mandatory = $false)]
         [string]$ConfigPath,
@@ -200,6 +212,22 @@ function Set-OMConfig {
         if ($GoogleCse) {
             $config.Google.Cse = $GoogleCse
             Write-Verbose "Set Google CSE id"
+            $modified = $true
+        }
+    }
+
+    # Update Cover Art configuration (merge by default)
+    if ($FolderImageSize -or $TagImageSize) {
+        if (-not $config.CoverArt) { $config.CoverArt = @{} }
+        
+        if ($FolderImageSize) {
+            $config.CoverArt.FolderImageSize = $FolderImageSize
+            Write-Verbose "Set CoverArt FolderImageSize to $FolderImageSize"
+            $modified = $true
+        }
+        if ($TagImageSize) {
+            $config.CoverArt.TagImageSize = $TagImageSize
+            Write-Verbose "Set CoverArt TagImageSize to $TagImageSize"
             $modified = $true
         }
     }

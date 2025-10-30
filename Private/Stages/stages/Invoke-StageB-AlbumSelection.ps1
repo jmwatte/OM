@@ -512,7 +512,7 @@ function Invoke-StageB-AlbumSelection {
             }
         }
 
-        $inputF = Read-Host "Select album(s) [1] (Enter=first), number(s) (e.g., 1,3,5-8), '(b)ack', '(n)ext', '(p)rev', '(s)kip', 'id:<id>', '(cp)' change provider [$Provider], 'vc(ViewCover)', '*' (all albums), or text to search:"
+        $inputF = Read-Host "Select album(s) [1] (Enter=first), number(s) (e.g., 1,3,5-8), '(b)ack', '(n)ext', '(p)rev', '(s)kip', 'id:<id>', '(cp)' change provider [$Provider], 'vc(ViewCover)', 'sc(SaveCover)', 'sct(SaveCoverToTags)', '*' (all albums), or text to search:"
         
         switch -Regex ($inputF) {
             '^s$' {
@@ -919,6 +919,76 @@ function Invoke-StageB-AlbumSelection {
                             Start-Process $coverUrl
                         } catch {
                             Write-Warning "Failed to open cover art URL: $_"
+                        }
+                    } else {
+                        Write-Warning "No cover art available for this album"
+                    }
+                } else {
+                    Write-Warning "Invalid album number: $(if ($matches[1]) { $matches[1] } else { 'first' })"
+                }
+                continue
+            }
+            '^sc(\d*)$' {
+                # Save Cover art to folder: sc (first album) or sc<number> (specific album)
+                $albumIndex = if ($matches[1]) { [int]$matches[1] - 1 } else { 0 }  # Convert to 0-based index
+                
+                if ($albumIndex -ge 0 -and $albumIndex -lt $albumsForArtist.Count) {
+                    $selectedAlbum = $albumsForArtist[$albumIndex]
+                    $coverUrl = Get-IfExists $selectedAlbum 'cover_url'
+                    
+                    if ($coverUrl) {
+                        $config = Get-OMConfig
+                        $maxSize = $config.CoverArt.FolderImageSize
+                        $result = Save-CoverArt -CoverUrl $coverUrl -AlbumPath $Artist.FullName -Action SaveToFolder -MaxSize $maxSize -WhatIf:$NonInteractive
+                        if (-not $result.Success) {
+                            Write-Warning "Failed to save cover art: $($result.Error)"
+                        }
+                    } else {
+                        Write-Warning "No cover art available for this album"
+                    }
+                } else {
+                    Write-Warning "Invalid album number: $(if ($matches[1]) { $matches[1] } else { 'first' })"
+                }
+                continue
+            }
+            '^sct(\d*)$' {
+                # Save Cover art to tags: sct (first album) or sct<number> (specific album)
+                $albumIndex = if ($matches[1]) { [int]$matches[1] - 1 } else { 0 }  # Convert to 0-based index
+                
+                if ($albumIndex -ge 0 -and $albumIndex -lt $albumsForArtist.Count) {
+                    $selectedAlbum = $albumsForArtist[$albumIndex]
+                    $coverUrl = Get-IfExists $selectedAlbum 'cover_url'
+                    
+                    if ($coverUrl) {
+                        $config = Get-OMConfig
+                        $maxSize = $config.CoverArt.TagImageSize
+                        # Get audio files for embedding
+                        $audioFiles = Get-ChildItem -LiteralPath $Artist.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } | ForEach-Object {
+                            try {
+                                $tagFile = [TagLib.File]::Create($_.FullName)
+                                [PSCustomObject]@{
+                                    FilePath = $_.FullName
+                                    TagFile = $tagFile
+                                }
+                            } catch {
+                                Write-Warning "Skipping invalid audio file: $($_.FullName)"
+                                $null
+                            }
+                        } | Where-Object { $_ -ne $null }
+
+                        if ($audioFiles.Count -gt 0) {
+                            $result = Save-CoverArt -CoverUrl $coverUrl -AudioFiles $audioFiles -Action EmbedInTags -MaxSize $maxSize -WhatIf:$NonInteractive
+                            if (-not $result.Success) {
+                                Write-Warning "Failed to embed cover art: $($result.Error)"
+                            }
+                            # Clean up tag files
+                            foreach ($af in $audioFiles) {
+                                if ($af.TagFile) {
+                                    try { $af.TagFile.Dispose() } catch { }
+                                }
+                            }
+                        } else {
+                            Write-Warning "No audio files found to embed cover art in"
                         }
                     } else {
                         Write-Warning "No cover art available for this album"

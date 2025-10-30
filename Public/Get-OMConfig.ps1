@@ -160,6 +160,15 @@ function Get-OMConfig {
         $config['Qobuz']['Locale'] = $PSCulture
     }
 
+    # Cover Art defaults
+    if (-not $config.ContainsKey('CoverArt')) { $config['CoverArt'] = @{} }
+    if (-not $config['CoverArt'].ContainsKey('FolderImageSize') -or -not $config['CoverArt']['FolderImageSize']) {
+        $config['CoverArt']['FolderImageSize'] = 1000  # Default folder image size in pixels
+    }
+    if (-not $config['CoverArt'].ContainsKey('TagImageSize') -or -not $config['CoverArt']['TagImageSize']) {
+        $config['CoverArt']['TagImageSize'] = 500  # Default tag image size in pixels
+    }
+
     # Return specific provider or full config
     if ($Provider) {
         # Support both hashtable and PSCustomObject shapes for $config
