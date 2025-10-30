@@ -53,13 +53,13 @@ function Get-CoverArtUrl {
             # Available sizes: 50, 150, 600, org (original)
             # Example: https://static.qobuz.com/images/covers/12/34/123456789_150.jpg
             # Can be changed to: https://static.qobuz.com/images/covers/12/34/123456789_600.jpg
-            # Or: https://static.qobuz.com/images/covers/12/34/123456789.jpg (original)
+            # Or: https://static.qobuz.com/images/covers/12/34/123456789_org.jpg (original)
 
             if ($CoverUrl -match '_(\d+)\.(jpg|png|jpeg)$') {
                 $extension = $matches[2]
                 if ($Size -eq 'original') {
-                    # Remove size suffix to get original
-                    $newUrl = $CoverUrl -replace '_(\d+)\.(jpg|png|jpeg)$', ".$extension"
+                    # Replace size suffix with _org for original
+                    $newUrl = $CoverUrl -replace '_(\d+)\.(jpg|png|jpeg)$', "_org.$extension"
                 }
                 else {
                     $newUrl = $CoverUrl -replace '_(\d+)\.(jpg|png|jpeg)$', "_${targetSize}.$extension"
