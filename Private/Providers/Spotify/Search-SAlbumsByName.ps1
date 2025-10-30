@@ -97,5 +97,25 @@ function Search-SAlbumsByName {
 
     Write-Verbose "Found $($albums.Count) albums for: $attempt.Query"
     
+    # Extract cover art URLs from Spotify album objects
+    $albums = $albums | ForEach-Object {
+        $album = $_
+        
+        # Extract cover art URL from images array (prefer largest image)
+        $coverUrl = $null
+        if ($album.images -and $album.images.Count -gt 0) {
+            # Sort by area (width * height) descending and take the first (largest)
+            $largestImage = $album.images | 
+                Sort-Object { [int]$_.width * [int]$_.height } -Descending | 
+                Select-Object -First 1
+            $coverUrl = $largestImage.url
+        }
+        
+        # Add cover_url property to match other providers
+        $album | Add-Member -MemberType NoteProperty -Name 'cover_url' -Value $coverUrl -Force
+        
+        $album
+    }
+    
     return $albums
 }
