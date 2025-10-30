@@ -229,8 +229,7 @@ function Search-DAlbumsByName {
                 format       = if ($resultFormat) { $resultFormat -join ', ' } else { '' }
                 label        = if ($resultLabel) { $resultLabel -join ', ' } else { '' }
                 country      = Get-IfExists $result 'country'
-                thumb        = $coverUrl  # Keep thumb property for backward compatibility, but use higher quality image
-                cover_url    = $coverUrl  # Add cover_url for consistency with other providers
+                cover_url    = $coverUrl  # High-quality cover art URL
                 genres       = if ($resultGenre) { @($resultGenre) } else { @() }
                 artist       = if (Get-IfExists $result 'user_data') { 
                     # Extract artist from title

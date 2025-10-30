@@ -69,8 +69,7 @@ function Search-DItem {
                     id           = Get-IfExists $result 'id'
                     genres       = if ($genres) { $genres -join ', ' } else { '' }  # Genres come from details page
                     type         = Get-IfExists $result 'type'
-                    thumb        = $coverUrl  # Keep thumb property for backward compatibility, but use higher quality image
-                    cover_url    = $coverUrl  # Add cover_url for consistency with other providers
+                    cover_url    = $coverUrl  # High-quality cover art URL
                     uri          = Get-IfExists $result 'uri'  # Discogs resource URI
                 }
                 if ($Type -eq 'album') {

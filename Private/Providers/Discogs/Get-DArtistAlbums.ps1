@@ -130,8 +130,7 @@ function Get-DArtistAlbums {
                             genres       = if ($release.PSObject.Properties['genre']) { @($release.genre) } else { @() }
                             resource_url = if ($release.PSObject.Properties['resource_url']) { $release.resource_url } else { "" }
                             track_count  = $trackCount
-                            thumb        = $coverUrl  # Keep thumb property for backward compatibility, but use higher quality image
-                            cover_url    = $coverUrl  # Add cover_url for consistency with other providers
+                            cover_url    = $coverUrl  # High-quality cover art URL
                             # artist       = if ($result.PSObject.Properties['user_data']) { 
                             #     # Extract artist from title
                             #     if ($result.title -match '^\s*(.+?)\s*[-–]\s*') { $matches[1].Trim() } else { $ArtistName }
