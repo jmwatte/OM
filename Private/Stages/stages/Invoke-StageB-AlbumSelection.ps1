@@ -512,7 +512,7 @@ function Invoke-StageB-AlbumSelection {
             }
         }
 
-        $inputF = Read-Host "Select album(s) [1] (Enter=first), number(s) (e.g., 1,3,5-8), '(b)ack', '(n)ext', '(p)rev', '(s)kip', 'id:<id>', '(cp)' change provider [$Provider], '*' (all albums), or text to search:"
+        $inputF = Read-Host "Select album(s) [1] (Enter=first), number(s) (e.g., 1,3,5-8), '(b)ack', '(n)ext', '(p)rev', '(s)kip', 'id:<id>', '(cp)' change provider [$Provider], 'vc(ViewCover)', '*' (all albums), or text to search:"
         
         switch -Regex ($inputF) {
             '^s$' {
@@ -904,6 +904,25 @@ function Invoke-StageB-AlbumSelection {
                     UpdatedProvider       = $Provider
                     CurrentPage           = $currentPage
                 }
+            }
+            '^vc(\d*)$' {
+                # View Cover art: vc (first album) or vc<number> (specific album)
+                $albumIndex = if ($matches[1]) { [int]$matches[1] - 1 } else { 0 }  # Convert to 0-based index
+                
+                if ($albumIndex -ge 0 -and $albumIndex -lt $albumsForArtist.Count) {
+                    $selectedAlbum = $albumsForArtist[$albumIndex]
+                    $coverUrl = Get-IfExists $selectedAlbum 'cover_url'
+                    
+                    if ($coverUrl) {
+                        Write-Host "Displaying cover art from $coverUrl" -ForegroundColor Cyan
+                        # TODO: Implement actual image display here
+                    } else {
+                        Write-Warning "No cover art available for this album"
+                    }
+                } else {
+                    Write-Warning "Invalid album number: $(if ($matches[1]) { $matches[1] } else { 'first' })"
+                }
+                continue
             }
             default {
                 # User entered text - try as a new search term first
