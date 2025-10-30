@@ -111,6 +111,7 @@ function Get-DArtistAlbums {
                             genres       = if ($release.PSObject.Properties['genre']) { @($release.genre) } else { @() }
                             resource_url = if ($release.PSObject.Properties['resource_url']) { $release.resource_url } else { "" }
                             track_count  = $trackCount
+                            thumb        = if ($releaseDetails.PSObject.Properties['thumb']) { $releaseDetails.thumb } else { "" }
                             # artist       = if ($result.PSObject.Properties['user_data']) { 
                             #     # Extract artist from title
                             #     if ($result.title -match '^\s*(.+?)\s*[-–]\s*') { $matches[1].Trim() } else { $ArtistName }
