@@ -126,15 +126,46 @@ function Search-MBItem {
                 }
             }
             elseif ($Type -eq 'album') {
-                # For releases
+                # For releases - get cover art from Cover Art Archive
                 $artistName = if ($item.PSObject.Properties['artist-credit'] -and $item.'artist-credit' -and $item.'artist-credit'.name) {
                     $item.'artist-credit'.name
                 } else { 'Unknown' }
+                
+                # Get cover art from Cover Art Archive
+                $coverUrl = $null
+                try {
+                    $coverArtUrl = "http://coverartarchive.org/release/$($item.id)/front-500"
+                    Write-Verbose "Fetching cover art for search result: $coverArtUrl"
+                    
+                    # Simple HEAD request to check if cover exists
+                    $response = Invoke-WebRequest -Uri $coverArtUrl -Method Head -TimeoutSec 5 -ErrorAction Stop
+                    if ($response.StatusCode -eq 200) {
+                        $coverUrl = $coverArtUrl
+                        Write-Verbose "Found cover art for album: $($item.title)"
+                    }
+                }
+                catch {
+                    Write-Verbose "No cover art found for album $($item.id): $($_.Exception.Message)"
+                    # Try without size specification as fallback
+                    try {
+                        $fallbackUrl = "http://coverartarchive.org/release/$($item.id)/front"
+                        $response = Invoke-WebRequest -Uri $fallbackUrl -Method Head -TimeoutSec 5 -ErrorAction Stop
+                        if ($response.StatusCode -eq 200) {
+                            $coverUrl = $fallbackUrl
+                            Write-Verbose "Found cover art (fallback) for album: $($item.title)"
+                        }
+                    }
+                    catch {
+                        Write-Verbose "No cover art available for album $($item.id)"
+                    }
+                }
+                
                 $normalizedItem = [PSCustomObject]@{
                     id = $item.id
                     name = $item.title
                     artists = @([PSCustomObject]@{ name = $artistName })
                     score = if ($item.PSObject.Properties['score']) { $item.score } else { 0 }
+                    cover_url = $coverUrl  # Cover Art Archive URL
                 }
             }
             $normalizedItem

@@ -107,6 +107,36 @@ function Get-MBArtistAlbums {
             catch {
                 Write-Verbose "Failed to get track count for release $($release.id): $_"
             }
+
+            # Get cover art from Cover Art Archive
+            $coverUrl = $null
+            try {
+                $coverArtUrl = "http://coverartarchive.org/release/$($release.id)/front-500"
+                Write-Verbose "Fetching cover art: $coverArtUrl"
+                
+                # Simple HEAD request to check if cover exists (don't download full image)
+                $response = Invoke-WebRequest -Uri $coverArtUrl -Method Head -TimeoutSec 5 -ErrorAction Stop
+                if ($response.StatusCode -eq 200) {
+                    $coverUrl = $coverArtUrl
+                    Write-Verbose "Found cover art for release: $($release.title)"
+                }
+            }
+            catch {
+                Write-Verbose "No cover art found for release $($release.id): $($_.Exception.Message)"
+                # Try without size specification as fallback
+                try {
+                    $fallbackUrl = "http://coverartarchive.org/release/$($release.id)/front"
+                    $response = Invoke-WebRequest -Uri $fallbackUrl -Method Head -TimeoutSec 5 -ErrorAction Stop
+                    if ($response.StatusCode -eq 200) {
+                        $coverUrl = $fallbackUrl
+                        Write-Verbose "Found cover art (fallback) for release: $($release.title)"
+                    }
+                }
+                catch {
+                    Write-Verbose "No cover art available for release $($release.id)"
+                }
+            }
+
             [PSCustomObject]@{
                 id           = $release.id
                 name         = $release.title
@@ -115,6 +145,7 @@ function Get-MBArtistAlbums {
                 release_date = $releaseDate
                 track_count  = $track_count
                 type         = 'album'  # Assuming all are albums as per query
+                cover_url    = $coverUrl  # Cover Art Archive URL
             }
 
 
