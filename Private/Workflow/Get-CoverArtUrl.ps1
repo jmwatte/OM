@@ -39,10 +39,10 @@ function Get-CoverArtUrl {
 
     # Size mappings to pixel dimensions
     $sizeMap = @{
-        'small' = 230
-        'medium' = 600
-        'large' = 1000
-        'original' = 0  # Use original size
+        'small' = 150    # Qobuz 150px
+        'medium' = 600   # Qobuz 600px
+        'large' = 600    # Qobuz max is 600px
+        'original' = 0   # Use original size
     }
 
     $targetSize = $sizeMap[$Size]
@@ -50,8 +50,10 @@ function Get-CoverArtUrl {
     switch ($Provider) {
         'Qobuz' {
             # Qobuz URLs can be modified by changing the size parameter
-            # Example: https://static.qobuz.com/images/covers/12/34/123456789_230.jpg
+            # Available sizes: 50, 150, 600, org (original)
+            # Example: https://static.qobuz.com/images/covers/12/34/123456789_150.jpg
             # Can be changed to: https://static.qobuz.com/images/covers/12/34/123456789_600.jpg
+            # Or: https://static.qobuz.com/images/covers/12/34/123456789.jpg (original)
 
             if ($CoverUrl -match '_(\d+)\.(jpg|png|jpeg)$') {
                 $extension = $matches[2]
@@ -63,6 +65,18 @@ function Get-CoverArtUrl {
                     $newUrl = $CoverUrl -replace '_(\d+)\.(jpg|png|jpeg)$', "_${targetSize}.$extension"
                 }
                 return $newUrl
+            }
+            elseif ($CoverUrl -match '\.(jpg|png|jpeg)$' -and -not ($CoverUrl -match '_\d+\.')) {
+                # URL already has no size suffix (might be original)
+                if ($Size -eq 'original') {
+                    return $CoverUrl
+                }
+                else {
+                    # Add size suffix
+                    $extension = $matches[1]
+                    $newUrl = $CoverUrl -replace '\.(jpg|png|jpeg)$', "_${targetSize}.$extension"
+                    return $newUrl
+                }
             }
         }
 

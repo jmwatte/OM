@@ -163,10 +163,10 @@ function Get-OMConfig {
     # Cover Art defaults
     if (-not $config.ContainsKey('CoverArt')) { $config['CoverArt'] = @{} }
     if (-not $config['CoverArt'].ContainsKey('FolderImageSize') -or -not $config['CoverArt']['FolderImageSize']) {
-        $config['CoverArt']['FolderImageSize'] = 1000  # Default folder image size in pixels
+        $config['CoverArt']['FolderImageSize'] = 600  # Qobuz max size: 600px
     }
     if (-not $config['CoverArt'].ContainsKey('TagImageSize') -or -not $config['CoverArt']['TagImageSize']) {
-        $config['CoverArt']['TagImageSize'] = 500  # Default tag image size in pixels
+        $config['CoverArt']['TagImageSize'] = 150  # Qobuz medium size: 150px
     }
 
     # Return specific provider or full config

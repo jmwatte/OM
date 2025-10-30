@@ -62,10 +62,38 @@ function Save-CoverArt {
             throw "AudioFiles is required for EmbedInTags action"
         }
 
+        # Determine the best size to request from the provider
+        # For folder saves, we want the largest available size
+        # For tag embedding, we use the configured max size
+        $desiredSize = if ($Action -eq 'SaveToFolder') { 'large' } else { 'medium' }
+
+        # Try to determine provider from URL pattern
+        $provider = $null
+        if ($CoverUrl -match 'qobuz\.com') {
+            $provider = 'Qobuz'
+        }
+        elseif ($CoverUrl -match 'spotify\.com') {
+            $provider = 'Spotify'
+        }
+        elseif ($CoverUrl -match 'discogs\.com') {
+            $provider = 'Discogs'
+        }
+        elseif ($CoverUrl -match 'coverartarchive\.org') {
+            $provider = 'MusicBrainz'
+        }
+
+        # Get the optimal URL for the desired size
+        $downloadUrl = if ($provider) {
+            Get-CoverArtUrl -CoverUrl $CoverUrl -Provider $provider -Size $desiredSize
+        } else {
+            $CoverUrl  # Fallback to original URL
+        }
+
+        Write-Verbose "Downloading cover art from: $downloadUrl (provider: $provider, size: $desiredSize)"
+
         # Download the image
-        Write-Verbose "Downloading cover art from: $CoverUrl"
         try {
-            $response = Invoke-WebRequest -Uri $CoverUrl -Method Get -UseBasicParsing -ErrorAction Stop
+            $response = Invoke-WebRequest -Uri $downloadUrl -Method Get -UseBasicParsing -ErrorAction Stop
             $imageBytes = $response.Content
         }
         catch {
