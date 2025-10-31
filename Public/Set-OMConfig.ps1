@@ -49,6 +49,9 @@ function Set-OMConfig {
     .PARAMETER TagImageSize
     Maximum dimension (width/height) in pixels for cover art embedded in audio file tags. Default: 500
     
+    .PARAMETER DefaultProvider
+    Default music provider to use when 'p' is entered in provider selection prompts. Valid values: 'Spotify', 'Qobuz', 'Discogs', 'MusicBrainz'
+    
     .PARAMETER ConfigPath
     Optional. Custom path for config file. If not specified, uses default location.
     
@@ -102,6 +105,10 @@ function Set-OMConfig {
 
         [Parameter(Mandatory = $false)]
         [int]$TagImageSize,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('Spotify', 'Qobuz', 'Discogs', 'MusicBrainz')]
+        [string]$DefaultProvider,
 
         [Parameter(Mandatory = $false)]
         [string]$ConfigPath,
@@ -230,6 +237,13 @@ function Set-OMConfig {
             Write-Verbose "Set CoverArt TagImageSize to $TagImageSize"
             $modified = $true
         }
+    }
+
+    # Update Default Provider
+    if ($DefaultProvider) {
+        $config.DefaultProvider = $DefaultProvider
+        Write-Verbose "Set DefaultProvider to $DefaultProvider"
+        $modified = $true
     }
 
     # Validate that at least one value was provided

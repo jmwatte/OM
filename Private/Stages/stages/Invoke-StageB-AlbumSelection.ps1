@@ -512,7 +512,7 @@ function Invoke-StageB-AlbumSelection {
             }
         }
 
-        $inputF = Read-Host "Select album(s) [1] (Enter=first), number(s) (e.g., 1,3,5-8), '(b)ack', '(n)ext', '(p)rev', '(s)kip', 'id:<id>', '(cp)' change provider [$Provider], 'vc(ViewCover)', 'sc(SaveCover)', 'sct(SaveCoverToTags)', '*' (all albums), or text to search:"
+        $inputF = Read-Host "Select album(s) [1] (Enter=first), number(s) (e.g., 1,3,5-8), '(b)ack', '(n)ext', '(pr)ev', '(s)kip', 'id:<id>', '(p)rovider', 'vc(ViewCover)', 'sc(SaveCover)', 'sct(SaveCoverToTags)', '*' (all albums), or text to search:"
         
         switch -Regex ($inputF) {
             '^s$' {
@@ -572,7 +572,7 @@ function Invoke-StageB-AlbumSelection {
                     continue
                 }
             }
-            '^p$' {
+            '^pr$' {
                 if ($currentPage -gt 1) {
                     $currentPage--
                     continue
@@ -581,11 +581,17 @@ function Invoke-StageB-AlbumSelection {
                     continue
                 }
             }
-            'cp' {
-                Write-Host "`nCurrent provider: $Provider" -ForegroundColor Cyan
-                Write-Host "Available providers: (S)potify, (Q)obuz, (D)iscogs, (M)usicBrainz" -ForegroundColor Gray
-                $newProvider = Read-Host "Enter provider (full name or first letter)"
-                $providerMap = @{ 's' = 'Spotify'; 'q' = 'Qobuz'; 'd' = 'Discogs'; 'm' = 'MusicBrainz'; 'spotify' = 'Spotify'; 'qobuz' = 'Qobuz'; 'discogs' = 'Discogs'; 'musicbrainz' = 'MusicBrainz' }
+            '^p$' {
+                $config = Get-OMConfig
+                $defaultProvider = $config.DefaultProvider
+                $newProvider = Read-Host "Current provider: $Provider`nAvailable providers: (p) default ($defaultProvider), (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz`nEnter provider"
+                $providerMap = @{
+                    'p' = $defaultProvider
+                    'ps' = 'Spotify'; 's' = 'Spotify'; 'spotify' = 'Spotify'
+                    'pq' = 'Qobuz'; 'q' = 'Qobuz'; 'qobuz' = 'Qobuz'
+                    'pd' = 'Discogs'; 'd' = 'Discogs'; 'discogs' = 'Discogs'
+                    'pm' = 'MusicBrainz'; 'm' = 'MusicBrainz'; 'musicbrainz' = 'MusicBrainz'
+                }
                 $matched = $providerMap[$newProvider.ToLower()]
                 if ($matched) {
                     $Provider = $matched
@@ -602,6 +608,54 @@ function Invoke-StageB-AlbumSelection {
                 else {
                     Write-Warning "Invalid provider: $newProvider. Staying with $Provider."
                     continue
+                }
+            }
+            '^ps$' {
+                $Provider = 'Spotify'
+                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                return @{
+                    NextStage             = 'A'
+                    SelectedAlbum         = $null
+                    UpdatedCache          = $CachedAlbums
+                    UpdatedCachedArtistId = $CachedArtistId
+                    UpdatedProvider       = $Provider
+                    CurrentPage           = $currentPage
+                }
+            }
+            '^pq$' {
+                $Provider = 'Qobuz'
+                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                return @{
+                    NextStage             = 'A'
+                    SelectedAlbum         = $null
+                    UpdatedCache          = $CachedAlbums
+                    UpdatedCachedArtistId = $CachedArtistId
+                    UpdatedProvider       = $Provider
+                    CurrentPage           = $currentPage
+                }
+            }
+            '^pd$' {
+                $Provider = 'Discogs'
+                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                return @{
+                    NextStage             = 'A'
+                    SelectedAlbum         = $null
+                    UpdatedCache          = $CachedAlbums
+                    UpdatedCachedArtistId = $CachedArtistId
+                    UpdatedProvider       = $Provider
+                    CurrentPage           = $currentPage
+                }
+            }
+            '^pm$' {
+                $Provider = 'MusicBrainz'
+                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                return @{
+                    NextStage             = 'A'
+                    SelectedAlbum         = $null
+                    UpdatedCache          = $CachedAlbums
+                    UpdatedCachedArtistId = $CachedArtistId
+                    UpdatedProvider       = $Provider
+                    CurrentPage           = $currentPage
                 }
             }
             '^b$' {

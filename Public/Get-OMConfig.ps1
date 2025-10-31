@@ -169,6 +169,12 @@ function Get-OMConfig {
         $config['CoverArt']['TagImageSize'] = 150  # Qobuz medium size: 150px
     }
 
+    # Default provider
+    $validProviders = @('Spotify', 'Qobuz', 'Discogs', 'MusicBrainz')
+    if (-not $config.ContainsKey('DefaultProvider') -or -not $config['DefaultProvider'] -or $config['DefaultProvider'] -notin $validProviders) {
+        $config['DefaultProvider'] = 'Spotify'  # Default to Spotify
+    }
+
     # Return specific provider or full config
     if ($Provider) {
         # Support both hashtable and PSCustomObject shapes for $config

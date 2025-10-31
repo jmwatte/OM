@@ -22,9 +22,6 @@ function Save-CoverArt {
     .PARAMETER MaxSize
         Maximum dimension (width/height) for the image in pixels
 
-    .PARAMETER WhatIf
-        Preview the action without actually performing it
-
     .EXAMPLE
         Save-CoverArt -CoverUrl "https://..." -AlbumPath "C:\Music\Album" -Action SaveToFolder -MaxSize 1000
 
@@ -47,10 +44,7 @@ function Save-CoverArt {
         [string]$Action,
 
         [Parameter(Mandatory = $true)]
-        [int]$MaxSize,
-
-        [Parameter(Mandatory = $false)]
-        [switch]$WhatIf
+        [int]$MaxSize
     )
 
     try {
@@ -157,7 +151,7 @@ function Save-CoverArt {
         if ($Action -eq 'SaveToFolder') {
             $coverPath = Join-Path $AlbumPath "cover.jpg"
 
-            if ($WhatIf) {
+            if ($WhatIfPreference) {
                 Write-Host "WhatIf: Would save cover art to: $coverPath (${newWidth}x${newHeight})" -ForegroundColor Cyan
                 return [PSCustomObject]@{
                     Success = $true
@@ -179,7 +173,7 @@ function Save-CoverArt {
             }
         }
         elseif ($Action -eq 'EmbedInTags') {
-            if ($WhatIf) {
+            if ($WhatIfPreference) {
                 Write-Host "WhatIf: Would embed cover art (${newWidth}x${newHeight}) in $($AudioFiles.Count) audio files" -ForegroundColor Cyan
                 return [PSCustomObject]@{
                     Success = $true
