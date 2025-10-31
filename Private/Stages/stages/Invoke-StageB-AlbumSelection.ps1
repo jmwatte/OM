@@ -962,29 +962,11 @@ function Invoke-StageB-AlbumSelection {
                     CurrentPage           = $currentPage
                 }
             }
-            '^cv(\d*)$' {
-                # View Cover art: cv (first album) or cv<number> (specific album)
-                $albumIndex = if ($matches[1]) { [int]$matches[1] - 1 } else { 0 }  # Convert to 0-based index
-                
-                if ($albumIndex -ge 0 -and $albumIndex -lt $albumsForArtist.Count) {
-                    $selectedAlbum = $albumsForArtist[$albumIndex]
-                    $coverUrl = Get-IfExists $selectedAlbum 'cover_url'
-                    
-                    if ($coverUrl) {
-                        Write-Host "Displaying cover art from $coverUrl" -ForegroundColor Green
-                        try {
-                            Start-Process $coverUrl
-                        } catch {
-                            Write-Warning "Failed to open cover art URL: $_"
-                        }
-                    } else {
-                        Write-Warning "No cover art available for this album"
-                    }
-                } else {
-                    Write-Warning "Invalid album number: $(if ($matches[1]) { $matches[1] } else { 'first' })"
+                 '^cv(.*)$' {
+                    # View Cover art: cv (first album), cv<number>, or cv1-4,6,7 (multiple albums with chafa grid)
+                    $rangeText = if ($matches[1]) { $matches[1].Trim() } else { '1' }
+                    Show-CoverArt -RangeText $rangeText -AlbumList $albumsForArtist -LoopLabel 'albumSelectionLoop'
                 }
-                continue
-            }
             '^cs(\d*)$' {
                 # Save Cover art to folder: cs (first album) or cs<number> (specific album)
                 $albumIndex = if ($matches[1]) { [int]$matches[1] - 1 } else { 0 }  # Convert to 0-based index

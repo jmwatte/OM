@@ -24,6 +24,11 @@ function Search-GQAlbum {
         $getQAlbumTracksPath = Join-Path $qobuzDir 'Get-QAlbumTracks.ps1'
         if (Test-Path $getQAlbumTracksPath) { . $getQAlbumTracksPath }
     }
+    if (-not (Get-Command -Name Get-QobuzUrlLocale -ErrorAction SilentlyContinue)) {
+        $privateDir = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+        $qobuzLocalesPath = Join-Path $privateDir 'QobuzLocales.ps1'
+        if (Test-Path $qobuzLocalesPath) { . $qobuzLocalesPath }
+    }
 
     # Cache results in script scope
     if (-not (Get-Variable -Name QobuzGQAlbumCache -Scope Script -ErrorAction SilentlyContinue) -or -not ($script:QobuzGQAlbumCache -is [hashtable])) {
@@ -40,7 +45,9 @@ function Search-GQAlbum {
         $configuredLocale = $PSCulture
     }
     Write-Verbose "Using Qobuz configured locale: $configuredLocale (PSCulture: $PSCulture)"
-    # (URL locale not needed for this quick web search)
+    # Get URL locale and language for prioritization
+    $urlLocale = Get-QobuzUrlLocale -CultureCode $configuredLocale
+    $language = ($urlLocale -split '-')[1]
 
     # Prefer qobuz album pages for albums
     # For Google (HTML and CSE) prefer searching the album name only (no site: filter)
@@ -61,22 +68,57 @@ function Search-GQAlbum {
         try {
             # Use the album-only query for Google CSE
             $csq = [uri]::EscapeDataString($searchQueryGoogle)
-            $num = 10
+            $num = 10  # Google CSE limit per request
             # Hint the search by country based on configured locale (e.g., en-US -> us)
             $country = if ($configuredLocale -and ($configuredLocale -match '-')) { ($configuredLocale.Split('-')[-1]).ToLower() } else { $PSCulture.Split('-')[-1].ToLower() }
-            $apiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=$num&gl=$country"
-            $apiResp = Invoke-RestMethod -Uri $apiUrl -Method Get -ErrorAction Stop
-            Write-Verbose "Google CSE API URL: $apiUrl"
-            $count = 0
-            if ($apiResp.items) { $count = $apiResp.items.Count }
-            Write-Verbose ("Google CSE returned {0} items" -f $count)
-            if ($apiResp.items -and $apiResp.items.Count -gt 0) {
-                foreach ($it in $apiResp.items) {
-                    Write-Verbose ("CSE item: {0}" -f $it.link)
-                    if ($it.link -match '/album/') { $targetUrl = $it.link; break }
+
+            # Collect results from multiple pages (start=1 and start=11 for 20 total results)
+            $allItems = @()
+            $starts = @(1, 11)  # Get first 10, then next 10
+
+            foreach ($start in $starts) {
+                $apiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=$num&start=$start&gl=$country"
+                $apiResp = Invoke-RestMethod -Uri $apiUrl -Method Get -ErrorAction Stop
+                Write-Verbose "Google CSE API URL (start=$start): $apiUrl"
+                if ($apiResp.items) {
+                    $allItems += $apiResp.items
+                    Write-Verbose ("Google CSE returned {0} items for start={1}" -f $apiResp.items.Count, $start)
+                } else {
+                    Write-Verbose ("No items returned for start={0}" -f $start)
                 }
-                if (-not $targetUrl) { $targetUrl = $apiResp.items[0].link }
-                Write-Verbose "Google CSE selected url: $targetUrl"
+            }
+
+            Write-Verbose ("Total Google CSE items collected: {0}" -f $allItems.Count)
+
+            if ($allItems.Count -gt 0) {
+                # Prioritize by locale: exact match first, then language match, then fallback
+                # First, look for exact locale match
+                foreach ($it in $allItems) {
+                    Write-Verbose ("CSE item: {0}" -f $it.link)
+                    if ($it.link -match "/$urlLocale/" -and $it.link -match '/album/') {
+                        $targetUrl = $it.link
+                        Write-Verbose "Found exact locale match: $targetUrl"
+                        break
+                    }
+                }
+                # If not found, look for language match
+                if (-not $targetUrl) {
+                    foreach ($it in $allItems) {
+                        if ($it.link -match "/[a-z]{2}-$language/" -and $it.link -match '/album/') {
+                            $targetUrl = $it.link
+                            Write-Verbose "Found language match: $targetUrl"
+                            break
+                        }
+                    }
+                }
+                # If still not found, use fallback: first album or first item
+                if (-not $targetUrl) {
+                    foreach ($it in $allItems) {
+                        if ($it.link -match '/album/') { $targetUrl = $it.link; break }
+                    }
+                    if (-not $targetUrl -and $allItems.Count -gt 0) { $targetUrl = $allItems[0].link }
+                    Write-Verbose "Using fallback selection: $targetUrl"
+                }
             }
         }
         catch {

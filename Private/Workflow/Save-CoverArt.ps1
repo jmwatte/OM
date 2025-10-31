@@ -57,9 +57,9 @@ function Save-CoverArt {
         }
 
         # Determine the best size to request from the provider
-        # For folder saves, we want the largest available size
+        # For folder saves, we want the original size (no resizing)
         # For tag embedding, we use the configured max size
-        $desiredSize = if ($Action -eq 'SaveToFolder') { 'large' } else { 'medium' }
+        $desiredSize = if ($Action -eq 'SaveToFolder') { 'original' } else { 'medium' }
 
         # Try to determine provider from URL pattern
         $provider = $null
@@ -105,48 +105,62 @@ function Save-CoverArt {
         $memoryStream = New-Object System.IO.MemoryStream($imageBytes, 0, $imageBytes.Length)
         $originalImage = [System.Drawing.Image]::FromStream($memoryStream)
 
-        # Calculate new dimensions maintaining aspect ratio
         $originalWidth = $originalImage.Width
         $originalHeight = $originalImage.Height
-        $aspectRatio = $originalWidth / $originalHeight
 
-        $newWidth = $MaxSize
-        $newHeight = $MaxSize
+        # For folder saves with original size, skip resizing entirely
+        if ($Action -eq 'SaveToFolder' -and $desiredSize -eq 'original') {
+            Write-Verbose "Saving original size image: ${originalWidth}x${originalHeight} (no resizing)"
+            $resizedBytes = $imageBytes
+            $newWidth = $originalWidth
+            $newHeight = $originalHeight
 
-        if ($originalWidth -gt $originalHeight) {
-            # Landscape
-            $newHeight = [int]($MaxSize / $aspectRatio)
+            # Clean up
+            $originalImage.Dispose()
+            $memoryStream.Dispose()
         }
         else {
-            # Portrait or square
-            $newWidth = [int]($MaxSize * $aspectRatio)
+            # Calculate new dimensions maintaining aspect ratio
+            $aspectRatio = $originalWidth / $originalHeight
+
+            $newWidth = $MaxSize
+            $newHeight = $MaxSize
+
+            if ($originalWidth -gt $originalHeight) {
+                # Landscape
+                $newHeight = [int]($MaxSize / $aspectRatio)
+            }
+            else {
+                # Portrait or square
+                $newWidth = [int]($MaxSize * $aspectRatio)
+            }
+
+            # Ensure we don't exceed max size
+            if ($newWidth -gt $MaxSize) { $newWidth = $MaxSize }
+            if ($newHeight -gt $MaxSize) { $newHeight = $MaxSize }
+
+            Write-Verbose "Resizing image from ${originalWidth}x${originalHeight} to ${newWidth}x${newHeight}"
+
+            # Create resized bitmap
+            $resizedBitmap = New-Object System.Drawing.Bitmap($newWidth, $newHeight)
+            $graphics = [System.Drawing.Graphics]::FromImage($resizedBitmap)
+            $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+            $graphics.DrawImage($originalImage, 0, 0, $newWidth, $newHeight)
+
+            # Save to memory stream as JPEG
+            $outputStream = New-Object System.IO.MemoryStream
+            $resizedBitmap.Save($outputStream, [System.Drawing.Imaging.ImageFormat]::Jpeg)
+
+            # Get the resized image bytes
+            $resizedBytes = $outputStream.ToArray()
+
+            # Clean up
+            $graphics.Dispose()
+            $resizedBitmap.Dispose()
+            $originalImage.Dispose()
+            $memoryStream.Dispose()
+            $outputStream.Dispose()
         }
-
-        # Ensure we don't exceed max size
-        if ($newWidth -gt $MaxSize) { $newWidth = $MaxSize }
-        if ($newHeight -gt $MaxSize) { $newHeight = $MaxSize }
-
-        Write-Verbose "Resizing image from ${originalWidth}x${originalHeight} to ${newWidth}x${newHeight}"
-
-        # Create resized bitmap
-        $resizedBitmap = New-Object System.Drawing.Bitmap($newWidth, $newHeight)
-        $graphics = [System.Drawing.Graphics]::FromImage($resizedBitmap)
-        $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-        $graphics.DrawImage($originalImage, 0, 0, $newWidth, $newHeight)
-
-        # Save to memory stream as JPEG
-        $outputStream = New-Object System.IO.MemoryStream
-        $resizedBitmap.Save($outputStream, [System.Drawing.Imaging.ImageFormat]::Jpeg)
-
-        # Get the resized image bytes
-        $resizedBytes = $outputStream.ToArray()
-
-        # Clean up
-        $graphics.Dispose()
-        $resizedBitmap.Dispose()
-        $originalImage.Dispose()
-        $memoryStream.Dispose()
-        $outputStream.Dispose()
 
         if ($Action -eq 'SaveToFolder') {
             $coverPath = Join-Path $AlbumPath "cover.jpg"

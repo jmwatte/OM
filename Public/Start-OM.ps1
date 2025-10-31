@@ -538,16 +538,7 @@ function Start-OM {
                             $albumIndex = if ($matches[1]) { [int]$matches[1] - 1 } else { 0 }
                             if ($albumIndex -ge 0 -and $albumIndex -lt $albumCandidates.Count) {
                                 $selectedAlbum = $albumCandidates[$albumIndex]
-                                if ($selectedAlbum.cover_url) {
-                                    Write-Host "Displaying cover art from $($selectedAlbum.cover_url)" -ForegroundColor Green
-                                    try {
-                                        Start-Process $selectedAlbum.cover_url
-                                    } catch {
-                                        Write-Warning "Failed to open cover art URL: $_"
-                                    }
-                                } else {
-                                    Write-Warning "No cover art available for this album"
-                                }
+                                Show-CoverArt -Album $selectedAlbum -RangeText $matches[1]
                             } else {
                                 Write-Warning "Invalid album index for cv command"
                             }
@@ -1863,18 +1854,7 @@ function Start-OM {
                                 }
                                 '^cv(\d*)$' {
                                     # View Cover art
-                                    $coverUrl = Get-IfExists $ProviderAlbum 'cover_url'
-                                    
-                                    if ($coverUrl) {
-                                        Write-Host "Displaying cover art from $coverUrl" -ForegroundColor Green
-                                        try {
-                                            Start-Process $coverUrl
-                                        } catch {
-                                            Write-Warning "Failed to open cover art URL: $_"
-                                        }
-                                    } else {
-                                        Write-Warning "No cover art available for this album"
-                                    }
+                                    Show-CoverArt -Album $ProviderAlbum -RangeText $matches[1]
                                     continue
                                 }
                                 '^cs(\d*)$' {
