@@ -51,12 +51,12 @@ function Search-DItem {
                     $primaryImage = $result.images | Where-Object { $_.type -eq 'primary' } | Select-Object -First 1
                     if (-not $primaryImage) { $primaryImage = $result.images[0] }
                     
-                    # Use largest available size (uri1200 > uri500 > uri250 > uri150 > uri)
-                    if ($primaryImage.PSObject.Properties['uri1200']) { $coverUrl = $primaryImage.uri1200 }
+                    # Use largest available size (uri > uri1200 > uri500 > uri250 > uri150)
+                    if ($primaryImage.PSObject.Properties['uri']) { $coverUrl = $primaryImage.uri }
+                    elseif ($primaryImage.PSObject.Properties['uri1200']) { $coverUrl = $primaryImage.uri1200 }
                     elseif ($primaryImage.PSObject.Properties['uri500']) { $coverUrl = $primaryImage.uri500 }
                     elseif ($primaryImage.PSObject.Properties['uri250']) { $coverUrl = $primaryImage.uri250 }
                     elseif ($primaryImage.PSObject.Properties['uri150']) { $coverUrl = $primaryImage.uri150 }
-                    elseif ($primaryImage.PSObject.Properties['uri']) { $coverUrl = $primaryImage.uri }
                 }
                 # Fallback to thumb if no images array
                 if (-not $coverUrl) {

@@ -20,6 +20,15 @@ function Show-CoverArt {
     .PARAMETER LoopLabel
         Optional loop label for continue statements (for use in nested loops)
 
+    .PARAMETER Provider
+        The music provider (Spotify, Qobuz, Discogs, MusicBrainz) to optimize cover art URLs
+
+    .PARAMETER Size
+        Size of the cover art to display ('large' or 'original')
+
+    .PARAMETER Grid
+        Whether to display in grid layout (default true)
+
     .EXAMPLE
         Show-CoverArt -Album $singleAlbum
         Show-CoverArt -RangeText "1-3,5" -AlbumList $albums
@@ -36,7 +45,16 @@ function Show-CoverArt {
         [array]$AlbumList,
 
         [Parameter(Mandatory = $false)]
-        [string]$LoopLabel
+        [string]$LoopLabel,
+
+        [Parameter(Mandatory = $false)]
+        [string]$Provider,
+
+        [Parameter(Mandatory = $false)]
+        [string]$Size = 'large',
+
+        [Parameter(Mandatory = $false)]
+        [bool]$Grid = $true
     )
 
     # Handle backward compatibility: if Album is provided, treat it as a single album
@@ -62,6 +80,11 @@ function Show-CoverArt {
     } catch {
         Write-Warning "Invalid range syntax: $RangeText - $_"
         if ($LoopLabel) { continue $LoopLabel } else { return }
+    }
+
+    # Ensure $selectedIndices is an array
+    if ($selectedIndices -isnot [array]) {
+        $selectedIndices = @($selectedIndices)
     }
 
     if ($selectedIndices.Count -eq 0) {
@@ -112,21 +135,24 @@ function Show-CoverArt {
 
         if ($coverUrl) {
             # Get optimal URL for display (large size for better quality)
-            $provider = $null
-            if ($coverUrl -match 'qobuz\.com') { $provider = 'Qobuz' }
-            elseif ($coverUrl -match 'spotify\.com') { $provider = 'Spotify' }
-            elseif ($coverUrl -match 'discogs\.com') { $provider = 'Discogs' }
-            elseif ($coverUrl -match 'coverartarchive\.org') { $provider = 'MusicBrainz' }
+            $providerName = $Provider
+            # if (-not $providerName) {
+            #     # Fallback to parsing URL if provider not provided
+            #     if ($coverUrl -match 'qobuz\.com') { $providerName = 'Qobuz' }
+            #     elseif ($coverUrl -match 'spotify\.com') { $providerName = 'Spotify' }
+            #     elseif ($coverUrl -match 'discogs\.com') { $providerName = 'Discogs' }
+            #     elseif ($coverUrl -match 'coverartarchive\.org') { $providerName = 'MusicBrainz' }
+            # }
 
-            $downloadUrl = if ($provider) {
-                Get-CoverArtUrl -CoverUrl $coverUrl -Provider $provider -Size 'large'
+            $downloadUrl = if ($providerName) {
+                Get-CoverArtUrl -CoverUrl $coverUrl -Provider $providerName -Size $Size
             } else {
                 $coverUrl
             }
 
             # Download to temp file
             try {
-                $tempFile = Join-Path $env:TEMP ("om_cover_$([guid]::NewGuid().ToString()).jpg")
+                $tempFile = Join-Path $env:TEMP ("cover$index.jpg")
                 $response = Invoke-WebRequest -Uri $downloadUrl -Method Get -UseBasicParsing -ErrorAction Stop
                 [System.IO.File]::WriteAllBytes($tempFile, $response.Content)
                 $tempFiles += $tempFile
@@ -143,17 +169,24 @@ function Show-CoverArt {
         if ($LoopLabel) { continue $LoopLabel } else { return }
     }
 
-    # Display with chafa in grid layout
+    # Display with chafa
     try {
-        Write-Host "Displaying $($tempFiles.Count) cover(s) in terminal grid:" -ForegroundColor Green
+        if ($Grid) {
+            Write-Host "Displaying $($tempFiles.Count) cover(s) in terminal grid:" -ForegroundColor Green
+        } else {
+            Write-Host "Displaying $($tempFiles.Count) cover(s) in terminal list:" -ForegroundColor Green
+        }
 
-        # Create arguments for chafa with grid layout
-        $chafaArgs = @(
-            '--grid=2',           # 2 columns grid layout
-            '--label=on',         # Enable labeling with filenames
-            '--size=30x30',       # Larger size for better quality
-            '--colors=256'        # Full color support
-        )
+        # Create arguments for chafa
+        $chafaArgs = @()
+
+        if ($Grid) {
+            $chafaArgs += @('--grid=auto')  # Grid layout
+        } else {
+            $chafaArgs += @('-l')  # List mode
+        }
+
+        $chafaArgs += @('--label=on')  # Enable labeling with filenames
 
         # Try to use sixels format for better image quality if supported
         try {

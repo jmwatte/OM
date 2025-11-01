@@ -88,9 +88,17 @@ function Get-CoverArtUrl {
         }
 
         'Discogs' {
-            # Discogs provides multiple image URLs (uri150, uri250, uri500, uri1200)
-            # The current implementation selects the largest available
-            # For different sizes, we'd need to modify the selection logic
+            # Discogs provides multiple image URLs (uri, uri150, uri250, uri500, uri1200)
+            # Select based on desired size
+
+            # The CoverUrl passed in is already the largest available from the provider functions
+            # But we can modify it if needed. For now, since providers select the largest,
+            # return as is for large, but for original we might need to get the base uri
+
+            # Actually, the CoverUrl is set to uri1200 in provider functions
+            # For original, we could try to get the uri (original size), but since uri1200 is already large,
+            # and original might not be much larger, return as is for now
+
             return $CoverUrl
         }
 

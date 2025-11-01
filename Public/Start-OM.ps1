@@ -409,6 +409,8 @@ function Start-OM {
                     Write-Host "Searching for '$quickAlbum' by '$quickArtist'..." -ForegroundColor Cyan
                     
                     :quickSearchLoop while ($true) {
+                        $quickAlbum = $currentAlbum
+                        $quickArtist = $currentArtist
                         try {
                             $quickResults = Invoke-ProviderSearch -Provider $Provider -Album $quickAlbum -Artist $quickArtist -Type album
                             $albumCandidates = @($quickResults.albums.items | Where-Object { $_ -ne $null })
@@ -419,24 +421,23 @@ function Start-OM {
 
                         if ($albumCandidates.Count -eq 0) {
                             Write-Host "No albums found for '$quickAlbum' by '$quickArtist' with $Provider." -ForegroundColor Red
-                            $retryChoice = Read-Host "`nPress Enter to retry, '(p)rovider', '(a)' artist-first mode, '(na)' new artist, or enter new album name"
-                            if ($retryChoice -eq 'p') {
-                                $config = Get-OMConfig
-                                $defaultProvider = $config.DefaultProvider
-                                $newProvider = Read-Host "Current provider: $Provider`nAvailable providers: (p) default ($defaultProvider), (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz`nEnter provider"
-                                $providerMap = @{
-                                    'p' = $defaultProvider
-                                    'ps' = 'Spotify'; 's' = 'Spotify'; 'spotify' = 'Spotify'
-                                    'pq' = 'Qobuz'; 'q' = 'Qobuz'; 'qobuz' = 'Qobuz'
-                                    'pd' = 'Discogs'; 'd' = 'Discogs'; 'discogs' = 'Discogs'
-                                    'pm' = 'MusicBrainz'; 'm' = 'MusicBrainz'; 'musicbrainz' = 'MusicBrainz'
-                                }
-                                $matched = $providerMap[$newProvider.ToLower()]
-                                if ($matched) {
-                                    $Provider = $matched
-                                    Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                                    continue quickSearchLoop
-                                }
+                            $retryChoice = Read-Host "`nPress Enter to retry, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(a)' artist-first mode, '(na)' new artist, or enter new album name"
+                            if ($retryChoice -eq 'ps') {
+                                $Provider = 'Spotify'
+                                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                                continue quickSearchLoop
+                            } elseif ($retryChoice -eq 'pq') {
+                                $Provider = 'Qobuz'
+                                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                                continue quickSearchLoop
+                            } elseif ($retryChoice -eq 'pd') {
+                                $Provider = 'Discogs'
+                                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                                continue quickSearchLoop
+                            } elseif ($retryChoice -eq 'pm') {
+                                $Provider = 'MusicBrainz'
+                                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                                continue quickSearchLoop
                             } elseif ($retryChoice -eq 'a') {
                                 $script:findMode = 'artist-first'
                                 $stage = 'A'
@@ -487,7 +488,7 @@ function Start-OM {
 
                         $originalColor = [Console]::ForegroundColor
                         [Console]::ForegroundColor = [ConsoleColor]::Yellow
-                        $albumChoice = Read-Host "Select album [number] (Enter=first), (P)rovider, {F}indMode, (C)over {[V]iew,[S]ave,saveIn[T]ags}, or new search term"
+                        $albumChoice = Read-Host "Select album [number] (Enter=first), (P)rovider, {F}indMode, (C)over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags}, or new search term"
                         [Console]::ForegroundColor = $originalColor
                         if ($albumChoice -eq '') { $albumChoice = '1' }
                         
@@ -534,8 +535,15 @@ function Start-OM {
                             $script:findMode = 'artist-first'
                             $stage = 'A'
                             continue stageLoop
+                        } elseif ($albumChoice -match '^cvo(.*)$') {
+                            $rangeText = $matches[1]
+                            if (-not $rangeText) { $rangeText = "1" }
+                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -LoopLabel albumSelectionLoop -Provider $Provider -Size 'original' -Grid $false
+                            continue albumSelectionLoop
                         } elseif ($albumChoice -match '^cv(.*)$') {
-                            Show-CoverArt -RangeText $matches[1] -AlbumList $albumCandidates -LoopLabel albumSelectionLoop
+                            $rangeText = $matches[1]
+                            if (-not $rangeText) { $rangeText = "1" }
+                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -LoopLabel albumSelectionLoop -Provider $Provider
                             continue albumSelectionLoop
                         } elseif ($albumChoice -match '^cs(.*)$') {
                             $rangeText = $matches[1]
@@ -666,34 +674,32 @@ function Start-OM {
                                 Write-Warning "NonInteractive: skipping album because no artist candidates were found for '$artistQuery'."
                                 break
                             }
-                            $inputF = Read-Host "Enter new search, '(p)rovider', '(x)ip' to skip album, or 'id:<id>' to select by id"
+                            $inputF = Read-Host "Enter new search, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(x)ip' to skip album, or 'id:<id>' to select by id"
                             switch -Regex ($inputF) {
                                 '^x(ip)?$' { 
                                     $albumDone = $true
                                     break stageLoop
                                     #break 
                                 }
-                                '^p$' {
-                                    $config = Get-OMConfig
-                                    $defaultProvider = $config.DefaultProvider
-                                    $newProvider = Read-Host "Current provider: $Provider`nAvailable providers: (p) default ($defaultProvider), (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz`nEnter provider"
-                                    $providerMap = @{
-                                        'p' = $defaultProvider
-                                        'ps' = 'Spotify'; 's' = 'Spotify'; 'spotify' = 'Spotify'
-                                        'pq' = 'Qobuz'; 'q' = 'Qobuz'; 'qobuz' = 'Qobuz'
-                                        'pd' = 'Discogs'; 'd' = 'Discogs'; 'discogs' = 'Discogs'
-                                        'pm' = 'MusicBrainz'; 'm' = 'MusicBrainz'; 'musicbrainz' = 'MusicBrainz'
-                                    }
-                                    $matched = $providerMap[$newProvider.ToLower()]
-                                    if ($matched) {
-                                        $Provider = $matched
-                                        Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                                        continue stageLoop
-                                    }
-                                    else {
-                                        Write-Warning "Invalid provider: $newProvider. Staying with $Provider."
-                                        continue stageLoop
-                                    }
+                                '^ps$' {
+                                    $Provider = 'Spotify'
+                                    Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                                    continue stageLoop
+                                }
+                                '^pq$' {
+                                    $Provider = 'Qobuz'
+                                    Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                                    continue stageLoop
+                                }
+                                '^pd$' {
+                                    $Provider = 'Discogs'
+                                    Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                                    continue stageLoop
+                                }
+                                '^pm$' {
+                                    $Provider = 'MusicBrainz'
+                                    Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                                    continue stageLoop
                                 }
                                 '^id:(.+)$' { 
                                     $id = $matches[1].Trim()
@@ -741,7 +747,7 @@ function Start-OM {
                             $stage = 'B'; continue
                         }
 
-                        Write-Host "Select artist [number] (Enter=first), number, '(x)ip' album, 'id:<id>', '(p)rovider','al:<albumName>', '(F)indmode or new search term:" -ForegroundColor Yellow -NoNewline
+                        Write-Host "Select artist [number] (Enter=first), number, '(x)ip' album, 'id:<id>', (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, 'al:<albumName>', '(F)indmode or new search term:" -ForegroundColor Yellow -NoNewline
                         $inputF = Read-Host
                         if ($inputF -eq '') { $ProviderArtist = $candidates[0]; $stage = 'B'; continue }
                         if ($inputF -like 'id:*') { 
@@ -765,27 +771,25 @@ function Start-OM {
                             break stageLoop
                             #   break 
                         }
-                        if ($inputF -eq 'p') {
-                            $config = Get-OMConfig
-                            $defaultProvider = $config.DefaultProvider
-                            $newProvider = Read-Host "Current provider: $Provider`nAvailable providers: (p) default ($defaultProvider), (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz`nEnter provider"
-                            $providerMap = @{
-                                'p' = $defaultProvider
-                                'ps' = 'Spotify'; 's' = 'Spotify'; 'spotify' = 'Spotify'
-                                'pq' = 'Qobuz'; 'q' = 'Qobuz'; 'qobuz' = 'Qobuz'
-                                'pd' = 'Discogs'; 'd' = 'Discogs'; 'discogs' = 'Discogs'
-                                'pm' = 'MusicBrainz'; 'm' = 'MusicBrainz'; 'musicbrainz' = 'MusicBrainz'
-                            }
-                            $matched = $providerMap[$newProvider.ToLower()]
-                            if ($matched) {
-                                $Provider = $matched
-                                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                                continue stageLoop
-                            }
-                            else {
-                                Write-Warning "Invalid provider: $newProvider. Staying with $Provider."
-                                continue stageLoop
-                            }
+                        if ($inputF -eq 'ps') {
+                            $Provider = 'Spotify'
+                            Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                            continue stageLoop
+                        }
+                        if ($inputF -eq 'pq') {
+                            $Provider = 'Qobuz'
+                            Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                            continue stageLoop
+                        }
+                        if ($inputF -eq 'pd') {
+                            $Provider = 'Discogs'
+                            Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                            continue stageLoop
+                        }
+                        if ($inputF -eq 'pm') {
+                            $Provider = 'MusicBrainz'
+                            Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                            continue stageLoop
                         }
                         if ($inputF -eq 'fm') {
                             Write-Host "`nCurrent find mode: $($script:findMode)" -ForegroundColor Cyan
@@ -1283,8 +1287,8 @@ function Start-OM {
                             else {
                                 if ($useWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
                                 $whatIfStatus = if ($useWhatIf) { "ON" } else { "OFF" }
-                                $optionsLine = "`nOptions: SortBy (o)rder, Tit(l)e, (d)uration, (t)rackNumber, (n)ame, (h)ybrid, (m)anual, (r)everse | (S)ave {[A]ll, [T]ags, [F]olderNames} | {C}over {[V]iew,[S]ave,saveIn[T]ags} | (aa)AlbumArtist, (b)ack/(pr)evious, (P)rovider, (F)indmode, (w)hatIf:$whatIfStatus, (X)ip"
-                                $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'sa', 'st', 'sf', 'cv', 'cs', 'ct', 'aa', 'b', 'pr', 'p', 'pq', 'ps', 'pd', 'pm', 'f', 'w', 'whatif', 'x')
+                                $optionsLine = "`nOptions: SortBy (o)rder, Tit(l)e, (d)uration, (t)rackNumber, (n)ame, (h)ybrid, (m)anual, (r)everse | (S)ave {[A]ll, [T]ags, [F]olderNames} | {C}over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags} | (aa)AlbumArtist, (b)ack/(pr)evious, (P)rovider, (F)indmode, (w)hatIf:$whatIfStatus, (X)ip"
+                                $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'sa', 'st', 'sf', 'cv', 'cvo', 'cs', 'ct', 'aa', 'b', 'pr', 'p', 'pq', 'ps', 'pd', 'pm', 'f', 'w', 'whatif', 'x')
                                 $paramshow = @{
                                     PairedTracks  = $pairedTracks
                                     AlbumName     = $ProviderAlbum.name
@@ -1866,9 +1870,20 @@ function Start-OM {
                                     $exitdo = $true
                                     break
                                 }
+                                '^cvo(\d*)$' {
+                                    # View Cover art original
+                                    $rangeText = $matches[1]
+                                    if (-not $rangeText) { $rangeText = "1" }
+                                    Show-CoverArt -Album $ProviderAlbum -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
+                                   Read-Host "Press Enter to continue..."
+                                    continue
+                                }
                                 '^cv(\d*)$' {
                                     # View Cover art
-                                    Show-CoverArt -Album $ProviderAlbum -RangeText $matches[1]
+                                    $rangeText = $matches[1]
+                                    if (-not $rangeText) { $rangeText = "1" }
+                                    Show-CoverArt -Album $ProviderAlbum -RangeText $rangeText -Provider $Provider
+                                   Read-Host "Press Enter to continue..."
                                     continue
                                 }
                                 '^cs(\d*)$' {
