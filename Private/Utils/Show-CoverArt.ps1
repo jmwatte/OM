@@ -69,8 +69,41 @@ function Show-CoverArt {
         if ($LoopLabel) { continue $LoopLabel } else { return }
     }
 
-    # Always use browser/image viewer for real image display
-    Write-Host "Opening $($selectedIndices.Count) cover image(s)..." -ForegroundColor Green
+    # Check if chafa is available
+    $chafaAvailable = $null
+    try {
+        $chafaAvailable = Get-Command chafa -ErrorAction Stop
+    } catch {
+        $chafaAvailable = $null
+    }
+
+    if (-not $chafaAvailable) {
+        # Fallback to browser for all selected albums
+        Write-Host "Opening $($selectedIndices.Count) cover image(s) in browser (chafa not available)..." -ForegroundColor Green
+
+        foreach ($index in $selectedIndices) {
+            $albumIndex = $index - 1  # Convert to 0-based
+            $selectedAlbum = $AlbumList[$albumIndex]
+            $coverUrl = Get-IfExists $selectedAlbum 'cover_url'
+
+            if ($coverUrl) {
+                try {
+                    Write-Host "Opening cover for album $index ($($selectedAlbum.name))" -ForegroundColor Cyan
+                    Start-Process $coverUrl
+                } catch {
+                    Write-Warning "Failed to open cover art URL for album $index`: $($_.Exception.Message)"
+                }
+            } else {
+                Write-Warning "No cover art available for album $index ($($selectedAlbum.name))"
+            }
+        }
+        if ($LoopLabel) { continue $LoopLabel } else { return }
+    }
+
+    # Use chafa for terminal image display with grid layout
+    $tempFiles = @()
+
+    Write-Host "Preparing cover art display..." -ForegroundColor Cyan
 
     foreach ($index in $selectedIndices) {
         $albumIndex = $index - 1  # Convert to 0-based
@@ -78,27 +111,76 @@ function Show-CoverArt {
         $coverUrl = Get-IfExists $selectedAlbum 'cover_url'
 
         if ($coverUrl) {
-            # Get optimal URL for display (large size for better viewing)
+            # Get optimal URL for display (large size for better quality)
             $provider = $null
             if ($coverUrl -match 'qobuz\.com') { $provider = 'Qobuz' }
             elseif ($coverUrl -match 'spotify\.com') { $provider = 'Spotify' }
             elseif ($coverUrl -match 'discogs\.com') { $provider = 'Discogs' }
             elseif ($coverUrl -match 'coverartarchive\.org') { $provider = 'MusicBrainz' }
 
-            $displayUrl = if ($provider) {
+            $downloadUrl = if ($provider) {
                 Get-CoverArtUrl -CoverUrl $coverUrl -Provider $provider -Size 'large'
             } else {
                 $coverUrl
             }
 
+            # Download to temp file
             try {
-                Write-Host "Opening cover for album $index ($($selectedAlbum.name))" -ForegroundColor Cyan
-                Start-Process $displayUrl
+                $tempFile = Join-Path $env:TEMP ("om_cover_$([guid]::NewGuid().ToString()).jpg")
+                $response = Invoke-WebRequest -Uri $downloadUrl -Method Get -UseBasicParsing -ErrorAction Stop
+                [System.IO.File]::WriteAllBytes($tempFile, $response.Content)
+                $tempFiles += $tempFile
             } catch {
-                Write-Warning "Failed to open cover art URL for album $index`: $($_.Exception.Message)"
+                Write-Warning "Failed to download cover for album $index ($($selectedAlbum.name)): $($_.Exception.Message)"
             }
         } else {
             Write-Warning "No cover art available for album $index ($($selectedAlbum.name))"
+        }
+    }
+
+    if ($tempFiles.Count -eq 0) {
+        Write-Warning "No cover art could be downloaded"
+        if ($LoopLabel) { continue $LoopLabel } else { return }
+    }
+
+    # Display with chafa in grid layout
+    try {
+        Write-Host "Displaying $($tempFiles.Count) cover(s) in terminal grid:" -ForegroundColor Green
+
+        # Create arguments for chafa with grid layout
+        $chafaArgs = @(
+            '--grid=2',           # 2 columns grid layout
+            '--label=on',         # Enable labeling with filenames
+            '--size=30x30',       # Larger size for better quality
+            '--colors=256'        # Full color support
+        )
+
+        # Try to use sixels format for better image quality if supported
+        try {
+            $null = & chafa --help 2>&1 | Select-String 'sixels'
+            $chafaArgs += @('--format=sixels')
+        } catch {
+            # sixels not supported, use default format
+        }
+
+        # Add all image files
+        $chafaArgs += $tempFiles
+
+        # Run chafa
+        & chafa @chafaArgs
+
+    } catch {
+        Write-Warning "Failed to display images with chafa: $($_.Exception.Message)"
+    } finally {
+        # Clean up temp files
+        foreach ($tempFile in $tempFiles) {
+            try {
+                if (Test-Path $tempFile) {
+                    Remove-Item $tempFile -Force
+                }
+            } catch {
+                Write-Verbose "Failed to clean up temp file: $tempFile"
+            }
         }
     }
 
