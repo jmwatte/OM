@@ -345,6 +345,7 @@ function Start-OM {
             $currentArtist = $script:artist  # Persistent current artist for quick find mode
             $currentAlbum = $script:albumName  # Persistent current album for quick find mode
             $skipQuickPrompts = $false  # Flag to skip prompts when re-entering quick find after provider change
+            $goBackToAlbumSelection = $false
 
             :stageLoop while ($true) {
                 # NEW: Handle quick find mode (only when not in track selection stage)
@@ -467,6 +468,11 @@ function Start-OM {
                     # Store candidates for back navigation
                     $script:quickAlbumCandidates = $albumCandidates
                     $script:quickCurrentPage = 1
+
+                    if ($goBackToAlbumSelection) {
+                        $goBackToAlbumSelection = $false
+                        # Continue to album selection
+                    }
 
                     # Album selection loop
                     :albumSelectionLoop while ($true) {
@@ -1338,26 +1344,30 @@ function Start-OM {
                                 '^b$' { 
                                     $script:ManualAlbumArtist = $null
                                     # $AlbumId = $ProviderAlbum.id
-                                    $loadStageBResults = $false    # Use cache and preserve page
                                     if ($script:findMode -eq 'quick') {
-                                        $cachedAlbums = $script:quickAlbumCandidates
-                                        $currentAlbumPage = $script:quickCurrentPage
+                                        $goBackToAlbumSelection = $true
+                                        $exitdo = $true
+                                        break
+                                    } else {
+                                        $loadStageBResults = $false    # Use cache and preserve page
+                                        $stage = 'B'
+                                        $exitdo = $true
+                                        break
                                     }
-                                    $stage = 'B'
-                                    $exitdo = $true
-                                    break 
                                 }
                                 '^pr$' { 
                                     $script:ManualAlbumArtist = $null
                                     # $AlbumId = $ProviderAlbum.id
-                                    $loadStageBResults = $false    # Use cache and preserve page
                                     if ($script:findMode -eq 'quick') {
-                                        $cachedAlbums = $script:quickAlbumCandidates
-                                        $currentAlbumPage = $script:quickCurrentPage
+                                        $goBackToAlbumSelection = $true
+                                        $exitdo = $true
+                                        break
+                                    } else {
+                                        $loadStageBResults = $false    # Use cache and preserve page
+                                        $stage = 'B'
+                                        $exitdo = $true
+                                        break
                                     }
-                                    $stage = 'B'
-                                    $exitdo = $true
-                                    break 
                                 }
                                 '^p$' {
                                     $config = Get-OMConfig
