@@ -69,41 +69,8 @@ function Show-CoverArt {
         if ($LoopLabel) { continue $LoopLabel } else { return }
     }
 
-    # Check if chafa is available
-    $chafaAvailable = $null
-    try {
-        $chafaAvailable = Get-Command chafa -ErrorAction Stop
-    } catch {
-        $chafaAvailable = $null
-    }
-
-    if (-not $chafaAvailable) {
-        # Fallback to browser for single album or first album in range
-        $firstIndex = $selectedIndices[0] - 1  # Convert to 0-based
-        if ($firstIndex -ge 0 -and $firstIndex -lt $AlbumList.Count) {
-            $selectedAlbum = $AlbumList[$firstIndex]
-            $coverUrl = Get-IfExists $selectedAlbum 'cover_url'
-
-            if ($coverUrl) {
-                Write-Host "Displaying cover art from $coverUrl (chafa not available, using browser)" -ForegroundColor Green
-                try {
-                    Start-Process $coverUrl
-                } catch {
-                    Write-Warning "Failed to open cover art URL: $_"
-                }
-            } else {
-                Write-Warning "No cover art available for this album"
-            }
-        } else {
-            Write-Warning "Invalid album number: $($selectedIndices[0])"
-        }
-        if ($LoopLabel) { continue $LoopLabel } else { return }
-    }
-
-    # Use chafa for terminal preview
-    $tempFiles = @()
-
-    Write-Host "Preparing cover art preview..." -ForegroundColor Cyan
+    # Always use browser/image viewer for real image display
+    Write-Host "Opening $($selectedIndices.Count) cover image(s)..." -ForegroundColor Green
 
     foreach ($index in $selectedIndices) {
         $albumIndex = $index - 1  # Convert to 0-based
@@ -111,68 +78,27 @@ function Show-CoverArt {
         $coverUrl = Get-IfExists $selectedAlbum 'cover_url'
 
         if ($coverUrl) {
-            # Get optimal URL for preview (medium size)
+            # Get optimal URL for display (large size for better viewing)
             $provider = $null
             if ($coverUrl -match 'qobuz\.com') { $provider = 'Qobuz' }
             elseif ($coverUrl -match 'spotify\.com') { $provider = 'Spotify' }
             elseif ($coverUrl -match 'discogs\.com') { $provider = 'Discogs' }
             elseif ($coverUrl -match 'coverartarchive\.org') { $provider = 'MusicBrainz' }
 
-            $downloadUrl = if ($provider) {
-                Get-CoverArtUrl -CoverUrl $coverUrl -Provider $provider -Size 'medium'
+            $displayUrl = if ($provider) {
+                Get-CoverArtUrl -CoverUrl $coverUrl -Provider $provider -Size 'large'
             } else {
                 $coverUrl
             }
 
-            # Download to temp file
             try {
-                $tempFile = Join-Path $env:TEMP ("om_cover_$([guid]::NewGuid().ToString()).jpg")
-                $response = Invoke-WebRequest -Uri $downloadUrl -Method Get -UseBasicParsing -ErrorAction Stop
-                [System.IO.File]::WriteAllBytes($tempFile, $response.Content)
-                $tempFiles += $tempFile
+                Write-Host "Opening cover for album $index ($($selectedAlbum.name))" -ForegroundColor Cyan
+                Start-Process $displayUrl
             } catch {
-                Write-Warning "Failed to download cover for album $index ($($selectedAlbum.name)): $_"
+                Write-Warning "Failed to open cover art URL for album $index`: $($_.Exception.Message)"
             }
         } else {
             Write-Warning "No cover art available for album $index ($($selectedAlbum.name))"
-        }
-    }
-
-    if ($tempFiles.Count -eq 0) {
-        Write-Warning "No cover art could be downloaded"
-        if ($LoopLabel) { continue $LoopLabel } else { return }
-    }
-
-    # Display with chafa
-    try {
-        Write-Host "Displaying $($tempFiles.Count) cover(s) in terminal grid:" -ForegroundColor Green
-
-        # Create arguments for chafa
-        $chafaArgs = @('--size', '20x20', '--colors', '256')
-
-        # Add labels if multiple images
-        if ($tempFiles.Count -gt 1) {
-            $chafaArgs += '--label=on'
-        }
-
-        # Add all image files
-        $chafaArgs += $tempFiles
-
-        # Run chafa
-        & chafa @chafaArgs
-
-    } catch {
-        Write-Warning "Failed to display images with chafa: $_"
-    } finally {
-        # Clean up temp files
-        foreach ($tempFile in $tempFiles) {
-            try {
-                if (Test-Path $tempFile) {
-                    Remove-Item $tempFile -Force
-                }
-            } catch {
-                Write-Verbose "Failed to clean up temp file: $tempFile"
-            }
         }
     }
 
