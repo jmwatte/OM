@@ -102,7 +102,6 @@ function Show-CoverArt {
 
     # Use chafa for terminal preview
     $tempFiles = @()
-    $imageLabels = @()
 
     Write-Host "Preparing cover art preview..." -ForegroundColor Cyan
 
@@ -131,7 +130,6 @@ function Show-CoverArt {
                 $response = Invoke-WebRequest -Uri $downloadUrl -Method Get -UseBasicParsing -ErrorAction Stop
                 [System.IO.File]::WriteAllBytes($tempFile, $response.Content)
                 $tempFiles += $tempFile
-                $imageLabels += "$index. $($selectedAlbum.name)"
             } catch {
                 Write-Warning "Failed to download cover for album $index ($($selectedAlbum.name)): $_"
             }
@@ -154,9 +152,7 @@ function Show-CoverArt {
 
         # Add labels if multiple images
         if ($tempFiles.Count -gt 1) {
-            for ($i = 0; $i -lt $tempFiles.Count; $i++) {
-                $chafaArgs += @('--label', $imageLabels[$i])
-            }
+            $chafaArgs += '--label=on'
         }
 
         # Add all image files
