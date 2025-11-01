@@ -534,73 +534,87 @@ function Start-OM {
                             $script:findMode = 'artist-first'
                             $stage = 'A'
                             continue stageLoop
-                        } elseif ($albumChoice -match '^cv(\d*)$') {
-                            $albumIndex = if ($matches[1]) { [int]$matches[1] - 1 } else { 0 }
-                            if ($albumIndex -ge 0 -and $albumIndex -lt $albumCandidates.Count) {
-                                $selectedAlbum = $albumCandidates[$albumIndex]
-                                Show-CoverArt -Album $selectedAlbum -RangeText $matches[1]
-                            } else {
-                                Write-Warning "Invalid album index for cv command"
-                            }
+                        } elseif ($albumChoice -match '^cv(.*)$') {
+                            Show-CoverArt -RangeText $matches[1] -AlbumList $albumCandidates -LoopLabel albumSelectionLoop
                             continue albumSelectionLoop
-                        } elseif ($albumChoice -match '^cs(\d*)$') {
-                            $albumIndex = if ($matches[1]) { [int]$matches[1] - 1 } else { 0 }
-                            if ($albumIndex -ge 0 -and $albumIndex -lt $albumCandidates.Count) {
+                        } elseif ($albumChoice -match '^cs(.*)$') {
+                            $rangeText = $matches[1]
+                            if (-not $rangeText) { $rangeText = "1" }
+                            try {
+                                $selectedIndices = Expand-SelectionRange -RangeText $rangeText -MaxIndex $albumCandidates.Count
+                            } catch {
+                                Write-Warning "Invalid range syntax for cs command: $rangeText - $_"
+                                continue albumSelectionLoop
+                            }
+                            if ($selectedIndices.Count -eq 0) {
+                                Write-Warning "No valid albums selected for cs command"
+                                continue albumSelectionLoop
+                            }
+                            $config = Get-OMConfig
+                            $maxSize = $config.CoverArt.FolderImageSize
+                            foreach ($index in $selectedIndices) {
+                                $albumIndex = $index - 1
                                 $selectedAlbum = $albumCandidates[$albumIndex]
                                 if ($selectedAlbum.cover_url) {
-                                    $config = Get-OMConfig
-                                    $maxSize = $config.CoverArt.FolderImageSize
                                     $result = Save-CoverArt -CoverUrl $selectedAlbum.cover_url -AlbumPath $script:album.FullName -Action SaveToFolder -MaxSize $maxSize -WhatIf:$useWhatIf
                                     if (-not $result.Success) {
-                                        Write-Warning "Failed to save cover art: $($result.Error)"
+                                        Write-Warning "Failed to save cover art for album $index ($($selectedAlbum.name)): $($result.Error)"
                                     }
                                 } else {
-                                    Write-Warning "No cover art available for this album"
+                                    Write-Warning "No cover art available for album $index ($($selectedAlbum.name))"
                                 }
-                            } else {
-                                Write-Warning "Invalid album index for cs command"
                             }
                             continue albumSelectionLoop
-                        } elseif ($albumChoice -match '^ct(\d*)$') {
-                            $albumIndex = if ($matches[1]) { [int]$matches[1] - 1 } else { 0 }
-                            if ($albumIndex -ge 0 -and $albumIndex -lt $albumCandidates.Count) {
-                                $selectedAlbum = $albumCandidates[$albumIndex]
-                                if ($selectedAlbum.cover_url) {
-                                    $config = Get-OMConfig
-                                    $maxSize = $config.CoverArt.TagImageSize
-                                    # Get audio files for embedding
-                                    $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } | ForEach-Object {
-                                        try {
-                                            $tagFile = [TagLib.File]::Create($_.FullName)
-                                            [PSCustomObject]@{
-                                                FilePath = $_.FullName
-                                                TagFile = $tagFile
-                                            }
-                                        } catch {
-                                            Write-Warning "Skipping invalid audio file: $($_.FullName)"
-                                            $null
-                                        }
-                                    } | Where-Object { $_ -ne $null }
+                        } elseif ($albumChoice -match '^ct(.*)$') {
+                            $rangeText = $matches[1]
+                            if (-not $rangeText) { $rangeText = "1" }
+                            try {
+                                $selectedIndices = Expand-SelectionRange -RangeText $rangeText -MaxIndex $albumCandidates.Count
+                            } catch {
+                                Write-Warning "Invalid range syntax for ct command: $rangeText - $_"
+                                continue albumSelectionLoop
+                            }
+                            if ($selectedIndices.Count -eq 0) {
+                                Write-Warning "No valid albums selected for ct command"
+                                continue albumSelectionLoop
+                            }
+                            $config = Get-OMConfig
+                            $maxSize = $config.CoverArt.TagImageSize
+                            # Get audio files for embedding
+                            $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } | ForEach-Object {
+                                try {
+                                    $tagFile = [TagLib.File]::Create($_.FullName)
+                                    [PSCustomObject]@{
+                                        FilePath = $_.FullName
+                                        TagFile = $tagFile
+                                    }
+                                } catch {
+                                    Write-Warning "Skipping invalid audio file: $($_.FullName)"
+                                    $null
+                                }
+                            } | Where-Object { $_ -ne $null }
 
-                                    if ($audioFiles.Count -gt 0) {
+                            if ($audioFiles.Count -gt 0) {
+                                foreach ($index in $selectedIndices) {
+                                    $albumIndex = $index - 1
+                                    $selectedAlbum = $albumCandidates[$albumIndex]
+                                    if ($selectedAlbum.cover_url) {
                                         $result = Save-CoverArt -CoverUrl $selectedAlbum.cover_url -AudioFiles $audioFiles -Action EmbedInTags -MaxSize $maxSize -WhatIf:$useWhatIf
                                         if (-not $result.Success) {
-                                            Write-Warning "Failed to embed cover art: $($result.Error)"
-                                        }
-                                        # Clean up tag files
-                                        foreach ($af in $audioFiles) {
-                                            if ($af.TagFile) {
-                                                try { $af.TagFile.Dispose() } catch { }
-                                            }
+                                            Write-Warning "Failed to embed cover art for album $index ($($selectedAlbum.name)): $($result.Error)"
                                         }
                                     } else {
-                                        Write-Warning "No audio files found to embed cover art in"
+                                        Write-Warning "No cover art available for album $index ($($selectedAlbum.name))"
                                     }
-                                } else {
-                                    Write-Warning "No cover art available for this album"
+                                }
+                                # Clean up tag files
+                                foreach ($af in $audioFiles) {
+                                    if ($af.TagFile) {
+                                        try { $af.TagFile.Dispose() } catch { }
+                                    }
                                 }
                             } else {
-                                Write-Warning "Invalid album index for ct command"
+                                Write-Warning "No audio files found to embed cover art in"
                             }
                             continue albumSelectionLoop
                         } elseif ($albumChoice -match '^\d+$') {

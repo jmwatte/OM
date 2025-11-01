@@ -8,6 +8,9 @@ function Show-CoverArt {
         and displays them in a terminal grid using chafa, or falls back to opening
         in browser if chafa is not available.
 
+    .PARAMETER Album
+        Single album object with cover_url property (for backward compatibility)
+
     .PARAMETER RangeText
         Range text like "1-4,6,7" or single number like "3"
 
@@ -18,19 +21,41 @@ function Show-CoverArt {
         Optional loop label for continue statements (for use in nested loops)
 
     .EXAMPLE
+        Show-CoverArt -Album $singleAlbum
         Show-CoverArt -RangeText "1-3,5" -AlbumList $albums
     #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $false)]
+        [object]$Album,
+
+        [Parameter(Mandatory = $false)]
         [string]$RangeText,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $false)]
         [array]$AlbumList,
 
         [Parameter(Mandatory = $false)]
         [string]$LoopLabel
     )
+
+    # Handle backward compatibility: if Album is provided, treat it as a single album
+    if ($Album -and -not $AlbumList) {
+        $AlbumList = @($Album)
+        if (-not $RangeText) {
+            $RangeText = "1"  # Default to showing the single album
+        }
+    }
+
+    # Validate parameters
+    if (-not $AlbumList -or $AlbumList.Count -eq 0) {
+        Write-Warning "No albums provided"
+        if ($LoopLabel) { continue $LoopLabel } else { return }
+    }
+
+    if (-not $RangeText) {
+        $RangeText = "1..$($AlbumList.Count)"  # Default to all albums if no range specified
+    }
 
     try {
         $selectedIndices = Expand-SelectionRange -RangeText $RangeText -MaxIndex $AlbumList.Count
