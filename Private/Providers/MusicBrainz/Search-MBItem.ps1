@@ -166,6 +166,7 @@ function Search-MBItem {
                     artists = @([PSCustomObject]@{ name = $artistName })
                     score = if ($item.PSObject.Properties['score']) { $item.score } else { 0 }
                     cover_url = $coverUrl  # Cover Art Archive URL
+                    release_date = if ($item.PSObject.Properties['date']) { $item.date } else { $null }
                 }
             }
             $normalizedItem
