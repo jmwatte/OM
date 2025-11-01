@@ -1,9 +1,9 @@
 function Get-ReleaseYear {
     [CmdletBinding()]
-    param([Parameter(Mandatory = $true)]$ReleaseDate)
+    param([Parameter(Mandatory = $false)]$ReleaseDate)
 
     if ($ReleaseDate -is [datetime]) { return $ReleaseDate.Year }
-    if (-not $ReleaseDate) { return '' }
+    if (-not $ReleaseDate) { return '0000' }
 
     $s = [string]$ReleaseDate
 
@@ -24,7 +24,7 @@ function Get-ReleaseYear {
         try {
             return ([datetime]::Parse($s, [System.Globalization.CultureInfo]::InvariantCulture)).Year
         } catch {
-            return ''
+            return '0000'
         }
     }
 }

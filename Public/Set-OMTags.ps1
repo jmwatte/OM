@@ -201,19 +201,15 @@ function Set-OMTags {
     Module: OM
     Version: 1.0
 #>
-    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium', DefaultParameterSetName = 'Simple')]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium', DefaultParameterSetName = 'Pipeline')]
     param(
-        [Parameter(Mandatory = $true, Position = 0, ValueFromPipelineByPropertyName = $true, ParameterSetName = 'Simple')]
-        [Parameter(Mandatory = $true, Position = 0, ValueFromPipelineByPropertyName = $true, ParameterSetName = 'Transform')]
+        [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true, ParameterSetName = 'Simple')]
+        [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true, ParameterSetName = 'Transform')]
         [Alias('FilePath', 'LiteralPath')]
-        [string]$Path,
+        $Path,
         
-        [Parameter(Mandatory = $true, ParameterSetName = 'Simple')]
-        [Parameter(ParameterSetName = 'Pipeline')]
+        [Parameter(ParameterSetName = 'Simple')]
         [hashtable]$Tags,
-        
-        [Parameter(Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'Pipeline')]
-        [PSCustomObject]$InputObject,
         
         [Parameter(Mandatory = $true, ParameterSetName = 'Transform')]
         [scriptblock]$Transform,
@@ -242,11 +238,30 @@ function Set-OMTags {
     }
     
     process {
-        # Determine the file path based on parameter set
-        $filePath = switch ($PSCmdlet.ParameterSetName) {
-            'Pipeline' { $InputObject.Path }
-            'Simple' { $Path }
-            'Transform' { $Path }
+        # Detect input type
+        if ($Path -is [PSCustomObject] -or $Path -is [PSObject]) {
+            $isPipelineInput = $true
+            $filePath = $Path.Path
+            $currentTags = $Path
+        } elseif ($Path -is [string]) {
+            if ($Path -match '^@{Directory=(.+?); FileName=(.+?);') {
+                $directory = $matches[1]
+                $fileName = $matches[2]
+                $filePath = Join-Path $directory $fileName
+                $isPipelineInput = $true
+                $currentTags = Get-OMTags -Path $filePath
+            } elseif ($Path -match '^OMTagObject:(.*)$') {
+                $filePath = $matches[1]
+                $isPipelineInput = $true
+                $currentTags = Get-OMTags -Path $filePath
+            } else {
+                $isPipelineInput = $false
+                $filePath = $Path
+                $currentTags = Get-OMTags -Path $filePath
+            }
+        } else {
+            Write-Warning "Invalid input type: $($Path.GetType().FullName)"
+            return
         }
         
         if (-not $filePath) {
@@ -262,42 +277,75 @@ function Set-OMTags {
         }
         
         try {
-            # Read current tags
-            Write-Verbose "Reading current tags from: $(Split-Path $filePath -Leaf)"
-            $currentTags = Get-OMTags -Path $filePath
-            
-            if (-not $currentTags) {
-                Write-Warning "Could not read tags from: $(Split-Path $filePath -Leaf)"
-                $errorCount++
-                return
+            # Read current tags if not already provided via pipeline
+            if (-not $isPipelineInput) {
+                Write-Verbose "Reading current tags from: $(Split-Path $filePath -Leaf)"
+                $currentTags = Get-OMTags -Path $filePath
+                
+                if (-not $currentTags) {
+                    Write-Warning "Could not read tags from: $(Split-Path $filePath -Leaf)"
+                    $errorCount++
+                    return
+                }
             }
             
-            # Determine new tag values based on parameter set
-            $newTags = switch ($PSCmdlet.ParameterSetName) {
-                'Simple' {
-                    # Apply hashtable updates to current tags - create proper deep copy
-                    $updated = [PSCustomObject]@{
-                        Path            = $currentTags.Path
-                        FileName        = $currentTags.FileName
-                        Title           = $currentTags.Title
-                        Artists         = if ($currentTags.Artists) { @($currentTags.Artists) } else { @() }
-                        AlbumArtists    = if ($currentTags.AlbumArtists) { @($currentTags.AlbumArtists) } else { @() }
-                        Album           = $currentTags.Album
-                        Track           = $currentTags.Track
-                        TrackCount      = $currentTags.TrackCount
-                        Disc            = $currentTags.Disc
-                        DiscCount       = $currentTags.DiscCount
-                        Year            = $currentTags.Year
-                        Genres          = if ($currentTags.Genres) { @($currentTags.Genres) } else { @() }
-                        Composers       = if ($currentTags.Composers) { @($currentTags.Composers) } else { @() }
-                        Comment         = if ($currentTags.Comment) { $currentTags.Comment } else { $null }
-                        Lyrics          = if ($currentTags.Lyrics) { $currentTags.Lyrics } else { $null }
-                        Duration        = $currentTags.Duration
-                        DurationSeconds = $currentTags.DurationSeconds
-                        Bitrate         = $currentTags.Bitrate
-                        SampleRate      = $currentTags.SampleRate
-                        Format          = $currentTags.Format
-                    }
+            # Determine new tag values
+            $newTags = if ($PSCmdlet.ParameterSetName -eq 'Transform') {
+                # Execute transform scriptblock - create proper deep copy with all properties
+                $updated = [PSCustomObject]@{
+                    Path            = $currentTags.Path
+                    FileName        = $currentTags.FileName
+                    Title           = $currentTags.Title
+                    Artists         = if ($currentTags.Artists) { @($currentTags.Artists) } else { @() }
+                    AlbumArtists    = if ($currentTags.AlbumArtists) { @($currentTags.AlbumArtists) } else { @() }
+                    Album           = $currentTags.Album
+                    Track           = $currentTags.Track
+                    TrackCount      = $currentTags.TrackCount
+                    Disc            = $currentTags.Disc
+                    DiscCount       = $currentTags.DiscCount
+                    Year            = $currentTags.Year
+                    Genres          = if ($currentTags.Genres) { @($currentTags.Genres) } else { @() }
+                    Composers       = if ($currentTags.Composers) { @($currentTags.Composers) } else { @() }
+                    Comment         = if ($currentTags.Comment) { $currentTags.Comment } else { $null }
+                    Lyrics          = if ($currentTags.Lyrics) { $currentTags.Lyrics } else { $null }
+                    Duration        = $currentTags.Duration
+                    DurationSeconds = $currentTags.DurationSeconds
+                    Bitrate         = $currentTags.Bitrate
+                    SampleRate      = $currentTags.SampleRate
+                    Format          = $currentTags.Format
+                }
+                # Invoke the transform with $updated as $_ in the scriptblock's scope
+                # Use ForEach-Object pattern to properly set $_
+                $result = $updated | ForEach-Object $Transform
+                # Return the result (Transform must return the modified object)
+                if ($result) { $result } else { $updated }
+            } else {
+                # Simple or Pipeline mode - apply hashtable updates to current tags
+                $updated = [PSCustomObject]@{
+                    Path            = $currentTags.Path
+                    FileName        = $currentTags.FileName
+                    Title           = $currentTags.Title
+                    Artists         = if ($currentTags.Artists) { @($currentTags.Artists) } else { @() }
+                    AlbumArtists    = if ($currentTags.AlbumArtists) { @($currentTags.AlbumArtists) } else { @() }
+                    Album           = $currentTags.Album
+                    Track           = $currentTags.Track
+                    TrackCount      = $currentTags.TrackCount
+                    Disc            = $currentTags.Disc
+                    DiscCount       = $currentTags.DiscCount
+                    Year            = $currentTags.Year
+                    Genres          = if ($currentTags.Genres) { @($currentTags.Genres) } else { @() }
+                    Composers       = if ($currentTags.Composers) { @($currentTags.Composers) } else { @() }
+                    Comment         = if ($currentTags.Comment) { $currentTags.Comment } else { $null }
+                    Lyrics          = if ($currentTags.Lyrics) { $currentTags.Lyrics } else { $null }
+                    Duration        = $currentTags.Duration
+                    DurationSeconds = $currentTags.DurationSeconds
+                    Bitrate         = $currentTags.Bitrate
+                    SampleRate      = $currentTags.SampleRate
+                    Format          = $currentTags.Format
+                }
+                
+                # Apply Tags hashtable if provided
+                if ($Tags) {
                     foreach ($key in $Tags.Keys) {
                         if ($updated.PSObject.Properties.Name -contains $key) {
                             $updated.$key = $Tags[$key]
@@ -305,75 +353,9 @@ function Set-OMTags {
                             Write-Warning "Property '$key' does not exist on tag object"
                         }
                     }
-                    $updated
                 }
-                'Pipeline' {
-                    # Use tags from pipeline - create proper deep copy if needed
-                    if ($Tags) {
-                        # Make a proper deep copy to avoid modifying the pipeline object
-                        $updated = [PSCustomObject]@{
-                            Path            = $InputObject.Path
-                            FileName        = $InputObject.FileName
-                            Title           = $InputObject.Title
-                            Artists         = if ($InputObject.Artists) { @($InputObject.Artists) } else { @() }
-                            AlbumArtists    = if ($InputObject.AlbumArtists) { @($InputObject.AlbumArtists) } else { @() }
-                            Album           = $InputObject.Album
-                            Track           = $InputObject.Track
-                            TrackCount      = $InputObject.TrackCount
-                            Disc            = $InputObject.Disc
-                            DiscCount       = $InputObject.DiscCount
-                            Year            = $InputObject.Year
-                            Genres          = if ($InputObject.Genres) { @($InputObject.Genres) } else { @() }
-                            Composers       = if ($InputObject.Composers) { @($InputObject.Composers) } else { @() }
-                            Comment         = if ($InputObject.Comment) { $InputObject.Comment } else { $null }
-                            Lyrics          = if ($InputObject.Lyrics) { $InputObject.Lyrics } else { $null }
-                            Duration        = $InputObject.Duration
-                            DurationSeconds = $InputObject.DurationSeconds
-                            Bitrate         = $InputObject.Bitrate
-                            SampleRate      = $InputObject.SampleRate
-                            Format          = $InputObject.Format
-                        }
-                        foreach ($key in $Tags.Keys) {
-                            if ($updated.PSObject.Properties.Name -contains $key) {
-                                $updated.$key = $Tags[$key]
-                            }
-                        }
-                        $updated
-                    } else {
-                        # Return pipeline object as-is (assume user already modified it)
-                        $InputObject
-                    }
-                }
-                'Transform' {
-                    # Execute transform scriptblock - create proper deep copy with all properties
-                    $updated = [PSCustomObject]@{
-                        Path            = $currentTags.Path
-                        FileName        = $currentTags.FileName
-                        Title           = $currentTags.Title
-                        Artists         = if ($currentTags.Artists) { @($currentTags.Artists) } else { @() }
-                        AlbumArtists    = if ($currentTags.AlbumArtists) { @($currentTags.AlbumArtists) } else { @() }
-                        Album           = $currentTags.Album
-                        Track           = $currentTags.Track
-                        TrackCount      = $currentTags.TrackCount
-                        Disc            = $currentTags.Disc
-                        DiscCount       = $currentTags.DiscCount
-                        Year            = $currentTags.Year
-                        Genres          = if ($currentTags.Genres) { @($currentTags.Genres) } else { @() }
-                        Composers       = if ($currentTags.Composers) { @($currentTags.Composers) } else { @() }
-                        Comment         = if ($currentTags.Comment) { $currentTags.Comment } else { $null }
-                        Lyrics          = if ($currentTags.Lyrics) { $currentTags.Lyrics } else { $null }
-                        Duration        = $currentTags.Duration
-                        DurationSeconds = $currentTags.DurationSeconds
-                        Bitrate         = $currentTags.Bitrate
-                        SampleRate      = $currentTags.SampleRate
-                        Format          = $currentTags.Format
-                    }
-                    # Invoke the transform with $updated as $_ in the scriptblock's scope
-                    # Use ForEach-Object pattern to properly set $_
-                    $result = $updated | ForEach-Object $Transform
-                    # Return the result (Transform must return the modified object)
-                    if ($result) { $result } else { $updated }
-                }
+                
+                $updated
             }
             
             # Build list of changes

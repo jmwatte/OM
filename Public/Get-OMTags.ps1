@@ -165,7 +165,7 @@ function Get-OMTags {
         $results = @()
 
         # Define default properties and their order
-        $defaultProperties = @('FileName', 'Artists', 'AlbumArtists', 'Genres', 'Composers', 'Comment', 'Lyrics', 'Composer', 'Track', 'TrackCount', 'Disc', 'DiscCount', 'Title', 'Genre', 'Artist', 'AlbumArtist', 'Album', 'Year')
+        $defaultProperties = @('Path', 'FileName', 'Title', 'Artists', 'AlbumArtists', 'Album', 'Track', 'TrackCount', 'Disc', 'DiscCount', 'Year', 'Genres', 'Composers', 'Comment', 'Lyrics', 'Composer', 'Genre', 'Artist', 'AlbumArtist')
 
         # Determine if Path is a file or folder
         if (Test-Path -LiteralPath $Path -PathType Leaf) {
@@ -531,7 +531,43 @@ function Get-OMTags {
             return $summaryObj
         } else {
             if (-not $AllTags) {
-                $results = $results | Select-Object $defaultProperties
+                # Create objects with selected properties
+                $results = $results | ForEach-Object {
+                    $obj = New-Object PSCustomObject -Property @{
+                        Path            = $_.Path
+                        Directory       = Split-Path $_.Path -Parent
+                        FileName        = $_.FileName
+                        Title           = $_.Title
+                        Artists         = $_.Artists
+                        AlbumArtists    = $_.AlbumArtists
+                        Album           = $_.Album
+                        Track           = $_.Track
+                        TrackCount      = $_.TrackCount
+                        Disc            = $_.Disc
+                        DiscCount       = $_.DiscCount
+                        Year            = $_.Year
+                        Genres          = $_.Genres
+                        Composers       = $_.Composers
+                        Comment         = $_.Comment
+                        Lyrics          = $_.Lyrics
+                        Duration        = $_.Duration
+                        DurationSeconds = $_.DurationSeconds
+                        Bitrate         = $_.Bitrate
+                        SampleRate      = $_.SampleRate
+                        Format          = $_.Format
+                        Artist          = if ($_.Artists.Count -gt 0) { $_.Artists[0] } else { $null }
+                        AlbumArtist     = if ($_.AlbumArtists.Count -gt 0) { $_.AlbumArtists[0] } else { if ($_.Artists.Count -gt 0) { $_.Artists[0] } else { $null }}
+                        Genre           = if ($_.Genres.Count -gt 0) { $_.Genres[0] } else { $null }
+                        Composer        = if ($_.Composers.Count -gt 0) { $_.Composers[0] } else { $null }
+                    }
+                    # Ensure it's not a Selected object
+                    $obj.PSTypeNames.Clear()
+                    $obj.PSTypeNames.Add("System.Management.Automation.PSCustomObject")
+                    $obj.PSTypeNames.Add("System.Object")
+                    # Add custom ToString to return Path for pipeline
+                    $obj | Add-Member -MemberType ScriptMethod -Name ToString -Value { "OMTagObject:" + $this.Path } -Force
+                    $obj
+                }
             }
             return $results
         }

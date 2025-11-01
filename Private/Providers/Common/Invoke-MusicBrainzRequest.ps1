@@ -117,7 +117,11 @@ function Invoke-MusicBrainzRequest {
         return $response
     }
     catch {
-        $statusCode = $_.Exception.Response.StatusCode.value__
+        $statusCode = if ($_.Exception.PSObject.Properties['Response'] -and $_.Exception.Response) { 
+            $_.Exception.Response.StatusCode.value__ 
+        } else { 
+            0 
+        }
         $errorMessage = $_.Exception.Message
         
         switch ($statusCode) {
