@@ -148,7 +148,7 @@ function Set-OMTags {
     
     Example: { $_.Genres = @("Classical","Requiem"); $_.Year = 2012; $_ }
 
-.PARAMETER RenamePattern
+    .PARAMETER RenamePattern
     Template string for renaming files based on tag values after successful tag updates.
     Use placeholders like {Title}, {Artist}, {Album}, {Track}, {Year}, etc.
     Supports format specifiers like {Track:D2} for zero-padded track numbers.
@@ -163,6 +163,15 @@ function Set-OMTags {
     - "{Year} - {Title:TitleCase}" → "2023 - Song Title.flac"
     
     Note: Renaming only occurs after successful tag updates.
+
+.PARAMETER RenumberTracks
+    Automatically renumber tracks starting from the specified number.
+    Useful for fixing track numbering in albums where tracks are out of order or missing numbers.
+    
+    The tracks will be numbered sequentially in the order the files are processed.
+    Combine with sorting if you need specific ordering (e.g., by filename).
+    
+    Example: -RenumberTracks 1 (starts numbering from 1)
 
 .PARAMETER PassThru
     Return the updated tag objects after writing changes.
@@ -300,6 +309,16 @@ function Set-OMTags {
     
     Update AlbumArtist and rename files with uppercase artist and title case title.
 
+.EXAMPLE
+    Get-OMTags -Path "album" | Set-OMTags -RenumberTracks 1
+    
+    Automatically renumber tracks starting from 1 for all files in the album.
+
+.EXAMPLE
+    Get-OMTags -Path "album" | Sort-Object FileName | Set-OMTags -RenumberTracks 5
+    
+    Sort files by filename first, then renumber tracks starting from 5.
+
 .NOTES
     Requirements:
     - TagLib-Sharp assembly must be loaded (automatically loaded by Get-OMTags)
@@ -339,6 +358,9 @@ function Set-OMTags {
         [string]$RenamePattern,
         
         [Parameter()]
+        [int]$RenumberTracks,
+        
+        [Parameter()]
         [switch]$PassThru,
         
         [Parameter()]
@@ -357,6 +379,7 @@ function Set-OMTags {
         $processedCount = 0
         $errorCount = 0
         $results = @()
+        $trackCounter = if ($PSBoundParameters.ContainsKey('RenumberTracks')) { $RenumberTracks } else { 0 }
         
         Write-Verbose "Starting tag update process"
     }
@@ -480,6 +503,12 @@ function Set-OMTags {
                 }
                 
                 $updated
+            }
+            
+            # Apply RenumberTracks if specified
+            if ($PSBoundParameters.ContainsKey('RenumberTracks')) {
+                $newTags.Track = $trackCounter
+                $trackCounter++
             }
             
             # Build list of changes
