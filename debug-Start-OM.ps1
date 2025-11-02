@@ -25,7 +25,8 @@ $d=Invoke-ProviderSearch -Provider Spotify -Query "the beatles help" -Type album
 write-host "Spotify Search Results:"
 $d.albums.items | Format-List #>
 # Call Start-OM with the desired parameters
-Start-OM -Path "E:\Spoon"  -Provider spotify -verbose
+gci E:\musicbrainztester |%{som $_.FullName -Provider MusicBrainz}
+#Start-OM -Path "E:\MusicBrainzTester\ "  -Provider MusicBrainz -verbose
  #start get-Qartistalbums with -ArtistId "https://www.qobuz.com/be-fr/interpreter/paul-weller/53535"
 # . .\Private\Providers\Qobuz\Search-GQArtist.ps1
 # . .\Private\QobuzLocales.ps1

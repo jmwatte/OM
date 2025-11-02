@@ -702,6 +702,9 @@ function Invoke-StageB-AlbumSelection {
                     }
                     catch {
                         Write-Warning "Failed to fetch MusicBrainz release information: $_"
+                        if ($_.Exception.InnerException) {
+                            Write-Verbose "Inner exception details: $($_.Exception.InnerException.Message)"
+                        }
                     }
                 }
                 return @{

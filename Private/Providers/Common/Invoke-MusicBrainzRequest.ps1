@@ -124,6 +124,11 @@ function Invoke-MusicBrainzRequest {
         }
         $errorMessage = $_.Exception.Message
         
+        # Log inner exception details for SSL and connection issues
+        if ($_.Exception.InnerException) {
+            Write-Verbose "MusicBrainz inner exception: $($_.Exception.InnerException.Message)"
+        }
+        
         switch ($statusCode) {
             400 { throw "MusicBrainz bad request: $errorMessage" }
             404 { throw "MusicBrainz resource not found: $baseUri" }

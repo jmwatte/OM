@@ -468,9 +468,19 @@ function Start-OM {
                     # Store candidates for back navigation
                     $script:quickAlbumCandidates = $albumCandidates
                     $script:quickCurrentPage = 1
+                    $script:backNavigationMode = $false  # Reset back navigation flag
 
                     if ($goBackToAlbumSelection) {
                         $goBackToAlbumSelection = $false
+                        # Reuse cached album candidates instead of searching again
+                        if ($script:quickAlbumCandidates -and $script:quickAlbumCandidates.Count -gt 0) {
+                            $albumCandidates = $script:quickAlbumCandidates
+                            $currentPage = $script:quickCurrentPage
+                            $script:backNavigationMode = $true  # Enable back navigation mode
+                            Write-Verbose "Reusing cached album candidates from previous search (back navigation)"
+                        } else {
+                            Write-Warning "No cached album candidates available, performing new search"
+                        }
                         # Continue to album selection
                     }
 
@@ -494,7 +504,8 @@ function Start-OM {
 
                         $originalColor = [Console]::ForegroundColor
                         [Console]::ForegroundColor = [ConsoleColor]::Yellow
-                        $albumChoice = Read-Host "Select album [number] (Enter=first), (P)rovider, {F}indMode, (C)over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags}, or new search term"
+                        $modeIndicator = if ($script:backNavigationMode) { " (Back Navigation - use 'f' to search again)" } else { "" }
+                        $albumChoice = Read-Host "Select album [number] (Enter=first), (P)rovider, {F}indMode, (C)over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags}, or new search term$modeIndicator"
                         [Console]::ForegroundColor = $originalColor
                         if ($albumChoice -eq '') { $albumChoice = '1' }
                         
@@ -514,6 +525,7 @@ function Start-OM {
                                 $Provider = $matched
                                 Write-Host "Switched to provider: $Provider" -ForegroundColor Green
                                 $skipQuickPrompts = $true  # Skip prompts when re-entering quick find
+                                $script:backNavigationMode = $false  # Reset back navigation flag
                                 continue stageLoop
                             }
                             continue albumSelectionLoop
@@ -521,24 +533,29 @@ function Start-OM {
                             $Provider = 'Spotify'
                             Write-Host "Switched to provider: $Provider" -ForegroundColor Green
                             $skipQuickPrompts = $true
+                            $script:backNavigationMode = $false
                             continue stageLoop
                         } elseif ($albumChoice -eq 'pq') {
                             $Provider = 'Qobuz'
                             Write-Host "Switched to provider: $Provider" -ForegroundColor Green
                             $skipQuickPrompts = $true
+                            $script:backNavigationMode = $false
                             continue stageLoop
                         } elseif ($albumChoice -eq 'pd') {
                             $Provider = 'Discogs'
                             Write-Host "Switched to provider: $Provider" -ForegroundColor Green
                             $skipQuickPrompts = $true
+                            $script:backNavigationMode = $false
                             continue stageLoop
                         } elseif ($albumChoice -eq 'pm') {
                             $Provider = 'MusicBrainz'
                             Write-Host "Switched to provider: $Provider" -ForegroundColor Green
                             $skipQuickPrompts = $true
+                            $script:backNavigationMode = $false
                             continue stageLoop
                         } elseif ($albumChoice.ToLower() -eq 'f') {
                             $script:findMode = 'artist-first'
+                            $script:backNavigationMode = $false
                             $stage = 'A'
                             continue stageLoop
                         } elseif ($albumChoice -match '^cvo(.*)$') {
@@ -636,6 +653,7 @@ function Start-OM {
                             if ($idx -ge 1 -and $idx -le $albumCandidates.Count) {
                                 $ProviderAlbum = $albumCandidates[$idx - 1]
                                 $ProviderArtist = @{ name = $quickArtist; id = $quickArtist }  # Simplified artist object
+                                $script:backNavigationMode = $false  # Reset back navigation flag
                                 $stage = 'C'
                                 continue stageLoop
                             } else {
@@ -644,8 +662,13 @@ function Start-OM {
                             }
                         } else {
                             # New search term - update album name and restart search
-                            $currentAlbum = $albumChoice
-                            continue stageLoop
+                            if ($script:backNavigationMode) {
+                                Write-Host "Back navigation mode: Enter album number to select, or use commands. To search again, use 'f' to change find mode first." -ForegroundColor Yellow
+                                continue albumSelectionLoop
+                            } else {
+                                $currentAlbum = $albumChoice
+                                continue stageLoop
+                            }
                         }
                     }
                 }

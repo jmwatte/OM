@@ -282,6 +282,9 @@ function Get-MBAlbumTracks {
                         }
                     } catch {
                         Write-Warning "Failed to fetch recording details for composer: $_"
+                        if ($_.Exception.InnerException) {
+                            Write-Verbose "Inner exception details: $($_.Exception.InnerException.Message)"
+                        }
                     }
                 }
                 
