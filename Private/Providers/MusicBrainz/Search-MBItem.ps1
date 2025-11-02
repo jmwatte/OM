@@ -160,6 +160,15 @@ function Search-MBItem {
                     }
                 }
                 
+                # Calculate total track count from media
+                $trackCount = 0
+                if (Get-IfExists $item 'media') {
+                    $trackCount = ($item.media | ForEach-Object { 
+                        if (Get-IfExists $_ 'track-count') { [int]$_.'track-count' } 
+                        else { 0 } 
+                    } | Measure-Object -Sum).Sum
+                }
+                
                 $normalizedItem = [PSCustomObject]@{
                     id = $item.id
                     name = $item.title
@@ -167,6 +176,7 @@ function Search-MBItem {
                     score = if ($item.PSObject.Properties['score']) { $item.score } else { 0 }
                     cover_url = $coverUrl  # Cover Art Archive URL
                     release_date = if ($item.PSObject.Properties['date']) { $item.date } else { $null }
+                    track_count = $trackCount
                 }
             }
             $normalizedItem
