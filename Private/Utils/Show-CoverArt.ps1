@@ -189,12 +189,12 @@ function Show-CoverArt {
         $chafaArgs += @('--label=on')  # Enable labeling with filenames
 
         # Try to use sixels format for better image quality if supported
-        try {
-            $null = & chafa --help 2>&1 | Select-String 'sixels'
-            $chafaArgs += @('--format=sixels')
-        } catch {
+       ## try {
+            #$null = & chafa --help 2>&1 | Select-String 'sixels'
+           # $chafaArgs += @('--format=sixels')
+        #} catch {
             # sixels not supported, use default format
-        }
+        #}
 
         # Add all image files
         $chafaArgs += $tempFiles

@@ -342,10 +342,10 @@ function Start-OM {
             $script:findMode = 'quick'  # Always start in quick find mode
             $script:quickAlbumCandidates = $null
             $script:quickCurrentPage = 1
+            $script:backNavigationMode = $false
             $currentArtist = $script:artist  # Persistent current artist for quick find mode
             $currentAlbum = $script:albumName  # Persistent current album for quick find mode
             $skipQuickPrompts = $false  # Flag to skip prompts when re-entering quick find after provider change
-            $goBackToAlbumSelection = $false
 
             :stageLoop while ($true) {
                 # NEW: Handle quick find mode (only when not in track selection stage)
@@ -407,92 +407,90 @@ function Start-OM {
                         $quickAlbum = $currentAlbum
                     }
 
-                    Write-Host "Searching for '$quickAlbum' by '$quickArtist'..." -ForegroundColor Cyan
-                    
-                    :quickSearchLoop while ($true) {
-                        $quickAlbum = $currentAlbum
-                        $quickArtist = $currentArtist
-                        try {
-                            $quickResults = Invoke-ProviderSearch -Provider $Provider -Album $quickAlbum -Artist $quickArtist -Type album
-                            $albumCandidates = @($quickResults.albums.items | Where-Object { $_ -ne $null })
-                        } catch {
-                            Write-Warning "Quick search failed: $_"
-                            $albumCandidates = @()
-                        }
+                    # Check if we have cached albums from back navigation
+                    if ($script:backNavigationMode -and $script:quickAlbumCandidates) {
+                        $albumCandidates = $script:quickAlbumCandidates
+                        Write-Host "Using cached album results for back navigation..." -ForegroundColor Cyan
+                    } else {
+                        Write-Host "Searching for '$quickAlbum' by '$quickArtist'..." -ForegroundColor Cyan
+                        
+                        :quickSearchLoop while ($true) {
+                            $quickAlbum = $currentAlbum
+                            $quickArtist = $currentArtist
+                            try {
+                                $quickResults = Invoke-ProviderSearch -Provider $Provider -Album $quickAlbum -Artist $quickArtist -Type album
+                                $albumCandidates = @($quickResults.albums.items | Where-Object { $_ -ne $null })
+                            } catch {
+                                Write-Warning "Quick search failed: $_"
+                                $albumCandidates = @()
+                            }
 
-                        if ($albumCandidates.Count -eq 0) {
-                            Write-Host "No albums found for '$quickAlbum' by '$quickArtist' with $Provider." -ForegroundColor Red
-                            $retryChoice = Read-Host "`nPress Enter to retry, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(a)' artist-first mode, '(na)' new artist, or enter new album name"
-                            if ($retryChoice -eq 'ps') {
-                                $Provider = 'Spotify'
-                                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                                continue quickSearchLoop
-                            } elseif ($retryChoice -eq 'pq') {
-                                $Provider = 'Qobuz'
-                                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                                continue quickSearchLoop
-                            } elseif ($retryChoice -eq 'pd') {
-                                $Provider = 'Discogs'
-                                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                                continue quickSearchLoop
-                            } elseif ($retryChoice -eq 'pm') {
-                                $Provider = 'MusicBrainz'
-                                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                                continue quickSearchLoop
-                            } elseif ($retryChoice -eq 'a') {
-                                $script:findMode = 'artist-first'
-                                $stage = 'A'
-                                break quickSearchLoop
-                            } elseif ($retryChoice -eq 'na') {
-                                $userInput = Read-Host "Enter new artist name"
-                                if (-not $userInput) {
-                                    Write-Host "Artist cannot be empty. Retrying." -ForegroundColor Yellow
+                            if ($albumCandidates.Count -eq 0) {
+                                Write-Host "No albums found for '$quickAlbum' by '$quickArtist' with $Provider." -ForegroundColor Red
+                                $retryChoice = Read-Host "`nPress Enter to retry, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(a)' artist-first mode, '(na)' new artist, or enter new album name"
+                                if ($retryChoice -eq 'ps') {
+                                    $Provider = 'Spotify'
+                                    Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                                    continue quickSearchLoop
+                                } elseif ($retryChoice -eq 'pq') {
+                                    $Provider = 'Qobuz'
+                                    Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                                    continue quickSearchLoop
+                                } elseif ($retryChoice -eq 'pd') {
+                                    $Provider = 'Discogs'
+                                    Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                                    continue quickSearchLoop
+                                } elseif ($retryChoice -eq 'pm') {
+                                    $Provider = 'MusicBrainz'
+                                    Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                                    continue quickSearchLoop
+                                } elseif ($retryChoice -eq 'a') {
+                                    $script:findMode = 'artist-first'
+                                    $stage = 'A'
+                                    break quickSearchLoop
+                                } elseif ($retryChoice -eq 'na') {
+                                    $userInput = Read-Host "Enter new artist name"
+                                    if (-not $userInput) {
+                                        Write-Host "Artist cannot be empty. Retrying." -ForegroundColor Yellow
+                                        continue quickSearchLoop
+                                    }
+                                    $currentArtist = $userInput
+                                } elseif ($retryChoice) {
+                                    # Assume it's a new album name
+                                    $currentAlbum = $retryChoice
+                                } else {
                                     continue quickSearchLoop
                                 }
-                                $currentArtist = $userInput
-                            } elseif ($retryChoice) {
-                                # Assume it's a new album name
-                                $currentAlbum = $retryChoice
                             } else {
-                                continue quickSearchLoop
+                                break quickSearchLoop
                             }
-                        } else {
-                            break quickSearchLoop
                         }
-                    }
 
-                    if ($script:findMode -ne 'quick') {
-                        continue stageLoop
-                    }
-
-                    # Store candidates for back navigation
-                    $script:quickAlbumCandidates = $albumCandidates
-                    $script:quickCurrentPage = 1
-                    $script:backNavigationMode = $false  # Reset back navigation flag
-
-                    if ($goBackToAlbumSelection) {
-                        $goBackToAlbumSelection = $false
-                        # Reuse cached album candidates instead of searching again
-                        if ($script:quickAlbumCandidates -and $script:quickAlbumCandidates.Count -gt 0) {
-                            $albumCandidates = $script:quickAlbumCandidates
-                            $currentPage = $script:quickCurrentPage
-                            $script:backNavigationMode = $true  # Enable back navigation mode
-                            Write-Verbose "Reusing cached album candidates from previous search (back navigation)"
-                        } else {
-                            Write-Warning "No cached album candidates available, performing new search"
+                        if ($script:findMode -ne 'quick') {
+                            continue stageLoop
                         }
-                        # Continue to album selection
+
+                        # Store candidates for back navigation
+                        $script:quickAlbumCandidates = $albumCandidates
+                        $script:quickCurrentPage = 1
+                        $script:backNavigationMode = $false  # Reset back navigation flag
                     }
+
+                    # Album selection for quick mode
+                    $ProviderArtist = @{ name = $quickArtist; id = $quickArtist }  # Simplified artist object
 
                     # Album selection loop
                     :albumSelectionLoop while ($true) {
-                        # Display album candidates
+                        Clear-Host
+                        & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
+                        Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
+                        Write-Host ""
+                        
                         Write-Host "$Provider Album candidates for '$quickAlbum' by '$quickArtist':" -ForegroundColor Green
                         for ($i = 0; $i -lt $albumCandidates.Count; $i++) {
                             $album = $albumCandidates[$i]
                             $artistDisplay = if ($album.artists -and $album.artists[0].name) { $album.artists[0].name } else { 'Unknown Artist' }
                             
-                            # Get year and track count for consistent display with artist-first mode
                             $year = Get-IfExists $album 'release_date'
                             $trackCount = Get-IfExists $album 'total_tracks'
                             if (-not $trackCount) { $trackCount = Get-IfExists $album 'track_count' }
@@ -561,12 +559,14 @@ function Start-OM {
                         } elseif ($albumChoice -match '^cvo(.*)$') {
                             $rangeText = $matches[1]
                             if (-not $rangeText) { $rangeText = "1" }
-                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -LoopLabel albumSelectionLoop -Provider $Provider -Size 'original' -Grid $false
+                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false
+                            Read-Host "Press Enter to continue..."
                             continue albumSelectionLoop
                         } elseif ($albumChoice -match '^cv(.*)$') {
                             $rangeText = $matches[1]
                             if (-not $rangeText) { $rangeText = "1" }
-                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -LoopLabel albumSelectionLoop -Provider $Provider
+                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider
+                            Read-Host "Press Enter to continue..."
                             continue albumSelectionLoop
                         } elseif ($albumChoice -match '^cs(.*)$') {
                             $rangeText = $matches[1]
@@ -671,6 +671,7 @@ function Start-OM {
                             }
                         }
                     }
+
                 }
                 switch ($stage) {
                     
@@ -855,7 +856,7 @@ function Start-OM {
                             ProviderArtist     = $ProviderArtist
                             AlbumName          = $albumName
                             Year               = $year
-                            CachedAlbums       = $cachedAlbums
+                            CachedAlbums       = if ($script:findMode -eq 'quick' -and $script:quickAlbumCandidates) { $script:quickAlbumCandidates } else { $cachedAlbums }
                             CachedArtistId     = $cachedArtistId
                             NormalizeDiscogsId = $normalizeDiscogsId
                             Artist             = $artist
@@ -1368,7 +1369,9 @@ function Start-OM {
                                     $script:ManualAlbumArtist = $null
                                     # $AlbumId = $ProviderAlbum.id
                                     if ($script:findMode -eq 'quick') {
-                                        $goBackToAlbumSelection = $true
+                                        $loadStageBResults = $false    # Use cache
+                                        $script:backNavigationMode = $true  # Enable back navigation mode
+                                        $stage = 'B'
                                         $exitdo = $true
                                         break
                                     } else {
@@ -1382,7 +1385,8 @@ function Start-OM {
                                     $script:ManualAlbumArtist = $null
                                     # $AlbumId = $ProviderAlbum.id
                                     if ($script:findMode -eq 'quick') {
-                                        $goBackToAlbumSelection = $true
+                                        $loadStageBResults = $false    # Use cache
+                                        $stage = 'B'
                                         $exitdo = $true
                                         break
                                     } else {
