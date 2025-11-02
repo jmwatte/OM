@@ -1,3 +1,98 @@
+function Expand-RenamePattern {
+    <#
+    .SYNOPSIS
+        Expands a rename pattern template with tag values and formatting.
+    
+    .PARAMETER Pattern
+        The template string containing placeholders like {Title}, {Artist}, etc.
+    
+    .PARAMETER TagObject
+        The tag object containing the values to substitute.
+    
+    .PARAMETER FileExtension
+        The original file extension to preserve if not included in pattern.
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [string]$Pattern,
+        
+        [Parameter(Mandatory)]
+        [PSCustomObject]$TagObject,
+        
+        [Parameter(Mandatory)]
+        [string]$FileExtension
+    )
+    
+    $result = $Pattern
+    
+    # Find all placeholders in the pattern using regex
+    $placeholders = [regex]::Matches($result, '\{([^}]+)\}')
+    
+    foreach ($match in $placeholders) {
+        $placeholder = $match.Groups[1].Value
+        $fullMatch = $match.Value
+        
+        # Split property name and format specifier
+        $parts = $placeholder -split ':', 2
+        $propertyName = $parts[0]
+        $formatSpecifier = if ($parts.Count -gt 1) { $parts[1] } else { $null }
+        
+        # Get the value from the tag object
+        $value = $TagObject.$propertyName
+        
+        # Handle array properties - take first item for singular properties
+        if ($value -is [array] -and $value.Count -gt 0) {
+            $value = $value[0]
+        }
+        
+        # Apply case transformations
+        if ($formatSpecifier) {
+            switch ($formatSpecifier) {
+                'Upper' { $value = $value.ToString().ToUpper() }
+                'Lower' { $value = $value.ToString().ToLower() }
+                'TitleCase' { $value = (Get-Culture).TextInfo.ToTitleCase($value.ToString().ToLower()) }
+                'SentenceCase' { 
+                    $text = $value.ToString()
+                    if ($text.Length -gt 0) {
+                        $value = $text.Substring(0,1).ToUpper() + $text.Substring(1).ToLower()
+                    }
+                }
+                default {
+                    # Handle numeric formatting like D2
+                    if ($value -is [int] -or $value -is [uint32]) {
+                        try {
+                            $value = "{0:$formatSpecifier}" -f [int]$value
+                        } catch {
+                            # If formatting fails, use original value
+                        }
+                    }
+                }
+            }
+        }
+        
+        # Replace null/empty values with empty string
+        if ($null -eq $value -or '' -eq $value) {
+            $value = ''
+        }
+        
+        # Replace the placeholder with the value
+        $result = $result -replace [regex]::Escape($fullMatch), $value
+    }
+    
+    # Clean up any remaining invalid characters for filenames
+    $result = $result -replace '[<>:"/\\|?*]', ''
+    
+    # Trim whitespace
+    $result = $result.Trim()
+    
+    # Add extension if not present and pattern doesn't already have one
+    if ($result -notmatch '\.[a-zA-Z0-9]{2,4}$' -and $FileExtension) {
+        $result += $FileExtension
+    }
+    
+    return $result
+}
+
 function Set-OMTags {
 <#
 .SYNOPSIS
@@ -52,6 +147,22 @@ function Set-OMTags {
     You can modify array properties (Genres, Artists, etc.) directly and safely.
     
     Example: { $_.Genres = @("Classical","Requiem"); $_.Year = 2012; $_ }
+
+.PARAMETER RenamePattern
+    Template string for renaming files based on tag values after successful tag updates.
+    Use placeholders like {Title}, {Artist}, {Album}, {Track}, {Year}, etc.
+    Supports format specifiers like {Track:D2} for zero-padded track numbers.
+    Supports case formatting: {Title:Upper}, {Title:Lower}, {Title:TitleCase}, {Title:SentenceCase}
+    
+    The file extension is automatically preserved. If the pattern doesn't include an extension,
+    the original extension is appended.
+    
+    Examples:
+    - "{Track:D2} - {Title}" → "01 - Song Title.mp3"
+    - "{Artist:Upper} - {Album} - {Track:D2} - {Title}" → "ARTIST - Album - 01 - Song.mp3"
+    - "{Year} - {Title:TitleCase}" → "2023 - Song Title.flac"
+    
+    Note: Renaming only occurs after successful tag updates.
 
 .PARAMETER PassThru
     Return the updated tag objects after writing changes.
@@ -179,6 +290,16 @@ function Set-OMTags {
     
     Set disc numbers across multiple directories.
 
+.EXAMPLE
+    Get-OMTags -Path "album" | Set-OMTags -Tags @{Year=2023} -RenamePattern "{Track:D2} - {Title}"
+    
+    Update Year and rename files to "01 - Song Title.mp3" format.
+
+.EXAMPLE
+    Get-OMTags -Path "album" | Set-OMTags -Tags @{AlbumArtist="Composer"} -RenamePattern "{Artist:Upper} - {Title:TitleCase}"
+    
+    Update AlbumArtist and rename files with uppercase artist and title case title.
+
 .NOTES
     Requirements:
     - TagLib-Sharp assembly must be loaded (automatically loaded by Get-OMTags)
@@ -213,6 +334,9 @@ function Set-OMTags {
         
         [Parameter(Mandatory = $true, ParameterSetName = 'Transform')]
         [scriptblock]$Transform,
+        
+        [Parameter()]
+        [string]$RenamePattern,
         
         [Parameter()]
         [switch]$PassThru,
@@ -542,6 +666,36 @@ function Set-OMTags {
                     }
                     
                     $processedCount++
+                    
+                    # Handle file renaming if RenamePattern is specified
+                    if ($RenamePattern -and -not $WhatIfPreference) {
+                        $currentDir = Split-Path $filePath -Parent
+                        $currentFileName = Split-Path $filePath -Leaf
+                        $fileExtension = [System.IO.Path]::GetExtension($currentFileName)
+                        
+                        # Use the updated tags for renaming
+                        $updatedTags = Get-OMTags -Path $filePath
+                        $newFileName = Expand-RenamePattern -Pattern $RenamePattern -TagObject $updatedTags -FileExtension $fileExtension
+                        
+                        if ($newFileName -and $newFileName -ne $currentFileName) {
+                            $newFilePath = Join-Path $currentDir $newFileName
+                            
+                            # Check if target file already exists
+                            if (Test-Path -LiteralPath $newFilePath) {
+                                Write-Warning "Cannot rename '$currentFileName' to '$newFileName': target file already exists"
+                            } else {
+                                try {
+                                    Move-Item -LiteralPath $filePath -Destination $newFilePath -ErrorAction Stop
+                                    Write-Verbose "Renamed '$currentFileName' to '$newFileName'"
+                                    
+                                    # Update filePath for PassThru if needed
+                                    $filePath = $newFilePath
+                                } catch {
+                                    Write-Warning "Failed to rename '$currentFileName' to '$newFileName': $($_.Exception.Message)"
+                                }
+                            }
+                        }
+                    }
                     
                     # Return updated tags if requested
                     if ($PassThru) {

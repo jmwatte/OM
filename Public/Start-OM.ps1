@@ -324,7 +324,7 @@ function Start-OM {
                 $albumName = $script:album.Name.Trim()
 
             }
-            $audioFilesCheck = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
+            $audioFilesCheck = @(Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' })
             if (-not $audioFilesCheck -or $audioFilesCheck.Count -eq 0) {
                 Write-Warning "No supported audio files found in album folder: $($script:album.FullName). Skipping album."
                 continue
