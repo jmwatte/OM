@@ -142,7 +142,10 @@ function Get-QAlbumTracks {
         }
         else {
             # Use the URL as-is if it's already a full URL, otherwise construct it
-            if ($Id -match '^https?://') { $url = $Id.TrimEnd('/') }
+
+            #TODO we should not construct a url with an ID because these are no constant over all locales so we should just take the html and use that
+            if ($Id -match '^https?://') { $url = $Id }
+            #if ($Id -match '^https?://') { $url = $Id.TrimEnd('/') }
             else {
                 $locale = Get-QobuzUrlLocale
                 if ($Id -match '^/[a-z]{2}-[a-z]{2}/album/') { $url = "https://www.qobuz.com$($Id.TrimEnd('/'))" }
