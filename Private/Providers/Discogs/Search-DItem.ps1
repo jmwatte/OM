@@ -76,10 +76,14 @@ function Search-DItem {
                 
                 $item = [PSCustomObject]@{
                     release_date = Get-IfExists $result 'year'
-                    name         = Get-IfExists $result 'title'
-                    id           = Get-IfExists $result 'id'
-                    genres       = if ($genres) { $genres -join ', ' } else { '' }  # Genres come from details page
                     type         = Get-IfExists $result 'type'
+                    name         = Get-IfExists $result 'title'
+                    id = switch (Get-IfExists $result 'type') {
+                        'release' { "r$(Get-IfExists $result 'id')" }
+                        'master' { "m$(Get-IfExists $result 'id')" }
+                        default { Get-IfExists $result 'id' }
+                    }
+                    genres       = if ($genres) { $genres -join ', ' } else { '' }  # Genres come from details page
                     cover_url    = $coverUrl  # High-quality cover art URL
                     uri          = Get-IfExists $result 'uri'  # Discogs resource URI
                 }
