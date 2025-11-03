@@ -164,64 +164,74 @@ function Search-GQAlbum {
             else {
                 Write-Verbose "Found $($releaseCards.Count) album cards"
                 
-                # Extract all albums with metadata and score by similarity
+                # Extract all albums from search results (like Search-QAlbum.ps1)
                 $albums = @()
                 foreach ($card in $releaseCards) {
                     try {
-                        # Extract album link and URL slug for similarity scoring
+                        # Extract album title
+                        $titleLink = $card.SelectSingleNode("./div[1]/a")
+                        $albumName = if ($titleLink) { 
+                            $titleLink.GetAttributeValue("data-title", "").Trim() 
+                        } else { 
+                            "" 
+                        }
+                        if ($albumName) { $albumName = [System.Web.HttpUtility]::HtmlDecode($albumName).Trim() }
+
+                        if (-not $albumName) {
+                            Write-Verbose "Skipping card without album title"
+                            continue
+                        }
+
+                        # Extract album ID from href
                         $albumLink = $card.SelectSingleNode("./a")
                         $albumHref = if ($albumLink) { $albumLink.GetAttributeValue("href", "") } else { "" }
-                        
-                        if ($albumHref -and $albumHref -match '/album/([^/]+)/([^/?#]+)$') {
-                            $urlSlug = $matches[1]
-                            $albumId = $matches[2]
-                            
-                            # Compute similarity between query and URL slug
-                            $similarity = Get-StringSimilarity-Jaccard -String1 $Query -String2 $urlSlug
-                            
-                            # Extract album metadata from the card (like Search-QAlbum.ps1)
-                            $titleLink = $card.SelectSingleNode("./div[1]/a")
-                            $albumName = if ($titleLink) { 
-                                $titleLink.GetAttributeValue("data-title", "").Trim() 
-                            } else { "" }
-                            if ($albumName) { $albumName = [System.Web.HttpUtility]::HtmlDecode($albumName).Trim() }
-                            
-                            $artistLink = $card.SelectSingleNode("./div[1]/p[1]/a")
-                            $artistName = if ($artistLink) { $artistLink.InnerText.Trim() } else { "" }
-                            if ($artistName) { $artistName = [System.Web.HttpUtility]::HtmlDecode($artistName).Trim() }
-                            
-                            $genreElement = $card.SelectSingleNode("./a/div/p[1]")
-                            $genre = if ($genreElement) { [System.Web.HttpUtility]::HtmlDecode($genreElement.InnerText.Trim()) } else { "" }
-                            
-                            $dateNode = $card.SelectSingleNode("./a/div/p[2]")
-                            $releaseDate = if ($dateNode) { [System.Web.HttpUtility]::HtmlDecode($dateNode.InnerText.Trim()) } else { "" }
-                            
-                            $trackNode = $card.SelectSingleNode("./a/div/p[3]")
-                            $trackCount = $null
-                            if ($trackNode) {
-                                if ($trackNode.InnerText -match '(\d{1,3})') {
-                                    $trackCount = [int]$matches[1]
-                                }
-                            }
-                            
-                            $coverImg = $card.SelectSingleNode("./img")
-                            $coverUrl = if ($coverImg) { $coverImg.GetAttributeValue("src", "") } else { "" }
-                            
-                            $albums += [PSCustomObject]@{
-                                Url = "https://www.qobuz.com$albumHref"
-                                Slug = $urlSlug
-                                Id = $albumId
-                                Similarity = $similarity
-                                Name = $albumName
-                                Artist = $artistName
-                                Genre = $genre
-                                ReleaseDate = $releaseDate
-                                TrackCount = $trackCount
-                                CoverUrl = $coverUrl
-                            }
-                            
-                            Write-Verbose "Album: $albumName by $artistName (slug: $urlSlug, similarity: $($similarity.ToString('F3')))"
+                        if ($albumHref -match '/album/[^/]+/([^/?#]+)$') { 
+                            $albumId = $matches[1] 
+                        } else {
+                            $parts = $albumHref.TrimEnd('/').Split('/')
+                            $albumId = if ($parts.Count -gt 0) { $parts[-1] } else { "" }
                         }
+
+                        # Extract artist name
+                        $artistLink = $card.SelectSingleNode("./div[1]/p[1]/a")
+                        $artistName = if ($artistLink) { $artistLink.InnerText.Trim() } else { "" }
+                        if ($artistName) { $artistName = [System.Web.HttpUtility]::HtmlDecode($artistName).Trim() }
+
+                        # Extract genre
+                        $genreElement = $card.SelectSingleNode("./a/div/p[1]")
+                        $genre = if ($genreElement) { [System.Web.HttpUtility]::HtmlDecode($genreElement.InnerText.Trim()) } else { "" }
+
+                        # Extract release date and track count
+                        $dateNode = $card.SelectSingleNode("./a/div/p[2]")
+                        $releaseDate = if ($dateNode) { [System.Web.HttpUtility]::HtmlDecode($dateNode.InnerText.Trim()) } else { "" }
+
+                        $trackNode = $card.SelectSingleNode("./a/div/p[3]")
+                        $trackCount = $null
+                        if ($trackNode) {
+                            if ($trackNode.InnerText -match '(\d{1,3})') {
+                                $trackCount = [int]$matches[1]
+                            }
+                        }
+
+                        # Extract cover image
+                        $coverImg = $card.SelectSingleNode("./img")
+                        $coverUrl = if ($coverImg) { $coverImg.GetAttributeValue("src", "") } else { "" }
+
+                        # Create album object
+                        $album = [PSCustomObject]@{
+                            name        = $albumName
+                            id          = "https://www.qobuz.com$albumHref"
+                            url         = "https://www.qobuz.com$albumHref"
+                            artists     = @([PSCustomObject]@{ name = $artistName })
+                            genres      = if ($genre) { $genre } else { "" }
+                            cover_url   = $coverUrl
+                            track_count = $trackCount
+                            release_date = $releaseDate
+                        }
+
+                        $albums += $album
+                        Write-Verbose "Extracted album: $($album.name) by $($album.artists[0].name)"
+
                     }
                     catch {
                         Write-Verbose "Failed to parse album card: $_"
@@ -229,30 +239,13 @@ function Search-GQAlbum {
                     }
                 }
                 
-                # Sort by similarity and take the top 5
+                # Return all albums found
                 if ($albums.Count -gt 0) {
-                    $topAlbums = $albums | Sort-Object -Property Similarity -Descending | Select-Object -First 5
-                    
-                    # Create album objects in the expected format
-                    $albumItems = @()
-                    foreach ($album in $topAlbums) {
-                        $item = [PSCustomObject]@{
-                            name        = $album.Name
-                            id          = $album.Url
-                            url         = $album.Url
-                            artists     = @([PSCustomObject]@{ name = $album.Artist })
-                            genres      = if ($album.Genre) { $album.Genre } else { "" }
-                            cover_url   = $album.CoverUrl
-                            track_count = $album.TrackCount
-                            release_date = $album.ReleaseDate
-                        }
-                        $albumItems += $item
-                        Write-Verbose "Selected album: $($album.Name) by $($album.Artist) (similarity: $($album.Similarity.ToString('F3')))"
-                    }
+                    Write-Verbose "Successfully extracted $($albums.Count) albums from Qobuz search"
                     
                     $res = [PSCustomObject]@{
                         albums = [PSCustomObject]@{
-                            items = $albumItems
+                            items = $albums
                         }
                     }
                     
