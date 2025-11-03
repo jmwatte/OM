@@ -57,7 +57,7 @@ function Search-DAlbumsByName {
 
         [Parameter()]
         [ValidateSet('Masters', 'Release', 'All')]
-        [string]$MastersOnly = 'Masters',
+        [string]$MastersOnly = 'Release',
 
         [Parameter()]
         [array]$AllAlbumsCache,
@@ -222,7 +222,7 @@ function Search-DAlbumsByName {
             }
 
             $album = [PSCustomObject]@{
-                id           = "r$resultId"
+                id           = if ($resultType -eq 'master') { "m$resultId" } else { "r$resultId" }
                 name         = $albumTitle
                 release_date = Get-IfExists $result 'year'
                 type         = $resultType
