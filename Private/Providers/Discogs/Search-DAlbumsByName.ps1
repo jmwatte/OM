@@ -222,7 +222,7 @@ function Search-DAlbumsByName {
             }
 
             $album = [PSCustomObject]@{
-                id           = if ($resultType -eq 'master') { "m$resultId" } else { "r$resultId" }
+                id           = if ($MastersOnly -eq 'Masters') { "m$resultId" } else { "r$resultId" }
                 name         = $albumTitle
                 release_date = Get-IfExists $result 'year'
                 type         = $resultType
