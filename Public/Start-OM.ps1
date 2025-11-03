@@ -417,15 +417,13 @@ function Start-OM {
                         :quickSearchLoop while ($true) {
                             $quickAlbum = $currentAlbum
                             $quickArtist = $currentArtist
-                            try {
-                                $quickResults = Invoke-ProviderSearch -Provider $Provider -Album $quickAlbum -Artist $quickArtist -Type album
-                                $albumCandidates = $quickResults.albums.items | Where-Object { $_ -ne $null }
-                            } catch {
-                                Write-Warning "Quick search failed: $_"
-                                $albumCandidates = @()
-                            }
-
-                            if ($albumCandidates.Count -eq 0) {
+                                try {
+                                    $quickResults = Invoke-ProviderSearch -Provider $Provider -Album $quickAlbum -Artist $quickArtist -Type album
+                                    $albumCandidates = if ($quickResults -and $quickResults.albums -and $quickResults.albums.PSObject.Properties.Name -contains 'items' -and $quickResults.albums.items) { @($quickResults.albums.items | Where-Object { $_ -ne $null }) } else { @() }
+                                } catch {
+                                    Write-Warning "Quick search failed: $_"
+                                    $albumCandidates = @()
+                                }                            if ($albumCandidates.Count -eq 0) {
                                 Write-Host "No albums found for '$quickAlbum' by '$quickArtist' with $Provider." -ForegroundColor Red
                                 $retryChoice = Read-Host "`nPress Enter to retry, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(a)' artist-first mode, '(na)' new artist, or enter new album name"
                                 if ($retryChoice -eq 'ps') {
