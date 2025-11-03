@@ -299,7 +299,7 @@ function Start-OM {
             }
         }
         $script:album = $null
-        $script:artist= Split-Path -Leaf $Path
+        $script:artist = Split-Path -Leaf $Path
         $artist = Split-Path -Leaf $Path
         $albums = Get-ChildItem -LiteralPath $Path -Directory
         
@@ -363,7 +363,8 @@ function Start-OM {
                         # Extract album name (strip year if present)
                         if ($folderName -match '^\d{4}\s*-\s*(.+)$') {
                             $detectedAlbum = $matches[1].Trim()
-                        } else {
+                        }
+                        else {
                             $detectedAlbum = $folderName
                         }
                         
@@ -401,7 +402,8 @@ function Start-OM {
                         }
 
                         $skipQuickPrompts = $true  # Skip prompts on subsequent entries
-                    } else {
+                    }
+                    else {
                         # Use current values without prompting
                         $quickArtist = $currentArtist
                         $quickAlbum = $currentAlbum
@@ -411,55 +413,65 @@ function Start-OM {
                     if ($script:backNavigationMode -and $script:quickAlbumCandidates) {
                         $albumCandidates = $script:quickAlbumCandidates
                         Write-Host "Using cached album results for back navigation..." -ForegroundColor Cyan
-                    } else {
+                    }
+                    else {
                         Write-Host "Searching for '$quickAlbum' by '$quickArtist'..." -ForegroundColor Cyan
                         
                         :quickSearchLoop while ($true) {
                             $quickAlbum = $currentAlbum
                             $quickArtist = $currentArtist
-                                try {
-                                    $quickResults = Invoke-ProviderSearch -Provider $Provider -Album $quickAlbum -Artist $quickArtist -Type album
-                                    $albumCandidates = if ($quickResults -and $quickResults.albums -and $quickResults.albums.PSObject.Properties.Name -contains 'items' -and $quickResults.albums.items) { @($quickResults.albums.items | Where-Object { $_ -ne $null }) } else { @() }
-                                } catch {
-                                    Write-Warning "Quick search failed: $_"
-                                    $albumCandidates = @()
-                                }                            if ($albumCandidates.Count -eq 0) {
+                            try {
+                                $quickResults = Invoke-ProviderSearch -Provider $Provider -Album $quickAlbum -Artist $quickArtist -Type album
+                                $albumCandidates = if ($quickResults -and $quickResults.albums -and $quickResults.albums.PSObject.Properties.Name -contains 'items' -and $quickResults.albums.items) { @($quickResults.albums.items | Where-Object { $_ -ne $null }) } else { @() }
+                            }
+                            catch {
+                                Write-Warning "Quick search failed: $_"
+                                $albumCandidates = @()
+                            }                            if ($albumCandidates.Count -eq 0) {
                                 Write-Host "No albums found for '$quickAlbum' by '$quickArtist' with $Provider." -ForegroundColor Red
                                 $retryChoice = Read-Host "`nPress Enter to retry, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(a)' artist-first mode, '(na)' new artist, or enter new album name"
                                 if ($retryChoice -eq 'ps') {
                                     $Provider = 'Spotify'
                                     Write-Host "Switched to provider: $Provider" -ForegroundColor Green
                                     continue quickSearchLoop
-                                } elseif ($retryChoice -eq 'pq') {
+                                }
+                                elseif ($retryChoice -eq 'pq') {
                                     $Provider = 'Qobuz'
                                     Write-Host "Switched to provider: $Provider" -ForegroundColor Green
                                     continue quickSearchLoop
-                                } elseif ($retryChoice -eq 'pd') {
+                                }
+                                elseif ($retryChoice -eq 'pd') {
                                     $Provider = 'Discogs'
                                     Write-Host "Switched to provider: $Provider" -ForegroundColor Green
                                     continue quickSearchLoop
-                                } elseif ($retryChoice -eq 'pm') {
+                                }
+                                elseif ($retryChoice -eq 'pm') {
                                     $Provider = 'MusicBrainz'
                                     Write-Host "Switched to provider: $Provider" -ForegroundColor Green
                                     continue quickSearchLoop
-                                } elseif ($retryChoice -eq 'a') {
+                                }
+                                elseif ($retryChoice -eq 'a') {
                                     $script:findMode = 'artist-first'
                                     $stage = 'A'
                                     break quickSearchLoop
-                                } elseif ($retryChoice -eq 'na') {
+                                }
+                                elseif ($retryChoice -eq 'na') {
                                     $userInput = Read-Host "Enter new artist name"
                                     if (-not $userInput) {
                                         Write-Host "Artist cannot be empty. Retrying." -ForegroundColor Yellow
                                         continue quickSearchLoop
                                     }
                                     $currentArtist = $userInput
-                                } elseif ($retryChoice) {
+                                }
+                                elseif ($retryChoice) {
                                     # Assume it's a new album name
                                     $currentAlbum = $retryChoice
-                                } else {
+                                }
+                                else {
                                     continue quickSearchLoop
                                 }
-                            } else {
+                            }
+                            else {
                                 break quickSearchLoop
                             }
                         }
@@ -525,55 +537,67 @@ function Start-OM {
                                 continue stageLoop
                             }
                             continue albumSelectionLoop
-                        } elseif ($albumChoice -eq 'ps') {
+                        }
+                        elseif ($albumChoice -eq 'ps') {
                             $Provider = 'Spotify'
                             Write-Host "Switched to provider: $Provider" -ForegroundColor Green
                             $skipQuickPrompts = $true
                             $script:backNavigationMode = $false
                             continue stageLoop
-                        } elseif ($albumChoice -eq 'pq') {
+                        }
+                        elseif ($albumChoice -eq 'pq') {
                             $Provider = 'Qobuz'
                             Write-Host "Switched to provider: $Provider" -ForegroundColor Green
                             $skipQuickPrompts = $true
                             $script:backNavigationMode = $false
                             continue stageLoop
-                        } elseif ($albumChoice -eq 'pd') {
+                        }
+                        elseif ($albumChoice -eq 'pd') {
                             $Provider = 'Discogs'
                             Write-Host "Switched to provider: $Provider" -ForegroundColor Green
                             $skipQuickPrompts = $true
                             $script:backNavigationMode = $false
                             continue stageLoop
-                        } elseif ($albumChoice -eq 'pm') {
+                        }
+                        elseif ($albumChoice -eq 'pm') {
                             $Provider = 'MusicBrainz'
                             Write-Host "Switched to provider: $Provider" -ForegroundColor Green
                             $skipQuickPrompts = $true
                             $script:backNavigationMode = $false
                             continue stageLoop
-                        } elseif ($albumChoice.ToLower() -eq 'f') {
+                        }
+                        elseif ($albumChoice.ToLower() -eq 'f') {
                             $script:findMode = 'artist-first'
                             $script:backNavigationMode = $false
                             $stage = 'A'
                             continue stageLoop
-                        } elseif ($albumChoice -match '^cvo(.*)$') {
+                        }
+                        elseif ($albumChoice -match '^cvo(.*)$') {
                             $rangeText = $matches[1]
                             if (-not $rangeText) { $rangeText = "1" }
                             Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false
                             Read-Host "Press Enter to continue..."
                             continue albumSelectionLoop
-                        } elseif ($albumChoice -match '^cv(.*)$') {
+                        }
+                        elseif ($albumChoice -match '^cv(.*)$') {
                             $rangeText = $matches[1]
                             if (-not $rangeText) { $rangeText = "1" }
                             Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider
                             Read-Host "Press Enter to continue..."
                             continue albumSelectionLoop
-                        } elseif ($albumChoice -match '^cs(.*)$') {
+                        }
+                        elseif ($albumChoice -match '^cs(.*)$') {
                             $rangeText = $matches[1]
                             if (-not $rangeText) { $rangeText = "1" }
                             try {
                                 $selectedIndices = Expand-SelectionRange -RangeText $rangeText -MaxIndex $albumCandidates.Count
-                            } catch {
+                            }
+                            catch {
                                 Write-Warning "Invalid range syntax for cs command: $rangeText - $_"
                                 continue albumSelectionLoop
+                            }
+                            if ($selectedIndices -isnot [array]) {
+                                $selectedIndices = @($selectedIndices)
                             }
                             if ($selectedIndices.Count -eq 0) {
                                 Write-Warning "No valid albums selected for cs command"
@@ -589,19 +613,25 @@ function Start-OM {
                                     if (-not $result.Success) {
                                         Write-Warning "Failed to save cover art for album $index ($($selectedAlbum.name)): $($result.Error)"
                                     }
-                                } else {
+                                }
+                                else {
                                     Write-Warning "No cover art available for album $index ($($selectedAlbum.name))"
                                 }
                             }
                             continue albumSelectionLoop
-                        } elseif ($albumChoice -match '^ct(.*)$') {
+                        }
+                        elseif ($albumChoice -match '^ct(.*)$') {
                             $rangeText = $matches[1]
                             if (-not $rangeText) { $rangeText = "1" }
                             try {
                                 $selectedIndices = Expand-SelectionRange -RangeText $rangeText -MaxIndex $albumCandidates.Count
-                            } catch {
+                            }
+                            catch {
                                 Write-Warning "Invalid range syntax for ct command: $rangeText - $_"
                                 continue albumSelectionLoop
+                            }
+                            if ($selectedIndices -isnot [array]) {
+                                $selectedIndices = @($selectedIndices)
                             }
                             if ($selectedIndices.Count -eq 0) {
                                 Write-Warning "No valid albums selected for ct command"
@@ -615,9 +645,10 @@ function Start-OM {
                                     $tagFile = [TagLib.File]::Create($_.FullName)
                                     [PSCustomObject]@{
                                         FilePath = $_.FullName
-                                        TagFile = $tagFile
+                                        TagFile  = $tagFile
                                     }
-                                } catch {
+                                }
+                                catch {
                                     Write-Warning "Skipping invalid audio file: $($_.FullName)"
                                     $null
                                 }
@@ -632,7 +663,8 @@ function Start-OM {
                                         if (-not $result.Success) {
                                             Write-Warning "Failed to embed cover art for album $index ($($selectedAlbum.name)): $($result.Error)"
                                         }
-                                    } else {
+                                    }
+                                    else {
                                         Write-Warning "No cover art available for album $index ($($selectedAlbum.name))"
                                     }
                                 }
@@ -642,11 +674,13 @@ function Start-OM {
                                         try { $af.TagFile.Dispose() } catch { }
                                     }
                                 }
-                            } else {
+                            }
+                            else {
                                 Write-Warning "No audio files found to embed cover art in"
                             }
                             continue albumSelectionLoop
-                        } elseif ($albumChoice -match '^\d+$') {
+                        }
+                        elseif ($albumChoice -match '^\d+$') {
                             $idx = [int]$albumChoice
                             if ($idx -ge 1 -and $idx -le $albumCandidates.Count) {
                                 $ProviderAlbum = $albumCandidates[$idx - 1]
@@ -654,16 +688,19 @@ function Start-OM {
                                 $script:backNavigationMode = $false  # Reset back navigation flag
                                 $stage = 'C'
                                 continue stageLoop
-                            } else {
+                            }
+                            else {
                                 Write-Warning "Invalid selection"
                                 continue albumSelectionLoop
                             }
-                        } else {
+                        }
+                        else {
                             # New search term - update album name and restart search
                             if ($script:backNavigationMode) {
                                 Write-Host "Back navigation mode: Enter album number to select, or use commands. To search again, use 'f' to change find mode first." -ForegroundColor Yellow
                                 continue albumSelectionLoop
-                            } else {
+                            }
+                            else {
                                 $currentAlbum = $albumChoice
                                 continue stageLoop
                             }
@@ -679,7 +716,8 @@ function Start-OM {
                         & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
                         if ($script:findMode -eq 'quick') {
                             Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
-                        } else {
+                        }
+                        else {
                             Write-Host "🔍 Find Mode: Artist-First" -ForegroundColor Magenta
                         }
                         Write-Host ""
@@ -827,7 +865,8 @@ function Start-OM {
                                 $script:findMode = 'quick'
                                 $skipQuickPrompts = $false  # Show prompts when switching to quick mode
                                 Write-Host "✓ Switched to Quick Album Search mode" -ForegroundColor Green
-                            } elseif ($newMode -eq 'a' -or $newMode -eq 'artist-first') {
+                            }
+                            elseif ($newMode -eq 'a' -or $newMode -eq 'artist-first') {
                                 $script:findMode = 'artist-first'
                                 Write-Host "✓ Switched to Artist-First Search mode" -ForegroundColor Green
                                 # Reset search state when switching to artist-first mode
@@ -836,7 +875,8 @@ function Start-OM {
                                 $artistQuery = $artist
                                 $ProviderArtist = $null
                                 $ProviderAlbum = $null
-                            } else {
+                            }
+                            else {
                                 Write-Warning "Invalid mode: $newMode. Staying with $($script:findMode)."
                             }
                             continue stageLoop
@@ -908,7 +948,8 @@ function Start-OM {
                         
                         if ($script:findMode -eq 'quick') {
                             Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
-                        } else {
+                        }
+                        else {
                             Write-Host "🔍 Find Mode: Artist-First" -ForegroundColor Magenta
                         }
                         Write-Host ""
@@ -1372,7 +1413,8 @@ function Start-OM {
                                         $stage = 'B'
                                         $exitdo = $true
                                         break
-                                    } else {
+                                    }
+                                    else {
                                         $loadStageBResults = $false    # Use cache and preserve page
                                         $stage = 'B'
                                         $exitdo = $true
@@ -1387,7 +1429,8 @@ function Start-OM {
                                         $stage = 'B'
                                         $exitdo = $true
                                         break
-                                    } else {
+                                    }
+                                    else {
                                         $loadStageBResults = $false    # Use cache and preserve page
                                         $stage = 'B'
                                         $exitdo = $true
@@ -1431,7 +1474,8 @@ function Start-OM {
                                         $artistQuery = $artist
                                         $ProviderArtist = $null
                                         $ProviderAlbum = $null
-                                    } else {
+                                    }
+                                    else {
                                         $script:findMode = 'quick'
                                         $skipQuickPrompts = $false  # Show prompts when switching to quick mode
                                         Write-Host "✓ Switched to Quick Album Search mode" -ForegroundColor Green
@@ -1699,7 +1743,7 @@ function Start-OM {
                                     if (-not $useWhatIf) {
                                         foreach ($a in $audioFiles) {
                                             #rewrite with get-ifexists
-                                            if ($value =Get-IfExists $a 'TagFile') {
+                                            if ($value = Get-IfExists $a 'TagFile') {
                                                 try { $value.Dispose() } catch { Write-Verbose "Failed disposing TagFile for $($a.FilePath): $_" }
                                                 $a.TagFile = $null
                                             }
@@ -1910,7 +1954,7 @@ function Start-OM {
                                     $rangeText = $matches[1]
                                     if (-not $rangeText) { $rangeText = "1" }
                                     Show-CoverArt -Album $ProviderAlbum -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
-                                   Read-Host "Press Enter to continue..."
+                                    Read-Host "Press Enter to continue..."
                                     continue
                                 }
                                 '^cv(\d*)$' {
@@ -1918,7 +1962,7 @@ function Start-OM {
                                     $rangeText = $matches[1]
                                     if (-not $rangeText) { $rangeText = "1" }
                                     Show-CoverArt -Album $ProviderAlbum -RangeText $rangeText -Provider $Provider
-                                   Read-Host "Press Enter to continue..."
+                                    Read-Host "Press Enter to continue..."
                                     continue
                                 }
                                 '^cs(\d*)$' {
@@ -1932,7 +1976,8 @@ function Start-OM {
                                         if (-not $result.Success) {
                                             Write-Warning "Failed to save cover art: $($result.Error)"
                                         }
-                                    } else {
+                                    }
+                                    else {
                                         Write-Warning "No cover art available for this album"
                                     }
                                     continue
@@ -1950,9 +1995,10 @@ function Start-OM {
                                                 $tagFile = [TagLib.File]::Create($_.FullName)
                                                 [PSCustomObject]@{
                                                     FilePath = $_.FullName
-                                                    TagFile = $tagFile
+                                                    TagFile  = $tagFile
                                                 }
-                                            } catch {
+                                            }
+                                            catch {
                                                 Write-Warning "Skipping invalid audio file: $($_.FullName)"
                                                 $null
                                             }
@@ -1969,10 +2015,12 @@ function Start-OM {
                                                     try { $af.TagFile.Dispose() } catch { }
                                                 }
                                             }
-                                        } else {
+                                        }
+                                        else {
                                             Write-Warning "No audio files found to embed cover art in"
                                         }
-                                    } else {
+                                    }
+                                    else {
                                         Write-Warning "No cover art available for this album"
                                     }
                                     continue

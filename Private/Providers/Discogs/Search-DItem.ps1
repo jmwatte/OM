@@ -30,6 +30,13 @@ function Search-DItem {
 
     Write-Verbose "Searching Discogs for $Type with query: '$Query'"
 
+    # Load similarity helper if not available
+    if (-not (Get-Command -Name Get-StringSimilarity-Jaccard -ErrorAction SilentlyContinue)) {
+        $utilsDir = Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'Utils'
+        $similarityPath = Join-Path $utilsDir 'Get-StringSimilarity-Jaccard.ps1'
+        if (Test-Path $similarityPath) { . $similarityPath }
+    }
+
     try {
         # Use Invoke-DiscogsRequest which handles authentication automatically
         $escapedQuery = [uri]::EscapeDataString($Query)
@@ -45,8 +52,27 @@ function Search-DItem {
         $items = @()
         if ($response.results) {
             Write-Verbose "Found $($response.results.Count) results from Discogs"
+            
+            # Score and sort results by similarity to query
+            $scoredResults = @()
             foreach ($result in $response.results) {
-                Write-Verbose "Processing result: $(Get-IfExists $result 'title')"
+                $title = Get-IfExists $result 'title'
+                if ($title) {
+                    $similarity = Get-StringSimilarity-Jaccard -String1 $Query -String2 $title
+                    $scoredResults += [PSCustomObject]@{
+                        Result = $result
+                        Score = $similarity
+                    }
+                }
+            }
+            
+            # Sort by similarity score (descending) and take top 10
+            $topResults = $scoredResults | Sort-Object -Property Score -Descending | Select-Object -First 10
+            Write-Verbose "Processing top $($topResults.Count) results based on similarity to query"
+            
+            foreach ($scored in $topResults) {
+                $result = $scored.Result
+                Write-Verbose "Processing result: $(Get-IfExists $result 'title') (similarity: $($scored.Score.ToString('F3')))"
                 $genres = Get-IfExists $result 'genre'
                 
                 # Extract cover art URL (prefer larger images over thumb)
