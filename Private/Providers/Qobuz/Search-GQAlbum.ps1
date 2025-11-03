@@ -164,17 +164,42 @@ function Search-GQAlbum {
             else {
                 Write-Verbose "Found $($releaseCards.Count) album cards"
                 
-                # Take the first card and extract the album URL
-                $firstCard = $releaseCards[0]
-                $albumLink = $firstCard.SelectSingleNode("./a")
-                if ($albumLink) {
-                    $albumHref = $albumLink.GetAttributeValue("href", "")
-                    if ($albumHref) {
-                        # Clean href (remove query/fragment)
-                        if ($albumHref -match '^[^?#]+') { $hrefClean = $matches[0] } else { $hrefClean = $albumHref }
-                        $targetUrl = "https://www.qobuz.com$hrefClean"
-                        Write-Verbose "Selected album from Qobuz search: $targetUrl"
+                # Extract all albums and score by similarity
+                $albums = @()
+                foreach ($card in $releaseCards) {
+                    try {
+                        # Extract album link and URL slug for similarity scoring
+                        $albumLink = $card.SelectSingleNode("./a")
+                        $albumHref = if ($albumLink) { $albumLink.GetAttributeValue("href", "") } else { "" }
+                        
+                        if ($albumHref -and $albumHref -match '/album/([^/]+)/([^/?#]+)$') {
+                            $urlSlug = $matches[1]
+                            $albumId = $matches[2]
+                            
+                            # Compute similarity between query and URL slug
+                            $similarity = Get-StringSimilarity-Jaccard -String1 $Query -String2 $urlSlug
+                            
+                            $albums += [PSCustomObject]@{
+                                Url = "https://www.qobuz.com$albumHref"
+                                Slug = $urlSlug
+                                Id = $albumId
+                                Similarity = $similarity
+                            }
+                            
+                            Write-Verbose "Album: $urlSlug (similarity: $($similarity.ToString('F3')))"
+                        }
                     }
+                    catch {
+                        Write-Verbose "Failed to parse album card: $_"
+                        continue
+                    }
+                }
+                
+                # Sort by similarity and take the best match
+                if ($albums.Count -gt 0) {
+                    $bestMatch = $albums | Sort-Object -Property Similarity -Descending | Select-Object -First 1
+                    $targetUrl = $bestMatch.Url
+                    Write-Verbose "Selected best match: $($bestMatch.Slug) (similarity: $($bestMatch.Similarity.ToString('F3')))"
                 }
             }
         }
