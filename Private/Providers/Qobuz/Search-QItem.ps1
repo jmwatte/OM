@@ -27,7 +27,9 @@ function Search-QItem {
     if ($Type -eq 'album') {
         try {
             $result = Search-GQAlbum -Query $Query
-            if ($result -and $result.albums -and $result.albums.items -and $result.albums.items.Count -gt 0) {
+            $resultAlbums= Get-IfExists -target $result -path 'albums.items'
+            if ($resultAlbums.Count -gt 0) {
+            #if ($result -and $result.albums -and $result.albums.items -and $result.albums.items.Count -gt 0) {
                 Write-Verbose "Found album via Google CSE and parsing; returning result."
                 return $result
             }

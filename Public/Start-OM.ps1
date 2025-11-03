@@ -427,7 +427,9 @@ function Start-OM {
                             catch {
                                 Write-Warning "Quick search failed: $_"
                                 $albumCandidates = @()
-                            }                            if ($albumCandidates.Count -eq 0) {
+                            }                          
+                            $QuickAlbumCandidates= get-ifexists $quickResults 'albums.items'
+                            if ($null -eq $QuickAlbumCandidates -or $QuickAlbumCandidates.Count -eq 0) {
                                 Write-Host "No albums found for '$quickAlbum' by '$quickArtist' with $Provider." -ForegroundColor Red
                                 $retryChoice = Read-Host "`nPress Enter to retry, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(a)' artist-first mode, '(na)' new artist, or enter new album name"
                                 if ($retryChoice -eq 'ps') {
@@ -513,7 +515,7 @@ function Start-OM {
                         $originalColor = [Console]::ForegroundColor
                         [Console]::ForegroundColor = [ConsoleColor]::Yellow
                         $modeIndicator = if ($script:backNavigationMode) { " (Back Navigation - use 'f' to search again)" } else { "" }
-                        $albumChoice = Read-Host "Select album [number] (Enter=first), (P)rovider, {F}indMode, (C)over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags}, or new search term$modeIndicator"
+                        $albumChoice = Read-Host "Select album [number] (Enter=first), (P)rovider, {F}indMode, (N)ew (A)rtist, (C)over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags}, or new search term$modeIndicator"
                         [Console]::ForegroundColor = $originalColor
                         if ($albumChoice -eq '') { $albumChoice = '1' }
                         
@@ -570,6 +572,17 @@ function Start-OM {
                             $script:findMode = 'artist-first'
                             $script:backNavigationMode = $false
                             $stage = 'A'
+                            continue stageLoop
+                        }
+                        elseif ($albumChoice -eq 'na') {
+                            $userInput = Read-Host "Enter new artist name"
+                            if (-not $userInput) {
+                                Write-Host "Artist cannot be empty." -ForegroundColor Yellow
+                                continue albumSelectionLoop
+                            }
+                            $currentArtist = $userInput
+                            $skipQuickPrompts = $true
+                            $script:backNavigationMode = $false
                             continue stageLoop
                         }
                         elseif ($albumChoice -match '^cvo(.*)$') {

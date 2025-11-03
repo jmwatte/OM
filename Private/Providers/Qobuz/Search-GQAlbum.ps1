@@ -54,6 +54,7 @@ function Search-GQAlbum {
     # This helps Google return qobuz album pages when configured to search qobuz.
     $searchQueryGoogle = "`"$Query`""
     $targetUrl = $null
+    $useQobuzFallback = $false
 
     # Try Google Custom Search API first (if configured via config or env)
     $google = Get-OMConfig -Provider Google
@@ -125,11 +126,51 @@ function Search-GQAlbum {
         }
         catch {
             Write-Verbose "Google CSE failed: $_"
+            # Check if it's a rate limit error
+            if ($_.Exception.Message -match 'RATE_LIMIT_EXCEEDED|RESOURCE_EXHAUSTED') {
+                Write-Warning "Google CSE rate limit exceeded. Falling back to Qobuz native search."
+                $useQobuzFallback = $true
+            }
+        }
+    }
+
+    # Fallback to Qobuz native search if Google CSE failed or hit rate limit
+    if (-not $targetUrl -and $useQobuzFallback) {
+        Write-Verbose "Using Qobuz native search fallback for query: $Query"
+        
+        # Construct Qobuz search URL with proper locale
+        $escapedQuery = [uri]::EscapeDataString($Query)
+        $qobuzSearchUrl = "https://www.qobuz.com/$urlLocale/search/albums/$escapedQuery"
+        Write-Verbose "Qobuz search URL: $qobuzSearchUrl"
+        
+        try {
+            $searchResp = Invoke-WebRequest -Uri $qobuzSearchUrl -UseBasicParsing -ErrorAction Stop -TimeoutSec 15
+            $searchDoc = ConvertFrom-Html -Content $searchResp.Content
+            
+            # Extract first album link from search results
+            # Qobuz search results typically have album links in the format: /locale/album/title/id
+            $albumLinks = $searchDoc.SelectNodes("//a[@href]") | Where-Object {
+                $href = $_.GetAttributeValue('href', '')
+                $href -match "/$urlLocale/album/.+/\d+"
+            } | Select-Object -First 1
+            
+            if ($albumLinks) {
+                $relativeUrl = $albumLinks.GetAttributeValue('href', '')
+                $targetUrl = "https://www.qobuz.com$relativeUrl"
+                Write-Verbose "Found album from Qobuz search: $targetUrl"
+            }
+            else {
+                Write-Verbose "No album links found in Qobuz search results"
+            }
+        }
+        catch {
+            Write-Verbose "Qobuz native search failed: $_"
         }
     }
 
     # If nothing found, return empty result
     if (-not $targetUrl) {
+        Write-Verbose "No Qobuz album URL found via CSE or native search; returning empty result."
         Write-Verbose "No Qobuz album URL found via CSE; returning empty result."
         $res = [PSCustomObject]@{ albums = [PSCustomObject]@{ items = @() } }
         $script:QobuzGQAlbumCache[$cacheKey] = $res
@@ -170,7 +211,8 @@ function Search-GQAlbum {
 
         $item = [PSCustomObject]@{
             name        = $albumName
-            id          = $albumId
+            id          = $targetUrl
+            #id          = $albumId
             url         = $targetUrl
             artists     = @([PSCustomObject]@{ name = $albumArtistName })
             genres      = $genres
