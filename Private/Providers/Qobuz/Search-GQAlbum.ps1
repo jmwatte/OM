@@ -239,13 +239,14 @@ function Search-GQAlbum {
                     }
                 }
                 
-                # Return all albums found
+                # Return first 10 albums found
                 if ($albums.Count -gt 0) {
-                    Write-Verbose "Successfully extracted $($albums.Count) albums from Qobuz search"
+                    $limitedAlbums = $albums | Select-Object -First 10
+                    Write-Verbose "Successfully extracted $($albums.Count) albums from Qobuz search, returning first 10"
                     
                     $res = [PSCustomObject]@{
                         albums = [PSCustomObject]@{
-                            items = $albums
+                            items = $limitedAlbums
                         }
                     }
                     
