@@ -239,6 +239,8 @@ function Search-DAlbumsByName {
                 track_count  = $trackCount
             }
             
+            Write-Host "DEBUG: Album '$albumTitle' assigned ID: $($album.id) (result type: $resultType, MastersOnly: $MastersOnly)" -ForegroundColor Yellow
+            
             $albums += $album
             $processed++
             Write-Verbose "Added album: $albumTitle (id: $($album.id))"
