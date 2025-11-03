@@ -76,11 +76,13 @@ function Search-GQAlbum {
             $allItems = @()
             $starts = @(1, 11)  # Get first 10, then next 10
 
+            Write-Verbose "Google CSE search URL: https://cse.google.com/cse?cx=$gCse&q=$csq"
+
             foreach ($start in $starts) {
                 $apiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=$num&start=$start&gl=$country"
                 $apiResp = Invoke-RestMethod -Uri $apiUrl -Method Get -ErrorAction Stop
                 Write-Verbose "Google CSE API URL (start=$start): $apiUrl"
-                if ($apiResp.items) {
+                if ($apiResp -and $apiResp.PSObject.Properties.Name -contains 'items' -and $apiResp.items) {
                     $allItems += $apiResp.items
                     Write-Verbose ("Google CSE returned {0} items for start={1}" -f $apiResp.items.Count, $start)
                 } else {
@@ -140,7 +142,7 @@ function Search-GQAlbum {
         else { $albumId = ($targetUrl.TrimEnd('/').Split('/')[-1]) }
 
         Write-Verbose "Extracted album ID: $albumId, fetching tracks to get album metadata..."
-        $tracks = Get-QAlbumTracks -Id $albumId
+        $tracks = Get-QAlbumTracks -Id $targetUrl
 
         if (-not $tracks -or $tracks.Count -eq 0) {
             Write-Verbose "No tracks found for album ID $albumId"
