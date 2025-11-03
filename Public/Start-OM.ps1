@@ -497,7 +497,7 @@ function Start-OM {
                             if (-not $trackCount) { $trackCount = Get-IfExists $album 'tracks_count' }
                             $trackInfo = if ($trackCount) { " ($trackCount tracks)" } else { "" }
                             
-                            Write-Host "[$($i+1)] $($album.name) - $artistDisplay (id: $(if ($Provider -eq 'Discogs') { "r$($album.id)" } else { $album.id })) (year: $year)$trackInfo"
+                            Write-Host "[$($i+1)] $($album.name) - $artistDisplay (id: $($album.id)) (year: $year)$trackInfo"
                         }
 
                         $originalColor = [Console]::ForegroundColor
