@@ -419,7 +419,7 @@ function Start-OM {
                             $quickArtist = $currentArtist
                             try {
                                 $quickResults = Invoke-ProviderSearch -Provider $Provider -Album $quickAlbum -Artist $quickArtist -Type album
-                                $albumCandidates = @($quickResults.albums.items | Where-Object { $_ -ne $null })
+                                $albumCandidates = $quickResults.albums.items | Where-Object { $_ -ne $null }
                             } catch {
                                 Write-Warning "Quick search failed: $_"
                                 $albumCandidates = @()

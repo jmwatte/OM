@@ -127,7 +127,7 @@ function Invoke-StageB-AlbumSelection {
     $pageSize = $PerPage  # Use PerPage for display pagination
     $maxResults = $MaxResults
     $mastersOnlyMode = $true  # Default for Discogs
-    $albumsForArtist = @($CachedAlbums) | Where-Object {$_ -ne $null}  # Ensure array
+    $albumsForArtist = $CachedAlbums | Where-Object {$_ -ne $null}
 
 
 
@@ -173,7 +173,7 @@ function Invoke-StageB-AlbumSelection {
             }
 
             $albumsForArtist = Invoke-ProviderSearchAlbums @searchAlbumsParams
-            $albumsForArtist = @($albumsForArtist) | Where-Object {$_ -ne $null}  # Ensure array
+            $albumsForArtist = $albumsForArtist | Where-Object {$_ -ne $null}  # Filter nulls
         
             Write-Verbose "Smart search returned: $($albumsForArtist.Count) albums"
             if ($albumsForArtist.Count -gt 0) {
@@ -552,7 +552,7 @@ function Invoke-StageB-AlbumSelection {
                             }
 
                             $newResults = Invoke-ProviderSearchAlbums @searchParams
-                            $newResults = @($newResults)
+                            $newResults = $newResults | Where-Object {$_ -ne $null}
                             
                             if ($newResults -and $newResults.Count -gt 0) {
                                 $albumsForArtist = $albumsForArtist + $newResults
@@ -741,7 +741,7 @@ function Invoke-StageB-AlbumSelection {
                     }
                     
                     $albumsForArtist = Invoke-ProviderGetAlbums @fetchParams
-                    $albumsForArtist = @($albumsForArtist)
+                    $albumsForArtist = $albumsForArtist | Where-Object {$_ -ne $null}
                     $albumsForArtist = $albumsForArtist | Sort-Object { - (Get-StringSimilarity-Jaccard -String1 $AlbumName -String2 $_.Name) }
                     $CachedAlbums = $albumsForArtist
                     $page = 1
@@ -965,6 +965,14 @@ function Invoke-StageB-AlbumSelection {
                     CurrentPage           = $currentPage
                 }
             }
+              '^cvo(\d*)$' {
+                                    # View Cover art original
+                                    $rangeText = $matches[1]
+                                    if (-not $rangeText) { $rangeText = "1" }
+                                    Show-CoverArt -Album $albumsForArtist -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
+                                   Read-Host "Press Enter to continue..."
+                                    continue
+                                }
                  '^cv(.*)$' {
                     # View Cover art: cv (first album), cv<number>, or cv1-4,6,7 (multiple albums with chafa grid)
                     $rangeText = if ($matches[1]) { $matches[1].Trim() } else { '1' }
@@ -1059,7 +1067,7 @@ function Invoke-StageB-AlbumSelection {
                     $searchResults = Invoke-ProviderSearchAlbums @searchParams
                     
                     # Normalize to array before checking Count
-                    $searchResults = @($searchResults)
+                    $searchResults = $searchResults | Where-Object {$_ -ne $null}
                     
                     if ($searchResults -and $searchResults.Count -gt 0) {
                         $albumsForArtist = $searchResults

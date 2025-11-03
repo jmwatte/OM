@@ -26,7 +26,7 @@ write-host "Spotify Search Results:"
 $d.albums.items | Format-List #>
 # Call Start-OM with the desired parameters
 #gci E:\musicbrainztester |%{som $_.FullName -Provider MusicBrainz}
- som 'E:\Spinvis Collectie\Vinkenoog _ Spinvis Combo' -Provider Discogs -Verbose
+ som "E:\Swans" -Provider Qobuz -Verbose
 #Start-OM -Path "E:\MusicBrainzTester\ "  -Provider MusicBrainz -verbose
  #start get-Qartistalbums with -ArtistId "https://www.qobuz.com/be-fr/interpreter/paul-weller/53535"
 # . .\Private\Providers\Qobuz\Search-GQArtist.ps1
