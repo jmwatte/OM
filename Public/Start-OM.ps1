@@ -514,7 +514,8 @@ function Start-OM {
 
                         $originalColor = [Console]::ForegroundColor
                         [Console]::ForegroundColor = [ConsoleColor]::Yellow
-                        $modeIndicator = if ($script:backNavigationMode) { " (Back Navigation - use 'f' to search again)" } else { "" }
+                        $modeIndicator = if (
+                        $script:backNavigationMode) { " (Back Navigation - use 'f' to search again)" } else { "" }
                         $albumChoice = Read-Host "Select album [number] (Enter=first), (P)rovider, {F}indMode, (N)ew (A)rtist, (C)over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags}, or new search term$modeIndicator"
                         [Console]::ForegroundColor = $originalColor
                         if ($albumChoice -eq '') { $albumChoice = '1' }
