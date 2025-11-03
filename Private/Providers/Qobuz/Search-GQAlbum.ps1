@@ -164,7 +164,7 @@ function Search-GQAlbum {
             else {
                 Write-Verbose "Found $($releaseCards.Count) album cards"
                 
-                # Extract all albums and score by similarity
+                # Extract all albums with metadata and score by similarity
                 $albums = @()
                 foreach ($card in $releaseCards) {
                     try {
@@ -179,14 +179,48 @@ function Search-GQAlbum {
                             # Compute similarity between query and URL slug
                             $similarity = Get-StringSimilarity-Jaccard -String1 $Query -String2 $urlSlug
                             
+                            # Extract album metadata from the card (like Search-QAlbum.ps1)
+                            $titleLink = $card.SelectSingleNode("./div[1]/a")
+                            $albumName = if ($titleLink) { 
+                                $titleLink.GetAttributeValue("data-title", "").Trim() 
+                            } else { "" }
+                            if ($albumName) { $albumName = [System.Web.HttpUtility]::HtmlDecode($albumName).Trim() }
+                            
+                            $artistLink = $card.SelectSingleNode("./div[1]/p[1]/a")
+                            $artistName = if ($artistLink) { $artistLink.InnerText.Trim() } else { "" }
+                            if ($artistName) { $artistName = [System.Web.HttpUtility]::HtmlDecode($artistName).Trim() }
+                            
+                            $genreElement = $card.SelectSingleNode("./a/div/p[1]")
+                            $genre = if ($genreElement) { [System.Web.HttpUtility]::HtmlDecode($genreElement.InnerText.Trim()) } else { "" }
+                            
+                            $dateNode = $card.SelectSingleNode("./a/div/p[2]")
+                            $releaseDate = if ($dateNode) { [System.Web.HttpUtility]::HtmlDecode($dateNode.InnerText.Trim()) } else { "" }
+                            
+                            $trackNode = $card.SelectSingleNode("./a/div/p[3]")
+                            $trackCount = $null
+                            if ($trackNode) {
+                                if ($trackNode.InnerText -match '(\d{1,3})') {
+                                    $trackCount = [int]$matches[1]
+                                }
+                            }
+                            
+                            $coverImg = $card.SelectSingleNode("./img")
+                            $coverUrl = if ($coverImg) { $coverImg.GetAttributeValue("src", "") } else { "" }
+                            
                             $albums += [PSCustomObject]@{
                                 Url = "https://www.qobuz.com$albumHref"
                                 Slug = $urlSlug
                                 Id = $albumId
                                 Similarity = $similarity
+                                Name = $albumName
+                                Artist = $artistName
+                                Genre = $genre
+                                ReleaseDate = $releaseDate
+                                TrackCount = $trackCount
+                                CoverUrl = $coverUrl
                             }
                             
-                            Write-Verbose "Album: $urlSlug (similarity: $($similarity.ToString('F3')))"
+                            Write-Verbose "Album: $albumName by $artistName (slug: $urlSlug, similarity: $($similarity.ToString('F3')))"
                         }
                     }
                     catch {
@@ -195,11 +229,35 @@ function Search-GQAlbum {
                     }
                 }
                 
-                # Sort by similarity and take the best match
+                # Sort by similarity and take the top 5
                 if ($albums.Count -gt 0) {
-                    $bestMatch = $albums | Sort-Object -Property Similarity -Descending | Select-Object -First 1
-                    $targetUrl = $bestMatch.Url
-                    Write-Verbose "Selected best match: $($bestMatch.Slug) (similarity: $($bestMatch.Similarity.ToString('F3')))"
+                    $topAlbums = $albums | Sort-Object -Property Similarity -Descending | Select-Object -First 5
+                    
+                    # Create album objects in the expected format
+                    $albumItems = @()
+                    foreach ($album in $topAlbums) {
+                        $item = [PSCustomObject]@{
+                            name        = $album.Name
+                            id          = $album.Url
+                            url         = $album.Url
+                            artists     = @([PSCustomObject]@{ name = $album.Artist })
+                            genres      = if ($album.Genre) { $album.Genre } else { "" }
+                            cover_url   = $album.CoverUrl
+                            track_count = $album.TrackCount
+                            release_date = $album.ReleaseDate
+                        }
+                        $albumItems += $item
+                        Write-Verbose "Selected album: $($album.Name) by $($album.Artist) (similarity: $($album.Similarity.ToString('F3')))"
+                    }
+                    
+                    $res = [PSCustomObject]@{
+                        albums = [PSCustomObject]@{
+                            items = $albumItems
+                        }
+                    }
+                    
+                    $script:QobuzGQAlbumCache[$cacheKey] = $res
+                    return $res
                 }
             }
         }
