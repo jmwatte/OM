@@ -123,18 +123,26 @@ function Search-GQAlbum {
                     Write-Verbose "Using fallback selection: $targetUrl"
                 }
             }
-        }
-        catch {
-            Write-Verbose "Google CSE failed: $_"
-            # Check if it's a rate limit error
-            if ($_.Exception.Message -match 'RATE_LIMIT_EXCEEDED|RESOURCE_EXHAUSTED') {
-                Write-Warning "Google CSE rate limit exceeded. Falling back to Qobuz native search."
+            else {
+                # No results from Google CSE, use Qobuz native search fallback
+                Write-Verbose "Google CSE returned no results. Falling back to Qobuz native search."
                 $useQobuzFallback = $true
             }
         }
+        catch {
+            Write-Verbose "Google CSE failed: $_"
+            # Check if it's a rate limit error or any other failure
+            if ($_.Exception.Message -match 'RATE_LIMIT_EXCEEDED|RESOURCE_EXHAUSTED') {
+                Write-Warning "Google CSE rate limit exceeded. Falling back to Qobuz native search."
+            }
+            else {
+                Write-Verbose "Google CSE error. Falling back to Qobuz native search."
+            }
+            $useQobuzFallback = $true
+        }
     }
 
-    # Fallback to Qobuz native search if Google CSE failed or hit rate limit
+    # Fallback to Qobuz native search if Google CSE failed or returned no results
     if (-not $targetUrl -and $useQobuzFallback) {
         Write-Verbose "Using Qobuz native search fallback for query: $Query"
         
