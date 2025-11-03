@@ -155,20 +155,27 @@ function Search-GQAlbum {
             $searchResp = Invoke-WebRequest -Uri $qobuzSearchUrl -UseBasicParsing -ErrorAction Stop -TimeoutSec 15
             $searchDoc = ConvertFrom-Html -Content $searchResp.Content
             
-            # Extract first album link from search results
-            # Qobuz search results typically have album links in the format: /locale/album/title/id
-            $albumLinks = $searchDoc.SelectNodes("//a[@href]") | Where-Object {
-                $href = $_.GetAttributeValue('href', '')
-                $href -match "/$urlLocale/album/.+/\d+"
-            } | Select-Object -First 1
+            # Find all ReleaseCard divs using the same XPath as Search-QAlbum.ps1
+            $releaseCards = $searchDoc.SelectNodes("//*[@id='search']/section[2]/div/ul/li/div")
             
-            if ($albumLinks) {
-                $relativeUrl = $albumLinks.GetAttributeValue('href', '')
-                $targetUrl = "https://www.qobuz.com$relativeUrl"
-                Write-Verbose "Found album from Qobuz search: $targetUrl"
+            if (-not $releaseCards -or $releaseCards.Count -eq 0) {
+                Write-Verbose "No ReleaseCard elements found in search results"
             }
             else {
-                Write-Verbose "No album links found in Qobuz search results"
+                Write-Verbose "Found $($releaseCards.Count) album cards"
+                
+                # Take the first card and extract the album URL
+                $firstCard = $releaseCards[0]
+                $albumLink = $firstCard.SelectSingleNode("./a")
+                if ($albumLink) {
+                    $albumHref = $albumLink.GetAttributeValue("href", "")
+                    if ($albumHref) {
+                        # Clean href (remove query/fragment)
+                        if ($albumHref -match '^[^?#]+') { $hrefClean = $matches[0] } else { $hrefClean = $albumHref }
+                        $targetUrl = "https://www.qobuz.com$hrefClean"
+                        Write-Verbose "Selected album from Qobuz search: $targetUrl"
+                    }
+                }
             }
         }
         catch {
