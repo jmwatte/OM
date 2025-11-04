@@ -33,6 +33,21 @@ function Parse-QobuzReleaseCard {
         $dateNode = $Card.SelectSingleNode("./a/div/p[2]")
         $releaseDate = if ($dateNode) { [System.Web.HttpUtility]::HtmlDecode($dateNode.InnerText.Trim()) } else { "" }
 
+        # Prefer a simple 4-digit year for quick-search results when possible
+        if ($releaseDate -and $releaseDate -match '(\d{4})') {
+            $releaseDate = $matches[1]
+        }
+        else {
+            # Fallback: try to find a 4-digit year in the card HTML/text
+            try {
+                $cardHtml = if ($Card.OuterHtml) { $Card.OuterHtml } else { $Card.InnerText }
+            } catch {
+                $cardHtml = $Card.InnerText
+            }
+            $m = [regex]::Match($cardHtml, '([12]\d{3})')
+            if ($m.Success) { $releaseDate = $m.Groups[1].Value }
+        }
+
         $trackNode = $Card.SelectSingleNode("./a/div/p[3]")
         $trackCount = $null
         if ($trackNode) {
