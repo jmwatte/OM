@@ -514,7 +514,7 @@ function Invoke-StageB-AlbumSelection {
 
         $originalColor = [Console]::ForegroundColor
         [Console]::ForegroundColor = [ConsoleColor]::Yellow
-        $inputF = Read-Host "Select album(s) [number] (Enter=first), number(s) (e.g., 1,3,5-8), '(b)ack', '(n)ext', '(pr)ev', '(x)ip', 'id:<id>', '(p)rovider', (c)over {[V]iew,[S]ave,saveIn[T]ags}, '*' (all albums), or text to search:"
+        $inputF = Read-Host "Select album(s) [number] (Enter=first), number(s) (e.g., 1,3,5-8), '(b)ack', '(n)ext', '(pr)ev', '(x)ip', 'id:<id>', '(p)rovider', (c)over {[V]iew,[S]ave,saveIn[T]ags}, '*' (all albums), '(ni)ew item (artist+album)', or text to search:"
         [Console]::ForegroundColor = $originalColor
         
         switch -Regex ($inputF) {
@@ -660,6 +660,51 @@ function Invoke-StageB-AlbumSelection {
                     UpdatedProvider       = $Provider
                     CurrentPage           = $currentPage
                 }
+            }
+            '^ni$' {
+                # New Item: prompt for both Artist + Album using centralized helper
+                try {
+                    $ra = Read-ArtistAlbum -DefaultArtist $Artist -DefaultAlbum $AlbumName
+                }
+                catch {
+                    Write-Warning "Read-ArtistAlbum failed: $_"
+                    continue
+                }
+
+                if ($null -eq $ra) {
+                    # Nothing returned, continue loop
+                    continue
+                }
+
+                # If the user changed the artist, go back to Stage A with NewArtistQuery and NewAlbumName
+                if ($ra.ChangedArtist) {
+                    return @{
+                        NextStage             = 'A'
+                        SelectedAlbum         = $null
+                        UpdatedCache          = $CachedAlbums
+                        UpdatedCachedArtistId = $CachedArtistId
+                        UpdatedProvider       = $Provider
+                        NewArtistQuery        = $ra.Artist
+                        NewAlbumName          = $ra.Album
+                        CurrentPage           = $currentPage
+                    }
+                }
+
+                # If only the album was changed, request Stage B to retry with the new album name
+                if ($ra.ChangedAlbum) {
+                    return @{
+                        NextStage             = 'B'
+                        SelectedAlbum         = $null
+                        UpdatedCache          = $CachedAlbums
+                        UpdatedCachedArtistId = $CachedArtistId
+                        UpdatedProvider       = $Provider
+                        NewAlbumName          = $ra.Album
+                        CurrentPage           = $currentPage
+                    }
+                }
+
+                # No changes made; continue the selection loop
+                continue
             }
             '^b$' {
                 return @{
