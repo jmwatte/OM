@@ -25,8 +25,17 @@ function Get-Tags {
         Write-Verbose "No track-level genres, using artist/album genres"
         Get-GenresTags -ProviderArtist $Artist -ProviderAlbum $Album
     }
-    $year = Get-IfExists $Album 'release_date'
-    if ($year -match '^(?<year>\d{4})') { $Year = $matches.year } else { $Year = 0000 }
+    # Normalize release year robustly (handles '26 May 2014', '2014-05-26', DateTime, etc.)
+    $rawRelease = Get-IfExists $Album 'release_date'
+    if ($rawRelease) {
+        try {
+            $Year = Get-ReleaseYear -ReleaseDate $rawRelease
+        } catch {
+            $Year = 0000
+        }
+    } else {
+        $Year = 0000
+    }
     
     # Extract album artist value
     # Priority: Manual override > Classical performer detection > Default artist name
