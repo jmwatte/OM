@@ -29,13 +29,7 @@ function Search-GQAlbum {
         $qobuzLocalesPath = Join-Path $privateDir 'QobuzLocales.ps1'
         if (Test-Path $qobuzLocalesPath) { . $qobuzLocalesPath }
     }
-    # Dot-source parser and normalize helpers if available
-    $qobuzDir = Split-Path -Parent $PSScriptRoot
-    $parsePath = Join-Path $qobuzDir 'Parse-QobuzReleaseCard.ps1'
-    if (Test-Path $parsePath) { . $parsePath }
-    $providersDir = Split-Path -Parent $qobuzDir
-    $commonNormalize = Join-Path $providersDir 'Common\Normalize-AlbumResult.ps1'
-    if (Test-Path $commonNormalize) { . $commonNormalize }
+    # Helpers are loaded at module import time by OM.psm1
 
     # Cache results in script scope
     if (-not (Get-Variable -Name QobuzGQAlbumCache -Scope Script -ErrorAction SilentlyContinue) -or -not ($script:QobuzGQAlbumCache -is [hashtable])) {
