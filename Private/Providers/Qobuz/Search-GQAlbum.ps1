@@ -67,7 +67,7 @@ function Search-GQAlbum {
 
     # Google CSE (preferred) - try this first if configured
     if (-not $targetUrl -and $gApiKey -and $gCse) {
-        try {
+       <#  try {
             # Use the album-only query for Google CSE
             $csq = [uri]::EscapeDataString($searchQueryGoogle)
             $num = 10  # Google CSE limit per request
@@ -138,10 +138,10 @@ function Search-GQAlbum {
             }
             else {
                 Write-Verbose "Google CSE error. Falling back to Qobuz native search."
-            }
+            } #>
             $useQobuzFallback = $true
         }
-    }
+    #}
 
     # Fallback to Qobuz native search if Google CSE failed or returned no results
     if (-not $targetUrl -and $useQobuzFallback) {

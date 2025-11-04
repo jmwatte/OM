@@ -153,6 +153,7 @@ function Search-DAlbumsByName {
         $totalResults = $searchResult.results.Count
         
         foreach ($result in $searchResult.results) {
+            try {
             # Check for user interruption
             if ([Console]::KeyAvailable) {
                 $key = [Console]::ReadKey($true)
@@ -221,6 +222,18 @@ function Search-DAlbumsByName {
                 $coverUrl = Get-IfExists $result 'thumb'
             }
 
+            # Build canonical album object
+            $resultUri = Get-IfExists $result 'uri'
+            $resourceUri = Get-IfExists $result 'resource_url'
+            $urlVal = $null
+            if ($resultUri) {
+                if ($resultUri -match '^https?://') { $urlVal = $resultUri } else { $urlVal = "https://www.discogs.com$resultUri" }
+            } elseif ($resourceUri -and $resourceUri -match '^https?://') { $urlVal = $resourceUri }
+
+            # Determine primary artist name
+            $primaryArtist = $ArtistName
+            if ($resultTitle -match '^\s*(.+?)\s*[-–]\s*(.+?)\s*$') { $primaryArtist = $matches[1].Trim() }
+
             $album = [PSCustomObject]@{
                 id           = if ($MastersOnly -eq 'Masters') { "m$resultId" } else { "r$resultId" }
                 name         = $albumTitle
@@ -231,12 +244,12 @@ function Search-DAlbumsByName {
                 country      = Get-IfExists $result 'country'
                 cover_url    = $coverUrl  # High-quality cover art URL
                 genres       = if ($resultGenre) { @($resultGenre) } else { @() }
-                artist       = if (Get-IfExists $result 'user_data') { 
-                    # Extract artist from title
-                    if ($resultTitle -match '^\s*(.+?)\s*[-–]\s*') { $matches[1].Trim() } else { $ArtistName }
-                } else { $ArtistName }
-                resource_url = Get-IfExists $result 'resource_url'
+                artists      = @([PSCustomObject]@{ name = $primaryArtist })
+                artist       = $primaryArtist
+                resource_url = $resourceUri
+                url          = $urlVal
                 track_count  = $trackCount
+                disc_count   = $null
             }
             
             Write-Host "DEBUG: Album '$albumTitle' assigned ID: $($album.id) (result type: $resultType, MastersOnly: $MastersOnly)" -ForegroundColor Yellow
@@ -244,6 +257,10 @@ function Search-DAlbumsByName {
             $albums += $album
             $processed++
             Write-Verbose "Added album: $albumTitle (id: $($album.id))"
+            } catch {
+                Write-Warning "Failed processing Discogs result id $((Get-IfExists $result 'id')): $_"
+                continue
+            }
         }
         
         Write-Verbose "Processed $processed albums, returning $($albums.Count) albums"

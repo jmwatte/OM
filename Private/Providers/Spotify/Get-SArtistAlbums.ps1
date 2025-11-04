@@ -48,6 +48,17 @@ function Get-SArtistAlbums {
                 # Add cover_url property to match other providers
                 $album | Add-Member -MemberType NoteProperty -Name 'cover_url' -Value $coverUrl -Force
 
+                # Canonical fields expected by Normalize-AlbumResult
+                $trackCount = $null
+                if ($album.total_tracks) { try { $trackCount = [int]$album.total_tracks } catch { $trackCount = $album.total_tracks } }
+                $album | Add-Member -MemberType NoteProperty -Name 'track_count' -Value $trackCount -Force
+
+                $urlVal = $null
+                if ($album.external_urls -and $album.external_urls.spotify) { $urlVal = $album.external_urls.spotify } elseif ($album.href) { $urlVal = $album.href }
+                $album | Add-Member -MemberType NoteProperty -Name 'url' -Value $urlVal -Force
+
+                $album | Add-Member -MemberType NoteProperty -Name 'disc_count' -Value $null -Force
+
                 $album
             }
         }

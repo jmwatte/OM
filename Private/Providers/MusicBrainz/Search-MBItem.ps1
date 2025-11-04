@@ -169,6 +169,22 @@ function Search-MBItem {
                     } | Measure-Object -Sum).Sum
                 }
                 
+                # Compute disc count (number of media objects)
+                $discCount = $null
+                if (Get-IfExists $item 'media') { $discCount = (@($item.media).Count) }
+
+                # Build web URL to MusicBrainz release page
+                $mbUrl = if ($item.id) { "https://musicbrainz.org/release/$($item.id)" } else { $null }
+
+                # Extract genres/tags if present
+                $mbGenres = @()
+                if ($item.PSObject.Properties['genres'] -and $item.genres) {
+                    $mbGenres = $item.genres | Where-Object { $_ -and $_.PSObject.Properties['name'] } | Select-Object -First 5 -ExpandProperty name
+                }
+                elseif ($item.PSObject.Properties['tags'] -and $item.tags) {
+                    $mbGenres = $item.tags | Where-Object { $_ -and $_.PSObject.Properties['name'] } | Select-Object -First 5 -ExpandProperty name
+                }
+
                 $normalizedItem = [PSCustomObject]@{
                     id = $item.id
                     name = $item.title
@@ -177,6 +193,9 @@ function Search-MBItem {
                     cover_url = $coverUrl  # Cover Art Archive URL
                     release_date = if ($item.PSObject.Properties['date']) { $item.date } else { $null }
                     track_count = $trackCount
+                    disc_count = $discCount
+                    url = $mbUrl
+                    genres = $mbGenres
                 }
             }
             $normalizedItem

@@ -144,8 +144,13 @@ function Get-MBArtistAlbums {
                 year         = $year
                 release_date = $releaseDate
                 track_count  = $track_count
+                disc_count   = if (Get-IfExists $release 'media') { (@($release.media).Count) } else { $null }
                 type         = 'album'  # Assuming all are albums as per query
                 cover_url    = $coverUrl  # Cover Art Archive URL
+                url          = if ($release.id) { "https://musicbrainz.org/release/$($release.id)" } else { $null }
+                artists      = if (Get-IfExists $release 'artist-credit') { 
+                                    @($release.'artist-credit' | ForEach-Object { if (Get-IfExists $_ 'name') { [PSCustomObject]@{ name = $_.name } } }) 
+                                } else { @() }
             }
 
 

@@ -100,6 +100,16 @@ function Search-DItem {
                     }
                 }
                 
+                # Compute canonical URL and counts before building the object to avoid inline-if parsing issues
+                $discogsUri = Get-IfExists $result 'uri'
+                $discogsResource = Get-IfExists $result 'resource_url'
+                $urlVal = $null
+                if ($discogsUri) {
+                    if ($discogsUri -match '^https?://') { $urlVal = $discogsUri } else { $urlVal = "https://www.discogs.com" + $discogsUri }
+                } elseif ($discogsResource -and $discogsResource -match '^https?://') {
+                    $urlVal = $discogsResource
+                }
+
                 $item = [PSCustomObject]@{
                     release_date = Get-IfExists $result 'year'
                     type         = Get-IfExists $result 'type'
@@ -111,7 +121,10 @@ function Search-DItem {
                     }
                     genres       = if ($genres) { $genres -join ', ' } else { '' }  # Genres come from details page
                     cover_url    = $coverUrl  # High-quality cover art URL
-                    uri          = Get-IfExists $result 'uri'  # Discogs resource URI
+                    uri          = $discogsUri  # Discogs resource URI
+                    url          = $urlVal
+                    track_count  = $null
+                    disc_count   = $null
                 }
                 if ($Type -eq 'album') {
                     # Add artist info for albums
@@ -123,6 +136,21 @@ function Search-DItem {
                     $item | Add-Member -MemberType NoteProperty -Name 'artists' -Value @([PSCustomObject]@{ name = $artistName }) -Force
                     Write-Verbose "Extracted artist '$artistName' from album title '$title'"
                 }
+                # Attempt to fetch track count for this release (rate-limited, best-effort)
+                try {
+                    $resourceUrl = Get-IfExists $result 'resource_url'
+                    if ($resourceUrl) {
+                        Start-Sleep -Milliseconds 850
+                        $releaseDetails = Invoke-DiscogsRequest -Uri $resourceUrl -Method 'GET'
+                        if ($releaseDetails -and $releaseDetails.tracklist) {
+                            $item.track_count = $releaseDetails.tracklist.Count
+                        }
+                    }
+                }
+                catch {
+                    Write-Verbose "Failed to fetch track count for Discogs item id $(Get-IfExists $result 'id'): $_"
+                }
+
                 $items += $item
             }
         } else {

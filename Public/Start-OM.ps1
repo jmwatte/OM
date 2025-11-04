@@ -431,7 +431,7 @@ function Start-OM {
                             $QuickAlbumCandidates= get-ifexists $quickResults 'albums.items'
                             if ($null -eq $QuickAlbumCandidates -or $QuickAlbumCandidates.Count -eq 0) {
                                 Write-Host "No albums found for '$quickAlbum' by '$quickArtist' with $Provider." -ForegroundColor Red
-                                $retryChoice = Read-Host "`nPress Enter to retry, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(a)' artist-first mode, '(na)' new artist, or enter new album name"
+                                $retryChoice = Read-Host "`nPress Enter to retry, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(a)' artist-first mode, (ni) New Item (enter new artist+album), or enter new album name"
                                 if ($retryChoice -eq 'ps') {
                                     $Provider = 'Spotify'
                                     Write-Host "Switched to provider: $Provider" -ForegroundColor Green
@@ -457,13 +457,12 @@ function Start-OM {
                                     $stage = 'A'
                                     break quickSearchLoop
                                 }
-                                elseif ($retryChoice -eq 'na') {
-                                    $userInput = Read-Host "Enter new artist name"
-                                    if (-not $userInput) {
-                                        Write-Host "Artist cannot be empty. Retrying." -ForegroundColor Yellow
-                                        continue quickSearchLoop
-                                    }
-                                    $currentArtist = $userInput
+                                # 'na' (new artist) removed; use (ni) New Item instead
+                                elseif ($retryChoice -eq 'ni') {
+                                    # Prompt for new artist AND album together
+                                    $res = Read-ArtistAlbum -DefaultArtist $currentArtist -DefaultAlbum $currentAlbum
+                                    if ($res.ChangedArtist) { $currentArtist = $res.Artist }
+                                    if ($res.ChangedAlbum) { $currentAlbum = $res.Album }
                                 }
                                 elseif ($retryChoice) {
                                     # Assume it's a new album name
@@ -516,7 +515,7 @@ function Start-OM {
                         [Console]::ForegroundColor = [ConsoleColor]::Yellow
                         $modeIndicator = if (
                         $script:backNavigationMode) { " (Back Navigation - use 'f' to search again)" } else { "" }
-                        $albumChoice = Read-Host "Select album [number] (Enter=first), (P)rovider, {F}indMode, (N)ew (A)rtist, (C)over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags}, or new search term$modeIndicator"
+                        $albumChoice = Read-Host "Select album [number] (Enter=first), (P)rovider, {F}indMode, (ni) New Item (enter new artist+album), (C)over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags}, or new search term$modeIndicator"
                         [Console]::ForegroundColor = $originalColor
                         if ($albumChoice -eq '') { $albumChoice = '1' }
                         
@@ -575,13 +574,12 @@ function Start-OM {
                             $stage = 'A'
                             continue stageLoop
                         }
-                        elseif ($albumChoice -eq 'na') {
-                            $userInput = Read-Host "Enter new artist name"
-                            if (-not $userInput) {
-                                Write-Host "Artist cannot be empty." -ForegroundColor Yellow
-                                continue albumSelectionLoop
-                            }
-                            $currentArtist = $userInput
+                        # 'na' (new artist) removed; use (ni) New Item instead
+                        elseif ($albumChoice -eq 'ni') {
+                            # Prompt for new artist and album in one step
+                            $res = Read-ArtistAlbum -DefaultArtist $currentArtist -DefaultAlbum $currentAlbum
+                            if ($res.ChangedArtist) { $currentArtist = $res.Artist }
+                            if ($res.ChangedAlbum) { $currentAlbum = $res.Album }
                             $skipQuickPrompts = $true
                             $script:backNavigationMode = $false
                             continue stageLoop

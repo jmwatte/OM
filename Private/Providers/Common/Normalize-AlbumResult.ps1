@@ -63,16 +63,26 @@ function Normalize-AlbumResult {
     $rawDiscCount = Get-IfExists -target $Raw -path 'disc_count'
     if ($rawDiscCount) { try { $disc_count = [int]$rawDiscCount } catch { $disc_count = $rawDiscCount } }
 
+    # Use explicit fallback logic rather than -or (logical operator returns boolean)
+    $nameVal = Get-IfExists -target $Raw -path 'name'
+    if (-not $nameVal) { $nameVal = Get-IfExists -target $Raw -path 'title' }
+
+    $coverVal = Get-IfExists -target $Raw -path 'cover_url'
+    if (-not $coverVal) { $coverVal = Get-IfExists -target $Raw -path 'cover' }
+
+    $releaseVal = Get-IfExists -target $Raw -path 'release_date'
+    if (-not $releaseVal) { $releaseVal = Get-IfExists -target $Raw -path 'date' }
+
     $res = [PSCustomObject]@{
         id = $id
         url = $url
-        name = (Get-IfExists -target $Raw -path 'name') -or (Get-IfExists -target $Raw -path 'title')
+        name = $nameVal
         artists = $artists
         genres = $genres
-        cover_url = (Get-IfExists -target $Raw -path 'cover_url') -or (Get-IfExists -target $Raw -path 'cover')
+        cover_url = $coverVal
         track_count = $track_count
         disc_count = $disc_count
-        release_date = (Get-IfExists -target $Raw -path 'release_date') -or (Get-IfExists -target $Raw -path 'date')
+        release_date = $releaseVal
     }
 
     return $res
