@@ -36,6 +36,14 @@ function Search-QAlbum {
         # Load System.Web for HTML decoding
         Add-Type -AssemblyName System.Web
     }
+        # Dot-source helper parsers if present (when running single-file during debugging)
+        $qobuzDir = Split-Path -Parent $PSScriptRoot
+        $parsePath = Join-Path $qobuzDir 'Parse-QobuzReleaseCard.ps1'
+        if (Test-Path $parsePath) { . $parsePath }
+
+        $providersDir = Split-Path -Parent $qobuzDir
+        $commonNormalize = Join-Path $providersDir 'Common\Normalize-AlbumResult.ps1'
+        if (Test-Path $commonNormalize) { . $commonNormalize }
 
     process {
         $locale = Get-QobuzUrlLocale
@@ -76,124 +84,35 @@ function Search-QAlbum {
         Write-Verbose "Found $($releaseCards.Count) album cards"
 
         $albums = @()
-
         foreach ($card in $releaseCards) {
+            $raw = $null
             try {
-                # Extract album title
-                $titleLink = $card.SelectSingleNode("./div[1]/a")
-                $QalbumName = if ($titleLink) { 
-                    $titleLink.GetAttributeValue("data-title", "").Trim() 
-                } else { 
-                    "" 
+                if (Get-Command -Name Parse-QobuzReleaseCard -ErrorAction SilentlyContinue) {
+                    $raw = Parse-QobuzReleaseCard -Card $card
                 }
-                # Decode HTML entities (e.g. &#039; -> ')
-                if ($QalbumName) { $QalbumName = [System.Web.HttpUtility]::HtmlDecode($QalbumName).Trim() }
-
-                if (-not $QalbumName) {
-                    Write-Verbose "Skipping card without album title"
-                    continue
+                else {
+                    # Fallback to minimal inline parsing
+                    $titleLink = $card.SelectSingleNode("./div[1]/a")
+                    $n = if ($titleLink) { [System.Web.HttpUtility]::HtmlDecode($titleLink.GetAttributeValue("data-title","")) } else { "" }
+                    $raw = [PSCustomObject]@{ name = $n }
                 }
 
-                # Extract album ID from href (last path segment)
-                $albumLink = $card.SelectSingleNode("./a")
-                $albumHref = if ($albumLink) { $albumLink.GetAttributeValue("href", "") } else { "" }
-                # Clean href (remove query/fragment)
-                if ($albumHref -match '^[^?#]+') { $hrefClean = $matches[0] } else { $hrefClean = $albumHref }
-                if ($hrefClean -match '/album/[^/]+/([^/?#]+)$') { $albumId = $matches[1] } else {
-                    # Fallback: use last segment of path
-                    $parts = $hrefClean.TrimEnd('/').Split('/')
-                    $albumId = if ($parts.Count -gt 0) { $parts[-1] } else { "" }
+                if (-not $raw) { continue }
+
+                if (Get-Command -Name Normalize-AlbumResult -ErrorAction SilentlyContinue) {
+                    $norm = Normalize-AlbumResult -Raw $raw
+                    if ($norm) { $albums += $norm }
+                } else {
+                    $albums += $raw
                 }
-
-                # Extract artist name
-                $artistLink = $card.SelectSingleNode("./div[1]/p[1]/a")
-                $QartistName = if ($artistLink) { $artistLink.InnerText.Trim() } else { "" }
-                if ($QartistName) { $QartistName = [System.Web.HttpUtility]::HtmlDecode($QartistName).Trim() }
-
-                # Extract genre (first paragraph inside the album anchor/cover block)
-                $genreElement = $card.SelectSingleNode("./a/div/p[1]")
-                $genre = if ($genreElement) { [System.Web.HttpUtility]::HtmlDecode($genreElement.InnerText.Trim()) } else { "" }
-
-                # Extract release date and track count using specific XPath nodes when available
-                $dateNode = $card.SelectSingleNode("./a/div/p[2]")
-                $releaseDate = if ($dateNode) { [System.Web.HttpUtility]::HtmlDecode($dateNode.InnerText.Trim()) } else { "" }
-
-                $trackNode = $card.SelectSingleNode("./a/div/p[3]")
-                $trackCount = $null
-                if ($trackNode) {
-                    if ($trackNode.InnerText -match '(\d{1,3})') {
-                        $trackCount = [int]$matches[1]
-                    }
-                }
-
-                # Fallback: older class-based markup
-                # if (-not $releaseDate -or -not $trackCount) {
-                #     $dataElements = $card.SelectNodes(".//p[contains(concat(' ', normalize-space(@class), ' '), ' CoverModelDataDefault ') and contains(concat(' ', normalize-space(@class), ' '), ' ReleaseCardActionsText ')]")
-                #     if ($dataElements) {
-                #         foreach ($element in $dataElements) {
-                #             $text = [System.Web.HttpUtility]::HtmlDecode($element.InnerText.Trim())
-                #             if (-not $releaseDate -and ($text -match '\b(janv|févr|mars|avr|mai|juin|juil|août|sept|oct|nov|déc|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{1,2}\s+\w+\s+\d{4}|\d{4})\b')) {
-                #                 $releaseDate = $text
-                #             }
-                #             elseif (-not $trackCount -and ($text -match '(\d{1,3})')) {
-                #                 # Avoid interpreting a 4-digit year as a track count
-                #                 $candidate = [int]$matches[1]
-                #                 if ($candidate -lt 1000) { $trackCount = $candidate }
-                #             }
-                #         }
-                #     }
-                # }
-
-                # Extract cover image
-                $coverImg = $card.SelectSingleNode("./img")
-                $coverUrl = if ($coverImg) { $coverImg.GetAttributeValue("src", "") } else { "" }
-
-                # Create album object
-                $album = [PSCustomObject]@{
-                    id           = $albumId
-                    name         = $QalbumName
-                    artist       = $QartistName
-                    release_date = $releaseDate
-                    track_count  = $trackCount
-                    genre        = $genre
-                    cover_url    = $coverUrl
-                    url          = if ($albumHref) { "https://www.qobuz.com$albumHref" } else { "" }
-                }
-
-                $albums += $album
-                Write-Verbose "Extracted album: $($album.name) by $($album.artist)"
-
             }
             catch {
-                Write-Verbose "Failed to parse album card: $_"
+                Write-Verbose "Failed to parse/normalize album card: $_"
                 continue
             }
         }
 
         Write-Verbose "Successfully extracted $($albums.Count) albums from search results"
-        # Precompute similarity scores in module scope (avoids scriptblock resolution issues)
-        foreach ($a in $albums) {
-            if (Get-Command -Name Get-StringSimilarity-Jaccard -ErrorAction SilentlyContinue) {
-                $nameSim = Get-StringSimilarity-Jaccard -String1 $a.name -String2 $AlbumName
-                $artistSim = Get-StringSimilarity-Jaccard -String1 $a.artist -String2 $ArtistName
-                $a | Add-Member -MemberType NoteProperty -Name '__similarity' -Value (($nameSim * 0.7) + ($artistSim * 0.3)) -Force
-            }
-            else {
-                $a | Add-Member -MemberType NoteProperty -Name '__similarity' -Value 0 -Force
-            }
-        }
-
-        $albums = $albums | Sort-Object -Property '__similarity' -Descending
-        #take the albums where the artist is similar to the artist provided
-        $albums = $albums | Where-Object {
-            if (Get-Command -Name Get-StringSimilarity-Jaccard -ErrorAction SilentlyContinue) {
-                $artistSim = Get-StringSimilarity-Jaccard -String1 $_.artist -String2 $ArtistName
-                return $artistSim -ge 0.3
-            }
-            else {
-                return $true
-            }
-        }
         return $albums
     }
 }

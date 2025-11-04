@@ -29,6 +29,13 @@ function Search-GQAlbum {
         $qobuzLocalesPath = Join-Path $privateDir 'QobuzLocales.ps1'
         if (Test-Path $qobuzLocalesPath) { . $qobuzLocalesPath }
     }
+    # Dot-source parser and normalize helpers if available
+    $qobuzDir = Split-Path -Parent $PSScriptRoot
+    $parsePath = Join-Path $qobuzDir 'Parse-QobuzReleaseCard.ps1'
+    if (Test-Path $parsePath) { . $parsePath }
+    $providersDir = Split-Path -Parent $qobuzDir
+    $commonNormalize = Join-Path $providersDir 'Common\Normalize-AlbumResult.ps1'
+    if (Test-Path $commonNormalize) { . $commonNormalize }
 
     # Cache results in script scope
     if (-not (Get-Variable -Name QobuzGQAlbumCache -Scope Script -ErrorAction SilentlyContinue) -or -not ($script:QobuzGQAlbumCache -is [hashtable])) {
@@ -164,92 +171,45 @@ function Search-GQAlbum {
             else {
                 Write-Verbose "Found $($releaseCards.Count) album cards"
                 
-                # Extract all albums from search results (like Search-QAlbum.ps1)
+                # Extract all albums from search results using shared parser + normalize
                 $albums = @()
                 foreach ($card in $releaseCards) {
+                    $raw = $null
                     try {
-                        # Extract album title
-                        $titleLink = $card.SelectSingleNode("./div[1]/a")
-                        $albumName = if ($titleLink) { 
-                            $titleLink.GetAttributeValue("data-title", "").Trim() 
-                        } else { 
-                            "" 
-                        }
-                        if ($albumName) { $albumName = [System.Web.HttpUtility]::HtmlDecode($albumName).Trim() }
-
-                        if (-not $albumName) {
-                            Write-Verbose "Skipping card without album title"
-                            continue
-                        }
-
-                        # Extract album ID from href
-                        $albumLink = $card.SelectSingleNode("./a")
-                        $albumHref = if ($albumLink) { $albumLink.GetAttributeValue("href", "") } else { "" }
-                        if ($albumHref -match '/album/[^/]+/([^/?#]+)$') { 
-                            $albumId = $matches[1] 
+                        if (Get-Command -Name Parse-QobuzReleaseCard -ErrorAction SilentlyContinue) {
+                            $raw = Parse-QobuzReleaseCard -Card $card
                         } else {
-                            $parts = $albumHref.TrimEnd('/').Split('/')
-                            $albumId = if ($parts.Count -gt 0) { $parts[-1] } else { "" }
+                            $titleLink = $card.SelectSingleNode("./div[1]/a")
+                            $n = if ($titleLink) { [System.Web.HttpUtility]::HtmlDecode($titleLink.GetAttributeValue("data-title","")) } else { "" }
+                            $raw = [PSCustomObject]@{ name = $n }
                         }
 
-                        # Extract artist name
-                        $artistLink = $card.SelectSingleNode("./div[1]/p[1]/a")
-                        $artistName = if ($artistLink) { $artistLink.InnerText.Trim() } else { "" }
-                        if ($artistName) { $artistName = [System.Web.HttpUtility]::HtmlDecode($artistName).Trim() }
+                        if (-not $raw) { continue }
 
-                        # Extract genre
-                        $genreElement = $card.SelectSingleNode("./a/div/p[1]")
-                        $genre = if ($genreElement) { [System.Web.HttpUtility]::HtmlDecode($genreElement.InnerText.Trim()) } else { "" }
-
-                        # Extract release date and track count
-                        $dateNode = $card.SelectSingleNode("./a/div/p[2]")
-                        $releaseDate = if ($dateNode) { [System.Web.HttpUtility]::HtmlDecode($dateNode.InnerText.Trim()) } else { "" }
-
-                        $trackNode = $card.SelectSingleNode("./a/div/p[3]")
-                        $trackCount = $null
-                        if ($trackNode) {
-                            if ($trackNode.InnerText -match '(\d{1,3})') {
-                                $trackCount = [int]$matches[1]
-                            }
+                        if (Get-Command -Name Normalize-AlbumResult -ErrorAction SilentlyContinue) {
+                            $norm = Normalize-AlbumResult -Raw $raw
+                            if ($norm) { $albums += $norm }
+                        } else {
+                            $albums += $raw
                         }
-
-                        # Extract cover image
-                        $coverImg = $card.SelectSingleNode("./img")
-                        $coverUrl = if ($coverImg) { $coverImg.GetAttributeValue("src", "") } else { "" }
-
-                        # Create album object
-                        $album = [PSCustomObject]@{
-                            name        = $albumName
-                            id          = "https://www.qobuz.com$albumHref"
-                            url         = "https://www.qobuz.com$albumHref"
-                            artists     = @([PSCustomObject]@{ name = $artistName })
-                            genres      = if ($genre) { $genre } else { "" }
-                            cover_url   = $coverUrl
-                            track_count = $trackCount
-                            release_date = $releaseDate
-                        }
-
-                        $albums += $album
-                        Write-Verbose "Extracted album: $($album.name) by $($album.artists[0].name)"
-
                     }
                     catch {
-                        Write-Verbose "Failed to parse album card: $_"
+                        Write-Verbose "Failed to parse/normalize album card: $_"
                         continue
                     }
                 }
-                
+
                 # Return first 10 albums found
                 if ($albums.Count -gt 0) {
                     $limitedAlbums = $albums | Select-Object -First 10
                     Write-Verbose "Successfully extracted $($albums.Count) albums from Qobuz search, returning first 10"
-                    
+
                     $res = [PSCustomObject]@{
                         albums = [PSCustomObject]@{
                             items = $limitedAlbums
                         }
                     }
-                    
+
                     $script:QobuzGQAlbumCache[$cacheKey] = $res
                     return $res
                 }
