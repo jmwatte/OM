@@ -251,7 +251,19 @@ function Get-QAlbumTracks {
         function ParsePerformer($inputb) {
             Write-Verbose "ParsePerformer called with: [$inputb]"
             
-            if (-not $inputb -or $inputb -eq "Unknown Performer") {
+            # Decode HTML entities and strip Production Credits blocks early
+            try {
+                $decodedInput = [System.Web.HttpUtility]::HtmlDecode($inputb)
+            } catch {
+                $decodedInput = $inputb
+            }
+
+            # Remove any trailing '--- Production Credits ---' section and everything after it
+            $cleanInput = $decodedInput -replace '(?is)---\s*Production\s+Credits\s*---.*$',''
+            # Collapse multiple whitespace to single spaces and trim
+            $cleanInput = ($cleanInput -replace '\s{2,}',' ') -replace '^\s+|\s+$',''
+
+            if (-not $cleanInput -or $cleanInput -eq "Unknown Performer") {
                 Write-Verbose "  -> Empty or Unknown Performer, returning empty result"
                 return @{ 
                     Composers = @()
@@ -264,12 +276,12 @@ function Get-QAlbumTracks {
                     DetailedRoles = @{}
                 }
             }
-            
-            # Store original for Comment field
-            $fullCredits = $inputb
-            
+
+            # Store cleaned full credits for Comment field
+            $fullCredits = $cleanInput
+
             # Parse format: "Name, Role, Role - Name, Role - Name, Role"
-            $entries = $inputb -split " - "
+            $entries = $cleanInput -split " - "
             Write-Verbose "  -> Split into $($entries.Count) entries: $($entries -join ' | ')"
             $composers = @()
             $performers = @()

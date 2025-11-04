@@ -153,7 +153,14 @@ function Get-Tags {
 
     # Add Comment field with full production credits (Qobuz)
     if ($value = Get-IfExists $SpotifyTrack 'Comment') {
-        $tags.Comment = $value
+        try {
+            $decoded = [System.Net.WebUtility]::HtmlDecode([string]$value)
+        } catch {
+            $decoded = [string]$value
+        }
+        # Strip any trailing Production Credits block
+        $decoded = ($decoded -split '(?m)---\s*Production Credits\s*---',2)[0].Trim()
+        $tags.Comment = $decoded
     }
 
     # Return the tags hashtable
