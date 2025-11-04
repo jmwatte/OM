@@ -35,15 +35,16 @@ function Search-QAlbum {
         # try { Import-Module OM -Force -ErrorAction Stop } catch { Write-Verbose "Failed to import OM module: $_" }
         # Load System.Web for HTML decoding
         Add-Type -AssemblyName System.Web
-    }
+
         # Dot-source helper parsers if present (when running single-file during debugging)
         $qobuzDir = Split-Path -Parent $PSScriptRoot
         $parsePath = Join-Path $qobuzDir 'Parse-QobuzReleaseCard.ps1'
         if (Test-Path $parsePath) { . $parsePath }
 
         $providersDir = Split-Path -Parent $qobuzDir
-        $commonNormalize = Join-Path $providersDir 'Common\Normalize-AlbumResult.ps1'
+        $commonNormalize = Join-Path $providersDir 'Common\\Normalize-AlbumResult.ps1'
         if (Test-Path $commonNormalize) { . $commonNormalize }
+    }
 
     process {
         $locale = Get-QobuzUrlLocale
