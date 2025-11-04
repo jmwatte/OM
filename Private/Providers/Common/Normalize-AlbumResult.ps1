@@ -14,55 +14,65 @@ function Normalize-AlbumResult {
 
     # Helper to ensure array of simple artist objects
     $artists = @()
-    if ($null -ne $Raw.artists) {
-        if ($Raw.artists -is [array]) {
-            foreach ($a in $Raw.artists) {
+    # Prefer explicit helper Get-IfExists to avoid property-not-found errors
+    $rawArtists = Get-IfExists -target $Raw -path 'artists'
+    $rawArtist = Get-IfExists -target $Raw -path 'artist'
+
+    if ($rawArtists) {
+        if ($rawArtists -is [array]) {
+            foreach ($a in $rawArtists) {
                 if ($a -is [string]) { $artists += [PSCustomObject]@{ name = $a } }
-                elseif ($a -is [PSCustomObject] -or $a -is [hashtable]) { 
-                    $n = if ($a.name) { $a.name } elseif ($a.artist) { $a.artist } else { '' }
-                    $artists += [PSCustomObject]@{ name = $n }
+                elseif ($a -is [PSCustomObject] -or $a -is [hashtable]) {
+                    $n = Get-IfExists -target $a -path 'name'
+                    if (-not $n) { $n = Get-IfExists -target $a -path 'artist' }
+                    $artists += [PSCustomObject]@{ name = if ($n) { $n } else { $a.ToString() } }
                 } else {
                     $artists += [PSCustomObject]@{ name = $a.ToString() }
                 }
             }
         } else {
             # single artist string/object
-            if ($Raw.artists -is [string]) { $artists = @([PSCustomObject]@{ name = $Raw.artists }) }
-            else { $n = if ($Raw.artists.name) { $Raw.artists.name } elseif ($Raw.artists.artist) { $Raw.artists.artist } else { $Raw.artists.ToString() }; $artists = @([PSCustomObject]@{ name = $n }) }
+            if ($rawArtists -is [string]) { $artists = @([PSCustomObject]@{ name = $rawArtists }) }
+            else {
+                $n = Get-IfExists -target $rawArtists -path 'name'
+                if (-not $n) { $n = Get-IfExists -target $rawArtists -path 'artist' }
+                $artists = @([PSCustomObject]@{ name = if ($n) { $n } else { $rawArtists.ToString() } })
+            }
         }
-    } elseif ($null -ne $Raw.artist) {
-        $artists = @([PSCustomObject]@{ name = $Raw.artist })
+    } elseif ($rawArtist) {
+        $artists = @([PSCustomObject]@{ name = $rawArtist })
     }
 
     # Genres - normalize to array
     $genres = @()
-    if ($null -ne $Raw.genres) {
-        if ($Raw.genres -is [array]) { $genres = $Raw.genres } else { $genres = @($Raw.genres) }
+    $rawGenres = Get-IfExists -target $Raw -path 'genres'
+    if ($rawGenres) {
+        if ($rawGenres -is [array]) { $genres = $rawGenres } else { $genres = @($rawGenres) }
     }
 
     # Determine id/url
-    $id = $null
-    $url = $null
-    if ($Raw.id) { $id = $Raw.id }
-    if ($Raw.url) { $url = $Raw.url }
+    $id = Get-IfExists -target $Raw -path 'id'
+    $url = Get-IfExists -target $Raw -path 'url'
     if (-not $url -and $id -and $id -match '^https?://') { $url = $id }
 
     # Track/disc counts
     $track_count = $null
-    if ($Raw.track_count) { try { $track_count = [int]$Raw.track_count } catch { $track_count = $Raw.track_count } }
+    $rawTrackCount = Get-IfExists -target $Raw -path 'track_count'
+    if ($rawTrackCount) { try { $track_count = [int]$rawTrackCount } catch { $track_count = $rawTrackCount } }
     $disc_count = $null
-    if ($Raw.disc_count) { try { $disc_count = [int]$Raw.disc_count } catch { $disc_count = $Raw.disc_count } }
+    $rawDiscCount = Get-IfExists -target $Raw -path 'disc_count'
+    if ($rawDiscCount) { try { $disc_count = [int]$rawDiscCount } catch { $disc_count = $rawDiscCount } }
 
     $res = [PSCustomObject]@{
         id = $id
         url = $url
-        name = if ($Raw.name) { $Raw.name } else { $Raw.title }
+        name = (Get-IfExists -target $Raw -path 'name') -or (Get-IfExists -target $Raw -path 'title')
         artists = $artists
         genres = $genres
-        cover_url = if ($Raw.cover_url) { $Raw.cover_url } else { $Raw.cover }
+        cover_url = (Get-IfExists -target $Raw -path 'cover_url') -or (Get-IfExists -target $Raw -path 'cover')
         track_count = $track_count
         disc_count = $disc_count
-        release_date = if ($Raw.release_date) { $Raw.release_date } else { $Raw.date }
+        release_date = (Get-IfExists -target $Raw -path 'release_date') -or (Get-IfExists -target $Raw -path 'date')
     }
 
     return $res
