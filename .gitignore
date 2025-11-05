@@ -1,0 +1,12 @@
+# Ignore local test data used for interactive testing
+testdata/
+
+# Ignore debug/temporary summary file
+summary_debug.json
+
+# Node/Powershell common
+.DS_Store
+Thumbs.db
+**/node_modules/
+*.log
+*.tmp
