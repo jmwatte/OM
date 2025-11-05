@@ -116,28 +116,12 @@ function Get-OMTags {
                     if ($response -eq '' -or $response -match '^[Yy]') {
                         # Use the helper function if available
                         if (Get-Command Install-TagLibSharp -ErrorAction SilentlyContinue) {
-                            try {
-                                Install-TagLibSharp
-                                Write-Host ""
-                                Write-Host "Please restart PowerShell and run your command again to use TagLib-Sharp." -ForegroundColor Yellow
-                            } catch {
-                                Write-Warning "Installation helper failed: $($_.Exception.Message)"
-                                Write-Host "Please try manual installation: Install-Package TagLibSharp" -ForegroundColor Yellow
-                            }
+                            Install-TagLibSharp
                         } else {
-                            Write-Host "Installing TagLib-Sharp..." -ForegroundColor Green
-                            try {
-                                Install-Package TagLibSharp -Scope CurrentUser -Force -SkipDependencies -ErrorAction Stop
-                                Write-Host "✓ TagLib-Sharp installed successfully!" -ForegroundColor Green
-                                Write-Host "Please restart PowerShell and try again." -ForegroundColor Yellow
-                            } catch {
-                                Write-Warning "Failed to install TagLib-Sharp: $($_.Exception.Message)"
-                                Write-Host ""
-                                Write-Host "To install TagLib-Sharp:" -ForegroundColor Yellow
-                                Write-Host "  Install-Package TagLibSharp -Force" -ForegroundColor White
-                                Write-Host "  -or-" -ForegroundColor Yellow  
-                                Write-Host "  Download from: https://www.nuget.org/packages/TagLibSharp/" -ForegroundColor White
-                            }
+                            Write-Host "To install TagLib-Sharp:" -ForegroundColor Yellow
+                            Write-Host "  Install-Package TagLibSharp -Force" -ForegroundColor White
+                            Write-Host "  -or-" -ForegroundColor Yellow
+                            Write-Host "  Download from: https://www.nuget.org/packages/TagLibSharp/" -ForegroundColor White
                         }
                     }
                 } else {
@@ -523,19 +507,39 @@ function Get-OMTags {
 
                             if ($uniqueParents.Count -eq 1) {
                                 # Single parent directory — present it with trailing slash
-                                    $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value (Join-Path $uniqueParents[0] '')
+                                $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value (Join-Path $uniqueParents[0] '')
                             } else {
-                                # Multiple parents detected (rare). Use the parent directory of the first file
-                                # as a robust album-level path fallback (keeps summary compact).
-                                if ($results.Count -gt 0 -and $results[0].Path) {
-                                    try {
-                                        $firstParent = (Get-Item -LiteralPath $results[0].Path -ErrorAction Stop).DirectoryName
-                                    } catch {
-                                        $firstParent = Split-Path $results[0].Path -Parent
+                                # Multiple parents detected: compute the longest common parent directory
+                                # across all unique parents so multi-disc albums point at the album folder.
+                                $segmentsList = @()
+                                foreach ($p in $uniqueParents) {
+                                    $segs = ($p -split '[\\/]') | Where-Object { $_ -ne '' }
+                                    $segmentsList += ,$segs
+                                }
+
+                                if ($segmentsList.Count -gt 0) {
+                                    $minLen = ($segmentsList | ForEach-Object { $_.Count } | Measure-Object -Minimum).Minimum
+                                    $common = @()
+                                    for ($i = 0; $i -lt $minLen; $i++) {
+                                        $seg0 = $segmentsList[0][$i]
+                                        $allMatch = $true
+                                        foreach ($s in $segmentsList) {
+                                            if (-not ($s[$i].ToLower() -eq $seg0.ToLower())) { $allMatch = $false; break }
+                                        }
+                                        if ($allMatch) { $common += $seg0 } else { break }
                                     }
-                                    if ($firstParent) {
-                                        $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value ($firstParent + '\\')
+
+                                    if ($common.Count -gt 0) {
+                                        $commonPathRaw = $common -join '\\'
+                                        # If the common path is only a drive like 'E:' add trailing backslash
+                                        if ($commonPathRaw -match '^[A-Za-z]:$') {
+                                            $commonPath = $commonPathRaw + '\\'
+                                        } else {
+                                            $commonPath = Join-Path $commonPathRaw ''
+                                        }
+                                        $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value $commonPath
                                     } else {
+                                        # No non-trivial common prefix — fall back to joined unique parents
                                         $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value ($uniqueParents -join ', ')
                                     }
                                 } else {
@@ -556,29 +560,6 @@ function Get-OMTags {
                             $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value ($uniqueValues -join ', ')
                         }
                     }
-                }
-                # Ensure Path in the summary reliably points to the album parent folder
-                try {
-                    if ($results.Count -gt 0 -and $results[0].Path) {
-                        try {
-                            $albumParent = (Get-Item -LiteralPath $results[0].Path -ErrorAction Stop).DirectoryName
-                        } catch {
-                            $albumParent = Split-Path $results[0].Path -Parent
-                        }
-                        if ($albumParent -and $albumParent -ne '') {
-                            # Normalize to a single trailing backslash and overwrite the Path
-                            $albumParentClean = $albumParent.TrimEnd('\','/')
-                            $finalPath = Join-Path $albumParentClean ''
-                            if ($summaryObj.PSObject.Properties.Name -contains 'Path') {
-                                $summaryObj.Path = $finalPath
-                            } else {
-                                $summaryObj | Add-Member -MemberType NoteProperty -Name 'Path' -Value $finalPath
-                            }
-                        }
-                    }
-                } catch {
-                    # Non-fatal: leave existing Path if something goes wrong
-                    Write-Verbose "Get-OMTags: failed to set summary Path explicitly: $($_.Exception.Message)"
                 }
             }
             return $summaryObj
