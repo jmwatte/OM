@@ -461,10 +461,29 @@ function Set-OMTags {
                     Format          = $currentTags.Format
                 }
                 # Invoke the transform with $updated as $_ in the scriptblock's scope
-                # Use ForEach-Object pattern to properly set $_
-                $result = $updated | ForEach-Object $Transform
-                # Return the result (Transform must return the modified object)
-                if ($result) { $result } else { $updated }
+                # Capture all outputs, then select the LAST PSCustomObject (the modified tag object)
+                # This handles scriptblocks that emit incidental values like booleans from -match
+                $allOutputs = @($updated | ForEach-Object $Transform)
+                
+                # Find the last PSCustomObject in the outputs (that's the modified tag object)
+                $result = $null
+                for ($i = $allOutputs.Count - 1; $i -ge 0; $i--) {
+                    $item = $allOutputs[$i]
+                    if ($item -is [PSCustomObject] -or 
+                        ($item -and $item.PSObject -and ($item.PSObject.Properties.Name -contains 'Path'))) {
+                        $result = $item
+                        break
+                    }
+                }
+                
+                # If no PSCustomObject found, log warning and use the original
+                if (-not $result) {
+                    Write-Verbose "    Warning: Transform did not return a valid tag object. Using original."
+                    $result = $updated
+                }
+                
+                # Return the result
+                $result
             } else {
                 # Simple or Pipeline mode - apply hashtable updates to current tags
                 $updated = [PSCustomObject]@{
@@ -572,6 +591,31 @@ function Set-OMTags {
                         $newValue = $change.NewValue
                         
                         Write-Verbose "  $($propName) : '$($change.OldValue)' -> '$newValue'"
+
+                        # Diagnostic verbose: show value types to help debug persistence issues
+                        try {
+                            $oldType = if ($null -eq $change.OldValue) { 'null' } elseif ($change.OldValue -is [array]) { 'Array[' + (($change.OldValue | ForEach-Object { $_.GetType().Name }) -join ',') + ']' } else { $change.OldValue.GetType().FullName }
+                        } catch {
+                            $oldType = 'unknown'
+                        }
+                        try {
+                            $newType = if ($null -eq $newValue) { 'null' } elseif ($newValue -is [array]) { 'Array[' + (($newValue | ForEach-Object { $_.GetType().Name }) -join ',') + ']' } else { $newValue.GetType().FullName }
+                        } catch {
+                            $newType = 'unknown'
+                        }
+                        Write-Verbose "    OldValue Type: $oldType"
+                        Write-Verbose "    NewValue Type: $newType"
+
+                        # Extra Year diagnostic: show what a uint32 cast would produce (no behavior change)
+                        if ($propName -eq 'Year') {
+                            try {
+                                if ($newValue) { $castYear = [uint32]$newValue } else { $castYear = $null }
+                                $castType = if ($castYear -ne $null) { $castYear.GetType().Name } else { 'null' }
+                                Write-Verbose "    Year cast to uint32 would be: $castYear (type: $castType)"
+                            } catch {
+                                Write-Verbose "    Year cast to uint32 failed: $($_.Exception.Message)"
+                            }
+                        }
                         
                         # Map common property names to TagLib properties
                         switch ($propName) {
