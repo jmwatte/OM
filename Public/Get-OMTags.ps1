@@ -497,55 +497,14 @@ function Get-OMTags {
                         $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value ($orderedValues -join ', ')
                     } else {
                         # For other properties, collect all values and get unique sorted
-                        # Special-case 'Path' to show the common parent directory (or longest common path)
+                        # Special-case 'Path' to show unique album folders
                         if ($prop -eq 'Path') {
                             $parents = @()
                             foreach ($result in $results) {
                                 if ($result.Path) { $parents += (Split-Path $result.Path -Parent) }
                             }
                             $uniqueParents = $parents | Where-Object { $_ -and $_ -ne '' } | Select-Object -Unique
-
-                            if ($uniqueParents.Count -eq 1) {
-                                # Single parent directory — present it with trailing slash
-                                $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value (Join-Path $uniqueParents[0] '')
-                            } else {
-                                # Multiple parents detected: compute the longest common parent directory
-                                # across all unique parents so multi-disc albums point at the album folder.
-                                $segmentsList = @()
-                                foreach ($p in $uniqueParents) {
-                                    $segs = ($p -split '[\\/]') | Where-Object { $_ -ne '' }
-                                    $segmentsList += ,$segs
-                                }
-
-                                if ($segmentsList.Count -gt 0) {
-                                    $minLen = ($segmentsList | ForEach-Object { $_.Count } | Measure-Object -Minimum).Minimum
-                                    $common = @()
-                                    for ($i = 0; $i -lt $minLen; $i++) {
-                                        $seg0 = $segmentsList[0][$i]
-                                        $allMatch = $true
-                                        foreach ($s in $segmentsList) {
-                                            if (-not ($s[$i].ToLower() -eq $seg0.ToLower())) { $allMatch = $false; break }
-                                        }
-                                        if ($allMatch) { $common += $seg0 } else { break }
-                                    }
-
-                                    if ($common.Count -gt 0) {
-                                        $commonPathRaw = $common -join '\\'
-                                        # If the common path is only a drive like 'E:' add trailing backslash
-                                        if ($commonPathRaw -match '^[A-Za-z]:$') {
-                                            $commonPath = $commonPathRaw + '\\'
-                                        } else {
-                                            $commonPath = Join-Path $commonPathRaw ''
-                                        }
-                                        $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value $commonPath
-                                    } else {
-                                        # No non-trivial common prefix — fall back to joined unique parents
-                                        $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value ($uniqueParents -join ', ')
-                                    }
-                                } else {
-                                    $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value ($uniqueParents -join ', ')
-                                }
-                            }
+                            $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value $uniqueParents
                         } else {
                             $allValues = @()
                             foreach ($result in $results) {
