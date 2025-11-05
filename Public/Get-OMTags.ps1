@@ -504,7 +504,7 @@ function Get-OMTags {
                                 if ($result.Path) { $parents += (Split-Path $result.Path -Parent) }
                             }
                             $uniqueParents = $parents | Where-Object { $_ -and $_ -ne '' } | Select-Object -Unique
-                            $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value $uniqueParents
+                            $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value ($uniqueParents -join ', ')
                         } else {
                             $allValues = @()
                             foreach ($result in $results) {
