@@ -28,12 +28,19 @@ function Get-Tags {
     # Normalize release year robustly (handles '26 May 2014', '2014-05-26', DateTime, etc.)
     $rawRelease = Get-IfExists $Album 'release_date'
     if ($rawRelease) {
+        # Verbose logging to help debug intermittent missing-year issues
+        $rawType = '<null>'
+        try { $rawType = $rawRelease.GetType().FullName } catch { $rawType = '<unable to determine type>' }
+        Write-Verbose "Get-Tags: Album.release_date raw value: '$([string]$rawRelease)' (Type: $rawType)"
         try {
             $Year = Get-ReleaseYear -ReleaseDate $rawRelease
+            Write-Verbose "Get-Tags: Get-ReleaseYear resolved Year: $Year"
         } catch {
+            Write-Verbose "Get-Tags: Get-ReleaseYear failed: $($_.Exception.Message)"
             $Year = 0000
         }
     } else {
+        Write-Verbose "Get-Tags: Album.release_date is missing or null"
         $Year = 0000
     }
     

@@ -50,6 +50,22 @@ function Normalize-AlbumResult {
         if ($rawGenres -is [array]) { $genres = $rawGenres } else { $genres = @($rawGenres) }
     }
 
+    # Helper: decode HTML entities and clean whitespace
+    $decodeString = {
+        param($s)
+        if ($null -eq $s) { return $null }
+        try {
+            # Use .NET HtmlDecode which handles &amp; etc.
+            $out = [System.Net.WebUtility]::HtmlDecode([string]$s)
+        }
+        catch {
+            $out = [string]$s
+        }
+        # Collapse whitespace and trim
+        $out = $out -replace '\s+', ' '
+        return $out.Trim()
+    }
+
     # Determine id/url
     $id = Get-IfExists -target $Raw -path 'id'
     $url = Get-IfExists -target $Raw -path 'url'
@@ -73,16 +89,77 @@ function Normalize-AlbumResult {
     $releaseVal = Get-IfExists -target $Raw -path 'release_date'
     if (-not $releaseVal) { $releaseVal = Get-IfExists -target $Raw -path 'date' }
 
+    # Clean up textual fields (decode HTML entities like &amp;)
+    $nameVal = & $decodeString $nameVal
+    $releaseVal = & $decodeString $releaseVal
+
+    foreach ($a in $artists) {
+        if ($a -and $a.name) { $a.name = & $decodeString $a.name }
+    }
+
+    # Normalize genres: split comma-separated strings, decode and dedupe
+    $cleanGenres = @()
+    foreach ($g in $genres) {
+        if ($null -eq $g) { continue }
+        if ($g -is [string]) {
+            $parts = $g -split ','
+            foreach ($p in $parts) {
+                $val = & $decodeString $p
+                if ($val -and -not ($cleanGenres -contains $val)) { $cleanGenres += $val }
+            }
+        }
+        else {
+            $val = & $decodeString $g.ToString()
+            if ($val -and -not ($cleanGenres -contains $val)) { $cleanGenres += $val }
+        }
+    }
+
+    # Composer(s) and comment cleanup: strip any trailing "--- Production Credits ---" section
+    $rawComposer = Get-IfExists -target $Raw -path 'composer'
+    $rawComposers = Get-IfExists -target $Raw -path 'composers'
+    $composers = @()
+    if ($rawComposers) {
+        if ($rawComposers -is [array]) {
+            foreach ($c in $rawComposers) {
+                if ($c) {
+                    $text = & $decodeString $c
+                    $text = ($text -split '(?m)---\s*Production Credits\s*---',2)[0].Trim()
+                    if ($text -and -not ($composers -contains $text)) { $composers += $text }
+                }
+            }
+        }
+        else {
+            $text = & $decodeString $rawComposers
+            $text = ($text -split '(?m)---\s*Production Credits\s*---',2)[0].Trim()
+            if ($text) { $composers += $text }
+        }
+    }
+    elseif ($rawComposer) {
+        $text = & $decodeString $rawComposer
+        $text = ($text -split '(?m)---\s*Production Credits\s*---',2)[0].Trim()
+        if ($text) { $composers += $text }
+    }
+
+    # Comment cleanup
+    $rawComment = Get-IfExists -target $Raw -path 'comment'
+    if ($rawComment) {
+        $comment = & $decodeString $rawComment
+        $comment = ($comment -split '(?m)---\s*Production Credits\s*---',2)[0].Trim()
+    }
+    else { $comment = $null }
+
     $res = [PSCustomObject]@{
         id = $id
         url = $url
         name = $nameVal
         artists = $artists
-        genres = $genres
+        genres = $cleanGenres
         cover_url = $coverVal
         track_count = $track_count
         disc_count = $disc_count
         release_date = $releaseVal
+        composers = $composers
+        comment = $comment
     }
 
     return $res

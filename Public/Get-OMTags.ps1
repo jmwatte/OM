@@ -164,8 +164,24 @@ function Get-OMTags {
     process {
         $results = @()
 
-        # Define default properties and their order
-        $defaultProperties = @('Path', 'FileName', 'Title', 'Artists', 'AlbumArtists', 'Album', 'Track', 'TrackCount', 'Disc', 'DiscCount', 'Year', 'Genres', 'Composers', 'Comment', 'Lyrics', 'Composer', 'Genre', 'Artist', 'AlbumArtist')
+        # Define default properties and their order (custom summary order requested)
+        $defaultProperties = @(
+            'Path',
+            'FileName',
+            'Lyrics',
+            'Comment',
+            'Composers',
+            'Title',
+            'Track',
+            'TrackCount',
+            'Disc',
+            'DiscCount',
+            'Genres',
+            'Artists',
+            'Year',
+            'AlbumArtists',
+            'Album'
+        )
 
         # Determine if Path is a file or folder
         if (Test-Path -LiteralPath $Path -PathType Leaf) {
@@ -344,24 +360,7 @@ function Get-OMTags {
                     Format          = [System.IO.Path]::GetExtension($file).TrimStart('.')
                 }
                 
-                # Add read-only convenience properties (singular forms) for easy access
-                # These are derived from the array properties and should not be modified directly
-                $artistValue = if ($artists.Count -gt 0) { $artists[0] } else { $null }
-                $normalizedTag | Add-Member -MemberType ScriptProperty -Name 'Artist' -Value {
-                    if ($this.Artists.Count -gt 0) { $this.Artists[0] } else { $null }
-                } -SecondValue { throw "Artist is read-only. Modify Artists array instead." }
-                
-                $normalizedTag | Add-Member -MemberType ScriptProperty -Name 'AlbumArtist' -Value {
-                    if ($this.AlbumArtists.Count -gt 0) { $this.AlbumArtists[0] } else { if ($this.Artists.Count -gt 0) { $this.Artists[0] } else { $null }}
-                } -SecondValue { throw "AlbumArtist is read-only. Modify AlbumArtists array instead." }
-                
-                $normalizedTag | Add-Member -MemberType ScriptProperty -Name 'Genre' -Value {
-                    if ($this.Genres.Count -gt 0) { $this.Genres[0] } else { $null }
-                } -SecondValue { throw "Genre is read-only. Modify Genres array instead." }
-                
-                $normalizedTag | Add-Member -MemberType ScriptProperty -Name 'Composer' -Value {
-                    if ($this.Composers.Count -gt 0) { $this.Composers[0] } else { $null }
-                } -SecondValue { throw "Composer is read-only. Modify Composers array instead." }
+                # Note: singular convenience properties removed; use plural arrays (Artists, AlbumArtists, Genres, Composers)
 
                 # Add classical music analysis if requested
                 if ($IncludeComposer) {
@@ -514,18 +513,72 @@ function Get-OMTags {
                         $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value ($orderedValues -join ', ')
                     } else {
                         # For other properties, collect all values and get unique sorted
-                        $allValues = @()
-                        foreach ($result in $results) {
-                            $value = $result.$prop
-                            if ($value -is [array]) {
-                                $allValues += $value
+                        # Special-case 'Path' to show the common parent directory (or longest common path)
+                        if ($prop -eq 'Path') {
+                            $parents = @()
+                            foreach ($result in $results) {
+                                if ($result.Path) { $parents += (Split-Path $result.Path -Parent) }
+                            }
+                            $uniqueParents = $parents | Where-Object { $_ -and $_ -ne '' } | Select-Object -Unique
+
+                            if ($uniqueParents.Count -eq 1) {
+                                # Single parent directory — present it with trailing slash
+                                    $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value (Join-Path $uniqueParents[0] '')
                             } else {
-                                $allValues += $value
+                                # Multiple parents detected (rare). Use the parent directory of the first file
+                                # as a robust album-level path fallback (keeps summary compact).
+                                if ($results.Count -gt 0 -and $results[0].Path) {
+                                    try {
+                                        $firstParent = (Get-Item -LiteralPath $results[0].Path -ErrorAction Stop).DirectoryName
+                                    } catch {
+                                        $firstParent = Split-Path $results[0].Path -Parent
+                                    }
+                                    if ($firstParent) {
+                                        $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value ($firstParent + '\\')
+                                    } else {
+                                        $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value ($uniqueParents -join ', ')
+                                    }
+                                } else {
+                                    $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value ($uniqueParents -join ', ')
+                                }
+                            }
+                        } else {
+                            $allValues = @()
+                            foreach ($result in $results) {
+                                $value = $result.$prop
+                                if ($value -is [array]) {
+                                    $allValues += $value
+                                } else {
+                                    $allValues += $value
+                                }
+                            }
+                            $uniqueValues = $allValues | Where-Object { $_ -ne $null -and $_ -ne '' } | Select-Object -Unique | Sort-Object
+                            $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value ($uniqueValues -join ', ')
+                        }
+                    }
+                }
+                # Ensure Path in the summary reliably points to the album parent folder
+                try {
+                    if ($results.Count -gt 0 -and $results[0].Path) {
+                        try {
+                            $albumParent = (Get-Item -LiteralPath $results[0].Path -ErrorAction Stop).DirectoryName
+                        } catch {
+                            $albumParent = Split-Path $results[0].Path -Parent
+                        }
+                        if ($albumParent -and $albumParent -ne '') {
+                            # Normalize to a single trailing backslash and overwrite the Path
+                            $albumParentClean = $albumParent.TrimEnd('\','/')
+                            $finalPath = Join-Path $albumParentClean ''
+                            if ($summaryObj.PSObject.Properties.Name -contains 'Path') {
+                                $summaryObj.Path = $finalPath
+                            } else {
+                                $summaryObj | Add-Member -MemberType NoteProperty -Name 'Path' -Value $finalPath
                             }
                         }
-                        $uniqueValues = $allValues | Where-Object { $_ -ne $null -and $_ -ne '' } | Select-Object -Unique | Sort-Object
-                        $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value ($uniqueValues -join ', ')
                     }
+                } catch {
+                    # Non-fatal: leave existing Path if something goes wrong
+                    Write-Verbose "Get-OMTags: failed to set summary Path explicitly: $($_.Exception.Message)"
                 }
             }
             return $summaryObj
@@ -533,7 +586,7 @@ function Get-OMTags {
             if (-not $AllTags) {
                 # Create objects with selected properties
                 $results = $results | ForEach-Object {
-                    $obj = New-Object PSCustomObject -Property @{
+                        $obj = New-Object PSCustomObject -Property @{
                         Path            = $_.Path
                         Directory       = Split-Path $_.Path -Parent
                         FileName        = $_.FileName
@@ -555,10 +608,7 @@ function Get-OMTags {
                         Bitrate         = $_.Bitrate
                         SampleRate      = $_.SampleRate
                         Format          = $_.Format
-                        Artist          = if ($_.Artists.Count -gt 0) { $_.Artists[0] } else { $null }
-                        AlbumArtist     = if ($_.AlbumArtists.Count -gt 0) { $_.AlbumArtists[0] } else { if ($_.Artists.Count -gt 0) { $_.Artists[0] } else { $null }}
-                        Genre           = if ($_.Genres.Count -gt 0) { $_.Genres[0] } else { $null }
-                        Composer        = if ($_.Composers.Count -gt 0) { $_.Composers[0] } else { $null }
+                        	# Singular convenience values intentionally omitted; prefer plural arrays
                     }
                     # Ensure it's not a Selected object
                     $obj.PSTypeNames.Clear()

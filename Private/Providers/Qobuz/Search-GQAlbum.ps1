@@ -245,6 +245,11 @@ function Search-GQAlbum {
         $genres = $firstTrack.genres
         $releaseDate = $firstTrack.release_date
 
+        # Prefer a simple 4-digit year for quick-search displays when available
+        if ($releaseDate -and $releaseDate -match '(\d{4})') {
+            $releaseDate = $matches[1]
+        }
+
         # Get track/disc counts
         $trackCount = $tracks.Count
         $discCount = ($tracks | Measure-Object -Property disc_number -Maximum).Maximum

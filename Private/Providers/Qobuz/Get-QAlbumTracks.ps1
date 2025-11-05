@@ -224,6 +224,25 @@ function Get-QAlbumTracks {
             Write-Verbose "Could not extract metadata from JSON-LD: $_"
         }
 
+        # Fallback: if JSON-LD didn't provide a release date, try to find a 4-digit year
+        if (-not $releaseDate) {
+            try {
+                # Try meta[itemprop='datePublished'] first
+                $metaNode = $doc.SelectSingleNode("//meta[@itemprop='datePublished']")
+                if ($metaNode) {
+                    $val = $metaNode.GetAttributeValue('content','')
+                    if ($val -and $val -match '([12]\d{3})') { $releaseDate = $matches[1] }
+                }
+            } catch {
+                # ignore
+            }
+
+            if (-not $releaseDate) {
+                $m = [regex]::Match($html, '([12]\d{3})')
+                if ($m.Success) { $releaseDate = $m.Groups[1].Value }
+            }
+        }
+
         #     # Primary candidate nodes
         #     $allTrackNodes = $doc.SelectNodes('//*[@data-track]') 
         #     if (-not $allTrackNodes -or $allTrackNodes.Count -eq 0) {

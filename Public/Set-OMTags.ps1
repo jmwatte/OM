@@ -114,8 +114,7 @@ function Set-OMTags {
     - Title, Album, Year, Track, TrackCount, Disc, DiscCount
     - Artists (array), AlbumArtists (array), Genres (array), Composers (array)
     
-    READ-ONLY PROPERTIES (convenience, modify plural versions instead):
-    - Artist, AlbumArtist, Genre, Composer (first item from respective arrays)
+    READ-ONLY PROPERTIES:
     - Path, FileName, Format, Duration, Bitrate, SampleRate
 
 .PARAMETER Path
@@ -514,8 +513,7 @@ function Set-OMTags {
             # Build list of changes
             $changes = @()
             $readOnlyProps = @('Path', 'FileName', 'Format', 'Duration', 'DurationSeconds', 'Bitrate', 'SampleRate', 
-                              'IsClassical', 'ContributingArtists', 'Conductor', 'SuggestedAlbumArtist',
-                              'Artist', 'AlbumArtist', 'Genre', 'Composer')  # Singular convenience properties are read-only
+                              'IsClassical', 'ContributingArtists', 'Conductor', 'SuggestedAlbumArtist')
             
             foreach ($prop in $newTags.PSObject.Properties) {
                 $propName = $prop.Name
@@ -578,21 +576,11 @@ function Set-OMTags {
                         # Map common property names to TagLib properties
                         switch ($propName) {
                             'Title' { $tag.Title = $newValue }
-                            'Artist' { 
-                                if ($newValue) {
-                                    $tag.Performers = @($newValue)
-                                }
-                            }
                             'Artists' { 
                                  if ($newValue) {
                                     $tag.Performers = $newValue
                                 } else {
                                     $tag.Performers = @()
-                                }
-                            }
-                            'AlbumArtist' { 
-                                if ($newValue) {
-                                    $tag.AlbumArtists = @($newValue)
                                 }
                             }
                             'AlbumArtists' { 
@@ -638,25 +626,11 @@ function Set-OMTags {
                                     $tag.DiscCount = 0
                                 }
                             }
-                            'Genre' { 
-                                if ($newValue) {
-                                    $tag.Genres = @($newValue)
-                                } else {
-                                    $tag.Genres = @()
-                                }
-                            }
                             'Genres' { 
                                 if ($newValue) {
                                     $tag.Genres = $newValue
                                 } else {
                                     $tag.Genres = @()
-                                }
-                            }
-                            'Composer' { 
-                                if ($newValue) {
-                                    $tag.Composers = @($newValue)
-                                } else {
-                                    $tag.Composers = @()
                                 }
                             }
                             'Composers' { 
