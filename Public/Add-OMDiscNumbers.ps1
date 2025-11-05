@@ -112,7 +112,11 @@ function Add-OMDiscNumbers {
     if (-not (Get-Command -Name Assert-TagLibLoaded -ErrorAction SilentlyContinue)) {
         . "$PSScriptRoot\Private\Assert-TagLibLoaded.ps1"
     }
-    Assert-TagLibLoaded
+    # Assert-TagLibLoaded may return a value; suppress it to avoid printing a stray Boolean
+    [void](Assert-TagLibLoaded)
+
+    # Collect planned changes for a clear WhatIf summary
+    $plannedChanges = @()
 
     # Get all subfolders and sort them
     $subFolders = Get-ChildItem -LiteralPath $baseFolder -Directory | Sort-Object Name
@@ -133,6 +137,10 @@ function Add-OMDiscNumbers {
         $trackNumber = 1
 
         foreach ($file in $audioFiles) {
+            $plannedEntry = [PSCustomObject]@{
+                File = $file.FullName
+                Actions = @()
+            }
             try {
                 $tagFile = [TagLib.File]::Create($file.FullName)
                 $changes = @()
@@ -140,22 +148,28 @@ function Add-OMDiscNumbers {
                 if ($discs -or $forceDiscs) {
                     $updateDiscNumber = $forceDiscs -or $tagFile.Tag.Disc -eq 0
                     $needsDiscUpdate = $updateDiscNumber -or $tagFile.Tag.DiscCount -ne $totalDiscs
-                    
-                    if ($needsDiscUpdate -and $PSCmdlet.ShouldProcess($file.Name, "Set DiscNumber to $($discNumber.ToString($discFormat))/$totalDiscs")) {
-                        if ($updateDiscNumber) { $tagFile.Tag.Disc = $discNumber }
-                        $tagFile.Tag.DiscCount = $totalDiscs
-                        $changes += "disc $($discNumber.ToString($discFormat))/$totalDiscs"
+
+                    if ($needsDiscUpdate) {
+                        $plannedEntry.Actions += "disc $($discNumber.ToString($discFormat))/$totalDiscs"
+                        if ($PSCmdlet.ShouldProcess($file.Name, "Set DiscNumber to $($discNumber.ToString($discFormat))/$totalDiscs")) {
+                            if ($updateDiscNumber) { $tagFile.Tag.Disc = $discNumber }
+                            $tagFile.Tag.DiscCount = $totalDiscs
+                            $changes += "disc $($discNumber.ToString($discFormat))/$totalDiscs"
+                        }
                     }
                 }
 
                 if ($tracks -or $forceTracks) {
                     $updateTrackNumber = $forceTracks -or $tagFile.Tag.Track -eq 0
                     $needsTrackUpdate = $updateTrackNumber -or $tagFile.Tag.TrackCount -ne $totalTracks
-                    
-                    if ($needsTrackUpdate -and $PSCmdlet.ShouldProcess($file.Name, "Set TrackNumber to $($trackNumber.ToString($trackFormat))/$totalTracks")) {
-                        if ($updateTrackNumber) { $tagFile.Tag.Track = $trackNumber }
-                        $tagFile.Tag.TrackCount = $totalTracks
-                        $changes += "track $($trackNumber.ToString($trackFormat))/$totalTracks"
+
+                    if ($needsTrackUpdate) {
+                        $plannedEntry.Actions += "track $($trackNumber.ToString($trackFormat))/$totalTracks"
+                        if ($PSCmdlet.ShouldProcess($file.Name, "Set TrackNumber to $($trackNumber.ToString($trackFormat))/$totalTracks")) {
+                            if ($updateTrackNumber) { $tagFile.Tag.Track = $trackNumber }
+                            $tagFile.Tag.TrackCount = $totalTracks
+                            $changes += "track $($trackNumber.ToString($trackFormat))/$totalTracks"
+                        }
                     }
                 }
 
@@ -174,10 +188,23 @@ function Add-OMDiscNumbers {
                 if ($tagFile) { $tagFile.Dispose() }
             }
 
+            if ($plannedEntry.Actions.Count -gt 0) { $plannedChanges += $plannedEntry }
+
             $trackNumber++
         }
 
         $discNumber++
         Write-Verbose "Completed processing folder: $($folder.Name)"
+    }
+
+    # If there were planned changes, display a concise WhatIf-style summary
+    if ($plannedChanges.Count -gt 0) {
+        Write-Host "`nPlanned changes summary:`n" -ForegroundColor Cyan
+        foreach ($entry in $plannedChanges) {
+            Write-Host "$($entry.File) -> $($entry.Actions -join ', ')"
+        }
+        Write-Host "`nUse -WhatIf to preview changes or run without -WhatIf to apply them." -ForegroundColor Yellow
+    } else {
+        Write-Verbose "No planned changes detected across processed files."
     }
 }
