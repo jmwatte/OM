@@ -57,6 +57,12 @@
 .PARAMETER ReverseSource
     A switch to reverse the source and target columns in the track matching UI (Stage C).
 
+.PARAMETER TargetFolder
+    Specifies the target directory where organized album folders will be moved after processing.
+    If provided, album folders will be moved to this directory after saving tags.
+    If a folder with the same name already exists in the target, a numbered suffix (2), (3), etc. will be added.
+    The target directory will be created if it doesn't exist.
+
 .EXAMPLE
     Start-OM -Path "C:\Music\MyArtist"
 
@@ -71,6 +77,12 @@
     Start-OM -Path "C:\Music\MyArtist\MyAlbum" -ArtistId "..." -AlbumId "..." -NonInteractive
 
     Runs the process non-interactively for a specific album, using the provided artist and album IDs.
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\Unsorted" -TargetFolder "C:\Music\Organized"
+
+    Processes albums from C:\Music\Unsorted and moves each organized album folder to C:\Music\Organized.
+    Albums will be organized into the structure created by the rename pattern (typically Artist\Year - Album).
 
 .NOTES
     This function requires the TagLib-Sharp library for reading and writing audio file tags.
@@ -107,7 +119,9 @@ function Start-OM {
         [Parameter(Mandatory = $false)]
         [switch]$goC,
         [Parameter(Mandatory = $false)]
-        [switch]$ReverseSource
+        [switch]$ReverseSource,
+        [Parameter(Mandatory = $false)]
+        [string]$TargetFolder
 
     )
 
@@ -290,6 +304,112 @@ function Start-OM {
 
 
                     # $refreshTracks = $true
+                    
+                    # Handle TargetFolder move if specified
+                    if ($TargetFolder) {
+                        $currentPath = $script:album.FullName
+                        $folderName = Split-Path $currentPath -Leaf
+                        $originalParentFolder = Split-Path $currentPath -Parent
+                        
+                        # Get AlbumArtist from the first audio file's tags (they should all be the same)
+                        $albumArtistName = 'Unknown Artist'
+                        if ($audioFiles -and $audioFiles.Count -gt 0) {
+                            try {
+                                $firstFile = $audioFiles[0]
+                                if ($firstFile.TagFile -and $firstFile.TagFile.Tag.AlbumArtists -and $firstFile.TagFile.Tag.AlbumArtists.Count -gt 0) {
+                                    $albumArtistName = $firstFile.TagFile.Tag.AlbumArtists[0]
+                                }
+                                elseif ($firstFile.TagFile -and $firstFile.TagFile.Tag.FirstAlbumArtist) {
+                                    $albumArtistName = $firstFile.TagFile.Tag.FirstAlbumArtist
+                                }
+                                Write-Verbose "Extracted AlbumArtist for folder structure: $albumArtistName"
+                            }
+                            catch {
+                                Write-Warning "Could not extract AlbumArtist from tags: $($_.Exception.Message)"
+                            }
+                        }
+                        
+                        # Sanitize album artist name for folder creation
+                        $albumArtistName = Approve-PathSegment -Segment $albumArtistName
+                        
+                        # Ensure target directory exists
+                        if (-not (Test-Path -LiteralPath $TargetFolder)) {
+                            Write-Verbose "Creating target directory: $TargetFolder"
+                            New-Item -Path $TargetFolder -ItemType Directory -Force | Out-Null
+                        }
+                        
+                        # Create artist subdirectory in target folder
+                        $artistFolder = Join-Path $TargetFolder $albumArtistName
+                        if (-not (Test-Path -LiteralPath $artistFolder)) {
+                            Write-Verbose "Creating artist directory: $artistFolder"
+                            New-Item -Path $artistFolder -ItemType Directory -Force | Out-Null
+                        }
+                        
+                        # Calculate target path with duplicate handling
+                        $targetPath = Join-Path $artistFolder $folderName
+                        if (Test-Path -LiteralPath $targetPath) {
+                            $n = 2
+                            while (Test-Path -LiteralPath (Join-Path $artistFolder "$folderName ($n)")) {
+                                $n++
+                            }
+                            $targetPath = Join-Path $artistFolder "$folderName ($n)"
+                            Write-Verbose "Duplicate folder detected. Using: $targetPath"
+                        }
+                        
+                        # Move album to target folder
+                        Write-Host "Moving album to target folder: $targetPath" -ForegroundColor Cyan
+                        Move-Item -LiteralPath $currentPath -Destination $targetPath -Force
+                        
+                        # Clean up empty parent folder if it's now empty
+                        if ($originalParentFolder -and (Test-Path -LiteralPath $originalParentFolder)) {
+                            $remainingItems = @(Get-ChildItem -LiteralPath $originalParentFolder -Force)
+                            if ($remainingItems.Count -eq 0) {
+                                Write-Verbose "Removing empty parent folder: $originalParentFolder"
+                                Remove-Item -LiteralPath $originalParentFolder -Force
+                                Write-Host "Cleaned up empty folder: $originalParentFolder" -ForegroundColor Gray
+                            }
+                            else {
+                                Write-Verbose "Parent folder not empty ($(($remainingItems.Count)) items remaining), keeping it"
+                            }
+                        }
+                        
+                        # Update $script:album and reload audio files from new location
+                        $script:album = Get-Item -LiteralPath $targetPath
+                        
+                        # Reload audio files with fresh TagLib handles from the target path
+                        $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
+                        $audioFiles = foreach ($f in $audioFiles) {
+                            try {
+                                $tagFile = [TagLib.File]::Create($f.FullName)
+                                [PSCustomObject]@{
+                                    FilePath    = $f.FullName
+                                    DiscNumber  = $tagFile.Tag.Disc
+                                    TrackNumber = $tagFile.Tag.Track
+                                    Title       = $tagFile.Tag.Title
+                                    TagFile     = $tagFile
+                                    Composer    = if ($tagFile.Tag.Composers) { $tagFile.Tag.Composers -join '; ' } else { 'Unknown Composer' }
+                                    Artist      = if ($tagFile.Tag.Performers) { $tagFile.Tag.Performers -join '; ' } else { 'Unknown Artist' }
+                                    Name        = if ($tagFile.Tag.Title) { $tagFile.Tag.Title } else { $f.BaseName }
+                                    Duration    = $tagFile.Properties.Duration.TotalMilliseconds
+                                }
+                            }
+                            catch {
+                                Write-Warning "Skipping corrupted or invalid audio file: $($f.FullName) - Error: $($_.Exception.Message)"
+                                continue
+                            }
+                        }
+
+                        # Update paired tracks with reloaded audio files
+                        if ($pairedTracks -and $pairedTracks.Count -gt 0) {
+                            for ($i = 0; $i -lt [Math]::Min($pairedTracks.Count, $audioFiles.Count); $i++) {
+                                if ($pairedTracks[$i].AudioFile.TagFile) {
+                                    try { $pairedTracks[$i].AudioFile.TagFile.Dispose() } catch { }
+                                }
+                                $pairedTracks[$i].AudioFile = $audioFiles[$i]
+                            }
+                        }
+                    }
+                    
                     Write-Host "Album saved and folder moved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
                     #  continue doTracks
                 }
