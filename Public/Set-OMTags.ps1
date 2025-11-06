@@ -549,16 +549,20 @@ function Set-OMTags {
                 # Detect changes - handle arrays specially
                 $hasChange = $false
                 if ($newValue -is [array] -and $oldValue -is [array]) {
-                    # Array comparison - use join to compare
-                    if (($newValue -join ',') -ne ($oldValue -join ',')) {
+                    # Array comparison - use case-sensitive join comparison to detect case changes
+                    if (($newValue -join ',') -cne ($oldValue -join ',')) {
                         $hasChange = $true
                     }
                 } elseif ($newValue -is [array] -or $oldValue -is [array]) {
                     # One is array, one isn't - they're different
                     $hasChange = $true
                 } else {
-                    # Scalar comparison
-                    if ($newValue -ne $oldValue) {
+                    # Scalar comparison - use case-sensitive for string values
+                    if ($newValue -is [string] -and $oldValue -is [string]) {
+                        if ($newValue -cne $oldValue) {
+                            $hasChange = $true
+                        }
+                    } elseif ($newValue -ne $oldValue) {
                         $hasChange = $true
                     }
                 }
