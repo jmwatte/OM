@@ -488,13 +488,18 @@ function Get-OMTags {
                     if ($prop -in $orderedProperties) {
                         # For ordered properties, collect in file processing order
                         $orderedValues = @()
+                        $hasEmpty = $false
                         foreach ($result in $results) {
                             $value = $result.$prop
-                            if ($value -ne $null -and $value -ne '') {
+                            if ($null -ne $value -and $value -ne '') {
                                 $orderedValues += $value
+                            } else {
+                                $hasEmpty = $true
                             }
                         }
-                        $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value ($orderedValues -join ', ')
+                        $summaryValue = $orderedValues -join ', '
+                        if ($hasEmpty) { $summaryValue += ', *Empty*' }
+                        $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value $summaryValue
                     } else {
                         # For other properties, collect all values and get unique sorted
                         # Special-case 'Path' to show unique album folders
@@ -507,16 +512,27 @@ function Get-OMTags {
                             $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value ($uniqueParents -join ', ')
                         } else {
                             $allValues = @()
+                            $hasEmpty = $false
                             foreach ($result in $results) {
                                 $value = $result.$prop
                                 if ($value -is [array]) {
-                                    $allValues += $value
+                                    if ($value.Count -eq 0) {
+                                        $hasEmpty = $true
+                                    } else {
+                                        $allValues += $value
+                                    }
                                 } else {
-                                    $allValues += $value
+                                    if ($null -ne $value -and $value -ne '') {
+                                        $allValues += $value
+                                    } else {
+                                        $hasEmpty = $true
+                                    }
                                 }
                             }
                             $uniqueValues = $allValues | Where-Object { $_ -ne $null -and $_ -ne '' } | Select-Object -Unique | Sort-Object
-                            $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value ($uniqueValues -join ', ')
+                            $summaryValue = $uniqueValues -join ', '
+                            if ($hasEmpty) { $summaryValue += ', *Empty*' }
+                            $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value $summaryValue
                         }
                     }
                 }
