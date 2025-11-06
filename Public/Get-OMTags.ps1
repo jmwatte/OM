@@ -498,7 +498,9 @@ function Get-OMTags {
                             }
                         }
                         $summaryValue = $orderedValues -join ', '
-                        if ($hasEmpty) { $summaryValue += ', *Empty*' }
+                        if ($hasEmpty) { 
+                            $summaryValue = if ($summaryValue) { $summaryValue + ', *Empty*' } else { '*Empty*' }
+                        }
                         $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value $summaryValue
                     } else {
                         # For other properties, collect all values and get unique sorted
@@ -531,7 +533,9 @@ function Get-OMTags {
                             }
                             $uniqueValues = $allValues | Where-Object { $_ -ne $null -and $_ -ne '' } | Select-Object -Unique | Sort-Object
                             $summaryValue = $uniqueValues -join ', '
-                            if ($hasEmpty) { $summaryValue += ', *Empty*' }
+                            if ($hasEmpty) { 
+                                $summaryValue = if ($summaryValue) { $summaryValue + ', *Empty*' } else { '*Empty*' }
+                            }
                             $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value $summaryValue
                         }
                     }
