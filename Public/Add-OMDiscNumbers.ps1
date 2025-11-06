@@ -198,7 +198,7 @@ function Add-OMDiscNumbers {
     }
 
     # If there were planned changes, display a concise WhatIf-style summary
-    if ($plannedChanges.Count -gt 0) {
+    if ($plannedChanges.Count -gt 0 -and $PSCmdlet.MyInvocation.BoundParameters.ContainsKey('WhatIf') -and $PSCmdlet.MyInvocation.BoundParameters['WhatIf']) {
         Write-Host "`nPlanned changes summary:`n" -ForegroundColor Cyan
         foreach ($entry in $plannedChanges) {
             Write-Host "$($entry.File) -> $($entry.Actions -join ', ')"
