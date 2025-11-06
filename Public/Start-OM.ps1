@@ -635,7 +635,7 @@ function Start-OM {
                         [Console]::ForegroundColor = [ConsoleColor]::Yellow
                         $modeIndicator = if (
                         $script:backNavigationMode) { " (Back Navigation - use 'f' to search again)" } else { "" }
-                        $albumChoice = Read-Host "Select album [number] (Enter=first), (P)rovider, {F}indMode, (ni) New Item (enter new artist+album), (C)over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags}, or new search term$modeIndicator"
+                        $albumChoice = Read-Host "Select album [number] (Enter=first), (P)rovider, {F}indMode, (ni) New Item (enter new artist+album), (x)ip, (C)over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags}, or new search term$modeIndicator"
                         [Console]::ForegroundColor = $originalColor
                         if ($albumChoice -eq '') { $albumChoice = '1' }
                         
@@ -825,6 +825,10 @@ function Start-OM {
                                 Write-Warning "Invalid selection"
                                 continue albumSelectionLoop
                             }
+                        }
+                        elseif ($albumChoice -eq 'x' -or $albumChoice -eq 'xip') {
+                            $albumDone = $true
+                            break albumSelectionLoop
                         }
                         else {
                             # New search term - update album name and restart search
