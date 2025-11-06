@@ -442,16 +442,16 @@ function Set-OMTags {
                     Path            = $currentTags.Path
                     FileName        = $currentTags.FileName
                     Title           = $currentTags.Title
-                    Artists         = if ($currentTags.Artists) { @($currentTags.Artists) } else { @() }
-                    AlbumArtists    = if ($currentTags.AlbumArtists) { @($currentTags.AlbumArtists) } else { @() }
+                    Artists         = if ($currentTags.Artists) { $currentTags.Artists } else { @() }
+                    AlbumArtists    = if ($currentTags.AlbumArtists) { $currentTags.AlbumArtists } else { @() }
                     Album           = $currentTags.Album
                     Track           = $currentTags.Track
                     TrackCount      = $currentTags.TrackCount
                     Disc            = $currentTags.Disc
                     DiscCount       = $currentTags.DiscCount
                     Year            = $currentTags.Year
-                    Genres          = if ($currentTags.Genres) { @($currentTags.Genres) } else { @() }
-                    Composers       = if ($currentTags.Composers) { @($currentTags.Composers) } else { @() }
+                    Genres          = if ($currentTags.Genres) { $currentTags.Genres } else { @() }
+                    Composers       = if ($currentTags.Composers) { $currentTags.Composers } else { @() }
                     Comment         = if ($currentTags.Comment) { $currentTags.Comment } else { $null }
                     Lyrics          = if ($currentTags.Lyrics) { $currentTags.Lyrics } else { $null }
                     Duration        = $currentTags.Duration
@@ -490,16 +490,16 @@ function Set-OMTags {
                     Path            = $currentTags.Path
                     FileName        = $currentTags.FileName
                     Title           = $currentTags.Title
-                    Artists         = if ($currentTags.Artists) { @($currentTags.Artists) } else { @() }
-                    AlbumArtists    = if ($currentTags.AlbumArtists) { @($currentTags.AlbumArtists) } else { @() }
+                    Artists         = if ($currentTags.Artists) { $currentTags.Artists } else { @() }
+                    AlbumArtists    = if ($currentTags.AlbumArtists) { $currentTags.AlbumArtists } else { @() }
                     Album           = $currentTags.Album
                     Track           = $currentTags.Track
                     TrackCount      = $currentTags.TrackCount
                     Disc            = $currentTags.Disc
                     DiscCount       = $currentTags.DiscCount
                     Year            = $currentTags.Year
-                    Genres          = if ($currentTags.Genres) { @($currentTags.Genres) } else { @() }
-                    Composers       = if ($currentTags.Composers) { @($currentTags.Composers) } else { @() }
+                    Genres          = if ($currentTags.Genres) { $currentTags.Genres } else { @() }
+                    Composers       = if ($currentTags.Composers) { $currentTags.Composers } else { @() }
                     Comment         = if ($currentTags.Comment) { $currentTags.Comment } else { $null }
                     Lyrics          = if ($currentTags.Lyrics) { $currentTags.Lyrics } else { $null }
                     Duration        = $currentTags.Duration
@@ -610,7 +610,7 @@ function Set-OMTags {
                         if ($propName -eq 'Year') {
                             try {
                                 if ($newValue) { $castYear = [uint32]$newValue } else { $castYear = $null }
-                                $castType = if ($castYear -ne $null) { $castYear.GetType().Name } else { 'null' }
+                                $castType = if ($null -ne $castYear) { $castYear.GetType().Name } else { 'null' }
                                 Write-Verbose "    Year cast to uint32 would be: $castYear (type: $castType)"
                             } catch {
                                 Write-Verbose "    Year cast to uint32 failed: $($_.Exception.Message)"
@@ -621,17 +621,17 @@ function Set-OMTags {
                         switch ($propName) {
                             'Title' { $tag.Title = $newValue }
                             'Artists' { 
-                                 if ($newValue) {
+                                # Clear first to prevent duplicates
+                                $tag.Performers = @()
+                                if ($newValue) {
                                     $tag.Performers = $newValue
-                                } else {
-                                    $tag.Performers = @()
                                 }
                             }
                             'AlbumArtists' { 
+                                # Clear first to prevent duplicates
+                                $tag.AlbumArtists = @()
                                 if ($newValue) {
                                     $tag.AlbumArtists = $newValue
-                                } else {
-                                    $tag.AlbumArtists = @()
                                 }
                             }
                             'Album' { $tag.Album = $newValue }
@@ -671,17 +671,17 @@ function Set-OMTags {
                                 }
                             }
                             'Genres' { 
+                                # Clear first to prevent duplicates
+                                $tag.Genres = @()
                                 if ($newValue) {
                                     $tag.Genres = $newValue
-                                } else {
-                                    $tag.Genres = @()
                                 }
                             }
                             'Composers' { 
+                                # Clear first to prevent duplicates
+                                $tag.Composers = @()
                                 if ($newValue) {
                                     $tag.Composers = $newValue
-                                } else {
-                                    $tag.Composers = @()
                                 }
                             }
                             'Comment' { 
