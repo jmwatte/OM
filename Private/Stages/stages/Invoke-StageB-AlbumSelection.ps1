@@ -338,7 +338,7 @@ function Invoke-StageB-AlbumSelection {
                 }
             }
     
-            $inputF = Read-Host "Enter '(b)ack', '(s)kip', 'id:<id>' or album name to filter"
+            $inputF = Read-Host "Enter '(b)ack', '(s)kip or (x)ip', 'id:<id>' or album name to filter"
             switch -Regex ($inputF) {
                 '^b$' {
                     return @{
@@ -351,6 +351,16 @@ function Invoke-StageB-AlbumSelection {
                     }
                 }
                 '^s$' {
+                    return @{
+                        NextStage             = 'Skip'
+                        SelectedAlbum         = $null
+                        UpdatedCache          = $CachedAlbums
+                        UpdatedCachedArtistId = $CachedArtistId
+                        UpdatedProvider       = $Provider
+                        CurrentPage           = $currentPage
+                    }
+                }
+                '^x(ip)?$' {
                     return @{
                         NextStage             = 'Skip'
                         SelectedAlbum         = $null

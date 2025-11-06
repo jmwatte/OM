@@ -93,6 +93,90 @@ function Expand-RenamePattern {
     return $result
 }
 
+function Parse-FilenamePattern {
+    <#
+    .SYNOPSIS
+        Parses a filename using a pattern template to extract tag values.
+    
+    .PARAMETER Pattern
+        The template string containing placeholders like {Title}, {Artist}, etc.
+    
+    .PARAMETER FileName
+        The filename (without extension) to parse.
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [string]$Pattern,
+        
+        [Parameter(Mandatory)]
+        [string]$FileName
+    )
+    
+    # Build regex pattern by processing each placeholder individually
+    $regexPattern = $Pattern
+    
+    # Find all placeholders and replace them with capture groups
+    $placeholders = [regex]::Matches($regexPattern, '\{([^}]+)\}')
+    
+    foreach ($match in $placeholders) {
+        $placeholder = $match.Groups[1].Value
+        $fullMatch = $match.Value
+        
+        # Split property name and format specifier (ignore format for parsing)
+        $propertyName = $placeholder -split ':', 2 | Select-Object -First 1
+        
+        # Replace with named capture group
+        $captureGroup = "(?<$propertyName>.+?)"
+        $regexPattern = $regexPattern -replace [regex]::Escape($fullMatch), $captureGroup
+    }
+    
+    # Now escape only the literal text parts, but preserve the capture groups
+    # Split by capture groups, escape the literals, then reassemble
+    $parts = $regexPattern -split '(\(\?<[^>]+>.+?\))'
+    $escapedParts = foreach ($part in $parts) {
+        if ($part -match '^\(\?<[^>]+>.+?\)$') {
+            # This is a capture group, don't escape it
+            $part
+        } else {
+            # This is literal text, escape it
+            [regex]::Escape($part)
+        }
+    }
+    $regexPattern = $escapedParts -join ''
+    
+    # Make the pattern match the entire string
+    $regexPattern = "^$regexPattern$"
+    
+    Write-Verbose "Generated regex pattern: $regexPattern"
+    
+    # Try to match
+    $match = [regex]::Match($FileName, $regexPattern)
+    
+    if ($match.Success) {
+        $result = @{}
+        
+        # Extract captured groups
+        foreach ($groupName in $match.Groups.Keys) {
+            if ($groupName -ne '0') {  # Skip the full match
+                $value = $match.Groups[$groupName].Value.Trim()
+                if ($value) {
+                    # Try to convert numeric values
+                    if ($groupName -match '^(Track|Disc|Year)$' -and $value -match '^\d+$') {
+                        $result[$groupName] = [int]$value
+                    } else {
+                        $result[$groupName] = $value
+                    }
+                }
+            }
+        }
+        
+        return $result
+    } else {
+        Write-Verbose "Filename '$FileName' does not match pattern '$Pattern'"
+        return $null
+    }
+}
+
 function Set-OMTags {
 <#
 .SYNOPSIS
@@ -162,6 +246,26 @@ function Set-OMTags {
     - "{Year} - {Title:TitleCase}" → "2023 - Song Title.flac"
     
     Note: Renaming only occurs after successful tag updates.
+
+.PARAMETER ParseFilename
+    Template string for parsing filenames to extract tag values.
+    Use placeholders like {Title}, {Artist}, {Album}, {Track}, {Year}, etc.
+    The filename (without extension) is matched against this pattern to extract values.
+    
+    Supports the same placeholders as RenamePattern. Numeric values (Track, Disc, Year)
+    are automatically converted to integers when possible.
+    
+    You can use dummy placeholders (any name not corresponding to a tag property) to skip
+    parts of the filename you don't want to extract. For example:
+    - "{Skip} - {Composers} - {Skip}" matches "02 - Albinoni - Adagio" and extracts only Composers
+    - "{Track} - {SkipArtist} - {Title}" matches "01 - Artist - Song" and extracts only Track and Title
+    
+    Examples:
+    - "{Track} - {Composers} - {Title}" matches "01 - Albinoni - Adagio in G Minor"
+    - "{Track:D2} - {Artists} - {Title}" matches "01 - Artist Name - Song Title"
+    
+    Parsed values override existing tag values before other processing.
+    Useful for bulk importing metadata from well-formatted filenames.
 
 .PARAMETER RenumberTracks
     Automatically renumber tracks starting from the specified number.
@@ -318,6 +422,16 @@ function Set-OMTags {
     
     Sort files by filename first, then renumber tracks starting from 5.
 
+.EXAMPLE
+    Set-OMTags -Path "02 - Albinoni - Adagio in G Minor.mp3" -ParseFilename "{Skip} - {Composers} - {Skip}"
+    
+    Parse filename to extract only Composers, skipping track number and title.
+
+.EXAMPLE
+    Get-OMTags -Path "classical_album" | Set-OMTags -ParseFilename "{Track:D2} - {Composers} - {Title}" -Tags @{Genres=@("Classical")}
+    
+    Parse filenames for classical music and add genre tags.
+
 .NOTES
     Requirements:
     - TagLib-Sharp assembly must be loaded (automatically loaded by Get-OMTags)
@@ -357,6 +471,9 @@ function Set-OMTags {
         
         [Parameter()]
         [string]$RenamePattern,
+        
+        [Parameter()]
+        [string]$ParseFilename,
         
         [Parameter()]
         [int]$RenumberTracks,
@@ -462,6 +579,28 @@ function Set-OMTags {
                     SampleRate      = $currentTags.SampleRate
                     Format          = $currentTags.Format
                 }
+                
+                # Parse filename if ParseFilename pattern is specified
+                if ($ParseFilename) {
+                    $fileNameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($filePath)
+                    Write-Verbose "Parsing filename: $fileNameWithoutExtension"
+                    
+                    $parsedValues = Parse-FilenamePattern -Pattern $ParseFilename -FileName $fileNameWithoutExtension
+                    
+                    if ($parsedValues) {
+                        Write-Verbose "Parsed values from filename:"
+                        foreach ($key in $parsedValues.Keys) {
+                            Write-Verbose "  $key = '$($parsedValues[$key])'"
+                            # Apply parsed values to updated if they exist as properties
+                            if ($updated.PSObject.Properties.Name -contains $key) {
+                                $updated.$key = $parsedValues[$key]
+                            }
+                        }
+                    } else {
+                        Write-Verbose "No values parsed from filename"
+                    }
+                }
+                
                 # Invoke the transform with $updated as $_ in the scriptblock's scope
                 # Capture all outputs, then select the LAST PSCustomObject (the modified tag object)
                 # This handles scriptblocks that emit incidental values like booleans from -match
@@ -509,6 +648,27 @@ function Set-OMTags {
                     Bitrate         = $currentTags.Bitrate
                     SampleRate      = $currentTags.SampleRate
                     Format          = $currentTags.Format
+                }
+                
+                # Parse filename if ParseFilename pattern is specified
+                if ($ParseFilename) {
+                    $fileNameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($filePath)
+                    Write-Verbose "Parsing filename: $fileNameWithoutExtension"
+                    
+                    $parsedValues = Parse-FilenamePattern -Pattern $ParseFilename -FileName $fileNameWithoutExtension
+                    
+                    if ($parsedValues) {
+                        Write-Verbose "Parsed values from filename:"
+                        foreach ($key in $parsedValues.Keys) {
+                            Write-Verbose "  $key = '$($parsedValues[$key])'"
+                            # Apply parsed values to updated if they exist as properties
+                            if ($updated.PSObject.Properties.Name -contains $key) {
+                                $updated.$key = $parsedValues[$key]
+                            }
+                        }
+                    } else {
+                        Write-Verbose "No values parsed from filename"
+                    }
                 }
                 
                 # Apply Tags hashtable if provided

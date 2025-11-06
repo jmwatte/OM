@@ -531,7 +531,15 @@ function Get-OMTags {
                                 }
                             }
                             $uniqueValues = $allValues | Where-Object { $_ -ne $null -and $_ -ne '' } | Sort-Object -Unique
-                            $summaryValue = $uniqueValues -join ', '
+                            if ($prop -eq 'Track') {
+                                # Pad track numbers based on TrackCount
+                                $maxTrackCount = ($results | Where-Object { $_.TrackCount } | Select-Object -ExpandProperty TrackCount | Measure-Object -Maximum).Maximum
+                                $padLength = if ($maxTrackCount) { $maxTrackCount.ToString().Length } else { 2 }
+                                $paddedValues = $uniqueValues | ForEach-Object { if ($_ -is [int]) { $_.ToString("D$padLength") } else { $_ } }
+                                $summaryValue = $paddedValues -join ', '
+                            } else {
+                                $summaryValue = $uniqueValues -join ', '
+                            }
                             if ($hasEmpty) { 
                                 $summaryValue = if ($summaryValue) { $summaryValue + ', *Empty*' } else { '*Empty*' }
                             }

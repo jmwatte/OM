@@ -5,7 +5,8 @@
 
 .DESCRIPTION
     The Add-OMDiscNumbers cmdlet updates the disc and track numbers of audio files in a folder structure.
-    It can handle both disc numbering (for multi-disc albums) and track numbering within each disc folder.
+    It can handle both single-disc albums (files directly in the folder) and multi-disc albums (files in subfolders).
+    For multi-disc albums, each subfolder represents one disc. For single-disc albums, the main folder is treated as disc 1.
     Numbers are zero-padded based on the total count (e.g., "01/12" for a 12-track disc).
 
     Supported audio formats:
@@ -14,9 +15,11 @@
     - WAV (.wav)
     - M4A (.m4a)
     - AAC (.aac)
+    - WMA (.wma)
 
 .PARAMETER baseFolder
-    The root folder containing the disc subfolders. For single-disc albums, this is the folder containing the tracks.
+    The root folder containing the audio files. For multi-disc albums, this folder should contain subfolders for each disc.
+    For single-disc albums, this is the folder containing the tracks directly.
 
 .PARAMETER discs
     If specified, updates the total disc count for each file and sets disc numbers only if they're not already set (0).
@@ -121,6 +124,13 @@ function Add-OMDiscNumbers {
     # Get all subfolders and sort them
     $subFolders = Get-ChildItem -LiteralPath $baseFolder -Directory | Sort-Object Name
     $totalDiscs = $subFolders.Count
+    
+    # If no subfolders, treat the base folder as a single disc
+    if ($totalDiscs -eq 0) {
+        $subFolders = @([PSCustomObject]@{ FullName = $baseFolder; Name = Split-Path $baseFolder -Leaf })
+        $totalDiscs = 1
+    }
+    
     $discFormat = "d$($totalDiscs.ToString().Length)"  # Format string for disc numbers
 
     $discNumber = 1
@@ -129,7 +139,7 @@ function Add-OMDiscNumbers {
         
         # Get all audio files in current folder
         $audioFiles = Get-ChildItem -LiteralPath $folder.FullName -File | 
-                     Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac)$' } |
+                     Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|wma)$' } |
                      Sort-Object Name
         
         $totalTracks = $audioFiles.Count
