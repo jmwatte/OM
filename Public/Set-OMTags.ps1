@@ -344,10 +344,12 @@ function Set-OMTags {
     param(
         [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true, ParameterSetName = 'Simple')]
         [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true, ParameterSetName = 'Transform')]
+        [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true, ParameterSetName = 'Pipeline')]
         [Alias('FilePath', 'LiteralPath')]
         $Path,
         
         [Parameter(ParameterSetName = 'Simple')]
+        [Parameter(ParameterSetName = 'Pipeline')]
         [hashtable]$Tags,
         
         [Parameter(Mandatory = $true, ParameterSetName = 'Transform')]
@@ -544,23 +546,28 @@ function Set-OMTags {
                     continue
                 }
                 
-                # Detect changes
-                if ($newValue -ne $oldValue) {
-                    # Handle array comparison
-                    if ($newValue -is [array] -and $oldValue -is [array]) {
-                        if (($newValue -join ',') -ne ($oldValue -join ',')) {
-                            $changes += @{
-                                Property = $propName
-                                OldValue = $oldValue
-                                NewValue = $newValue
-                            }
-                        }
-                    } else {
-                        $changes += @{
-                            Property = $propName
-                            OldValue = $oldValue
-                            NewValue = $newValue
-                        }
+                # Detect changes - handle arrays specially
+                $hasChange = $false
+                if ($newValue -is [array] -and $oldValue -is [array]) {
+                    # Array comparison - use join to compare
+                    if (($newValue -join ',') -ne ($oldValue -join ',')) {
+                        $hasChange = $true
+                    }
+                } elseif ($newValue -is [array] -or $oldValue -is [array]) {
+                    # One is array, one isn't - they're different
+                    $hasChange = $true
+                } else {
+                    # Scalar comparison
+                    if ($newValue -ne $oldValue) {
+                        $hasChange = $true
+                    }
+                }
+                
+                if ($hasChange) {
+                    $changes += @{
+                        Property = $propName
+                        OldValue = $oldValue
+                        NewValue = $newValue
                     }
                 }
             }
