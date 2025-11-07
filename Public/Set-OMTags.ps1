@@ -284,6 +284,12 @@ function Set-OMTags {
     
     Useful for verification, chaining operations, or capturing results.
 
+.PARAMETER Summary
+    When used with -PassThru, returns a single summary object instead of individual tag objects.
+    The summary aggregates unique values across all processed files in a compact format.
+    
+    Useful for getting an overview of tag changes without detailed per-file output.
+
 .PARAMETER Force
     Skip confirmation prompts and apply changes immediately.
     Overrides ConfirmPreference. Use with caution in automated scripts.
@@ -317,6 +323,11 @@ function Set-OMTags {
         Format-Table FileName, Year, Album
     
     Update Year and display results in a table with -PassThru.
+
+.EXAMPLE
+    Get-OMTags -Path "C:\Music\Album" | Set-OMTags -Tags @{Year=2023} -PassThru -Summary
+    
+    Update Year and return a summary object showing aggregated tag values.
 
 .EXAMPLE
     Get-OMTags -Path "C:\Music" | Where-Object { -not $_.Year } | 
@@ -480,6 +491,9 @@ function Set-OMTags {
         
         [Parameter()]
         [switch]$PassThru,
+        
+        [Parameter()]
+        [switch]$Summary,
         
         [Parameter()]
         [switch]$Force
@@ -956,7 +970,101 @@ function Set-OMTags {
         
         # Return results if PassThru
         if ($PassThru) {
-            return $results
+            if ($Summary) {
+                # Create summary object with unique values
+                $summaryObj = [PSCustomObject]@{}
+                if ($results.Count -gt 0) {
+                    # Define default properties and their order (matching Get-OMTags)
+                    $defaultProperties = @(
+                        'Path',
+                        'FileName',
+                        'Lyrics',
+                        'Comment',
+                        'Composers',
+                        'Title',
+                        'Track',
+                        'TrackCount',
+                        'Disc',
+                        'DiscCount',
+                        'Genres',
+                        'Artists',
+                        'Year',
+                        'AlbumArtists',
+                        'Album'
+                    )
+                    
+                    # Properties that should maintain file order (not be sorted)
+                    $orderedProperties = @('FileName', 'Title')
+                    
+                    foreach ($prop in $defaultProperties) {
+                        if ($prop -in $orderedProperties) {
+                            # For ordered properties, collect in file processing order
+                            $orderedValues = @()
+                            $hasEmpty = $false
+                            foreach ($result in $results) {
+                                $value = $result.$prop
+                                if ($null -ne $value -and $value -ne '') {
+                                    $orderedValues += $value
+                                } else {
+                                    $hasEmpty = $true
+                                }
+                            }
+                            $summaryValue = $orderedValues -join ', '
+                            if ($hasEmpty) { 
+                                $summaryValue = if ($summaryValue) { $summaryValue + ', *Empty*' } else { '*Empty*' }
+                            }
+                            $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value $summaryValue
+                        } else {
+                            # For other properties, collect all values and get unique sorted
+                            # Special-case 'Path' to show unique album folders
+                            if ($prop -eq 'Path') {
+                                $parents = @()
+                                foreach ($result in $results) {
+                                    if ($result.Path) { $parents += (Split-Path $result.Path -Parent) }
+                                }
+                                $uniqueParents = $parents | Where-Object { $_ -and $_ -ne '' } | Select-Object -Unique
+                                $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value ($uniqueParents -join ', ')
+                            } else {
+                                $allValues = @()
+                                $hasEmpty = $false
+                                foreach ($result in $results) {
+                                    $value = $result.$prop
+                                    if ($value -is [array]) {
+                                        if ($value.Count -eq 0) {
+                                            $hasEmpty = $true
+                                        } else {
+                                            $allValues += $value
+                                        }
+                                    } else {
+                                        if ($null -ne $value -and $value -ne '') {
+                                            $allValues += $value
+                                        } else {
+                                            $hasEmpty = $true
+                                        }
+                                    }
+                                }
+                                $uniqueValues = $allValues | Where-Object { $_ -ne $null -and $_ -ne '' } | Sort-Object -Unique
+                                if ($prop -eq 'Track') {
+                                    # Pad track numbers based on TrackCount
+                                    $maxTrackCount = ($results | Where-Object { $_.TrackCount } | Select-Object -ExpandProperty TrackCount | Measure-Object -Maximum).Maximum
+                                    $padLength = if ($maxTrackCount) { $maxTrackCount.ToString().Length } else { 2 }
+                                    $paddedValues = $uniqueValues | ForEach-Object { if ($_ -is [int]) { $_.ToString("D$padLength") } else { $_ } }
+                                    $summaryValue = $paddedValues -join ', '
+                                } else {
+                                    $summaryValue = $uniqueValues -join ', '
+                                }
+                                if ($hasEmpty) { 
+                                    $summaryValue = if ($summaryValue) { $summaryValue + ', *Empty*' } else { '*Empty*' }
+                                }
+                                $summaryObj | Add-Member -MemberType NoteProperty -Name $prop -Value $summaryValue
+                            }
+                        }
+                    }
+                }
+                return $summaryObj
+            } else {
+                return $results
+            }
         }
     }
 }
