@@ -277,18 +277,15 @@ function Set-OMTags {
     Example: -RenumberTracks 1 (starts numbering from 1)
 
 .PARAMETER PassThru
-    Return the updated tag objects after writing changes.
+    Return the updated tag results after writing changes.
     
-    Without -WhatIf: Returns freshly-read tags from disk (reflects actual saved state)
-    With -WhatIf: Returns the proposed tag objects (shows what would be written)
+    Without -WhatIf: Returns summary of updated tags from disk
+    With -WhatIf: Returns summary of proposed tag changes
     
-    Useful for verification, chaining operations, or capturing results.
+    Use -Details with -PassThru to get individual tag objects instead of summary.
 
-.PARAMETER Summary
-    When used with -PassThru, returns a single summary object instead of individual tag objects.
-    The summary aggregates unique values across all processed files in a compact format.
-    
-    Useful for getting an overview of tag changes without detailed per-file output.
+.PARAMETER Details
+    When used with -PassThru, returns individual tag objects instead of the default summary.
 
 .PARAMETER Force
     Skip confirmation prompts and apply changes immediately.
@@ -322,12 +319,12 @@ function Set-OMTags {
     Get-OMTags -Path "C:\Music\Album" | Set-OMTags -Tags @{Year=2023} -PassThru | 
         Format-Table FileName, Year, Album
     
-    Update Year and display results in a table with -PassThru.
+    Update Year and display summary results with -PassThru.
 
 .EXAMPLE
-    Get-OMTags -Path "C:\Music\Album" | Set-OMTags -Tags @{Year=2023} -PassThru -Summary
+    Get-OMTags -Path "C:\Music\Album" | Set-OMTags -Tags @{Year=2023} -PassThru -Details
     
-    Update Year and return a summary object showing aggregated tag values.
+    Update Year and return individual tag objects for each file.
 
 .EXAMPLE
     Get-OMTags -Path "C:\Music" | Where-Object { -not $_.Year } | 
@@ -493,7 +490,7 @@ function Set-OMTags {
         [switch]$PassThru,
         
         [Parameter()]
-        [switch]$Summary,
+        [switch]$Details,
         
         [Parameter()]
         [switch]$Force
@@ -970,8 +967,8 @@ function Set-OMTags {
         
         # Return results if PassThru
         if ($PassThru) {
-            if ($Summary) {
-                # Create summary object with unique values
+            if (-not $Details) {
+                # Create summary object (DEFAULT BEHAVIOR)
                 $summaryObj = [PSCustomObject]@{}
                 if ($results.Count -gt 0) {
                     # Define default properties and their order (matching Get-OMTags)
@@ -1063,6 +1060,7 @@ function Set-OMTags {
                 }
                 return $summaryObj
             } else {
+                # Return individual objects when -Details is specified
                 return $results
             }
         }

@@ -23,13 +23,21 @@ function Get-OMTags {
 .PARAMETER AllTags
     Include all available tag properties from the audio file, not just the standard ones.
 
+.PARAMETER Details
+    Return individual tag objects for each file instead of the default summary.
+
 .OUTPUTS
-    Array of PSCustomObject with comprehensive tag fields including classical music metadata, or a single summary object if -Summary is specified. If -AllTags is specified, all TagLib tag properties are included.
+    PSCustomObject with aggregated tag values, or array of PSCustomObject with individual file tags if -Details is specified. If -AllTags is specified, all TagLib tag properties are included.
 
 .EXAMPLE
     Get-OMTags -Path "C:\Music\Arvo Pärt\1999 - Alina" -IncludeComposer
     
-    Reads all audio files with classical music analysis.
+    Returns summary of all audio files with classical music analysis.
+
+.EXAMPLE
+    Get-OMTags -Path "C:\Music\Arvo Pärt\1999 - Alina" -Details
+    
+    Returns individual tag objects for each file.
 
 .NOTES
     Requires TagLib-Sharp assembly to be loaded.
@@ -49,7 +57,7 @@ function Get-OMTags {
         
         [switch]$ShowProgress,
         
-        [switch]$Summary,
+        [switch]$Details,
         
         [switch]$AllTags
     )
@@ -476,8 +484,8 @@ function Get-OMTags {
             Write-Verbose "All $successCount files processed successfully"
         }
 
-        # If Summary is requested, create a summary object with unique values in default order
-        if ($Summary) {
+        # If Details is requested, return individual objects; otherwise return summary (default)
+        if (-not $Details) {
             $summaryObj = [PSCustomObject]@{}
             if ($results.Count -gt 0) {
                 # Properties that should maintain file order (not be sorted)
@@ -550,6 +558,7 @@ function Get-OMTags {
             }
             return $summaryObj
         } else {
+            # Return individual objects when -Details is specified
             if (-not $AllTags) {
                 # Create objects with selected properties
                 $results = $results | ForEach-Object {
