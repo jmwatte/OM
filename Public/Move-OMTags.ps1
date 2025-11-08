@@ -166,13 +166,13 @@ function Move-OMTags {
                 $targetPath = Join-Path $artistFolder "$newFolderName ($n)"
             }
 
-            # Move the folder using a manual copy approach to avoid nesting
+            # Move the folder - use simple approach
             $folderMoved = $false
             if ($PSCmdlet.ShouldProcess($resolvedPath, "Move to $targetPath")) {
                 # Ensure source path is absolute
                 $sourcePath = $resolvedPath
                 
-                # Check if source contains a single album subfolder or is the album folder itself
+                # Check if source contains a single album subfolder
                 $sourceContents = Get-ChildItem -LiteralPath $sourcePath -Directory
                 $actualSourcePath = $sourcePath
                 
@@ -182,45 +182,21 @@ function Move-OMTags {
                     Write-Verbose "Detected single album subfolder: $($sourceContents[0].Name)"
                 }
                 
-                # Create target directory
-                New-Item -Path $targetPath -ItemType Directory -Force | Out-Null
+                # Use a temporary folder to avoid conflicts
+                $tempGuid = [System.Guid]::NewGuid().ToString()
+                $tempPath = Join-Path $artistFolder $tempGuid
                 
-                # Get all items from actual source
-                $allItems = Get-ChildItem -LiteralPath $actualSourcePath -Recurse -Force
+                # Move source to temp location first
+                Move-Item -LiteralPath $actualSourcePath -Destination $tempPath -Force
                 
-                # Create subdirectories in target (relative to actual source)
-                $directories = $allItems | Where-Object { $_.PSIsContainer }
-                foreach ($dir in $directories) {
-                    $relativePath = $dir.FullName.Substring($actualSourcePath.Length).TrimStart('\', '/')
-                    if ($relativePath) {
-                        $targetDir = Join-Path $targetPath $relativePath
-                        if (-not (Test-Path -LiteralPath $targetDir)) {
-                            New-Item -Path $targetDir -ItemType Directory -Force | Out-Null
-                        }
-                    }
-                }
+                # Then rename temp to final name
+                Move-Item -LiteralPath $tempPath -Destination $targetPath -Force
                 
-                # Move all files (relative to actual source)
-                $files = $allItems | Where-Object { -not $_.PSIsContainer }
-                foreach ($file in $files) {
-                    $relativePath = $file.FullName.Substring($actualSourcePath.Length).TrimStart('\', '/')
-                    $targetFile = Join-Path $targetPath $relativePath
-                    $targetFileDir = Split-Path $targetFile -Parent
-                    if (-not (Test-Path -LiteralPath $targetFileDir)) {
-                        New-Item -Path $targetFileDir -ItemType Directory -Force | Out-Null
-                    }
-                    Move-Item -LiteralPath $file.FullName -Destination $targetFile -Force
-                }
-                
-                # Remove empty source directory (and parent if it was artist folder)
+                # Clean up parent folder if it's now empty
                 if ($actualSourcePath -ne $sourcePath) {
-                    Remove-Item -LiteralPath $actualSourcePath -Recurse -Force
-                    # Also remove parent if now empty
                     if ((Get-ChildItem -LiteralPath $sourcePath -Force).Count -eq 0) {
                         Remove-Item -LiteralPath $sourcePath -Recurse -Force
                     }
-                } else {
-                    Remove-Item -LiteralPath $sourcePath -Recurse -Force
                 }
                 
                 $folderMoved = $true
@@ -230,29 +206,26 @@ function Move-OMTags {
             # Rename files
             $renamedFiles = @()
             foreach ($tag in $tags) {
-                # Determine current file location based on whether folder was actually moved
+                # Find the actual file location in the moved folder
+                $fileName = Split-Path $tag.Path -Leaf
                 $currentFilePath = if ($folderMoved) {
-                    Join-Path $targetPath $tag.FileName
+                    # Search for the file in target folder (including subdirectories)
+                    $foundFiles = Get-ChildItem -LiteralPath $targetPath -Filter $fileName -Recurse -File
+                    if ($foundFiles) {
+                        $foundFiles[0].FullName
+                    } else {
+                        Write-Warning "Cannot find file '$fileName' in target folder. Skipping rename."
+                        continue
+                    }
                 } else {
                     $tag.Path
                 }
                 
-                # Debug: Check if file actually exists at expected location
-                if ($folderMoved -and -not (Test-Path -LiteralPath $currentFilePath)) {
-                    Write-Verbose "File not found at expected location: $currentFilePath"
-                    # Try to find the file in subdirectories
-                    $foundFiles = Get-ChildItem -LiteralPath $targetPath -Filter $tag.FileName -Recurse -File
-                    if ($foundFiles) {
-                        $currentFilePath = $foundFiles[0].FullName
-                        Write-Verbose "Found file at: $currentFilePath"
-                    } else {
-                        Write-Warning "Cannot find file '$($tag.FileName)' in target folder. Skipping rename."
-                        continue
-                    }
-                }
-                
                 $newFileName = Expand-RenamePattern -Pattern $FileRenamePattern -TagObject $tag -FileExtension ([System.IO.Path]::GetExtension($tag.Path))
-                $newFilePath = Join-Path $targetPath $newFileName
+                
+                # Keep the file in its current subdirectory (CD1, CD2, etc), just rename it
+                $currentFileDir = Split-Path $currentFilePath -Parent
+                $newFilePath = Join-Path $currentFileDir $newFileName
 
                 if ($PSCmdlet.ShouldProcess($currentFilePath, "Rename to $newFileName")) {
                     Move-Item -LiteralPath $currentFilePath -Destination $newFilePath -Force
