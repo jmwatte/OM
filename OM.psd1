@@ -73,6 +73,7 @@ FunctionsToExport = @(
     'Add-OMDiscNumbers',
     'Get-OMConfig',
     'Get-OMTags',
+    'Move-OMTags',
     'Set-OMConfig',
     'Set-OMTags',
     'Start-OM'
@@ -89,7 +90,8 @@ AliasesToExport = @(
     'SOM',  # Start-OM
     'SOT',  # Set-OMTags
     'GOT',  # Get-OMTags
-    'AOD'   # Add-OMDiscNumbers
+    'AOD',  # Add-OMDiscNumbers
+    'MOT'   # Move-OMTags
 )
 
 # DSC resources to export from this module
