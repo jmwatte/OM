@@ -69,17 +69,39 @@ function Move-AlbumFolder {
             }
         }
 
-        $createArtist = -not (Test-Path -LiteralPath $targetArtistPath -PathType Container)
+        # Check if artist folder needs case change (exists but case differs)
+        # On Windows, Test-Path is case-insensitive, so check actual name from Get-Item
+        $artistFolderExists = Test-Path -LiteralPath $targetArtistPath -PathType Container
+        $artistCaseDiffersOnly = $false
+        
+        if ($artistFolderExists -and (Test-Path -LiteralPath $currentArtistPath -PathType Container)) {
+            $actualArtistPath = (Get-Item -LiteralPath $currentArtistPath).FullName
+            $artistCaseDiffersOnly = ($actualArtistPath -cne $targetArtistPath) -and ($actualArtistPath -ieq $targetArtistPath)
+        }
+        
+        $createArtist = -not $artistFolderExists
+        
         if ($createArtist) {
             if ($PSCmdlet.ShouldProcess($targetArtistPath, "Create artist folder")) {
                 New-Item -Path $targetArtistPath -ItemType Directory -ErrorAction Stop | Out-Null
+            }
+        }
+        
+        # Handle case-only change of artist folder using two-step rename (Windows requirement)
+        if ($artistCaseDiffersOnly) {
+            $tempArtistName = [Guid]::NewGuid().ToString()
+            $tempArtistPath = Join-Path -Path $artistParentPath -ChildPath $tempArtistName
+            if ($PSCmdlet.ShouldProcess($currentArtistPath, "Change artist folder case via temp rename")) {
+                Write-Verbose "Renaming artist folder case: '$currentArtistPath' -> temp -> '$targetArtistPath'"
+                Rename-Item -LiteralPath $currentArtistPath -NewName $tempArtistName -ErrorAction Stop
+                Rename-Item -LiteralPath $tempArtistPath -NewName (Split-Path -Leaf $targetArtistPath) -ErrorAction Stop
             }
         }
 
         $destAlbumPath = Get-UniqueAlbumPath -ArtistPath $targetArtistPath -BaseAlbumName $baseAlbumName -OriginalAlbumPath $AlbumPath
         Write-Host "Final destAlbumPath: $destAlbumPath" -ForegroundColor Cyan
 
-        $renamingOnly = ($currentArtistPath.Trim() -eq $targetArtistPath.Trim())
+        $renamingOnly = ($currentArtistPath.Trim() -ceq $targetArtistPath.Trim())
         $oldLeaf = Split-Path -Leaf $AlbumPath
         $newLeaf = Split-Path -Leaf $destAlbumPath
         if ($renamingOnly) {
@@ -99,9 +121,10 @@ function Move-AlbumFolder {
 
    process {
     try {
-        # EARLY EXIT GUARD - Use string comparison to avoid Resolve-Path on non-existing paths
-        if ($script:destAlbumPath -eq $AlbumPath) {
-            Write-Verbose "Source and destination album paths are identical. No move or rename necessary."
+        # EARLY EXIT GUARD - Use case-sensitive comparison to allow case-only renames (e.g., tears for fears → Tears For Fears)
+        # PowerShell -eq is case-insensitive by default, so use -ceq for exact match
+        if ($script:destAlbumPath -ceq $AlbumPath) {
+            Write-Verbose "Source and destination album paths are identical (case-sensitive match). No move or rename necessary."
             return [PSCustomObject]@{
                 Success           = $true
                 OldAlbumPath      = $AlbumPath
