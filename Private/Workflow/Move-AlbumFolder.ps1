@@ -25,6 +25,13 @@ function Move-AlbumFolder {
         $currentArtistPath = Split-Path -Parent $AlbumPath
         $currentArtistName = Split-Path -Leaf $currentArtistPath
         $artistParentPath  = Split-Path -Parent $currentArtistPath
+        
+        # Handle drive root case: if album is at root (e.g., E:\Album), artistParentPath will be empty
+        # In this case, use the drive root as the parent path
+        if ([string]::IsNullOrEmpty($artistParentPath) -and $currentArtistPath -match '^[A-Z]:\\?$') {
+            $artistParentPath = $currentArtistPath
+            Write-Verbose "Album is at drive root, using drive as parent: $artistParentPath"
+        }
 
         $currentAlbumLeaf = Split-Path -Leaf $AlbumPath
         if ([string]::IsNullOrWhiteSpace($NewYear)) {
