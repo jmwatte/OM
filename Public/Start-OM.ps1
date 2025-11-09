@@ -145,7 +145,14 @@ function Start-OM {
         $audioFilesInPath = @(Get-ChildItem -LiteralPath $Path -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' })
         $subFoldersInPath = @(Get-ChildItem -LiteralPath $Path -Directory -ErrorAction SilentlyContinue)
         
-        # Single album mode: Path has audio files and either no subfolders or subfolders without audio files
+        # Helper function to detect if a folder name is a disc folder
+        $isDiscFolder = {
+            param([string]$FolderName)
+            # Match patterns: Disc1, Disc 1, Disc 01, CD1, CD 1, CD01, Disk1, Disk 1, Disk01, etc.
+            return $FolderName -match '^\s*(Disc|CD|Disk)\s*\d+\s*$'
+        }
+        
+        # Single album mode: Path has audio files and either no subfolders or all subfolders are disc folders
         $script:isSingleAlbumPath = $false
         $script:originalPath = $Path
         
@@ -157,11 +164,23 @@ function Start-OM {
             })
             
             if ($subFoldersWithAudio.Count -eq 0) {
+                # No subfolders with audio → single album (flat structure)
                 $script:isSingleAlbumPath = $true
                 Write-Verbose "Detected single album path: $Path (contains $($audioFilesInPath.Count) audio files)"
             }
             else {
-                Write-Verbose "Detected artist folder path: $Path (has $($subFoldersWithAudio.Count) album subfolders with audio files)"
+                # Subfolders with audio exist - check if they're ALL disc folders
+                $nonDiscFolders = @($subFoldersWithAudio | Where-Object { -not (& $isDiscFolder $_.Name) })
+                
+                if ($nonDiscFolders.Count -eq 0) {
+                    # ALL subfolders with audio are disc folders → single multi-disc album
+                    $script:isSingleAlbumPath = $true
+                    Write-Verbose "Detected single album with disc subfolders: $Path (contains $($audioFilesInPath.Count) audio files across $($subFoldersWithAudio.Count) disc folders)"
+                }
+                else {
+                    # Some subfolders are NOT disc folders → artist folder with multiple albums
+                    Write-Verbose "Detected artist folder path: $Path (has $($subFoldersWithAudio.Count) album subfolders with audio files)"
+                }
             }
         }
         elseif ($subFoldersInPath.Count -gt 0) {
