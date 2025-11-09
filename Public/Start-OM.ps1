@@ -1236,6 +1236,38 @@ function Start-OM {
                             
                             try { 
                                 $tracksForAlbum = Invoke-ProviderGetTracks -Provider $Provider -AlbumId $albumIdToFetch
+                                
+                                # Extract album metadata from tracks (needed for Qobuz when using id: or URL)
+                                if ($tracksForAlbum -and $tracksForAlbum.Count -gt 0) {
+                                    $firstTrack = $tracksForAlbum[0]
+                                    
+                                    # Update ProviderAlbum with metadata from tracks if missing
+                                    if (-not (Get-IfExists $ProviderAlbum 'name') -or $ProviderAlbum.name -eq $ProviderAlbum.id) {
+                                        $albumNameFromTrack = Get-IfExists $firstTrack 'album_name'
+                                        if ($albumNameFromTrack) {
+                                            $ProviderAlbum.name = $albumNameFromTrack
+                                            Write-Verbose "Updated album name from track metadata: $albumNameFromTrack"
+                                        }
+                                    }
+                                    
+                                    if (-not (Get-IfExists $ProviderAlbum 'release_date')) {
+                                        $releaseDateFromTrack = Get-IfExists $firstTrack 'release_date'
+                                        if ($releaseDateFromTrack) {
+                                            $ProviderAlbum['release_date'] = $releaseDateFromTrack
+                                            Write-Verbose "Updated release date from track metadata: $releaseDateFromTrack"
+                                        }
+                                    }
+                                    
+                                    # Also update album artist if missing (for Qobuz classical albums)
+                                    if (-not (Get-IfExists $ProviderAlbum 'artist') -and -not (Get-IfExists $ProviderAlbum 'album_artist')) {
+                                        $albumArtistFromTrack = Get-IfExists $firstTrack 'album_artist'
+                                        if ($albumArtistFromTrack) {
+                                            $ProviderAlbum['album_artist'] = $albumArtistFromTrack
+                                            Write-Verbose "Updated album artist from track metadata: $albumArtistFromTrack"
+                                        }
+                                    }
+                                }
+                                
                                 if (-not $tracksForAlbum -or $tracksForAlbum.Count -eq 0) {
                                     Write-Host "`n❌ No tracks returned from $Provider for album ID: $albumIdToFetch" -ForegroundColor Red
                                     Write-Host "   This can happen if:" -ForegroundColor Yellow
