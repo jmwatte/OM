@@ -1699,14 +1699,47 @@ function Start-OM {
                                     $oldpath = $script:album.FullName
                                     $safeAlbumName = Approve-PathSegment -Segment (Get-IfExists $ProviderAlbum 'name') -Replacement '_' -CollapseRepeating -Transliterate
                                     
-                                    # Use ManualAlbumArtist if set, otherwise fall back to ProviderArtist
-                                    $artistNameForFolder = if ($script:ManualAlbumArtist) {
+                                    # Determine artist for folder name:
+                                    # Priority: 1) ManualAlbumArtist if set
+                                    #          2) Read AlbumArtist from first saved audio file (ensures consistency with saved tags)
+                                    #          3) Fall back to ProviderArtist.name
+                                    $artistNameForFolder = $null
+                                    
+                                    if ($script:ManualAlbumArtist) {
                                         Write-Verbose "Using ManualAlbumArtist for folder name: $script:ManualAlbumArtist"
-                                        $script:ManualAlbumArtist
+                                        $artistNameForFolder = $script:ManualAlbumArtist
                                     }
-                                    else {
-                                        Get-IfExists $ProviderArtist 'name'
+                                    elseif ($audioFiles -and $audioFiles.Count -gt 0) {
+                                        # Read AlbumArtist from first audio file's saved tags
+                                        try {
+                                            $firstFile = $audioFiles[0]
+                                            if ($firstFile.TagFile) {
+                                                # Dispose existing handle first
+                                                try { $firstFile.TagFile.Dispose() } catch { }
+                                            }
+                                            # Reload file to read saved tags
+                                            $tempTag = [TagLib.File]::Create($firstFile.FilePath)
+                                            if ($tempTag.Tag.AlbumArtists -and $tempTag.Tag.AlbumArtists.Count -gt 0) {
+                                                $artistNameForFolder = $tempTag.Tag.AlbumArtists[0]
+                                                Write-Verbose "Read AlbumArtist from saved tags: $artistNameForFolder"
+                                            }
+                                            elseif ($tempTag.Tag.FirstAlbumArtist) {
+                                                $artistNameForFolder = $tempTag.Tag.FirstAlbumArtist
+                                                Write-Verbose "Read FirstAlbumArtist from saved tags: $artistNameForFolder"
+                                            }
+                                            $tempTag.Dispose()
+                                        }
+                                        catch {
+                                            Write-Verbose "Failed to read AlbumArtist from saved tags: $($_.Exception.Message)"
+                                        }
                                     }
+                                    
+                                    # Final fallback to ProviderArtist
+                                    if (-not $artistNameForFolder) {
+                                        $artistNameForFolder = Get-IfExists $ProviderArtist 'name'
+                                        Write-Verbose "Using ProviderArtist.name as fallback: $artistNameForFolder"
+                                    }
+                                    
                                     $safeArtistName = Approve-PathSegment -Segment $artistNameForFolder -Replacement '_' -CollapseRepeating -Transliterate
     
                                     $mvArgs = @{
@@ -1957,14 +1990,43 @@ function Start-OM {
                                     $oldpath = $script:album.FullName
                                     $safeAlbumName = Approve-PathSegment -Segment (Get-IfExists $ProviderAlbum 'name') -Replacement '_' -CollapseRepeating -Transliterate
                                     
-                                    # Use ManualAlbumArtist if set, otherwise fall back to ProviderArtist
-                                    $artistNameForFolder = if ($script:ManualAlbumArtist) {
+                                    # Determine artist for folder name:
+                                    # Priority: 1) ManualAlbumArtist if set
+                                    #          2) Read AlbumArtist from first saved audio file (ensures consistency with saved tags)
+                                    #          3) Fall back to ProviderArtist.name
+                                    $artistNameForFolder = $null
+                                    
+                                    if ($script:ManualAlbumArtist) {
                                         Write-Verbose "Using ManualAlbumArtist for folder name: $script:ManualAlbumArtist"
-                                        $script:ManualAlbumArtist
+                                        $artistNameForFolder = $script:ManualAlbumArtist
                                     }
-                                    else {
-                                        Get-IfExists $ProviderArtist 'name'
+                                    elseif ($audioFiles -and $audioFiles.Count -gt 0 -and -not $useWhatIf) {
+                                        # Read AlbumArtist from first audio file's saved tags (only in non-WhatIf mode)
+                                        try {
+                                            $firstFilePath = $audioFiles[0].FilePath
+                                            # Reload file to read saved tags (handles were just disposed above)
+                                            $tempTag = [TagLib.File]::Create($firstFilePath)
+                                            if ($tempTag.Tag.AlbumArtists -and $tempTag.Tag.AlbumArtists.Count -gt 0) {
+                                                $artistNameForFolder = $tempTag.Tag.AlbumArtists[0]
+                                                Write-Verbose "Read AlbumArtist from saved tags: $artistNameForFolder"
+                                            }
+                                            elseif ($tempTag.Tag.FirstAlbumArtist) {
+                                                $artistNameForFolder = $tempTag.Tag.FirstAlbumArtist
+                                                Write-Verbose "Read FirstAlbumArtist from saved tags: $artistNameForFolder"
+                                            }
+                                            $tempTag.Dispose()
+                                        }
+                                        catch {
+                                            Write-Verbose "Failed to read AlbumArtist from saved tags: $($_.Exception.Message)"
+                                        }
                                     }
+                                    
+                                    # Final fallback to ProviderArtist
+                                    if (-not $artistNameForFolder) {
+                                        $artistNameForFolder = Get-IfExists $ProviderArtist 'name'
+                                        Write-Verbose "Using ProviderArtist.name as fallback: $artistNameForFolder"
+                                    }
+                                    
                                     $safeArtistName = Approve-PathSegment -Segment $artistNameForFolder -Replacement '_' -CollapseRepeating -Transliterate
     
                                     $mvArgs = @{
