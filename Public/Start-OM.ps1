@@ -141,6 +141,36 @@ function Start-OM {
             throw "Path not found or not a directory: $Path"
         }
 
+        # Detect path type: single album folder (has audio files) vs artist folder (has album subfolders)
+        $audioFilesInPath = @(Get-ChildItem -LiteralPath $Path -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' })
+        $subFoldersInPath = @(Get-ChildItem -LiteralPath $Path -Directory -ErrorAction SilentlyContinue)
+        
+        # Single album mode: Path has audio files and either no subfolders or subfolders without audio files
+        $script:isSingleAlbumPath = $false
+        $script:originalPath = $Path
+        
+        if ($audioFilesInPath.Count -gt 0) {
+            # Check if subfolders contain audio files
+            $subFoldersWithAudio = @($subFoldersInPath | Where-Object {
+                $subAudioFiles = @(Get-ChildItem -LiteralPath $_.FullName -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' })
+                $subAudioFiles.Count -gt 0
+            })
+            
+            if ($subFoldersWithAudio.Count -eq 0) {
+                $script:isSingleAlbumPath = $true
+                Write-Verbose "Detected single album path: $Path (contains $($audioFilesInPath.Count) audio files)"
+            }
+            else {
+                Write-Verbose "Detected artist folder path: $Path (has $($subFoldersWithAudio.Count) album subfolders with audio files)"
+            }
+        }
+        elseif ($subFoldersInPath.Count -gt 0) {
+            Write-Verbose "Detected artist folder path: $Path (has $($subFoldersInPath.Count) subfolders, checking for albums)"
+        }
+        else {
+            Write-Warning "Path contains no audio files and no subfolders: $Path"
+        }
+
         # Ensure required external module Spotishell is present in the session
         if (-not (Get-Module -Name Spotishell)) {
             try { Import-Module Spotishell -ErrorAction Stop } catch { Write-Warning "Spotishell module not loaded: $_"; throw }
@@ -361,7 +391,13 @@ function Start-OM {
                         Move-Item -LiteralPath $currentPath -Destination $targetPath -Force
                         
                         # Clean up empty parent folder if it's now empty
-                        if ($originalParentFolder -and (Test-Path -LiteralPath $originalParentFolder)) {
+                        # SAFEGUARD: Only remove parent if we were processing from an artist folder (not single album mode)
+                        # This prevents removing user's music library folder when they point directly to Artist/Album6
+                        $shouldCleanupParent = $originalParentFolder -and 
+                                               (Test-Path -LiteralPath $originalParentFolder) -and
+                                               (-not $script:isSingleAlbumPath)
+                        
+                        if ($shouldCleanupParent) {
                             $remainingItems = @(Get-ChildItem -LiteralPath $originalParentFolder -Force)
                             if ($remainingItems.Count -eq 0) {
                                 Write-Verbose "Removing empty parent folder: $originalParentFolder"
@@ -371,6 +407,9 @@ function Start-OM {
                             else {
                                 Write-Verbose "Parent folder not empty ($(($remainingItems.Count)) items remaining), keeping it"
                             }
+                        }
+                        elseif ($script:isSingleAlbumPath) {
+                            Write-Verbose "Single album mode: Skipping parent folder cleanup to preserve original folder structure"
                         }
                         
                         # Update $script:album and reload audio files from new location
@@ -419,9 +458,33 @@ function Start-OM {
             }
         }
         $script:album = $null
-        $script:artist = Split-Path -Leaf $Path
-        $artist = Split-Path -Leaf $Path
-        $albums = Get-ChildItem -LiteralPath $Path -Directory
+        
+        # Handle single album path: extract artist from parent folder
+        if ($script:isSingleAlbumPath) {
+            $parentPath = Split-Path -Parent $Path
+            if ($parentPath) {
+                $script:artist = Split-Path -Leaf $parentPath
+                $artist = $script:artist
+                Write-Verbose "Single album mode: Extracted artist '$artist' from parent folder"
+            }
+            else {
+                # Root-level album folder - use folder name as artist initially
+                $script:artist = Split-Path -Leaf $Path
+                $artist = $script:artist
+                Write-Verbose "Single album mode: Root-level album detected, using folder name '$artist' as initial artist"
+            }
+            
+            # Process only the target album folder
+            $albums = @(Get-Item -LiteralPath $Path)
+            Write-Verbose "Single album mode: Processing only album folder '$($albums[0].Name)'"
+        }
+        else {
+            # Original behavior: Path is artist folder containing album subfolders
+            $script:artist = Split-Path -Leaf $Path
+            $artist = Split-Path -Leaf $Path
+            $albums = @(Get-ChildItem -LiteralPath $Path -Directory)
+            Write-Verbose "Artist folder mode: Processing $($albums.Count) album folders under artist '$artist'"
+        }
         
         # Initialize WhatIf mode early
         $useWhatIf = $isWhatIf
