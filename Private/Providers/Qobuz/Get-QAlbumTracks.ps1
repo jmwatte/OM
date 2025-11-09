@@ -414,12 +414,20 @@ function Get-QAlbumTracks {
             }
             #  $trackNodes = $doc.SelectNodes("//div[contains(@class,'track') and @data-track]")
             $diskP = $node.SelectSingleNode('.//p[contains(concat(" ", normalize-space(@class), " "), " player__work ")][@data-disk]')
-            $dataTrack = $node.SelectSingleNode(".//div[contains(@class,'track')and @data-track]").GetAttributes('data-track').value  
+            
+            # Get track div - if it doesn't exist, this node is just a container (e.g., disc header), skip it
+            $trackDiv = $node.SelectSingleNode(".//div[contains(@class,'track')and @data-track]")
+            if (-not $trackDiv) {
+                Write-Verbose "Skipping player__item node without track data (likely disc/work header)"
+                continue
+            }
+            
+            $dataTrack = $trackDiv.GetAttributes('data-track').value  
             if ($diskP) {
                 $currentDisc = "{0:D2}" -f [int]($diskP.InnerText.Split(" ")[1])
             }
 
-            $dataGtm = $node.SelectSingleNode(".//div[contains(@class,'track')and @data-track]").GetAttributes('data-gtm').value  
+            $dataGtm = $trackDiv.GetAttributes('data-gtm').value  
            
            
            
@@ -449,7 +457,7 @@ function Get-QAlbumTracks {
             }
             
             # Extract additional metadata from data-track-v2 (label, quality, etc.)
-            $dataTrackV2 = $node.SelectSingleNode(".//div[contains(@class,'track')and @data-track]").GetAttributes('data-track-v2').value
+            $dataTrackV2 = $trackDiv.GetAttributes('data-track-v2').value
             $label = Get-TrackV2Field -TrackV2Raw $dataTrackV2 -FieldName 'item_category2'
             $quality = Get-TrackV2Field -TrackV2Raw $dataTrackV2 -FieldName 'item_variant_max'
 
