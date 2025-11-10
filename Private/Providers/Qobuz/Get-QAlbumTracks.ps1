@@ -494,10 +494,10 @@ function Get-QAlbumTracks {
                 # Build artists array from parsed performers and main artists
                 $artists = @()
                 
-                # Safely access Performers array from hashtable
-                $performersList = @($parsed.Performers)
+                # Safely access Performers array from hashtable using Get-IfExists
+                $performersList = @(Get-IfExists $parsed 'Performers')
                 foreach ($performer in $performersList) {
-                    $mainArtistsList = @($parsed.MainArtists)
+                    $mainArtistsList = @(Get-IfExists $parsed 'MainArtists')
                     $artistType = if ($performer -in $mainArtistsList) { "main" } else { "artist" }
                     $artists += [PSCustomObject]@{ name = $performer; type = $artistType }
                 }
@@ -526,16 +526,16 @@ function Get-QAlbumTracks {
                     }
                 }
 
-                # Combine all composers with semicolon separator
-                $composersList = @($parsed.Composers)
+                # Combine all composers with semicolon separator using Get-IfExists
+                $composersList = @(Get-IfExists $parsed 'Composers')
                 $composerString = if ($composersList.Count -gt 0) { 
                     $composersList -join '; ' 
                 } else { 
                     $null 
                 }
 
-                # Safely access FeaturedArtists array
-                $featuredArtistsList = @($parsed.FeaturedArtists)
+                # Safely access FeaturedArtists array using Get-IfExists
+                $featuredArtistsList = @(Get-IfExists $parsed 'FeaturedArtists')
                 $featuredArtistString = if ($featuredArtistsList.Count -gt 0) { $featuredArtistsList -join '; ' } else { $null }
 
                 $out = [PSCustomObject]@{
@@ -550,8 +550,8 @@ function Get-QAlbumTracks {
                     duration     = $duration
                     composer     = $composerString
                     Composers    = $composerString
-                    Conductor    = $parsed.Conductor
-                    Ensemble     = $parsed.Ensemble
+                    Conductor    = Get-IfExists $parsed 'Conductor'
+                    Ensemble     = Get-IfExists $parsed 'Ensemble'
                     FeaturedArtist = $featuredArtistString
                     # Provider-normalized artist fields (Qobuz track entries often lack explicit performers)
                     artists      = $artists
@@ -565,9 +565,9 @@ function Get-QAlbumTracks {
                     album_name   = $albumName
                     album_artist = $albumArtistName
                     # Full production credits for Comment field
-                    Comment      = $parsed.FullCredits
+                    Comment      = Get-IfExists $parsed 'FullCredits'
                     # Detailed role breakdown for Show-Tracks display
-                    DetailedRoles = $parsed.DetailedRoles
+                    DetailedRoles = Get-IfExists $parsed 'DetailedRoles'
                 }
 
 
