@@ -1277,8 +1277,8 @@ function Start-OM {
                     if (-not (Get-IfExists $ProviderAlbum 'release_date')) {
                         $releaseDateFromTrack = Get-IfExists $firstTrack 'release_date'
                         if ($releaseDateFromTrack) {
-                            # Add property if it doesn't exist
-                            if (-not ($ProviderAlbum.PSObject.Properties.Name -contains 'release_date')) {
+                            # Add property if it doesn't exist, otherwise update it
+                            if ($null -eq (Get-IfExists $ProviderAlbum 'release_date')) {
                                 $ProviderAlbum | Add-Member -NotePropertyName 'release_date' -NotePropertyValue $releaseDateFromTrack
                             } else {
                                 $ProviderAlbum.release_date = $releaseDateFromTrack
@@ -1291,8 +1291,8 @@ function Start-OM {
                                     if (-not (Get-IfExists $ProviderAlbum 'artist') -and -not (Get-IfExists $ProviderAlbum 'album_artist')) {
                         $albumArtistFromTrack = Get-IfExists $firstTrack 'album_artist'
                         if ($albumArtistFromTrack) {
-                            # Add property if it doesn't exist
-                            if (-not ($ProviderAlbum.PSObject.Properties.Name -contains 'album_artist')) {
+                            # Add property if it doesn't exist, otherwise update it
+                            if ($null -eq (Get-IfExists $ProviderAlbum 'album_artist')) {
                                 $ProviderAlbum | Add-Member -NotePropertyName 'album_artist' -NotePropertyValue $albumArtistFromTrack
                             } else {
                                 $ProviderAlbum.album_artist = $albumArtistFromTrack
