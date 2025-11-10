@@ -95,22 +95,22 @@ function Search-GQAlbum {
             Write-Verbose ("Total Google CSE items collected: {0}" -f $allItems.Count)
 
             if ($allItems.Count -gt 0) {
-                # Prioritize by locale: exact match first, then language match, then fallback
-                # First, look for exact locale match
+                # Prioritize by locale: gb-en first (reliable HTML), then user's locale, then any album
+                # First, look for gb-en locale (most reliable HTML structure)
                 foreach ($it in $allItems) {
                     Write-Verbose ("CSE item: {0}" -f $it.link)
-                    if ($it.link -match "/$urlLocale/" -and $it.link -match '/album/') {
+                    if ($it.link -match "/gb-en/" -and $it.link -match '/album/') {
                         $targetUrl = $it.link
-                        Write-Verbose "Found exact locale match: $targetUrl"
+                        Write-Verbose "Found gb-en locale (preferred for reliable HTML): $targetUrl"
                         break
                     }
                 }
-                # If not found, look for language match
+                # If not found, look for user's configured locale
                 if (-not $targetUrl) {
                     foreach ($it in $allItems) {
-                        if ($it.link -match "/[a-z]{2}-$language/" -and $it.link -match '/album/') {
+                        if ($it.link -match "/$urlLocale/" -and $it.link -match '/album/') {
                             $targetUrl = $it.link
-                            Write-Verbose "Found language match: $targetUrl"
+                            Write-Verbose "Found user's locale match ($urlLocale): $targetUrl"
                             break
                         }
                     }
@@ -147,10 +147,11 @@ function Search-GQAlbum {
     if (-not $targetUrl -and $useQobuzFallback) {
         Write-Verbose "Using Qobuz native search fallback for query: $Query"
         
-        # Construct Qobuz search URL with proper locale
+        # Construct Qobuz search URL - use gb-en for consistent HTML structure
+        # Note: gb-en has more reliable track/credit HTML structure than us-en
         $escapedQuery = [uri]::EscapeDataString($Query)
-        $qobuzSearchUrl = "https://www.qobuz.com/$urlLocale/search/albums/$escapedQuery"
-        Write-Verbose "Qobuz search URL: $qobuzSearchUrl"
+        $qobuzSearchUrl = "https://www.qobuz.com/gb-en/search/albums/$escapedQuery"
+        Write-Verbose "Qobuz search URL (using gb-en for consistent HTML): $qobuzSearchUrl"
         
         try {
             $searchResp = Invoke-WebRequest -Uri $qobuzSearchUrl -UseBasicParsing -ErrorAction Stop -TimeoutSec 15
