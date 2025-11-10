@@ -493,8 +493,12 @@ function Get-QAlbumTracks {
 
                 # Build artists array from parsed performers and main artists
                 $artists = @()
-                foreach ($performer in $parsed.Performers) {
-                    $artistType = if ($performer -in $parsed.MainArtists) { "main" } else { "artist" }
+                
+                # Safely access Performers array from hashtable
+                $performersList = if ($parsed.Performers) { $parsed.Performers } else { @() }
+                foreach ($performer in $performersList) {
+                    $mainArtistsList = if ($parsed.MainArtists) { $parsed.MainArtists } else { @() }
+                    $artistType = if ($performer -in $mainArtistsList) { "main" } else { "artist" }
                     $artists += [PSCustomObject]@{ name = $performer; type = $artistType }
                 }
                 
@@ -523,11 +527,16 @@ function Get-QAlbumTracks {
                 }
 
                 # Combine all composers with semicolon separator
-                $composerString = if ($parsed.Composers.Count -gt 0) { 
-                    $parsed.Composers -join '; ' 
+                $composersList = if ($parsed.Composers) { $parsed.Composers } else { @() }
+                $composerString = if ($composersList.Count -gt 0) { 
+                    $composersList -join '; ' 
                 } else { 
                     $null 
                 }
+
+                # Safely access FeaturedArtists array
+                $featuredArtistsList = if ($parsed.FeaturedArtists) { $parsed.FeaturedArtists } else { @() }
+                $featuredArtistString = if ($featuredArtistsList.Count -gt 0) { $featuredArtistsList -join '; ' } else { $null }
 
                 $out = [PSCustomObject]@{
                     id           = ($dataTrack -replace '^id:', '')
@@ -543,7 +552,7 @@ function Get-QAlbumTracks {
                     Composers    = $composerString
                     Conductor    = $parsed.Conductor
                     Ensemble     = $parsed.Ensemble
-                    FeaturedArtist = if ($parsed.FeaturedArtists.Count -gt 0) { $parsed.FeaturedArtists -join '; ' } else { $null }
+                    FeaturedArtist = $featuredArtistString
                     # Provider-normalized artist fields (Qobuz track entries often lack explicit performers)
                     artists      = $artists
                     Artist       = if ($artists.Count -gt 0) { ($artists | ForEach-Object { $_.name }) -join '; ' } else { 'Unknown Artist' }
