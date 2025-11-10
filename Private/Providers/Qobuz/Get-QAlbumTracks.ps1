@@ -409,7 +409,7 @@ function Get-QAlbumTracks {
         foreach ($node in $children) {
             $r = $node.SelectSingleNode('.//div[contains(concat(" ", normalize-space(@class), " "), " player__tracks ")]//p[contains(concat(" ", normalize-space(@class), " "), " player__work ")]')
             if ($r) {
-                $currentWorkTitle = [System.Web.HttpUtility]::HtmlDecode($r.InnerText.Split("   ")[0].Trim())
+                $currentWorkTitle = [System.Web.HttpUtility]::HtmlDecode(@($r.InnerText.Split("   "))[0].Trim())
                 # $diskAttr = $node.GetAttributeValue("data-disk", $null)
                 # if ($diskAttr) {
                 #     $currentDisc = "DISQUE $diskAttr"
@@ -427,7 +427,7 @@ function Get-QAlbumTracks {
             
             $dataTrack = $trackDiv.GetAttributes('data-track').value  
             if ($diskP) {
-                $currentDisc = "{0:D2}" -f [int]($diskP.InnerText.Split(" ")[1])
+                $currentDisc = "{0:D2}" -f [int](@($diskP.InnerText.Split(" "))[1])
             }
 
             $dataGtm = $trackDiv.GetAttributes('data-gtm').value  
