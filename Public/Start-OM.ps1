@@ -1785,10 +1785,16 @@ function Start-OM {
                                         }
                                     }
                                     
-                                    # Final fallback to ProviderArtist
+                                    # Final fallback: Try ProviderAlbum.album_artist first (extracted from tracks), then ProviderArtist.name
                                     if (-not $artistNameForFolder) {
-                                        $artistNameForFolder = Get-IfExists $ProviderArtist 'name'
-                                        Write-Verbose "Using ProviderArtist.name as fallback: $artistNameForFolder"
+                                        $artistNameForFolder = Get-IfExists $ProviderAlbum 'album_artist'
+                                        if ($artistNameForFolder) {
+                                            Write-Verbose "Using ProviderAlbum.album_artist from track metadata: $artistNameForFolder"
+                                        }
+                                        else {
+                                            $artistNameForFolder = Get-IfExists $ProviderArtist 'name'
+                                            Write-Verbose "Using ProviderArtist.name as final fallback: $artistNameForFolder"
+                                        }
                                     }
                                     
                                     $safeArtistName = Approve-PathSegment -Segment $artistNameForFolder -Replacement '_' -CollapseRepeating -Transliterate
@@ -2072,10 +2078,16 @@ function Start-OM {
                                         }
                                     }
                                     
-                                    # Final fallback to ProviderArtist
+                                    # Final fallback: Try ProviderAlbum.album_artist first (extracted from tracks), then ProviderArtist.name
                                     if (-not $artistNameForFolder) {
-                                        $artistNameForFolder = Get-IfExists $ProviderArtist 'name'
-                                        Write-Verbose "Using ProviderArtist.name as fallback: $artistNameForFolder"
+                                        $artistNameForFolder = Get-IfExists $ProviderAlbum 'album_artist'
+                                        if ($artistNameForFolder) {
+                                            Write-Verbose "Using ProviderAlbum.album_artist from track metadata: $artistNameForFolder"
+                                        }
+                                        else {
+                                            $artistNameForFolder = Get-IfExists $ProviderArtist 'name'
+                                            Write-Verbose "Using ProviderArtist.name as final fallback: $artistNameForFolder"
+                                        }
                                     }
                                     
                                     $safeArtistName = Approve-PathSegment -Segment $artistNameForFolder -Replacement '_' -CollapseRepeating -Transliterate
