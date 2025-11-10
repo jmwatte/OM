@@ -1839,17 +1839,34 @@ function Start-OM {
                                         }
                                     }
                                     
-                                    # Final fallback: Try ProviderAlbum.album_artist first (extracted from tracks), then ProviderArtist.name
-                                    if (-not $artistNameForFolder) {
-                                        $artistNameForFolder = Get-IfExists $ProviderAlbum 'album_artist'
-                                        if ($artistNameForFolder) {
-                                            Write-Verbose "Using ProviderAlbum.album_artist from track metadata: $artistNameForFolder"
+                                    # Priority order for artist name (same as 'sa' command):
+                                    # 1. ManualAlbumArtist (already checked above)
+                                    # 2. AlbumArtist from saved tags (already attempted above)
+                                    # 3. ProviderAlbum.album_artist (from track metadata - most reliable)
+                                    # 4. ProviderArtist.name (only if not a drive letter or folder name)
+                                    # 5. Album name as last resort
+                                    
+                                    # Always prefer ProviderAlbum.album_artist when available (most accurate)
+                                    $albumArtistFromMetadata = Get-IfExists $ProviderAlbum 'album_artist'
+                                    if ($albumArtistFromMetadata) {
+                                        $artistNameForFolder = $albumArtistFromMetadata
+                                        Write-Verbose "Using ProviderAlbum.album_artist from track metadata: $artistNameForFolder"
+                                    }
+                                    # If no album_artist in metadata, check if we have a valid artistNameForFolder
+                                    elseif (-not $artistNameForFolder -or $artistNameForFolder -match '^[A-Z]:\\?$') {
+                                        # artistNameForFolder is empty or a drive letter, try ProviderArtist.name
+                                        $providerArtistName = Get-IfExists $ProviderArtist 'name'
+                                        if ($providerArtistName -and $providerArtistName -notmatch '^[A-Z]:\\?$') {
+                                            $artistNameForFolder = $providerArtistName
+                                            Write-Verbose "Using ProviderArtist.name as fallback: $artistNameForFolder"
                                         }
                                         else {
-                                            $artistNameForFolder = Get-IfExists $ProviderArtist 'name'
-                                            Write-Verbose "Using ProviderArtist.name as final fallback: $artistNameForFolder"
+                                            # Last resort: use album name as artist
+                                            $artistNameForFolder = $script:albumName
+                                            Write-Verbose "No valid artist found, using album name as fallback: $artistNameForFolder"
                                         }
                                     }
+                                    # else: keep existing artistNameForFolder from saved tags
                                     
                                     $safeArtistName = Approve-PathSegment -Segment $artistNameForFolder -Replacement '_' -CollapseRepeating -Transliterate
     

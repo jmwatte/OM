@@ -95,6 +95,9 @@ function Move-AlbumFolder {
                 Write-Verbose "Renaming artist folder case: '$currentArtistPath' -> temp -> '$targetArtistPath'"
                 Rename-Item -LiteralPath $currentArtistPath -NewName $tempArtistName -ErrorAction Stop
                 Rename-Item -LiteralPath $tempArtistPath -NewName (Split-Path -Leaf $targetArtistPath) -ErrorAction Stop
+                # After artist folder case rename, update the album path to reflect new artist folder
+                $AlbumPath = Join-Path -Path $targetArtistPath -ChildPath (Split-Path -Leaf $AlbumPath)
+                Write-Verbose "Updated AlbumPath after artist rename: $AlbumPath"
             }
         }
 
