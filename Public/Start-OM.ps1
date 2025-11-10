@@ -364,10 +364,22 @@ function Start-OM {
                         $albumArtistName = 'Unknown Artist'
                         if ($audioFiles -and $audioFiles.Count -gt 0) {
                             try {
-                                $firstFile = $audioFiles[0]
-                                if ($firstFile.TagFile -and $firstFile.TagFile.Tag.AlbumArtists -and $firstFile.TagFile.Tag.AlbumArtists.Count -gt 0) {
-                                    $albumArtistName = $firstFile.TagFile.Tag.AlbumArtists[0]
+                                $firstFilePath = $audioFiles[0].FilePath
+                                # Dispose old handle if exists
+                                if ($audioFiles[0].TagFile) {
+                                    try { $audioFiles[0].TagFile.Dispose() } catch { }
                                 }
+                                # Reload file to read current saved tags
+                                $tempTag = [TagLib.File]::Create($firstFilePath)
+                                if ($tempTag.Tag.AlbumArtists -and $tempTag.Tag.AlbumArtists.Count -gt 0) {
+                                    $albumArtistName = $tempTag.Tag.AlbumArtists[0]
+                                    Write-Verbose "Read AlbumArtist from saved tags for TargetFolder: $albumArtistName"
+                                }
+                                elseif ($tempTag.Tag.FirstAlbumArtist) {
+                                    $albumArtistName = $tempTag.Tag.FirstAlbumArtist
+                                    Write-Verbose "Read FirstAlbumArtist from saved tags for TargetFolder: $albumArtistName"
+                                }
+                                $tempTag.Dispose()
                                 elseif ($firstFile.TagFile -and $firstFile.TagFile.Tag.FirstAlbumArtist) {
                                     $albumArtistName = $firstFile.TagFile.Tag.FirstAlbumArtist
                                 }
