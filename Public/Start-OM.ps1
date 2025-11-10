@@ -380,10 +380,6 @@ function Start-OM {
                                     Write-Verbose "Read FirstAlbumArtist from saved tags for TargetFolder: $albumArtistName"
                                 }
                                 $tempTag.Dispose()
-                                elseif ($firstFile.TagFile -and $firstFile.TagFile.Tag.FirstAlbumArtist) {
-                                    $albumArtistName = $firstFile.TagFile.Tag.FirstAlbumArtist
-                                }
-                                Write-Verbose "Extracted AlbumArtist for folder structure: $albumArtistName"
                             }
                             catch {
                                 Write-Warning "Could not extract AlbumArtist from tags: $($_.Exception.Message)"
