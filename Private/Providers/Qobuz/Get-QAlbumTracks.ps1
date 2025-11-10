@@ -150,9 +150,9 @@ function Get-QAlbumTracks {
             }
             #if ($Id -match '^https?://') { $url = $Id.TrimEnd('/') }
             else {
-                $locale = Get-QobuzUrlLocale
+                # Use gb-en locale for consistent HTML structure (us-en has different node layout)
                 if ($Id -match '^/[a-z]{2}-[a-z]{2}/album/') { $url = "https://www.qobuz.com$($Id.TrimEnd('/'))" }
-                else { $url = "https://www.qobuz.com/$locale/album/$Id"; Write-Verbose "Best-effort album URL built: $url" }
+                else { $url = "https://www.qobuz.com/gb-en/album/$Id"; Write-Verbose "Best-effort album URL built with gb-en locale: $url" }
             }
 
             Write-Verbose ("Fetching Qobuz album page: {0}" -f $url)
@@ -968,9 +968,9 @@ function Get-QAlbumTrackCount {
         # Use the URL as-is if it's already a full URL, otherwise construct it
         if ($Id -match '^https?://') { $url = $Id.TrimEnd('/') }
         else {
-            $locale = Get-QobuzUrlLocale
+            # Use gb-en locale for consistent HTML structure (us-en has different node layout)
             if ($Id -match '^/[a-z]{2}-[a-z]{2}/album/') { $url = "https://www.qobuz.com$($Id.TrimEnd('/'))" }
-            else { $url = "https://www.qobuz.com/$locale/album/$Id"; Write-Verbose "Best-effort album URL built: $url" }
+            else { $url = "https://www.qobuz.com/gb-en/album/$Id"; Write-Verbose "Best-effort album URL built with gb-en locale: $url" }
         }
 
         Write-Verbose ("Fetching Qobuz album page for track count: {0}" -f $url)
