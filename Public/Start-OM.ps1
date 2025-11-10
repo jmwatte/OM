@@ -356,21 +356,28 @@ function Start-OM {
                     
                     # Handle TargetFolder move if specified
                     if ($TargetFolder) {
+                        Write-Verbose "TargetFolder specified: $TargetFolder"
                         $currentPath = $script:album.FullName
                         $folderName = Split-Path $currentPath -Leaf
                         $originalParentFolder = Split-Path $currentPath -Parent
+                        Write-Verbose "Current album path: $currentPath"
+                        Write-Verbose "Folder name: $folderName"
                         
                         # Get AlbumArtist from the first audio file's tags (they should all be the same)
                         $albumArtistName = 'Unknown Artist'
                         if ($audioFiles -and $audioFiles.Count -gt 0) {
+                            Write-Verbose "Found $($audioFiles.Count) audio files for AlbumArtist extraction"
                             try {
                                 $firstFilePath = $audioFiles[0].FilePath
+                                Write-Verbose "Reading AlbumArtist from: $firstFilePath"
                                 # Dispose old handle if exists
                                 if ($audioFiles[0].TagFile) {
                                     try { $audioFiles[0].TagFile.Dispose() } catch { }
+                                    Write-Verbose "Disposed existing TagFile handle"
                                 }
                                 # Reload file to read current saved tags
                                 $tempTag = [TagLib.File]::Create($firstFilePath)
+                                Write-Verbose "Reloaded TagFile for AlbumArtist check"
                                 if ($tempTag.Tag.AlbumArtists -and $tempTag.Tag.AlbumArtists.Count -gt 0) {
                                     $albumArtistName = $tempTag.Tag.AlbumArtists[0]
                                     Write-Verbose "Read AlbumArtist from saved tags for TargetFolder: $albumArtistName"
@@ -378,6 +385,9 @@ function Start-OM {
                                 elseif ($tempTag.Tag.FirstAlbumArtist) {
                                     $albumArtistName = $tempTag.Tag.FirstAlbumArtist
                                     Write-Verbose "Read FirstAlbumArtist from saved tags for TargetFolder: $albumArtistName"
+                                }
+                                else {
+                                    Write-Verbose "No AlbumArtist found in tags, using default: $albumArtistName"
                                 }
                                 $tempTag.Dispose()
                             }
