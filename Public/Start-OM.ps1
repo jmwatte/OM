@@ -499,16 +499,18 @@ function Start-OM {
         # Handle single album path: extract artist from parent folder
         if ($script:isSingleAlbumPath) {
             $parentPath = Split-Path -Parent $Path
-            if ($parentPath) {
+            if ($parentPath -and $parentPath -notmatch '^[A-Z]:\\?$') {
+                # Normal case: parent is a valid artist folder name
                 $script:artist = Split-Path -Leaf $parentPath
                 $artist = $script:artist
                 Write-Verbose "Single album mode: Extracted artist '$artist' from parent folder"
             }
             else {
-                # Root-level album folder - use folder name as artist initially
-                $script:artist = Split-Path -Leaf $Path
+                # Root-level album folder - use album name as placeholder artist
+                # This will be overridden by ProviderAlbum.album_artist during "sa" command
+                $script:artist = $script:albumName
                 $artist = $script:artist
-                Write-Verbose "Single album mode: Root-level album detected, using folder name '$artist' as initial artist"
+                Write-Verbose "Single album mode: Root-level album detected at drive root, using album name '$artist' as temporary artist (will be updated from metadata)"
             }
             
             # Process only the target album folder
@@ -2130,19 +2132,52 @@ function Start-OM {
                                         }
                                     }
                                     
-                                    # Final fallback: Try ProviderAlbum.album_artist first (extracted from tracks), then ProviderArtist.name
-                                    if (-not $artistNameForFolder) {
-                                        $artistNameForFolder = Get-IfExists $ProviderAlbum 'album_artist'
-                                        if ($artistNameForFolder) {
-                                            Write-Verbose "Using ProviderAlbum.album_artist from track metadata: $artistNameForFolder"
+                                    # Priority order for artist name:
+                                    # 1. ManualAlbumArtist (already checked above)
+                                    # 2. AlbumArtist from saved tags (already attempted above)
+                                    # 3. ProviderAlbum.album_artist (from track metadata - most reliable)
+                                    # 4. ProviderArtist.name (only if not a drive letter or folder name)
+                                    # 5. Album name as last resort
+                                    
+                                    # Always prefer ProviderAlbum.album_artist when available (most accurate)
+                                    $albumArtistFromMetadata = Get-IfExists $ProviderAlbum 'album_artist'
+                                    if ($albumArtistFromMetadata) {
+                                        $artistNameForFolder = $albumArtistFromMetadata
+                                        Write-Verbose "Using ProviderAlbum.album_artist from track metadata: $artistNameForFolder"
+                                    }
+                                    # If no album_artist in metadata, check if we have a valid artistNameForFolder
+                                    elseif (-not $artistNameForFolder -or $artistNameForFolder -match '^[A-Z]:\\?$') {
+                                        # artistNameForFolder is empty or a drive letter, try ProviderArtist.name
+                                        $providerArtistName = Get-IfExists $ProviderArtist 'name'
+                                        if ($providerArtistName -and $providerArtistName -notmatch '^[A-Z]:\\?$') {
+                                            $artistNameForFolder = $providerArtistName
+                                            Write-Verbose "Using ProviderArtist.name as fallback: $artistNameForFolder"
                                         }
                                         else {
-                                            $artistNameForFolder = Get-IfExists $ProviderArtist 'name'
-                                            Write-Verbose "Using ProviderArtist.name as final fallback: $artistNameForFolder"
+                                            # Last resort: use album name as artist
+                                            $artistNameForFolder = $script:albumName
+                                            Write-Verbose "No valid artist found, using album name as fallback: $artistNameForFolder"
                                         }
                                     }
+                                    # else: keep existing artistNameForFolder from saved tags
+                                    
+                                    # Debug logging to file
+                                    $debugLog = "C:\temp\om_debug.log"
+                                    "=== ARTIST NAME DEBUG ===" | Out-File $debugLog -Append
+                                    "Timestamp: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" | Out-File $debugLog -Append
+                                    "Album Path: $($script:album.FullName)" | Out-File $debugLog -Append
+                                    "artistNameForFolder: [$artistNameForFolder]" | Out-File $debugLog -Append
+                                    "ManualAlbumArtist: [$script:ManualAlbumArtist]" | Out-File $debugLog -Append
+                                    "ProviderAlbum.album_artist: [$(Get-IfExists $ProviderAlbum 'album_artist')]" | Out-File $debugLog -Append
+                                    "ProviderArtist.name: [$(Get-IfExists $ProviderArtist 'name')]" | Out-File $debugLog -Append
+                                    "" | Out-File $debugLog -Append
                                     
                                     $safeArtistName = Approve-PathSegment -Segment $artistNameForFolder -Replacement '_' -CollapseRepeating -Transliterate
+                                    
+                                    # More debug logging
+                                    "safeArtistName after Approve-PathSegment: [$safeArtistName]" | Out-File $debugLog -Append
+                                    "=========================" | Out-File $debugLog -Append
+                                    "" | Out-File $debugLog -Append
     
                                     $mvArgs = @{
                                         AlbumPath    = $oldpath
