@@ -265,7 +265,7 @@ function Get-QAlbumTracks {
 
 
         #$trackContainer = $doc.SelectSingleNode("//*[@id='playerTracks']")
-        $children = $doc.SelectNodes("//div[contains(concat(' ', normalize-space(@class), ' '), ' player__item ')]")
+        $children = @($doc.SelectNodes("//div[contains(concat(' ', normalize-space(@class), ' '), ' player__item ')]"))
         #$trackContainer.ChildNodes
         $tracks = @()
         $currentWorkTitle = ""
