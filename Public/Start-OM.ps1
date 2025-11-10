@@ -1235,10 +1235,13 @@ function Start-OM {
                             }
                             
                             try { 
+                                Write-Verbose "Calling Invoke-ProviderGetTracks for provider $Provider with ID $albumIdToFetch"
                                 $tracksForAlbum = @(Invoke-ProviderGetTracks -Provider $Provider -AlbumId $albumIdToFetch)
+                                Write-Verbose "Received $($tracksForAlbum.Count) tracks, type: $($tracksForAlbum.GetType().FullName)"
                                 
                                 # Extract album metadata from tracks (needed for Qobuz when using id: or URL)
                                 if ($tracksForAlbum -and $tracksForAlbum.Count -gt 0) {
+                                    Write-Verbose "About to access first track at index [0]..."
                                     $firstTrack = $tracksForAlbum[0]
                                     
                                     # Update ProviderAlbum with metadata from tracks if missing

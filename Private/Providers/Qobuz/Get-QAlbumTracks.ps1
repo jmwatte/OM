@@ -266,6 +266,7 @@ function Get-QAlbumTracks {
 
         #$trackContainer = $doc.SelectSingleNode("//*[@id='playerTracks']")
         $children = @($doc.SelectNodes("//div[contains(concat(' ', normalize-space(@class), ' '), ' player__item ')]"))
+        Write-Verbose "Found $($children.Count) player__item nodes"
         #$trackContainer.ChildNodes
         $tracks = @()
         $currentWorkTitle = ""
@@ -407,6 +408,7 @@ function Get-QAlbumTracks {
             }
         }
         foreach ($node in $children) {
+            Write-Verbose "Processing player__item node..."
             $r = $node.SelectSingleNode('.//div[contains(concat(" ", normalize-space(@class), " "), " player__tracks ")]//p[contains(concat(" ", normalize-space(@class), " "), " player__work ")]')
             if ($r) {
                 $currentWorkTitle = [System.Web.HttpUtility]::HtmlDecode(@($r.InnerText.Split("   "))[0].Trim())
@@ -425,6 +427,7 @@ function Get-QAlbumTracks {
                 continue
             }
             
+            Write-Verbose "Found trackDiv, extracting data..."
             $dataTrack = $trackDiv.GetAttributes('data-track').value  
             if ($diskP) {
                 $currentDisc = "{0:D2}" -f [int](@($diskP.InnerText.Split(" "))[1])
