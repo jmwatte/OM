@@ -1235,7 +1235,7 @@ function Start-OM {
                             }
                             
                             try { 
-                                $tracksForAlbum = Invoke-ProviderGetTracks -Provider $Provider -AlbumId $albumIdToFetch
+                                $tracksForAlbum = @(Invoke-ProviderGetTracks -Provider $Provider -AlbumId $albumIdToFetch)
                                 
                                 # Extract album metadata from tracks (needed for Qobuz when using id: or URL)
                                 if ($tracksForAlbum -and $tracksForAlbum.Count -gt 0) {
