@@ -495,9 +495,9 @@ function Get-QAlbumTracks {
                 $artists = @()
                 
                 # Safely access Performers array from hashtable
-                $performersList = if ($parsed.Performers) { $parsed.Performers } else { @() }
+                $performersList = @($parsed.Performers)
                 foreach ($performer in $performersList) {
-                    $mainArtistsList = if ($parsed.MainArtists) { $parsed.MainArtists } else { @() }
+                    $mainArtistsList = @($parsed.MainArtists)
                     $artistType = if ($performer -in $mainArtistsList) { "main" } else { "artist" }
                     $artists += [PSCustomObject]@{ name = $performer; type = $artistType }
                 }
@@ -527,7 +527,7 @@ function Get-QAlbumTracks {
                 }
 
                 # Combine all composers with semicolon separator
-                $composersList = if ($parsed.Composers) { $parsed.Composers } else { @() }
+                $composersList = @($parsed.Composers)
                 $composerString = if ($composersList.Count -gt 0) { 
                     $composersList -join '; ' 
                 } else { 
@@ -535,7 +535,7 @@ function Get-QAlbumTracks {
                 }
 
                 # Safely access FeaturedArtists array
-                $featuredArtistsList = if ($parsed.FeaturedArtists) { $parsed.FeaturedArtists } else { @() }
+                $featuredArtistsList = @($parsed.FeaturedArtists)
                 $featuredArtistString = if ($featuredArtistsList.Count -gt 0) { $featuredArtistsList -join '; ' } else { $null }
 
                 $out = [PSCustomObject]@{
