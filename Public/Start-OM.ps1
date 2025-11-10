@@ -1277,17 +1277,29 @@ function Start-OM {
                     if (-not (Get-IfExists $ProviderAlbum 'release_date')) {
                         $releaseDateFromTrack = Get-IfExists $firstTrack 'release_date'
                         if ($releaseDateFromTrack) {
-                            $ProviderAlbum.release_date = $releaseDateFromTrack
+                            # Add property if it doesn't exist
+                            if (-not ($ProviderAlbum.PSObject.Properties.Name -contains 'release_date')) {
+                                $ProviderAlbum | Add-Member -NotePropertyName 'release_date' -NotePropertyValue $releaseDateFromTrack
+                            } else {
+                                $ProviderAlbum.release_date = $releaseDateFromTrack
+                            }
                             Write-Verbose "Updated release date from track metadata: $releaseDateFromTrack"
                         }
-                    }                                    # Also update album artist if missing (for Qobuz classical albums)
+                    }
+                                    
+                                    # Also update album artist if missing (for Qobuz classical albums)
                                     if (-not (Get-IfExists $ProviderAlbum 'artist') -and -not (Get-IfExists $ProviderAlbum 'album_artist')) {
-                                        $albumArtistFromTrack = Get-IfExists $firstTrack 'album_artist'
-                                        if ($albumArtistFromTrack) {
-                                            $ProviderAlbum.album_artist = $albumArtistFromTrack
-                                            Write-Verbose "Updated album artist from track metadata: $albumArtistFromTrack"
-                                        }
-                                    }
+                        $albumArtistFromTrack = Get-IfExists $firstTrack 'album_artist'
+                        if ($albumArtistFromTrack) {
+                            # Add property if it doesn't exist
+                            if (-not ($ProviderAlbum.PSObject.Properties.Name -contains 'album_artist')) {
+                                $ProviderAlbum | Add-Member -NotePropertyName 'album_artist' -NotePropertyValue $albumArtistFromTrack
+                            } else {
+                                $ProviderAlbum.album_artist = $albumArtistFromTrack
+                            }
+                            Write-Verbose "Updated album artist from track metadata: $albumArtistFromTrack"
+                        }
+                    }
                                 }
                                 
                                 if (-not $tracksForAlbum -or $tracksForAlbum.Count -eq 0) {
