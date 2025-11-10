@@ -1236,14 +1236,34 @@ function Start-OM {
                             
                             try { 
                                 Write-Verbose "Calling Invoke-ProviderGetTracks for provider $Provider with ID $albumIdToFetch"
-                                $rawTracks = [Array](Invoke-ProviderGetTracks -Provider $Provider -AlbumId $albumIdToFetch)
-                                $tracksForAlbum = @($rawTracks)
+                                $rawTracks = Invoke-ProviderGetTracks -Provider $Provider -AlbumId $albumIdToFetch
+                                Write-Verbose "rawTracks type: $($rawTracks.GetType().FullName)"
+                                Write-Verbose "rawTracks is array: $($rawTracks -is [Array])"
+                                Write-Verbose "rawTracks count: $($rawTracks.Count)"
+                                
+                                # Force unroll if needed
+                                if ($rawTracks -is [System.Management.Automation.PSObject] -and $rawTracks.PSObject.Properties['Count']) {
+                                    Write-Verbose "Detected PSObject wrapper, accessing BaseObject"
+                                    $tracksForAlbum = @($rawTracks.PSObject.BaseObject)
+                                } else {
+                                    $tracksForAlbum = @($rawTracks)
+                                }
+                                
                                 Write-Verbose "Received $(@($tracksForAlbum).Count) tracks"
                                 
                                 # Extract album metadata from tracks (needed for Qobuz when using id: or URL)
                                 if ($tracksForAlbum -and @($tracksForAlbum).Count -gt 0) {
                                     Write-Verbose "About to access first track..."
-                                    $firstTrack = @($tracksForAlbum)[0]
+                                    try {
+                                        # Direct property access to avoid PSObject wrapping issues
+                                        $firstTrack = $tracksForAlbum | Select-Object -First 1
+                                        Write-Verbose "firstTrack type: $($firstTrack.GetType().FullName)"
+                                        Write-Verbose "firstTrack has album_name: $(if ($firstTrack.album_name) { 'Yes' } else { 'No' })"
+                                    } catch {
+                                        Write-Verbose "Error accessing first track: $_"
+                                        Write-Verbose "Stack: $($_.ScriptStackTrace)"
+                                        throw
+                                    }
                                     
                                     # Update ProviderAlbum with metadata from tracks if missing
                                     if (-not (Get-IfExists $ProviderAlbum 'name') -or $ProviderAlbum.name -eq $ProviderAlbum.id) {
@@ -1254,19 +1274,17 @@ function Start-OM {
                                         }
                                     }
                                     
-                                    if (-not (Get-IfExists $ProviderAlbum 'release_date')) {
-                                        $releaseDateFromTrack = Get-IfExists $firstTrack 'release_date'
-                                        if ($releaseDateFromTrack) {
-                                            $ProviderAlbum['release_date'] = $releaseDateFromTrack
-                                            Write-Verbose "Updated release date from track metadata: $releaseDateFromTrack"
-                                        }
-                                    }
-                                    
-                                    # Also update album artist if missing (for Qobuz classical albums)
+                    if (-not (Get-IfExists $ProviderAlbum 'release_date')) {
+                        $releaseDateFromTrack = Get-IfExists $firstTrack 'release_date'
+                        if ($releaseDateFromTrack) {
+                            $ProviderAlbum.release_date = $releaseDateFromTrack
+                            Write-Verbose "Updated release date from track metadata: $releaseDateFromTrack"
+                        }
+                    }                                    # Also update album artist if missing (for Qobuz classical albums)
                                     if (-not (Get-IfExists $ProviderAlbum 'artist') -and -not (Get-IfExists $ProviderAlbum 'album_artist')) {
                                         $albumArtistFromTrack = Get-IfExists $firstTrack 'album_artist'
                                         if ($albumArtistFromTrack) {
-                                            $ProviderAlbum['album_artist'] = $albumArtistFromTrack
+                                            $ProviderAlbum.album_artist = $albumArtistFromTrack
                                             Write-Verbose "Updated album artist from track metadata: $albumArtistFromTrack"
                                         }
                                     }

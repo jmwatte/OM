@@ -25,8 +25,13 @@ function Get-IfExists {
                     # Support indexed numeric access for arrays/lists: segment '0' => target[0]
                     if ($segment -match '^\d+$') {
                         $idx = [int]$segment
-                        if ($target -is [System.Collections.IList] -and $idx -ge 0 -and $idx -lt $target.Count) {
-                            $target = $target[$idx]
+                        # Unwrap PSObject if needed before indexing
+                        $actualTarget = $target
+                        if ($target -is [System.Management.Automation.PSObject] -and $target.PSObject.BaseObject) {
+                            $actualTarget = $target.PSObject.BaseObject
+                        }
+                        if ($actualTarget -is [System.Collections.IList] -and $idx -ge 0 -and $idx -lt $actualTarget.Count) {
+                            $target = $actualTarget[$idx]
                         }
                         else { return $null }
                     }
