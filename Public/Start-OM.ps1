@@ -1236,7 +1236,7 @@ function Start-OM {
                             
                             try { 
                                 Write-Verbose "Calling Invoke-ProviderGetTracks for provider $Provider with ID $albumIdToFetch"
-                                $rawTracks = Invoke-ProviderGetTracks -Provider $Provider -AlbumId $albumIdToFetch
+                                $rawTracks = [Array](Invoke-ProviderGetTracks -Provider $Provider -AlbumId $albumIdToFetch)
                                 $tracksForAlbum = @($rawTracks)
                                 Write-Verbose "Received $(@($tracksForAlbum).Count) tracks"
                                 
