@@ -560,8 +560,8 @@ function Get-QAlbumTracks {
                     Ensemble     = Get-IfExists $parsed 'Ensemble'
                     FeaturedArtist = $featuredArtistString
                     # Provider-normalized artist fields (Qobuz track entries often lack explicit performers)
-                    artists      = $artists
-                    Artist       = if ($artists.Count -gt 0) { ($artists | ForEach-Object { $_.name }) -join '; ' } else { 'Unknown Artist' }
+                    artists      = @($artists)
+                    Artist       = if (@($artists).Count -gt 0) { (@($artists) | ForEach-Object { $_.name }) -join '; ' } else { 'Unknown Artist' }
                     # Genres: include both category and subCategory if available (deduplicated)
                     genres       = @($categoryGenre, $subCategoryGenre) | Where-Object { $_ -ne $null -and $_ -ne '' } | Select-Object -Unique
                     # Additional metadata from Qobuz (label, quality, release date)
