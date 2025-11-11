@@ -189,12 +189,22 @@ function Show-CoverArt {
         $chafaArgs += @('--label=on')  # Enable labeling with filenames
 
         # Try to use sixels format for better image quality if supported
-       ## try {
-            #$null = & chafa --help 2>&1 | Select-String 'sixels'
-           # $chafaArgs += @('--format=sixels')
-        #} catch {
-            # sixels not supported, use default format
-        #}
+        try {
+            $chafaHelp = (& chafa --help 2>&1) -join "`n"
+            if ($chafaHelp -match 'sixel' -or $chafaHelp -match 'sixels' -or $chafaHelp -match 'sixel') {
+                $chafaArgs += @('--format=sixels')
+                Write-Verbose "chafa supports sixel; using --format=sixels"
+            }
+            elseif ($chafaHelp -match 'kitty') {
+                $chafaArgs += @('--format=kitty')
+                Write-Verbose "chafa supports kitty protocol; using --format=kitty"
+            }
+            else {
+                Write-Verbose "chafa available but does not list sixel/kitty support. Using default format."
+            }
+        } catch {
+            Write-Verbose "Failed to probe chafa features: $($_.Exception.Message)"
+        }
 
         # Add all image files
         $chafaArgs += $tempFiles
