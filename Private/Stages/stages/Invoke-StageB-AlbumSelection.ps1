@@ -195,7 +195,9 @@ function Invoke-StageB-AlbumSelection {
                 Write-Host "Smart search returned no results, fetching all albums (this may take a while)..." -ForegroundColor Yellow
                 Write-Verbose "Fetching all albums for artist..."
                 try { 
-                    $CachedAlbums = Invoke-ProviderGetAlbums -Provider $Provider -ArtistId $ProviderArtist.id -AlbumType 'Album'
+                    # For Qobuz, use url instead of id (needs full interpreter URL)
+                    $artistIdOrUrl = if ($Provider -eq 'Qobuz' -and $ProviderArtist.url) { $ProviderArtist.url } else { $ProviderArtist.id }
+                    $CachedAlbums = Invoke-ProviderGetAlbums -Provider $Provider -ArtistId $artistIdOrUrl -AlbumType 'Album'
                     $CachedAlbums = @($CachedAlbums) |Where-Object {$_ -ne $null}
                      # Ensure array
                     Write-Host "✓ Fetched $($CachedAlbums.Count) albums" -ForegroundColor Green
@@ -595,33 +597,12 @@ function Invoke-StageB-AlbumSelection {
                 }
             }
             '^p$' {
+                # Show current provider and available shortcuts
                 $config = Get-OMConfig
                 $defaultProvider = $config.DefaultProvider
-                $newProvider = Read-Host "Current provider: $Provider`nAvailable providers: (p) default ($defaultProvider), (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz`nEnter provider"
-                $providerMap = @{
-                    'p' = $defaultProvider
-                    'ps' = 'Spotify'; 's' = 'Spotify'; 'spotify' = 'Spotify'
-                    'pq' = 'Qobuz'; 'q' = 'Qobuz'; 'qobuz' = 'Qobuz'
-                    'pd' = 'Discogs'; 'd' = 'Discogs'; 'discogs' = 'Discogs'
-                    'pm' = 'MusicBrainz'; 'm' = 'MusicBrainz'; 'musicbrainz' = 'MusicBrainz'
-                }
-                $matched = $providerMap[$newProvider.ToLower()]
-                if ($matched) {
-                    $Provider = $matched
-                    Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                    return @{
-                        NextStage             = 'A'
-                        SelectedAlbum         = $null
-                        UpdatedCache          = $CachedAlbums
-                        UpdatedCachedArtistId = $CachedArtistId
-                        UpdatedProvider       = $Provider
-                        CurrentPage           = $currentPage
-                    }
-                }
-                else {
-                    Write-Warning "Invalid provider: $newProvider. Staying with $Provider."
-                    continue
-                }
+                Write-Host "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan
+                Write-Host "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray
+                continue
             }
             '^ps$' {
                 $Provider = 'Spotify'
@@ -784,9 +765,11 @@ function Invoke-StageB-AlbumSelection {
                 }
                 
                 try {
+                    # For Qobuz, use url instead of id (needs full interpreter URL)
+                    $artistIdOrUrl = if ($Provider -eq 'Qobuz' -and $ProviderArtist.url) { $ProviderArtist.url } else { $ProviderArtist.id }
                     $fetchParams = @{
                         Provider  = $Provider
-                        ArtistId  = $ProviderArtist.id
+                        ArtistId  = $artistIdOrUrl
                         AlbumType = 'Album'
                     }
                     
@@ -1024,14 +1007,16 @@ function Invoke-StageB-AlbumSelection {
                                     # View Cover art original
                                     $rangeText = $matches[1]
                                     if (-not $rangeText) { $rangeText = "1" }
-                                    Show-CoverArt -Album $albumsForArtist -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
-                                   Read-Host "Press Enter to continue..."
+                                    Show-CoverArt -AlbumList $albumsForArtist -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
+                                    Read-Host "Press Enter to continue..."
                                     continue
                                 }
                  '^cv(.*)$' {
                     # View Cover art: cv (first album), cv<number>, or cv1-4,6,7 (multiple albums with chafa grid)
                     $rangeText = if ($matches[1]) { $matches[1].Trim() } else { '1' }
-                    Show-CoverArt -RangeText $rangeText -AlbumList $albumsForArtist -LoopLabel 'albumSelectionLoop'
+                    Show-CoverArt -AlbumList $albumsForArtist -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
+                    Read-Host "Press Enter to continue..."
+                    continue
                 }
             '^cs(\d*)$' {
                 # Save Cover art to folder: cs (first album) or cs<number> (specific album)

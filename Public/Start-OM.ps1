@@ -742,24 +742,11 @@ function Start-OM {
                         if ($albumChoice -eq '') { $albumChoice = '1' }
                         
                         if ($albumChoice -eq 'p') {
+                            # Show current provider and available shortcuts
                             $config = Get-OMConfig
                             $defaultProvider = $config.DefaultProvider
-                            $newProvider = Read-Host "Current provider: $Provider`nAvailable providers: (p) default ($defaultProvider), (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz`nEnter provider"
-                            $providerMap = @{
-                                'p' = $defaultProvider
-                                'ps' = 'Spotify'; 's' = 'Spotify'; 'spotify' = 'Spotify'
-                                'pq' = 'Qobuz'; 'q' = 'Qobuz'; 'qobuz' = 'Qobuz'
-                                'pd' = 'Discogs'; 'd' = 'Discogs'; 'discogs' = 'Discogs'
-                                'pm' = 'MusicBrainz'; 'm' = 'MusicBrainz'; 'musicbrainz' = 'MusicBrainz'
-                            }
-                            $matched = $providerMap[$newProvider.ToLower()]
-                            if ($matched) {
-                                $Provider = $matched
-                                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                                $skipQuickPrompts = $true  # Skip prompts when re-entering quick find
-                                $script:backNavigationMode = $false  # Reset back navigation flag
-                                continue stageLoop
-                            }
+                            Write-Host "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan
+                            Write-Host "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray
                             continue albumSelectionLoop
                         }
                         elseif ($albumChoice -eq 'ps') {
@@ -810,7 +797,7 @@ function Start-OM {
                             $rangeText = $matches[1]
                             if (-not $rangeText) { $rangeText = "1" }
                             Write-Verbose "Quickfind cv: Show-CoverArt called with Size='original' Grid='False' AlbumCount=$($albumCandidates.Count)"
-                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false -LoopLabel 'albumSelectionLoop'
+                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false
                             Read-Host "Press Enter to continue..."
                             continue albumSelectionLoop
                         }
@@ -818,7 +805,7 @@ function Start-OM {
                             $rangeText = $matches[1]
                             if (-not $rangeText) { $rangeText = "1" }
                             Write-Verbose "Quickfind cvo: Show-CoverArt called with Size='original' Grid='False' AlbumCount=$($albumCandidates.Count)"
-                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false -LoopLabel 'albumSelectionLoop'
+                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false
                             Read-Host "Press Enter to continue..."
                             continue albumSelectionLoop
                         }
@@ -1013,46 +1000,6 @@ function Start-OM {
                                     $ProviderArtist = @{ id = $id; name = $id }
                                     $stage = 'B'
                                     continue 
-                                }
-                                '^cvo(\d*)$' {
-                                    # Stage A: View cover art for artist albums (original size)
-                                    if (-not $ProviderArtist) { Write-Warning "No artist selected to view covers for"; continue stageLoop }
-                                    $rangeText = $matches[1]
-                                    if (-not $rangeText) { $rangeText = "1" }
-                                    try {
-                                        Write-Verbose "Stage A cv: cvo handler invoked for artist: $($ProviderArtist.name)"
-                                        $albumsForArtist = Invoke-ProviderGetAlbums -Provider $Provider -ArtistId $ProviderArtist.id -AlbumType 'Album'
-                                        Write-Verbose "Stage A cv: albums fetched: $($albumsForArtist.Count)"
-                                        if ($albumsForArtist -and $albumsForArtist.Count -gt 0) {
-                                            Write-Verbose "Stage A cvo: Show-CoverArt called with Size='original' Grid='False' AlbumCount=$($albumsForArtist.Count)"
-                                            Show-CoverArt -RangeText $rangeText -AlbumList $albumsForArtist -Provider $Provider -Size 'original' -Grid $false -LoopLabel 'stageLoop'
-                                        }
-                                        else { Write-Warning "No albums found for artist to view cover art" }
-                                    }
-                                    catch { Write-Warning "Failed to fetch albums for artist: $_" }
-                                    Read-Host "Press Enter to continue..."
-                                    Write-Verbose "Stage A cv: user returned from Show-CoverArt; continuing stage loop"
-                                    continue stageLoop
-                                }
-                                '^cv(\d*)$' {
-                                    # Stage A: View cover art for artist albums (default size/fallback)
-                                    if (-not $ProviderArtist) { Write-Warning "No artist selected to view covers for"; continue stageLoop }
-                                    $rangeText = $matches[1]
-                                    if (-not $rangeText) { $rangeText = "1" }
-                                    try {
-                                        Write-Verbose "Stage A cv: cv handler invoked for artist: $($ProviderArtist.name)"
-                                        $albumsForArtist = Invoke-ProviderGetAlbums -Provider $Provider -ArtistId $ProviderArtist.id -AlbumType 'Album'
-                                        Write-Verbose "Stage A cv: albums fetched: $($albumsForArtist.Count)"
-                                        if ($albumsForArtist -and $albumsForArtist.Count -gt 0) {
-                                            Write-Verbose "Stage A cv: Show-CoverArt called with Size='original' Grid='False' AlbumCount=$($albumsForArtist.Count)"
-                                            Show-CoverArt -RangeText $rangeText -AlbumList $albumsForArtist -Provider $Provider -Size 'original' -Grid $false -LoopLabel 'stageLoop'
-                                        }
-                                        else { Write-Warning "No albums found for artist to view cover art" }
-                                    }
-                                    catch { Write-Warning "Failed to fetch albums for artist: $_" }
-                                    Read-Host "Press Enter to continue..."
-                                    Write-Verbose "Stage A cvo: user returned from Show-CoverArt; continuing stage loop"
-                                    continue stageLoop
                                 }
                                 default {
                                     if ($inputF) { 
@@ -1460,25 +1407,11 @@ function Start-OM {
                                         }
                                     }
                                     elseif ($skipChoice -eq 'p') {
+                                        # Show current provider and available shortcuts
                                         $config = Get-OMConfig
                                         $defaultProvider = $config.DefaultProvider
-                                        $newProvider = Read-Host "Current provider: $Provider`nAvailable providers: (p) default ($defaultProvider), (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz`nEnter provider"
-                                        $providerMap = @{
-                                            'p' = $defaultProvider
-                                            'ps' = 'Spotify'; 's' = 'Spotify'; 'spotify' = 'Spotify'
-                                            'pq' = 'Qobuz'; 'q' = 'Qobuz'; 'qobuz' = 'Qobuz'
-                                            'pd' = 'Discogs'; 'd' = 'Discogs'; 'discogs' = 'Discogs'
-                                            'pm' = 'MusicBrainz'; 'm' = 'MusicBrainz'; 'musicbrainz' = 'MusicBrainz'
-                                        }
-                                        $matched = $providerMap[$newProvider.ToLower()]
-                                        if ($matched) {
-                                            $Provider = $matched
-                                            Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                                            $stage = 'A'
-                                        }
-                                        else {
-                                            Write-Warning "Invalid provider: $newProvider"
-                                        }
+                                        Write-Host "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan
+                                        Write-Host "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray
                                         continue stageLoop
                                     }
                                     else {
@@ -1579,25 +1512,11 @@ function Start-OM {
                                     }
                                 }
                                 elseif ($skipChoice -eq 'p') {
+                                    # Show current provider and available shortcuts
                                     $config = Get-OMConfig
                                     $defaultProvider = $config.DefaultProvider
-                                    $newProvider = Read-Host "Current provider: $Provider`nAvailable providers: (p) default ($defaultProvider), (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz`nEnter provider"
-                                    $providerMap = @{
-                                        'p' = $defaultProvider
-                                        'ps' = 'Spotify'; 's' = 'Spotify'; 'spotify' = 'Spotify'
-                                        'pq' = 'Qobuz'; 'q' = 'Qobuz'; 'qobuz' = 'Qobuz'
-                                        'pd' = 'Discogs'; 'd' = 'Discogs'; 'discogs' = 'Discogs'
-                                        'pm' = 'MusicBrainz'; 'm' = 'MusicBrainz'; 'musicbrainz' = 'MusicBrainz'
-                                    }
-                                    $matched = $providerMap[$newProvider.ToLower()]
-                                    if ($matched) {
-                                        $Provider = $matched
-                                        Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                                        $stage = 'A'
-                                    }
-                                    else {
-                                        Write-Warning "Invalid provider: $newProvider"
-                                    }
+                                    Write-Host "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan
+                                    Write-Host "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray
                                     continue stageLoop
                                 }
                                 else {
@@ -1784,30 +1703,12 @@ function Start-OM {
                                     }
                                 }
                                 '^p$' {
+                                    # Show current provider and available shortcuts
                                     $config = Get-OMConfig
                                     $defaultProvider = $config.DefaultProvider
-                                    $newProvider = Read-Host "Current provider: $Provider`nAvailable providers: (p) default ($defaultProvider), (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz`nEnter provider"
-                                    $providerMap = @{
-                                        'p' = $defaultProvider
-                                        'ps' = 'Spotify'; 's' = 'Spotify'; 'spotify' = 'Spotify'
-                                        'pq' = 'Qobuz'; 'q' = 'Qobuz'; 'qobuz' = 'Qobuz'
-                                        'pd' = 'Discogs'; 'd' = 'Discogs'; 'discogs' = 'Discogs'
-                                        'pm' = 'MusicBrainz'; 'm' = 'MusicBrainz'; 'musicbrainz' = 'MusicBrainz'
-                                    }
-                                    $matched = $providerMap[$newProvider.ToLower()]
-                                    if ($matched) {
-                                        $Provider = $matched
-                                        Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                                        $cachedAlbums = $null
-                                        $cachedArtistId = $null
-                                        $stage = 'A'
-                                        $exitdo = $true
-                                        break
-                                    }
-                                    else {
-                                        Write-Warning "Invalid provider: $newProvider. Staying with $Provider."
-                                        continue
-                                    }
+                                    Write-Host "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan
+                                    Write-Host "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray
+                                    continue
                                 }
                                 '^f$' {
                                     # Toggle find mode between quick and artist-first
@@ -2424,7 +2325,7 @@ function Start-OM {
                                     $rangeText = $matches[1]
                                     if (-not $rangeText) { $rangeText = "1" }
                                         Write-Verbose "Stage B cvo: Show-CoverArt called with Size='original' Grid='False' Album= $($ProviderAlbum.name)"
-                                        Show-CoverArt -Album $ProviderAlbum -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false -LoopLabel 'stageLoop'
+                                        Show-CoverArt -Album $ProviderAlbum -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
                                     Read-Host "Press Enter to continue..."
                                     continue
                                 }

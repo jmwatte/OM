@@ -121,14 +121,44 @@ function Add-OMDiscNumbers {
     # Collect planned changes for a clear WhatIf summary
     $plannedChanges = @()
 
-    # Get all subfolders and sort them
-    $subFolders = Get-ChildItem -LiteralPath $baseFolder -Directory | Sort-Object Name
-    $totalDiscs = $subFolders.Count
+    # Helper to detect if a folder is a disc folder (contains audio files)
+    $isDiscFolder = {
+        param([string]$FolderPath)
+        $audioFiles = Get-ChildItem -LiteralPath $FolderPath -File -ErrorAction SilentlyContinue | 
+                     Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|wma)$' }
+        return ($audioFiles.Count -gt 0)
+    }
+
+    # Get all subfolders that contain audio files (potential disc folders)
+    $allSubFolders = Get-ChildItem -LiteralPath $baseFolder -Directory -ErrorAction SilentlyContinue | Sort-Object Name
+    $discFolders = @($allSubFolders | Where-Object { & $isDiscFolder $_.FullName })
     
-    # If no subfolders, treat the base folder as a single disc
-    if ($totalDiscs -eq 0) {
+    # Check if base folder itself has audio files
+    $baseFolderHasAudio = & $isDiscFolder $baseFolder
+    
+    # Determine disc structure:
+    # - If base folder has audio AND no disc subfolders: single-disc album (flat structure)
+    # - If base folder has audio AND disc subfolders exist: single-disc album (ignore subfolders like "covers")
+    # - If base folder has NO audio AND disc subfolders exist: multi-disc album
+    $subFolders = @()
+    $totalDiscs = 0
+    
+    if ($baseFolderHasAudio) {
+        # Base folder contains audio files - treat as single disc, ignore subfolders
+        Write-Verbose "Detected single-disc album (audio files in base folder)"
         $subFolders = @([PSCustomObject]@{ FullName = $baseFolder; Name = Split-Path $baseFolder -Leaf })
         $totalDiscs = 1
+    }
+    elseif ($discFolders.Count -gt 0) {
+        # No audio in base folder, but subfolders have audio - multi-disc album
+        Write-Verbose "Detected multi-disc album ($($discFolders.Count) disc folders)"
+        $subFolders = $discFolders
+        $totalDiscs = $discFolders.Count
+    }
+    else {
+        # No audio files found anywhere
+        Write-Warning "No audio files found in '$baseFolder' or its subfolders"
+        return
     }
     
     $discFormat = "d$($totalDiscs.ToString().Length)"  # Format string for disc numbers

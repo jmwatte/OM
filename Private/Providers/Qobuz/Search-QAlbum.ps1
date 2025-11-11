@@ -41,13 +41,14 @@ function Search-QAlbum {
 
     process {
         $locale = Get-QobuzUrlLocale
-        # Construct search query by combining artist and album name
-        $searchQuery = "$ArtistName $AlbumName".Trim()
-        # Use URI escaping so spaces become %20 instead of '+' (matches desired URL format)
-        $encodedQuery = [System.Uri]::EscapeDataString($searchQuery)
-        $url = "https://www.qobuz.com/$locale/search/albums/$encodedQuery"
+        
+        # Construct Qobuz search URL with artist filter
+        # Format: /search/albums/<album_query>?ssf[s]=main_catalog&ssf[f][an]=<artist_name>
+        $encodedAlbum = [System.Uri]::EscapeDataString($AlbumName)
+        $encodedArtist = [System.Uri]::EscapeDataString($ArtistName)
+        $url = "https://www.qobuz.com/$locale/search/albums/$encodedAlbum`?ssf%5Bs%5D=main_catalog&ssf%5Bf%5D%5Ban%5D=$encodedArtist"
 
-        Write-Verbose "Searching Qobuz albums with query: $searchQuery"
+        Write-Verbose "Searching Qobuz albums: Artist='$ArtistName', Album='$AlbumName'"
         Write-Verbose "Search URL: $url"
 
         try {
