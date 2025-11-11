@@ -816,7 +816,7 @@ function Start-OM {
                         elseif ($albumChoice -match '^cv(.*)$') {
                             $rangeText = $matches[1]
                             if (-not $rangeText) { $rangeText = "1" }
-                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider
+                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false
                             Read-Host "Press Enter to continue..."
                             continue albumSelectionLoop
                         }
@@ -1011,6 +1011,38 @@ function Start-OM {
                                     $ProviderArtist = @{ id = $id; name = $id }
                                     $stage = 'B'
                                     continue 
+                                }
+                                '^cvo(\d*)$' {
+                                    # Stage A: View cover art for artist albums (original size)
+                                    if (-not $ProviderArtist) { Write-Warning "No artist selected to view covers for"; continue stageLoop }
+                                    $rangeText = $matches[1]
+                                    if (-not $rangeText) { $rangeText = "1" }
+                                    try {
+                                        $albumsForArtist = Invoke-ProviderGetAlbums -Provider $Provider -ArtistId $ProviderArtist.id -AlbumType 'Album'
+                                        if ($albumsForArtist -and $albumsForArtist.Count -gt 0) {
+                                            Show-CoverArt -RangeText $rangeText -AlbumList $albumsForArtist -Provider $Provider -Size 'original' -Grid $false
+                                        }
+                                        else { Write-Warning "No albums found for artist to view cover art" }
+                                    }
+                                    catch { Write-Warning "Failed to fetch albums for artist: $_" }
+                                    Read-Host "Press Enter to continue..."
+                                    continue stageLoop
+                                }
+                                '^cv(\d*)$' {
+                                    # Stage A: View cover art for artist albums (default size/fallback)
+                                    if (-not $ProviderArtist) { Write-Warning "No artist selected to view covers for"; continue stageLoop }
+                                    $rangeText = $matches[1]
+                                    if (-not $rangeText) { $rangeText = "1" }
+                                    try {
+                                        $albumsForArtist = Invoke-ProviderGetAlbums -Provider $Provider -ArtistId $ProviderArtist.id -AlbumType 'Album'
+                                        if ($albumsForArtist -and $albumsForArtist.Count -gt 0) {
+                                            Show-CoverArt -RangeText $rangeText -AlbumList $albumsForArtist -Provider $Provider -Size 'original' -Grid $false
+                                        }
+                                        else { Write-Warning "No albums found for artist to view cover art" }
+                                    }
+                                    catch { Write-Warning "Failed to fetch albums for artist: $_" }
+                                    Read-Host "Press Enter to continue..."
+                                    continue stageLoop
                                 }
                                 default {
                                     if ($inputF) { 
@@ -2389,7 +2421,7 @@ function Start-OM {
                                     # View Cover art
                                     $rangeText = $matches[1]
                                     if (-not $rangeText) { $rangeText = "1" }
-                                    Show-CoverArt -Album $ProviderAlbum -RangeText $rangeText -Provider $Provider
+                                    Show-CoverArt -Album $ProviderAlbum -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
                                     Read-Host "Press Enter to continue..."
                                     continue
                                 }
