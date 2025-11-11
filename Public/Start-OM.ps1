@@ -809,14 +809,16 @@ function Start-OM {
                         elseif ($albumChoice -match '^cvo(.*)$') {
                             $rangeText = $matches[1]
                             if (-not $rangeText) { $rangeText = "1" }
-                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false
+                            Write-Verbose "Quickfind cv: Show-CoverArt called with Size='original' Grid='False' AlbumCount=$($albumCandidates.Count)"
+                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false -LoopLabel 'albumSelectionLoop'
                             Read-Host "Press Enter to continue..."
                             continue albumSelectionLoop
                         }
                         elseif ($albumChoice -match '^cv(.*)$') {
                             $rangeText = $matches[1]
                             if (-not $rangeText) { $rangeText = "1" }
-                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false
+                            Write-Verbose "Quickfind cvo: Show-CoverArt called with Size='original' Grid='False' AlbumCount=$($albumCandidates.Count)"
+                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false -LoopLabel 'albumSelectionLoop'
                             Read-Host "Press Enter to continue..."
                             continue albumSelectionLoop
                         }
@@ -1018,14 +1020,18 @@ function Start-OM {
                                     $rangeText = $matches[1]
                                     if (-not $rangeText) { $rangeText = "1" }
                                     try {
+                                        Write-Verbose "Stage A cv: cvo handler invoked for artist: $($ProviderArtist.name)"
                                         $albumsForArtist = Invoke-ProviderGetAlbums -Provider $Provider -ArtistId $ProviderArtist.id -AlbumType 'Album'
+                                        Write-Verbose "Stage A cv: albums fetched: $($albumsForArtist.Count)"
                                         if ($albumsForArtist -and $albumsForArtist.Count -gt 0) {
-                                            Show-CoverArt -RangeText $rangeText -AlbumList $albumsForArtist -Provider $Provider -Size 'original' -Grid $false
+                                            Write-Verbose "Stage A cvo: Show-CoverArt called with Size='original' Grid='False' AlbumCount=$($albumsForArtist.Count)"
+                                            Show-CoverArt -RangeText $rangeText -AlbumList $albumsForArtist -Provider $Provider -Size 'original' -Grid $false -LoopLabel 'stageLoop'
                                         }
                                         else { Write-Warning "No albums found for artist to view cover art" }
                                     }
                                     catch { Write-Warning "Failed to fetch albums for artist: $_" }
                                     Read-Host "Press Enter to continue..."
+                                    Write-Verbose "Stage A cv: user returned from Show-CoverArt; continuing stage loop"
                                     continue stageLoop
                                 }
                                 '^cv(\d*)$' {
@@ -1034,14 +1040,18 @@ function Start-OM {
                                     $rangeText = $matches[1]
                                     if (-not $rangeText) { $rangeText = "1" }
                                     try {
+                                        Write-Verbose "Stage A cv: cv handler invoked for artist: $($ProviderArtist.name)"
                                         $albumsForArtist = Invoke-ProviderGetAlbums -Provider $Provider -ArtistId $ProviderArtist.id -AlbumType 'Album'
+                                        Write-Verbose "Stage A cv: albums fetched: $($albumsForArtist.Count)"
                                         if ($albumsForArtist -and $albumsForArtist.Count -gt 0) {
-                                            Show-CoverArt -RangeText $rangeText -AlbumList $albumsForArtist -Provider $Provider -Size 'original' -Grid $false
+                                            Write-Verbose "Stage A cv: Show-CoverArt called with Size='original' Grid='False' AlbumCount=$($albumsForArtist.Count)"
+                                            Show-CoverArt -RangeText $rangeText -AlbumList $albumsForArtist -Provider $Provider -Size 'original' -Grid $false -LoopLabel 'stageLoop'
                                         }
                                         else { Write-Warning "No albums found for artist to view cover art" }
                                     }
                                     catch { Write-Warning "Failed to fetch albums for artist: $_" }
                                     Read-Host "Press Enter to continue..."
+                                    Write-Verbose "Stage A cvo: user returned from Show-CoverArt; continuing stage loop"
                                     continue stageLoop
                                 }
                                 default {
@@ -2413,7 +2423,8 @@ function Start-OM {
                                     # View Cover art original
                                     $rangeText = $matches[1]
                                     if (-not $rangeText) { $rangeText = "1" }
-                                    Show-CoverArt -Album $ProviderAlbum -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
+                                        Write-Verbose "Stage B cvo: Show-CoverArt called with Size='original' Grid='False' Album= $($ProviderAlbum.name)"
+                                        Show-CoverArt -Album $ProviderAlbum -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false -LoopLabel 'stageLoop'
                                     Read-Host "Press Enter to continue..."
                                     continue
                                 }
@@ -2421,7 +2432,8 @@ function Start-OM {
                                     # View Cover art
                                     $rangeText = $matches[1]
                                     if (-not $rangeText) { $rangeText = "1" }
-                                    Show-CoverArt -Album $ProviderAlbum -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
+                                    Write-Verbose "Stage B cv: Show-CoverArt called with Size='original' Grid='False' Album= $($ProviderAlbum.name)"
+                                    Show-CoverArt -Album $ProviderAlbum -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false -LoopLabel 'stageLoop'
                                     Read-Host "Press Enter to continue..."
                                     continue
                                 }
