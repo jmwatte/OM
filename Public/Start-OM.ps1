@@ -1161,6 +1161,15 @@ function Start-OM {
                             $artistQuery = $stageBResult.NewArtistQuery
                         }
                         
+                        # Handle new album name from Stage B (if provided)
+                        if ($stageBResult.ContainsKey('NewAlbumName') -and $stageBResult.NewAlbumName) {
+                            $albumName = $stageBResult.NewAlbumName
+                            $script:albumName = $stageBResult.NewAlbumName
+                            Write-Verbose "Updated albumName to: '$albumName' (from Stage B ni command)"
+                            # Force re-fetch of albums with new search term
+                            $loadStageBResults = $true
+                        }
+                        
                         # Handle skip action (break out of stage loop)
                         if ($stage -eq 'Skip') {
                             $albumDone = $true

@@ -526,7 +526,7 @@ function Invoke-StageB-AlbumSelection {
 
         $originalColor = [Console]::ForegroundColor
         [Console]::ForegroundColor = [ConsoleColor]::Yellow
-        $inputF = Read-Host "Select album(s) [number] (Enter=first), number(s) (e.g., 1,3,5-8), '(b)ack', '(n)ext', '(pr)ev', '(x)ip', 'id:<id>', '(p)rovider', (c)over {[V]iew,[S]ave,saveIn[T]ags}, '*' (all albums), '(ni)ew item (artist+album)', or text to search:"
+        $inputF = Read-Host "Select album(s) [number] (Enter=first), number(s) (e.g., 1,3,5-8), '(b)ack', '(n)ext', '(pr)ev', '(x)ip', 'id:<id>', '(p)rovider', '(f)indmode, (c)over {[V]iew,[S]ave,saveIn[T]ags}, '*' (all albums), '(ni)ew item (artist+album)', or text to search:"
         [Console]::ForegroundColor = $originalColor
         
         switch -Regex ($inputF) {
@@ -650,6 +650,27 @@ function Invoke-StageB-AlbumSelection {
                     UpdatedCachedArtistId = $CachedArtistId
                     UpdatedProvider       = $Provider
                     CurrentPage           = $currentPage
+                }
+            }
+            '^f$' {
+                # Toggle find mode between quick and artist-first
+                if ($script:findMode -eq 'quick') {
+                    $script:findMode = 'artist-first'
+                    Write-Host "✓ Switched to Artist-First Search mode" -ForegroundColor Green
+                }
+                else {
+                    $script:findMode = 'quick'
+                    Write-Host "✓ Switched to Quick Album Search mode" -ForegroundColor Green
+                }
+                # Return to Stage A to start with new find mode
+                return @{
+                    NextStage             = 'A'
+                    SelectedAlbum         = $null
+                    UpdatedCache          = $null
+                    UpdatedCachedArtistId = $null
+                    UpdatedProvider       = $Provider
+                    CurrentPage           = $currentPage
+                    FindModeChanged       = $true
                 }
             }
             '^ni$' {
