@@ -202,6 +202,15 @@ function Start-OM {
     # ... (begin block unchanged)
     
     process {
+        # If Provider was not explicitly specified, use DefaultProvider from config
+        if (-not $PSBoundParameters.ContainsKey('Provider')) {
+            $config = Get-OMConfig
+            if ($config.DefaultProvider) {
+                $Provider = $config.DefaultProvider
+                Write-Verbose "Using DefaultProvider from config: $Provider"
+            }
+        }
+        
         # Helper function to normalize Discogs IDs (strip brackets, resolve masters)
         $normalizeDiscogsId = {
             param([string]$InputId)
