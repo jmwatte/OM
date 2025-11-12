@@ -506,11 +506,12 @@ function Start-OM {
                 Write-Verbose "Single album mode: Extracted artist '$artist' from parent folder"
             }
             else {
-                # Root-level album folder - use album name as placeholder artist
+                # Root-level album folder - use album folder name as placeholder artist
                 # This will be overridden by ProviderAlbum.album_artist during "sa" command
-                $script:artist = $script:albumName
+                $albumFolderName = Split-Path -Leaf $Path
+                $script:artist = $albumFolderName
                 $artist = $script:artist
-                Write-Verbose "Single album mode: Root-level album detected at drive root, using album name '$artist' as temporary artist (will be updated from metadata)"
+                Write-Verbose "Single album mode: Root-level album detected at drive root, using album folder name '$artist' as temporary artist (will be updated from metadata)"
             }
             
             # Process only the target album folder
@@ -1267,7 +1268,8 @@ function Start-OM {
                                         # Direct property access to avoid PSObject wrapping issues
                                         $firstTrack = $tracksForAlbum | Select-Object -First 1
                                         Write-Verbose "firstTrack type: $($firstTrack.GetType().FullName)"
-                                        Write-Verbose "firstTrack has album_name: $(if ($firstTrack.album_name) { 'Yes' } else { 'No' })"
+                                        $hasAlbumName = Get-IfExists $firstTrack 'album_name'
+                                        Write-Verbose "firstTrack has album_name: $(if ($hasAlbumName) { 'Yes' } else { 'No' })"
                                     } catch {
                                         Write-Verbose "Error accessing first track: $_"
                                         Write-Verbose "Stack: $($_.ScriptStackTrace)"

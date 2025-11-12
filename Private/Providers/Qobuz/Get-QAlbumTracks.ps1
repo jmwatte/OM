@@ -444,7 +444,7 @@ function Get-QAlbumTracks {
             if ($genreContainer -and $genreContainer.InnerText -match 'genre:') {
                 $genreLinks = $genreContainer.SelectNodes('./a')
                 if ($genreLinks) {
-                    $htmlGenres = @($genreLinks | ForEach-Object { $_.InnerText.Trim() } | Where-Object { $_ })
+                    $htmlGenres = @($genreLinks | ForEach-Object { [System.Web.HttpUtility]::HtmlDecode($_.InnerText.Trim()) } | Where-Object { $_ })
                     if ($htmlGenres.Count -gt 0) {
                         $categoryGenre = $htmlGenres[0]
                         if ($htmlGenres.Count -gt 1) {
