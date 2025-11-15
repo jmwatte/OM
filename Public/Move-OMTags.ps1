@@ -24,7 +24,7 @@ function Move-OMTags {
     Preview changes without applying them.
 
 .PARAMETER PassThru
-    Return information about the moved folder and renamed files.
+    Return detailed operation results for each moved album instead of just the new paths.
 
 .EXAMPLE
     Move-OMTags -Path "C:\Music\Unsorted\Album" -TargetFolder "C:\Music\Organized"
@@ -47,9 +47,9 @@ function Move-OMTags {
     Preview moving and renaming for all albums in the directory.
 
 .EXAMPLE
-    Move-OMTags -Path "C:\Music\Classical" -TargetFolder "C:\Organized" -FileRenamePattern "{Track:D2} - {Composers} - {Title}" -PassThru
+    Move-OMTags -Path "C:\Music\Album" -TargetFolder "C:\Organized" | Get-OMTags
 
-    For classical music, renames files to "01 - Composer - Title.mp3" and returns operation results.
+    Moves the album and pipes the new path to Get-OMTags to read the tags from the moved location.
 
 .NOTES
     Requires TagLib-Sharp for tag reading.
@@ -241,18 +241,18 @@ function Move-OMTags {
                 Write-Host "Renamed $($renamedFiles.Count) files" -ForegroundColor Green
             }
 
-            # Prepare result for PassThru
-            if ($PassThru) {
-                $result = [PSCustomObject]@{
-                    OriginalPath = $resolvedPath
-                    NewPath      = $targetPath
-                    AlbumArtist  = $albumArtist
-                    Year         = $year
-                    Album        = $albumName
-                    RenamedFiles = $renamedFiles
-                }
-                $results += $result
+            # Prepare result for output
+            $result = [PSCustomObject]@{
+                NewPath = $targetPath
             }
+            if ($PassThru) {
+                $result | Add-Member -MemberType NoteProperty -Name OriginalPath -Value $resolvedPath
+                $result | Add-Member -MemberType NoteProperty -Name AlbumArtist -Value $albumArtist
+                $result | Add-Member -MemberType NoteProperty -Name Year -Value $year
+                $result | Add-Member -MemberType NoteProperty -Name Album -Value $albumName
+                $result | Add-Member -MemberType NoteProperty -Name RenamedFiles -Value $renamedFiles
+            }
+            $results += $result
 
         } catch {
             Write-Error "Failed to process $resolvedPath`: $($_.Exception.Message)"
@@ -262,6 +262,8 @@ function Move-OMTags {
     end {
         if ($PassThru) {
             return $results
+        } else {
+            return $results.NewPath
         }
     }
 }

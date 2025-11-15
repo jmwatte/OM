@@ -46,7 +46,7 @@ function Get-OMTags {
 #>
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
         [object]$Path,
         
         [switch]$IncludeComposer,
