@@ -110,6 +110,10 @@ function Move-OMTags {
                 return
             }
 
+            # Sort tags by Disc and Track numbers numerically to avoid string sorting issues
+            # This ensures cd1, cd2, ..., cd9, cd10, cd11 instead of cd1, cd10, cd11, ..., cd2
+            $tags = $tags | Sort-Object -Property @{Expression={if($_.Disc){[int]$_.Disc}else{0}}}, @{Expression={if($_.Track){[int]$_.Track}else{0}}}
+
             # Determine AlbumArtist (use first non-empty value)
             $albumArtist = $null
             foreach ($tag in $tags) {
