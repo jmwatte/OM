@@ -110,6 +110,11 @@ function Move-OMTags {
                 return
             }
 
+            # Force garbage collection to release any lingering TagLib file handles
+            [System.GC]::Collect()
+            [System.GC]::WaitForPendingFinalizers()
+            Start-Sleep -Milliseconds 100
+
             # Sort tags by Disc and Track numbers numerically to avoid string sorting issues
             # This ensures cd1, cd2, ..., cd9, cd10, cd11 instead of cd1, cd10, cd11, ..., cd2
             $tags = $tags | Sort-Object -Property @{Expression={if($_.Disc){[int]$_.Disc}else{0}}}, @{Expression={if($_.Track){[int]$_.Track}else{0}}}
@@ -170,7 +175,7 @@ function Move-OMTags {
                 $targetPath = Join-Path $artistFolder "$newFolderName ($n)"
             }
 
-            # Move the folder - use simple approach
+            # Move the folder - use simple approach with retry logic for file locks
             $folderMoved = $false
             if ($PSCmdlet.ShouldProcess($resolvedPath, "Move to $targetPath")) {
                 # Ensure source path is absolute
@@ -190,11 +195,39 @@ function Move-OMTags {
                 $tempGuid = [System.Guid]::NewGuid().ToString()
                 $tempPath = Join-Path $artistFolder $tempGuid
                 
-                # Move source to temp location first
-                Move-Item -LiteralPath $actualSourcePath -Destination $tempPath -Force
+                # Retry logic for file lock issues
+                $maxRetries = 3
+                $retryCount = 0
+                $moveSuccess = $false
                 
-                # Then rename temp to final name
-                Move-Item -LiteralPath $tempPath -Destination $targetPath -Force
+                while (-not $moveSuccess -and $retryCount -lt $maxRetries) {
+                    try {
+                        # Move source to temp location first
+                        Move-Item -LiteralPath $actualSourcePath -Destination $tempPath -Force -ErrorAction Stop
+                        
+                        # Then rename temp to final name
+                        Move-Item -LiteralPath $tempPath -Destination $targetPath -Force -ErrorAction Stop
+                        
+                        $moveSuccess = $true
+                    }
+                    catch {
+                        $retryCount++
+                        if ($_.Exception.Message -like "*being used by another process*") {
+                            Write-Verbose "File lock detected, retrying ($retryCount/$maxRetries)..."
+                            [System.GC]::Collect()
+                            [System.GC]::WaitForPendingFinalizers()
+                            Start-Sleep -Milliseconds (200 * $retryCount)
+                        }
+                        else {
+                            throw
+                        }
+                    }
+                }
+                
+                if (-not $moveSuccess) {
+                    Write-Error "Failed to move folder after $maxRetries attempts: $actualSourcePath"
+                    return
+                }
                 
                 # Clean up parent folder if it's now empty
                 if ($actualSourcePath -ne $sourcePath) {
