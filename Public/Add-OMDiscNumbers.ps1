@@ -130,7 +130,12 @@ function Add-OMDiscNumbers {
     }
 
     # Get all subfolders that contain audio files (potential disc folders)
-    $allSubFolders = Get-ChildItem -LiteralPath $baseFolder -Directory -ErrorAction SilentlyContinue | Sort-Object Name
+    # Sort naturally by extracting numeric values from folder names (handles CD 1, CD 2, ..., CD 10 correctly)
+    $allSubFolders = Get-ChildItem -LiteralPath $baseFolder -Directory -ErrorAction SilentlyContinue | 
+                     Sort-Object { 
+                         # Extract numeric portion from folder name (e.g., "CD 10" -> 10, "Disc 2" -> 2)
+                         if ($_.Name -match '\d+') { [int]$matches[0] } else { 0 }
+                     }
     $discFolders = @($allSubFolders | Where-Object { & $isDiscFolder $_.FullName })
     
     # Check if base folder itself has audio files
