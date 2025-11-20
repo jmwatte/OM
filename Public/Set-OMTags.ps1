@@ -757,8 +757,26 @@ function Set-OMTags {
                 return
             }
             
-            # Confirm changes
-            $changeDescription = "Update $($changes.Count) tag(s) in '$(Split-Path $filePath -Leaf)'"
+            # Calculate new filename if RenamePattern is specified (BEFORE ShouldProcess for accurate WhatIf)
+            $newFileName = $null
+            $willRename = $false
+            $currentFileName = Split-Path $filePath -Leaf
+
+            if ($RenamePattern) {
+                $fileExtension = [System.IO.Path]::GetExtension($currentFileName)
+                
+                # Use the new tags (after transform/update) to calculate rename
+                $newFileName = Expand-RenamePattern -Pattern $RenamePattern -TagObject $newTags -FileExtension $fileExtension
+                $willRename = ($newFileName -and $newFileName -ne $currentFileName)
+            }
+
+            # Build change description including rename information for clear WhatIf output
+            if ($willRename) {
+                $changeDescription = "Update $($changes.Count) tag(s) and rename '$currentFileName' → '$newFileName'"
+            } else {
+                $changeDescription = "Update $($changes.Count) tag(s) in '$currentFileName'"
+            }
+            
             if ($Force -or $PSCmdlet.ShouldProcess($filePath, $changeDescription)) {
                 # Write tags using TagLib-Sharp
                 Write-Verbose "Writing tags to: $(Split-Path $filePath -Leaf)"
@@ -898,15 +916,9 @@ function Set-OMTags {
                     
                     # Handle file renaming if RenamePattern is specified
                     if ($RenamePattern -and -not $WhatIfPreference) {
-                        $currentDir = Split-Path $filePath -Parent
-                        $currentFileName = Split-Path $filePath -Leaf
-                        $fileExtension = [System.IO.Path]::GetExtension($currentFileName)
-                        
-                        # Use the updated tags for renaming
-                        $updatedTags = Get-OMTags -Path $filePath
-                        $newFileName = Expand-RenamePattern -Pattern $RenamePattern -TagObject $updatedTags -FileExtension $fileExtension
-                        
-                        if ($newFileName -and $newFileName -ne $currentFileName) {
+                        # Reuse the newFileName calculated before ShouldProcess (avoids recalculation)
+                        if ($willRename) {
+                            $currentDir = Split-Path $filePath -Parent
                             $newFilePath = Join-Path $currentDir $newFileName
                             
                             # Check if target file already exists
