@@ -1,12 +1,51 @@
 function Select-matches {
     #given the $audioFiles and $SpotifyTracks it should output the $audioFiles sorted in a manual way to match the spotifyTracks
+    # If PairedTracks is provided, uses that order as the starting point for manual refinement
     param(
         [array]$AudioFiles,
         [array]$SpotifyTracks,
+        [array]$PairedTracks,  # Pre-sorted pairing from previous sort method
         [switch]$Reverse
     )
 
+    # Use provided pairing order if available, otherwise start fresh
     $pairedTracks = @()
+    
+    # If we have a pre-sorted pairing, use its order to pre-sort the lists
+    if ($PairedTracks -and $PairedTracks.Count -gt 0) {
+        if ($Reverse) {
+            # In reverse mode, sort AudioFiles by the order they appear in PairedTracks
+            $orderedAudioFiles = @()
+            foreach ($pair in $PairedTracks) {
+                if ($pair.AudioFile) {
+                    $orderedAudioFiles += $pair.AudioFile
+                }
+            }
+            # Add any audio files not in the pairing (shouldn't happen, but be safe)
+            foreach ($audio in $AudioFiles) {
+                if ($audio -notin $orderedAudioFiles) {
+                    $orderedAudioFiles += $audio
+                }
+            }
+            $AudioFiles = $orderedAudioFiles
+        }
+        else {
+            # In normal mode, sort SpotifyTracks by the order they appear in PairedTracks
+            $orderedSpotifyTracks = @()
+            foreach ($pair in $PairedTracks) {
+                if ($pair.SpotifyTrack) {
+                    $orderedSpotifyTracks += $pair.SpotifyTrack
+                }
+            }
+            # Add any Spotify tracks not in the pairing
+            foreach ($spotify in $SpotifyTracks) {
+                if ($spotify -notin $orderedSpotifyTracks) {
+                    $orderedSpotifyTracks += $spotify
+                }
+            }
+            $SpotifyTracks = $orderedSpotifyTracks
+        }
+    }
 
     if ($Reverse) {
         # Reverse mode: iterate over each audio file, let user pick from Spotify tracks
