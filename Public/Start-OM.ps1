@@ -142,7 +142,9 @@ function Start-OM {
         }
 
         # Detect path type: single album folder (has audio files) vs artist folder (has album subfolders)
-        $audioFilesInPath = @(Get-ChildItem -LiteralPath $Path -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' })
+        $audioFilesInPath = @(Get-ChildItem -LiteralPath $Path -File -Recurse -ErrorAction SilentlyContinue | 
+            Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
+            Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) })
         $subFoldersInPath = @(Get-ChildItem -LiteralPath $Path -Directory -ErrorAction SilentlyContinue)
         
         # Helper function to detect if a folder name is a disc folder
@@ -159,7 +161,9 @@ function Start-OM {
         if ($audioFilesInPath.Count -gt 0) {
             # Check if subfolders contain audio files
             $subFoldersWithAudio = @($subFoldersInPath | Where-Object {
-                $subAudioFiles = @(Get-ChildItem -LiteralPath $_.FullName -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' })
+                $subAudioFiles = @(Get-ChildItem -LiteralPath $_.FullName -File -Recurse -ErrorAction SilentlyContinue | 
+                    Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
+                    Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) })
                 $subAudioFiles.Count -gt 0
             })
             
@@ -327,7 +331,9 @@ function Start-OM {
                     $script:album = Get-Item -LiteralPath $moveResult.NewAlbumPath
             
                     # Reload audio files with fresh TagLib handles from the NEW album path
-                    $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
+                    $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                        Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
+                        Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
                     $audioFiles = foreach ($f in $audioFiles) {
                         try {
                             $tagFile = [TagLib.File]::Create($f.FullName)
@@ -462,7 +468,9 @@ function Start-OM {
                         $script:album = Get-Item -LiteralPath $targetPath
                         
                         # Reload audio files with fresh TagLib handles from the target path
-                        $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
+                        $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                            Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
+                            Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
                         $audioFiles = foreach ($f in $audioFiles) {
                             try {
                                 $tagFile = [TagLib.File]::Create($f.FullName)
@@ -556,7 +564,9 @@ function Start-OM {
                 $albumName = $script:album.Name.Trim()
 
             }
-            $audioFilesCheck = @(Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' })
+            $audioFilesCheck = @(Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
+                Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) })
             if (-not $audioFilesCheck -or $audioFilesCheck.Count -eq 0) {
                 Write-Warning "No supported audio files found in album folder: $($script:album.FullName). Skipping album."
                 continue
@@ -873,7 +883,9 @@ function Start-OM {
                             $config = Get-OMConfig
                             $maxSize = $config.CoverArt.TagImageSize
                             # Get audio files for embedding
-                            $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } | ForEach-Object {
+                            $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                                Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
+                                Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) } | ForEach-Object {
                                 try {
                                     $tagFile = [TagLib.File]::Create($_.FullName)
                                     [PSCustomObject]@{
@@ -1226,7 +1238,9 @@ function Start-OM {
                             break 2
                         }
                         # collect audio files and tags
-                        $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
+                        $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                            Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
+                            Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
                         $audioFiles = foreach ($f in $audioFiles) {
                             try {
                                 $tagFile = [TagLib.File]::Create($f.FullName)
@@ -1969,7 +1983,9 @@ function Start-OM {
                                                 }
                                             }
                                             # Reload audio files with fresh TagLib handles
-                                            $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
+                                            $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                                                Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
+                                                Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
                                             $audioFiles = foreach ($f in $audioFiles) {
                                                 try {
                                                     $tagFile = [TagLib.File]::Create($f.FullName)
@@ -2383,7 +2399,9 @@ function Start-OM {
                                         $config = Get-OMConfig
                                         $maxSize = $config.CoverArt.TagImageSize
                                         # Get audio files for embedding
-                                        $audioFilesForCover = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } | ForEach-Object {
+                                        $audioFilesForCover = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                                            Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
+                                            Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) } | ForEach-Object {
                                             try {
                                                 $tagFile = [TagLib.File]::Create($_.FullName)
                                                 [PSCustomObject]@{
