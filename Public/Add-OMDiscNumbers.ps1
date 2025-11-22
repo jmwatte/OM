@@ -125,7 +125,7 @@ function Add-OMDiscNumbers {
     $isDiscFolder = {
         param([string]$FolderPath)
         $audioFiles = Get-ChildItem -LiteralPath $FolderPath -File -ErrorAction SilentlyContinue | 
-                     Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|wma)$' }
+                     Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|wma|ogg|ape)$' }
         return ($audioFiles.Count -gt 0)
     }
 
@@ -174,7 +174,7 @@ function Add-OMDiscNumbers {
         
         # Get all audio files in current folder
         $audioFiles = Get-ChildItem -LiteralPath $folder.FullName -File | 
-                     Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|wma)$' } |
+                     Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|wma|ogg|ape)$' } |
                      Sort-Object Name
         
         $totalTracks = $audioFiles.Count

@@ -212,20 +212,26 @@ function Move-OMTags {
                     }
                     catch {
                         $retryCount++
-                        if ($_.Exception.Message -like "*being used by another process*") {
-                            Write-Verbose "File lock detected, retrying ($retryCount/$maxRetries)..."
+                        $errorMessage = $_.Exception.Message
+                        if ($errorMessage -like "*being used by another process*" -or $errorMessage -like "*cannot access the file*") {
+                            Write-Verbose "File lock detected, retrying ($retryCount/$maxRetries)... Error: $errorMessage"
                             [System.GC]::Collect()
                             [System.GC]::WaitForPendingFinalizers()
                             Start-Sleep -Milliseconds (200 * $retryCount)
                         }
                         else {
-                            throw
+                            # Not a file lock issue, don't retry
+                            Write-Error "Failed to move folder: $errorMessage"
+                            Write-Error "Source: $actualSourcePath"
+                            Write-Error "Temp: $tempPath"
+                            Write-Error "Target: $targetPath"
+                            return
                         }
                     }
                 }
                 
                 if (-not $moveSuccess) {
-                    Write-Error "Failed to move folder after $maxRetries attempts: $actualSourcePath"
+                    Write-Error "Failed to move folder after $maxRetries attempts (file locks): $actualSourcePath"
                     return
                 }
                 
