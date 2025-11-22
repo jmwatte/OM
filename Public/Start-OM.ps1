@@ -1826,20 +1826,23 @@ function Start-OM {
                                     }
                                     
                                     # Priority order for artist name (same as 'sa' command):
-                                    # 1. ManualAlbumArtist (already checked above)
+                                    # 1. ManualAlbumArtist (already checked above) - HIGHEST PRIORITY, never override
                                     # 2. AlbumArtist from saved tags (already attempted above)
                                     # 3. ProviderAlbum.album_artist (from track metadata - most reliable)
                                     # 4. ProviderArtist.name (only if not a drive letter or folder name)
                                     # 5. Album name as last resort
                                     
-                                    # Always prefer ProviderAlbum.album_artist when available (most accurate)
-                                    $albumArtistFromMetadata = Get-IfExists $ProviderAlbum 'album_artist'
-                                    if ($albumArtistFromMetadata) {
-                                        $artistNameForFolder = $albumArtistFromMetadata
-                                        Write-Verbose "Using ProviderAlbum.album_artist from track metadata: $artistNameForFolder"
+                                    # Only use ProviderAlbum.album_artist if ManualAlbumArtist is not set
+                                    if (-not $script:ManualAlbumArtist) {
+                                        $albumArtistFromMetadata = Get-IfExists $ProviderAlbum 'album_artist'
+                                        if ($albumArtistFromMetadata) {
+                                            $artistNameForFolder = $albumArtistFromMetadata
+                                            Write-Verbose "Using ProviderAlbum.album_artist from track metadata: $artistNameForFolder"
+                                        }
                                     }
-                                    # If no album_artist in metadata, check if we have a valid artistNameForFolder
-                                    elseif (-not $artistNameForFolder -or $artistNameForFolder -match '^[A-Z]:\\?$') {
+                                    
+                                    # If still no artist name, check if we have a valid artistNameForFolder
+                                    if (-not $artistNameForFolder -or $artistNameForFolder -match '^[A-Z]:\\?$') {
                                         # artistNameForFolder is empty or a drive letter, try ProviderArtist.name
                                         $providerArtistName = Get-IfExists $ProviderArtist 'name'
                                         if ($providerArtistName -and $providerArtistName -notmatch '^[A-Z]:\\?$') {
@@ -2138,20 +2141,23 @@ function Start-OM {
                                     }
                                     
                                     # Priority order for artist name:
-                                    # 1. ManualAlbumArtist (already checked above)
+                                    # 1. ManualAlbumArtist (already checked above) - HIGHEST PRIORITY, never override
                                     # 2. AlbumArtist from saved tags (already attempted above)
                                     # 3. ProviderAlbum.album_artist (from track metadata - most reliable)
                                     # 4. ProviderArtist.name (only if not a drive letter or folder name)
                                     # 5. Album name as last resort
                                     
-                                    # Always prefer ProviderAlbum.album_artist when available (most accurate)
-                                    $albumArtistFromMetadata = Get-IfExists $ProviderAlbum 'album_artist'
-                                    if ($albumArtistFromMetadata) {
-                                        $artistNameForFolder = $albumArtistFromMetadata
-                                        Write-Verbose "Using ProviderAlbum.album_artist from track metadata: $artistNameForFolder"
+                                    # Only use ProviderAlbum.album_artist if ManualAlbumArtist is not set
+                                    if (-not $script:ManualAlbumArtist) {
+                                        $albumArtistFromMetadata = Get-IfExists $ProviderAlbum 'album_artist'
+                                        if ($albumArtistFromMetadata) {
+                                            $artistNameForFolder = $albumArtistFromMetadata
+                                            Write-Verbose "Using ProviderAlbum.album_artist from track metadata: $artistNameForFolder"
+                                        }
                                     }
-                                    # If no album_artist in metadata, check if we have a valid artistNameForFolder
-                                    elseif (-not $artistNameForFolder -or $artistNameForFolder -match '^[A-Z]:\\?$') {
+                                    
+                                    # If still no artist name, check if we have a valid artistNameForFolder
+                                    if (-not $artistNameForFolder -or $artistNameForFolder -match '^[A-Z]:\\?$') {
                                         # artistNameForFolder is empty or a drive letter, try ProviderArtist.name
                                         $providerArtistName = Get-IfExists $ProviderArtist 'name'
                                         if ($providerArtistName -and $providerArtistName -notmatch '^[A-Z]:\\?$') {
