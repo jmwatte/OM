@@ -1054,7 +1054,11 @@ function Set-OMTags {
                                 }
                                 # Sort numerically for Track and Disc properties, alphabetically for others
                                 if ($prop -in @('Track', 'Disc', 'Year', 'TrackCount', 'DiscCount')) {
-                                    $uniqueValues = $allValues | Where-Object { $_ -ne $null -and $_ -ne '' } | Sort-Object { [int]$_ } -Unique
+                                    # Filter to only numeric values before sorting
+                                    $numericValues = $allValues | Where-Object { 
+                                        $_ -ne $null -and $_ -ne '' -and $_ -match '^\d+$' 
+                                    }
+                                    $uniqueValues = $numericValues | Sort-Object { [int]$_ } -Unique
                                 } else {
                                     $uniqueValues = $allValues | Where-Object { $_ -ne $null -and $_ -ne '' } | Sort-Object -Unique
                                 }
