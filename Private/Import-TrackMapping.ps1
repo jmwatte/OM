@@ -108,7 +108,7 @@ function Import-TrackMapping {
     Write-Host "Parsed $($trackMappings.Count) track mappings" -ForegroundColor Green
     
     # Get audio files in the directory
-    $audioExtensions = @('.mp3', '.flac', '.m4a', '.ogg', '.wav', '.wma')
+    $audioExtensions = @('.mp3', '.flac', '.m4a', '.ogg', '.wav', '.wma', '.ape')
     $audioFiles = Get-ChildItem -Path $AudioPath -File | Where-Object { 
         $_.Extension.ToLower() -in $audioExtensions 
     }
