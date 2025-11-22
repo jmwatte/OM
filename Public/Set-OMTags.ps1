@@ -1052,7 +1052,13 @@ function Set-OMTags {
                                         }
                                     }
                                 }
-                                $uniqueValues = $allValues | Where-Object { $_ -ne $null -and $_ -ne '' } | Sort-Object -Unique
+                                # Sort numerically for Track and Disc properties, alphabetically for others
+                                if ($prop -in @('Track', 'Disc', 'Year', 'TrackCount', 'DiscCount')) {
+                                    $uniqueValues = $allValues | Where-Object { $_ -ne $null -and $_ -ne '' } | Sort-Object { [int]$_ } -Unique
+                                } else {
+                                    $uniqueValues = $allValues | Where-Object { $_ -ne $null -and $_ -ne '' } | Sort-Object -Unique
+                                }
+                                
                                 if ($prop -eq 'Track') {
                                     # Pad track numbers based on TrackCount
                                     $maxTrackCount = ($results | Where-Object { $_.TrackCount } | Select-Object -ExpandProperty TrackCount | Measure-Object -Maximum).Maximum
