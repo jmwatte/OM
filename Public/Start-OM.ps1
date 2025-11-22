@@ -137,6 +137,11 @@ function Start-OM {
         # detect whether the user passed -WhatIf to this function (comes from CmdletBinding)
         $isWhatIf = $PSBoundParameters.ContainsKey('WhatIf')
 
+        # Initialize verbose display toggle if it doesn't exist
+        if (-not (Get-Variable -Name showVerbose -Scope Script -ErrorAction SilentlyContinue)) {
+            $script:showVerbose = $false
+        }
+
         if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
             throw "Path not found or not a directory: $Path"
         }
@@ -1643,6 +1648,7 @@ function Start-OM {
                                         SpotifyArtist = $ProviderArtist
                                     }
                                     if ($reverseSource) { $autoShowParams.Reverse = $true }
+                                    if ($script:showVerbose) { $autoShowParams.Verbose = $true }
                                     Show-Tracks @autoShowParams -InputReader $autoReader | Out-Null
                                     $goCDisplayShown = $true
                                 }
@@ -1655,8 +1661,9 @@ function Start-OM {
                             else {
                                 if ($useWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
                                 $whatIfStatus = if ($useWhatIf) { "ON" } else { "OFF" }
-                                $optionsLine = "`nOptions: SortBy (o)rder, Tit(l)e, (d)uration, (t)rackNumber, (n)ame, (h)ybrid, (m)anual, (r)everse | (S)ave {[A]ll, [T]ags, [F]olderNames} | {C}over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags} | (aa)AlbumArtist, (b)ack/(pr)evious, (P)rovider, (F)indmode, (w)hatIf:$whatIfStatus, (X)ip"
-                                $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'sa', 'st', 'sf', 'cv', 'cvo', 'cs', 'ct', 'aa', 'b', 'pr', 'p', 'pq', 'ps', 'pd', 'pm', 'f', 'w', 'whatif', 'x')
+                                $verboseStatus = if ($script:showVerbose) { "ON" } else { "OFF" }
+                                $optionsLine = "`nOptions: SortBy (o)rder, Tit(l)e, (d)uration, (t)rackNumber, (n)ame, (h)ybrid, (m)anual, (r)everse | (S)ave {[A]ll, [T]ags, [F]olderNames} | {C}over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags} | (aa)AlbumArtist, (b)ack/(pr)evious, (P)rovider, (F)indmode, (w)hatIf:$whatIfStatus, (v)erbose:$verboseStatus, (X)ip"
+                                $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'sa', 'st', 'sf', 'cv', 'cvo', 'cs', 'ct', 'aa', 'b', 'pr', 'p', 'pq', 'ps', 'pd', 'pm', 'f', 'w', 'whatif', 'v', 'x')
                                 $paramshow = @{
                                     PairedTracks  = $pairedTracks
                                     AlbumName     = $ProviderAlbum.name
@@ -1667,6 +1674,7 @@ function Start-OM {
                                     ProviderName  = $Provider
                                 }
                                 if ($reverseSource) { $paramshow.Reverse = $true }
+                                if ($script:showVerbose) { $paramshow.Verbose = $true }
                                 Clear-Host
                                 $inputF = Show-Tracks @paramshow
 
@@ -1686,6 +1694,7 @@ function Start-OM {
                                 '^h$' { $sortMethod = 'Hybrid'; $refreshTracks = $true; continue }
                                 '^m$' { $sortMethod = 'Manual'; $refreshTracks = $true; continue }
                                 '^r$' { $ReverseSource = -not $ReverseSource; $refreshTracks = $true; continue }
+                                '^v$' { $script:showVerbose = -not $script:showVerbose; $refreshTracks = $true; continue }
                                 '^aa$' {
                                     # Manual album artist builder
                                     if ($tracksForAlbum -and $tracksForAlbum.Count -gt 0) {

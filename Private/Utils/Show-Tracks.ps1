@@ -8,7 +8,8 @@ function Show-Tracks {
         [string[]]$ValidCommands,
         [string]$PromptColor = 'Gray',
         [scriptblock]$InputReader,
-        [string]$ProviderName = 'Spotify'
+        [string]$ProviderName = 'Spotify',
+        [switch]$Verbose
     )
 
     $supportsCommands = $ValidCommands -and $ValidCommands.Count -gt 0
@@ -61,36 +62,38 @@ function Show-Tracks {
                     
                     Write-Host ("↓`t{0:D2}.{1:D2}: {2} ({3})" -f $disc, $track, $spotify.name, $durationStr)
 
-                    $a = $spotify.artists
-                    if ($a -is [System.Collections.IEnumerable] -and -not ($a -is [string])) {
-                        $artistDisplay = ($a | ForEach-Object { if ($_.PSObject.Properties.Match('name')) { $_.name } else { $_ } }) -join ', '
-                    }
-                    elseif ($a -and $a.PSObject.Properties.Match('name')) {
-                        $artistDisplay = $a.name
-                    }
-                    else {
-                        $artistDisplay = $a
-                    }
-                    Write-Host ("`t`tartist: {0}" -f $artistDisplay)
-
-                    # Prefer track-level genres over artist-level (better for classical, MusicBrainz)
-                    if ($value = Get-IfExists $spotify 'genres') {
-                        $providerGenres = $value -join ', '
-                        Write-Host ("`t`tgenres: {0}" -f $providerGenres)
-                    }
-                    elseif ($value = Get-IfExists $SpotifyArtist 'genres') {
-                        $providerGenres = $value -join ', '
-                        Write-Host ("`t`tgenres: {0}" -f $providerGenres)
-                    }
-
-                    if ($value = Get-IfExists $spotify 'composer') {
-                        if ($value -is [System.Collections.IEnumerable] -and -not ($value -is [string])) {
-                            $providerComposer = $value -join ', '
+                    if ($Verbose) {
+                        $a = $spotify.artists
+                        if ($a -is [System.Collections.IEnumerable] -and -not ($a -is [string])) {
+                            $artistDisplay = ($a | ForEach-Object { if ($_.PSObject.Properties.Match('name')) { $_.name } else { $_ } }) -join ', '
+                        }
+                        elseif ($a -and $a.PSObject.Properties.Match('name')) {
+                            $artistDisplay = $a.name
                         }
                         else {
-                            $providerComposer = $value
+                            $artistDisplay = $a
                         }
-                        Write-Host ("`t`tcomposer: {0}" -f $providerComposer)
+                        Write-Host ("`t`tartist: {0}" -f $artistDisplay)
+
+                        # Prefer track-level genres over artist-level (better for classical, MusicBrainz)
+                        if ($value = Get-IfExists $spotify 'genres') {
+                            $providerGenres = $value -join ', '
+                            Write-Host ("`t`tgenres: {0}" -f $providerGenres)
+                        }
+                        elseif ($value = Get-IfExists $SpotifyArtist 'genres') {
+                            $providerGenres = $value -join ', '
+                            Write-Host ("`t`tgenres: {0}" -f $providerGenres)
+                        }
+
+                        if ($value = Get-IfExists $spotify 'composer') {
+                            if ($value -is [System.Collections.IEnumerable] -and -not ($value -is [string])) {
+                                $providerComposer = $value -join ', '
+                            }
+                            else {
+                                $providerComposer = $value
+                            }
+                            Write-Host ("`t`tcomposer: {0}" -f $providerComposer)
+                        }
                     }
                 }
                 else {
@@ -118,41 +121,56 @@ function Show-Tracks {
                     
                     Write-Host ("$arrow`t{0:D2}.{1:D2}: {2} ({3})" -f $audio.DiscNumber, $audio.TrackNumber, $audio.Title, $audioDurationStr) -ForegroundColor $color
 
-                    $audioArtist = if ($value = Get-IfExists $audio 'Artist') { $value } else { 'Unknown' }
-                    $artistColor = if ($spotify -and $audioArtist -eq $artistDisplay) { 'Green' } else { 'Yellow' }
-                    Write-Host ("`t`tartist: {0}" -f $audioArtist) -ForegroundColor $artistColor
+                    if ($Verbose) {
+                        $audioArtist = if ($value = Get-IfExists $audio 'Artist') { $value } else { 'Unknown' }
+                        $artistDisplay = 'Unknown'
+                        if ($spotify) {
+                            $a = $spotify.artists
+                            if ($a -is [System.Collections.IEnumerable] -and -not ($a -is [string])) {
+                                $artistDisplay = ($a | ForEach-Object { if ($_.PSObject.Properties.Match('name')) { $_.name } else { $_ } }) -join ', '
+                            }
+                            elseif ($a -and $a.PSObject.Properties.Match('name')) {
+                                $artistDisplay = $a.name
+                            }
+                            else {
+                                $artistDisplay = $a
+                            }
+                        }
+                        $artistColor = if ($spotify -and $audioArtist -eq $artistDisplay) { 'Green' } else { 'Yellow' }
+                        Write-Host ("`t`tartist: {0}" -f $audioArtist) -ForegroundColor $artistColor
 
-                    # Read genres from TagLib.Tag (uppercase T)
-                    $audioGenresValue = if ($audio.TagFile -and $audio.TagFile.Tag -and $audio.TagFile.Tag.Genres) { $audio.TagFile.Tag.Genres } else { $null }
-                    $audioGenres = if ($audioGenresValue) { $audioGenresValue -join ', ' } else { 'Unknown' }
-                    $spotifyGenresValue = Get-IfExists $SpotifyArtist 'genres'
-                    $genresColor = if ($spotifyGenresValue -and ($audioGenres -eq ($spotifyGenresValue -join ', '))) { 'Green' } else { 'Yellow' }
-                    Write-Host ("`t`tgenres: {0}" -f $audioGenres) -ForegroundColor $genresColor
+                        # Read genres from TagLib.Tag (uppercase T)
+                        $audioGenresValue = if ($audio.TagFile -and $audio.TagFile.Tag -and $audio.TagFile.Tag.Genres) { $audio.TagFile.Tag.Genres } else { $null }
+                        $audioGenres = if ($audioGenresValue) { $audioGenresValue -join ', ' } else { 'Unknown' }
+                        $spotifyGenresValue = Get-IfExists $SpotifyArtist 'genres'
+                        $genresColor = if ($spotifyGenresValue -and ($audioGenres -eq ($spotifyGenresValue -join ', '))) { 'Green' } else { 'Yellow' }
+                        Write-Host ("`t`tgenres: {0}" -f $audioGenres) -ForegroundColor $genresColor
 
-                    $audioComposerValue = Get-IfExists $audio 'Composer'
-                    $audioComposer = if ($audioComposerValue) { if ($audioComposerValue -is [array]) { $audioComposerValue -join ', ' } else { $audioComposerValue } } else { 'Unknown' }
-                    $spotifyComposerValue = Get-IfExists $spotify 'Composer'
-                    $composerColor = if ($spotifyComposerValue -and ($audioComposer -eq ($spotifyComposerValue -join ', '))) { 'Green' } else { 'Yellow' }
-                    Write-Host ("`t`tcomposer: {0}" -f $audioComposer) -ForegroundColor $composerColor
+                        $audioComposerValue = Get-IfExists $audio 'Composer'
+                        $audioComposer = if ($audioComposerValue) { if ($audioComposerValue -is [array]) { $audioComposerValue -join ', ' } else { $audioComposerValue } } else { 'Unknown' }
+                        $spotifyComposerValue = Get-IfExists $spotify 'Composer'
+                        $composerColor = if ($spotifyComposerValue -and ($audioComposer -eq ($spotifyComposerValue -join ', '))) { 'Green' } else { 'Yellow' }
+                        Write-Host ("`t`tcomposer: {0}" -f $audioComposer) -ForegroundColor $composerColor
 
-                    # Display additional classical music / detailed credits (if from Qobuz)
-                    if ($spotifyConductor = Get-IfExists $spotify 'Conductor') {
-                        Write-Host ("`t`tconductor: {0}" -f $spotifyConductor) -ForegroundColor Cyan
-                    }
-                    if ($spotifyEnsemble = Get-IfExists $spotify 'Ensemble') {
-                        Write-Host ("`t`tensemble: {0}" -f $spotifyEnsemble) -ForegroundColor Cyan
-                    }
-                    if ($spotifyFeatured = Get-IfExists $spotify 'FeaturedArtist') {
-                        Write-Host ("`t`tfeatured: {0}" -f $spotifyFeatured) -ForegroundColor Cyan
-                    }
-                    
-                    # Display detailed role breakdown if available (Qobuz rich metadata)
-                    if ($detailedRoles = Get-IfExists $spotify 'DetailedRoles') {
-                        if ($detailedRoles -and $detailedRoles.Count -gt 0) {
-                            Write-Host "`t`t--- Production Credits ---" -ForegroundColor DarkCyan
-                            foreach ($person in ($detailedRoles.Keys | Sort-Object)) {
-                                $roles = $detailedRoles[$person]
-                                Write-Host ("`t`t{0}: {1}" -f $person, $roles) -ForegroundColor DarkCyan
+                        # Display additional classical music / detailed credits (if from Qobuz)
+                        if ($spotifyConductor = Get-IfExists $spotify 'Conductor') {
+                            Write-Host ("`t`tconductor: {0}" -f $spotifyConductor) -ForegroundColor Cyan
+                        }
+                        if ($spotifyEnsemble = Get-IfExists $spotify 'Ensemble') {
+                            Write-Host ("`t`tensemble: {0}" -f $spotifyEnsemble) -ForegroundColor Cyan
+                        }
+                        if ($spotifyFeatured = Get-IfExists $spotify 'FeaturedArtist') {
+                            Write-Host ("`t`tfeatured: {0}" -f $spotifyFeatured) -ForegroundColor Cyan
+                        }
+                        
+                        # Display detailed role breakdown if available (Qobuz rich metadata)
+                        if ($detailedRoles = Get-IfExists $spotify 'DetailedRoles') {
+                            if ($detailedRoles -and $detailedRoles.Count -gt 0) {
+                                Write-Host "`t`t--- Production Credits ---" -ForegroundColor DarkCyan
+                                foreach ($person in ($detailedRoles.Keys | Sort-Object)) {
+                                    $roles = $detailedRoles[$person]
+                                    Write-Host ("`t`t{0}: {1}" -f $person, $roles) -ForegroundColor DarkCyan
+                                }
                             }
                         }
                     }
