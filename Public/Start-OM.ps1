@@ -1111,7 +1111,7 @@ function Start-OM {
                             Write-Host "Switched to provider: $Provider" -ForegroundColor Green
                             continue stageLoop
                         }
-                        if ($inputF -eq 'fm') {
+                        if ($inputF -eq 'f' -or $inputF -eq 'fm') {
                             Write-Host "`nCurrent find mode: $($script:findMode)" -ForegroundColor Cyan
                             Write-Host "Available modes: (q)uick album search, (a)rtist-first search" -ForegroundColor Gray
                             $newMode = Read-Host "Select mode [q/a]"
