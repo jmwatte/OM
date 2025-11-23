@@ -195,7 +195,7 @@ function Set-Tracks {
         }
         "byTrackNumber" {
             if ($Reverse) {
-                Write-Host "DEBUG: Using Reverse mode for byTrackNumber"
+                Write-Debug "Using Reverse mode for byTrackNumber"
                 # Iterate over audio files, match to Spotify by disc/track
                 foreach ($audio in $AudioFiles) {
                     $spotifyTrack = $SpotifyTracks | Where-Object { 
