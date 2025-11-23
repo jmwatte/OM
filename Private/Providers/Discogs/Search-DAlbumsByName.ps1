@@ -252,7 +252,7 @@ function Search-DAlbumsByName {
                 disc_count   = $null
             }
             
-            Write-Host "DEBUG: Album '$albumTitle' assigned ID: $($album.id) (result type: $resultType, MastersOnly: $MastersOnly)" -ForegroundColor Yellow
+            Write-Debug "Album '$albumTitle' assigned ID: $($album.id) (result type: $resultType, MastersOnly: $MastersOnly)"
             
             $albums += $album
             $processed++
