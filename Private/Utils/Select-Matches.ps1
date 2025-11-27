@@ -52,7 +52,7 @@ function Select-matches {
         foreach ($audioFile in $AudioFiles) {
             $audioName = if ($audioFile.Name) { $audioFile.Name } else { Split-Path -Leaf $audioFile.FilePath }
             
-            $selected = $SpotifyTracks|Select-Object -Property Name, id | Out-GridView  -Title "Select provider track for audio file: $audioName" -PassThru
+            $selected = $SpotifyTracks | Select-Object -Property @{N='Track';E={$_.track_number}}, @{N='Disc';E={$_.disc_number}}, Name, @{N='Duration';E={[TimeSpan]::FromMilliseconds($_.duration_ms).ToString('mm\:ss')}}, id | Out-GridView -Title "Select provider track for audio file: $audioName" -PassThru
             
            if ($selected) {
                 $spotifyTrack = $SpotifyTracks | Where-Object { $_.id -eq $selected.id }
