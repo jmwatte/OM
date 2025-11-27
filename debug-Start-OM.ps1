@@ -26,7 +26,17 @@ write-host "Spotify Search Results:"
 $d.albums.items | Format-List #>
 # Call Start-OM with the desired parameters
 #gci E:\musicbrainztester |%{som $_.FullName -Provider MusicBrainz}
- som "E:\Muddy Waters" -Provider Qobuz -Verbose
+# Test with the album ID you mentioned: f8flixrjkjdia (100 tracks)
+. .\Private\Providers\Qobuz\Get-QAlbumTracks.ps1
+. .\Private\Get-IfExists.ps1
+Add-Type -AssemblyName System.Web
+
+$albumId = "f8flixrjkjdia"  # Baroque Revolution - Gustav Leonhardt (100 tracks)
+Write-Host "`nFetching tracks for album ID: $albumId" -ForegroundColor Yellow
+$tracks = Get-QAlbumTracks -Id $albumId -Verbose
+Write-Host "`nTotal tracks returned: $($tracks.Count)" -ForegroundColor Green
+Write-Host "Sample tracks:" -ForegroundColor Cyan
+$tracks | Select-Object -First 10 | Format-Table track_number, disc_number, @{L='Title';E={$_.name.Substring(0, [Math]::Min(50, $_.name.Length))}}, @{L='Duration';E={[TimeSpan]::FromMilliseconds($_.duration_ms).ToString('mm\:ss')}} -AutoSize
 #Start-OM -Path "E:\MusicBrainzTester\ "  -Provider MusicBrainz -verbose
  #start get-Qartistalbums with -ArtistId "https://www.qobuz.com/be-fr/interpreter/paul-weller/53535"
 # . .\Private\Providers\Qobuz\Search-GQArtist.ps1

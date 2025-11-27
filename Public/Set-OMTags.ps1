@@ -983,6 +983,9 @@ function Set-OMTags {
                 # Create summary object (DEFAULT BEHAVIOR)
                 $summaryObj = [PSCustomObject]@{}
                 if ($results.Count -gt 0) {
+                    # Sort results by FileName using natural sorting for proper display order
+                    $results = $results | Sort-Object { [regex]::Replace($_.FileName, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
+                    
                     # Define default properties and their order (matching Get-OMTags)
                     $defaultProperties = @(
                         'Path',
