@@ -179,6 +179,7 @@ function Get-QAlbumTracks {
             catch {
                 # If 404, try fallback locales (album might not exist in configured locale)
                 $is404 = $false
+                
                 if ($_.Exception.Response) {
                     try {
                         $statusCode = [int]$_.Exception.Response.StatusCode
