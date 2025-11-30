@@ -19,6 +19,9 @@ function Move-OMTags {
 .PARAMETER FileRenamePattern
     Template string for renaming files. Supports placeholders like {Disc}, {Track}, {Title}, etc.
     Defaults to "{Disc}.{Track} - {Title}".
+    Auto-padding: When {Track} or {Disc} are used without a format specifier, they are
+    automatically zero-padded based on TrackCount/DiscCount (e.g., 100 tracks → D3 → 001..100).
+    Explicit formats like {Track:D2} or {Disc:D3} override auto-padding.
 
 .PARAMETER WhatIf
     Preview changes without applying them.
@@ -264,7 +267,20 @@ function Move-OMTags {
                     $tag.Path
                 }
                 
-                $newFileName = Expand-RenamePattern -Pattern $FileRenamePattern -TagObject $tag -FileExtension ([System.IO.Path]::GetExtension($tag.Path))
+                # Auto zero-padding for Track/Disc when pattern omits explicit format
+                # Derive widths from counts; fall back to sensible defaults
+                $padTrack = if ($tag.TrackCount -and [int]$tag.TrackCount -gt 0) { ($tag.TrackCount).ToString().Length } else { 2 }
+                $padDisc  = if ($tag.DiscCount  -and [int]$tag.DiscCount  -gt 0) { ($tag.DiscCount).ToString().Length  } else { 1 }
+
+                $effectivePattern = $FileRenamePattern
+                if ($effectivePattern -notmatch '\{Track:[^}]+\}') {
+                    $effectivePattern = $effectivePattern -replace '\{Track\}', "{Track:D$padTrack}"
+                }
+                if ($effectivePattern -notmatch '\{Disc:[^}]+\}') {
+                    $effectivePattern = $effectivePattern -replace '\{Disc\}', "{Disc:D$padDisc}"
+                }
+
+                $newFileName = Expand-RenamePattern -Pattern $effectivePattern -TagObject $tag -FileExtension ([System.IO.Path]::GetExtension($tag.Path))
                 
                 # Keep the file in its current subdirectory (CD1, CD2, etc), just rename it
                 $currentFileDir = Split-Path $currentFilePath -Parent
