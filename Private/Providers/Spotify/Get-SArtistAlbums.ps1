@@ -23,12 +23,25 @@ function Get-SArtistAlbums {
         [string]$Id,
 
         [Parameter()]
-        [switch]$Album
+        [ValidateSet('Album', 'Single', 'Compilation', 'AppearsOn')]
+        [string]$AlbumType = 'Album'
     )
 
     try {
+        # Build parameters for Get-ArtistAlbums based on AlbumType
+        $params = @{
+            Id = $Id
+        }
+        
+        switch ($AlbumType) {
+            'Album'       { $params['Album'] = $true }
+            'Single'      { $params['Single'] = $true }
+            'Compilation' { $params['Compilation'] = $true }
+            'AppearsOn'   { $params['AppearsOn'] = $true }
+        }
+        
         # Call Spotishell's Get-ArtistAlbums
-        $albums = Get-ArtistAlbums -Id $Id -Album
+        $albums = Get-ArtistAlbums @params
 
         if ($albums) {
             # Extract cover art URLs from album objects

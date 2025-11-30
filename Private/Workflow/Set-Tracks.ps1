@@ -21,9 +21,16 @@ function Set-Tracks {
                     $index = [Array]::IndexOf($AudioFiles, $audio)
                     $spotifyTrack = if ($index -lt $SpotifyTracks.Count) { $SpotifyTracks[$index] } else { $null }
                     
+                    # Calculate confidence if both tracks exist
+                    $confidence = if ($spotifyTrack -and $audio) {
+                        Get-MatchConfidence -ProviderTrack $spotifyTrack -AudioFile $audio
+                    } else { $null }
+                    
                     $pairedTracks += [PSCustomObject]@{
                         SpotifyTrack = $spotifyTrack
                         AudioFile    = $audio
+                        Confidence   = if ($confidence) { $confidence.Score } else { 0 }
+                        ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
                     }
                 }
             }
@@ -32,9 +39,16 @@ function Set-Tracks {
                     $index = [Array]::IndexOf($SpotifyTracks, $spotify)
                     $audioFile = if ($index -lt $AudioFiles.Count) { $AudioFiles[$index] } else { $null }
                     
+                    # Calculate confidence if both tracks exist
+                    $confidence = if ($spotify -and $audioFile) {
+                        Get-MatchConfidence -ProviderTrack $spotify -AudioFile $audioFile
+                    } else { $null }
+                    
                     $pairedTracks += [PSCustomObject]@{
                         SpotifyTrack = $spotify
                         AudioFile    = $audioFile
+                        Confidence   = if ($confidence) { $confidence.Score } else { 0 }
+                        ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
                     }
                 }
             }
@@ -47,9 +61,16 @@ function Set-Tracks {
                     $index = [Array]::IndexOf($AudioFiles, $audio)
                     $spotifyTrack = if ($index -lt $SpotifyTracks.Count) { $SpotifyTracks[$index] } else { $null }
                     
+                    # Calculate confidence if both tracks exist
+                    $confidence = if ($spotifyTrack -and $audio) {
+                        Get-MatchConfidence -ProviderTrack $spotifyTrack -AudioFile $audio
+                    } else { $null }
+                    
                     $pairedTracks += [PSCustomObject]@{
                         SpotifyTrack = $spotifyTrack
                         AudioFile    = $audio
+                        Confidence   = if ($confidence) { $confidence.Score } else { 0 }
+                        ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
                     }
                 }
             }
@@ -59,9 +80,16 @@ function Set-Tracks {
                     $index = [Array]::IndexOf($SpotifyTracks, $spotify)
                     $audioFile = if ($index -lt $AudioFiles.Count) { $AudioFiles[$index] } else { $null }
                     
+                    # Calculate confidence if both tracks exist
+                    $confidence = if ($spotify -and $audioFile) {
+                        Get-MatchConfidence -ProviderTrack $spotify -AudioFile $audioFile
+                    } else { $null }
+                    
                     $pairedTracks += [PSCustomObject]@{
                         SpotifyTrack = $spotify
                         AudioFile    = $audioFile
+                        Confidence   = if ($confidence) { $confidence.Score } else { 0 }
+                        ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
                     }
                 }
             }
@@ -111,9 +139,14 @@ function Set-Tracks {
                     -not $usedSpotify.ContainsKey($spotifyId) -and 
                     -not $usedAudio.ContainsKey($audioPath)) {
                     
+                    # Calculate confidence for the match
+                    $confidence = Get-MatchConfidence -ProviderTrack $match.Spotify -AudioFile $match.Audio
+                    
                     $pairedTracks += [PSCustomObject]@{
                         SpotifyTrack = $match.Spotify
                         AudioFile    = $match.Audio
+                        Confidence   = $confidence.Score
+                        ConfidenceLevel = $confidence.Level
                     }
                     $usedSpotify[$spotifyId] = $true
                     $usedAudio[$audioPath] = $true
@@ -245,9 +278,10 @@ function Set-Tracks {
         }
         "byTrackNumber" {
             # Check if audio files have valid track numbers (not all 0 or missing)
-            $hasValidTrackNumbers = $AudioFiles | Where-Object { 
+            $validTrackFiles = @($AudioFiles | Where-Object { 
                 $_.TrackNumber -and $_.TrackNumber -gt 0 
-            } | Measure-Object | Select-Object -ExpandProperty Count
+            })
+            $hasValidTrackNumbers = $validTrackFiles.Count
             
             $useOrderFallback = ($hasValidTrackNumbers -eq 0)
             
@@ -274,9 +308,16 @@ function Set-Tracks {
                         $index = [Array]::IndexOf($sortedAudio, $audio)
                         $spotifyTrack = if ($index -lt $sortedSpotify.Count) { $sortedSpotify[$index] } else { $null }
                         
+                        # Calculate confidence if both tracks exist
+                        $confidence = if ($spotifyTrack -and $audio) {
+                            Get-MatchConfidence -ProviderTrack $spotifyTrack -AudioFile $audio
+                        } else { $null }
+                        
                         $pairedTracks += [PSCustomObject]@{
                             SpotifyTrack = $spotifyTrack
                             AudioFile    = $audio
+                            Confidence   = if ($confidence) { $confidence.Score } else { 0 }
+                            ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
                         }
                     }
                 }
@@ -286,9 +327,16 @@ function Set-Tracks {
                         $index = [Array]::IndexOf($sortedSpotify, $spotify)
                         $audioFile = if ($index -lt $sortedAudio.Count) { $sortedAudio[$index] } else { $null }
                         
+                        # Calculate confidence if both tracks exist
+                        $confidence = if ($spotify -and $audioFile) {
+                            Get-MatchConfidence -ProviderTrack $spotify -AudioFile $audioFile
+                        } else { $null }
+                        
                         $pairedTracks += [PSCustomObject]@{
                             SpotifyTrack = $spotify
                             AudioFile    = $audioFile
+                            Confidence   = if ($confidence) { $confidence.Score } else { 0 }
+                            ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
                         }
                     }
                 }
@@ -308,9 +356,16 @@ function Set-Tracks {
                                 $_.disc_number -eq $audio.DiscNumber -and $_.track_number -eq $audio.TrackNumber 
                             } | Select-Object -First 1
                             
+                            # Calculate confidence if both tracks exist
+                            $confidence = if ($spotifyTrack -and $audio) {
+                                Get-MatchConfidence -ProviderTrack $spotifyTrack -AudioFile $audio
+                            } else { $null }
+                            
                             $pairedTracks += [PSCustomObject]@{
                                 SpotifyTrack = $spotifyTrack
                                 AudioFile    = $audio
+                                Confidence   = if ($confidence) { $confidence.Score } else { 0 }
+                                ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
                             }
                         }
                     }
@@ -321,9 +376,16 @@ function Set-Tracks {
                                 $_.DiscNumber -eq $spotify.disc_number -and $_.TrackNumber -eq $spotify.track_number 
                             } | Select-Object -First 1
                             
+                            # Calculate confidence if both tracks exist
+                            $confidence = if ($spotify -and $audioFile) {
+                                Get-MatchConfidence -ProviderTrack $spotify -AudioFile $audioFile
+                            } else { $null }
+                            
                             $pairedTracks += [PSCustomObject]@{
                                 SpotifyTrack = $spotify
                                 AudioFile    = $audioFile
+                                Confidence   = if ($confidence) { $confidence.Score } else { 0 }
+                                ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
                             }
                         }
                     }
@@ -339,9 +401,16 @@ function Set-Tracks {
                             $index = [Array]::IndexOf($sortedAudio, $audio)
                             $spotifyTrack = if ($index -lt $sortedSpotify.Count) { $sortedSpotify[$index] } else { $null }
                             
+                            # Calculate confidence if both tracks exist
+                            $confidence = if ($spotifyTrack -and $audio) {
+                                Get-MatchConfidence -ProviderTrack $spotifyTrack -AudioFile $audio
+                            } else { $null }
+                            
                             $pairedTracks += [PSCustomObject]@{
                                 SpotifyTrack = $spotifyTrack
                                 AudioFile    = $audio
+                                Confidence   = if ($confidence) { $confidence.Score } else { 0 }
+                                ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
                             }
                         }
                     }
@@ -350,9 +419,16 @@ function Set-Tracks {
                             $index = [Array]::IndexOf($sortedSpotify, $spotify)
                             $audioFile = if ($index -lt $sortedAudio.Count) { $sortedAudio[$index] } else { $null }
                             
+                            # Calculate confidence if both tracks exist
+                            $confidence = if ($spotify -and $audioFile) {
+                                Get-MatchConfidence -ProviderTrack $spotify -AudioFile $audioFile
+                            } else { $null }
+                            
                             $pairedTracks += [PSCustomObject]@{
                                 SpotifyTrack = $spotify
                                 AudioFile    = $audioFile
+                                Confidence   = if ($confidence) { $confidence.Score } else { 0 }
+                                ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
                             }
                         }
                     }
@@ -399,9 +475,14 @@ function Set-Tracks {
                 if (-not $usedSpotify.ContainsKey($spotifyId) -and 
                     -not $usedAudio.ContainsKey($audioPath)) {
                     
+                    # Calculate confidence for the match
+                    $confidence = Get-MatchConfidence -ProviderTrack $match.Spotify -AudioFile $match.Audio
+                    
                     $pairedTracks += [PSCustomObject]@{
                         SpotifyTrack = $match.Spotify
                         AudioFile    = $match.Audio
+                        Confidence   = $confidence.Score
+                        ConfidenceLevel = $confidence.Level
                     }
                     $usedSpotify[$spotifyId] = $true
                     $usedAudio[$audioPath] = $true
@@ -418,6 +499,8 @@ function Set-Tracks {
                     $pairedTracks += [PSCustomObject]@{
                         SpotifyTrack = $spotify
                         AudioFile    = $null
+                        Confidence   = 0
+                        ConfidenceLevel = "Low"
                     }
                 }
             }
@@ -430,6 +513,8 @@ function Set-Tracks {
                 $pairedTracks += [PSCustomObject]@{
                     SpotifyTrack = $null
                     AudioFile    = $audio
+                    Confidence   = 0
+                    ConfidenceLevel = "Low"
                 }
             }
         }

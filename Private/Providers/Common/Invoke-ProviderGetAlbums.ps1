@@ -22,7 +22,7 @@ function Invoke-ProviderGetAlbums {
     )
 
     switch ($Provider) {
-        'Spotify' { Get-SArtistAlbums -Id $ArtistId }
+        'Spotify' { Get-SArtistAlbums -Id $ArtistId -AlbumType $AlbumType }
         'Qobuz' { Get-QArtistAlbums -Id $ArtistId }  # $ArtistId is $href
         'Discogs' { 
             $discogsParams = @{

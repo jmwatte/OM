@@ -173,7 +173,7 @@ function Invoke-StageB-AlbumSelection {
             }
 
             $albumsForArtist = Invoke-ProviderSearchAlbums @searchAlbumsParams
-            $albumsForArtist = $albumsForArtist | Where-Object {$_ -ne $null}  # Filter nulls
+            $albumsForArtist = @($albumsForArtist | Where-Object {$_ -ne $null})  # Filter nulls and ensure array
         
             Write-Verbose "Smart search returned: $($albumsForArtist.Count) albums"
             if ($albumsForArtist.Count -gt 0) {
@@ -197,9 +197,7 @@ function Invoke-StageB-AlbumSelection {
                 try { 
                     # For Qobuz, use url instead of id (needs full interpreter URL)
                     $artistIdOrUrl = if ($Provider -eq 'Qobuz' -and $ProviderArtist.url) { $ProviderArtist.url } else { $ProviderArtist.id }
-                    $CachedAlbums = Invoke-ProviderGetAlbums -Provider $Provider -ArtistId $artistIdOrUrl -AlbumType 'Album'
-                    $CachedAlbums = @($CachedAlbums) |Where-Object {$_ -ne $null}
-                     # Ensure array
+                    $CachedAlbums = @(Invoke-ProviderGetAlbums -Provider $Provider -ArtistId $artistIdOrUrl -AlbumType 'Album' | Where-Object {$_ -ne $null})
                     Write-Host "✓ Fetched $($CachedAlbums.Count) albums" -ForegroundColor Green
                 }
                 catch { 

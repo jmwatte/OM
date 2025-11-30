@@ -9,6 +9,7 @@ function Show-Tracks {
         [string]$PromptColor = 'Gray',
         [scriptblock]$InputReader,
         [string]$ProviderName = 'Spotify',
+        [string]$SortMethod = '',
         [switch]$Verbose
     )
 
@@ -31,6 +32,25 @@ function Show-Tracks {
     while ($true) {
         if ($VerbosePreference -ne 'Continue') { Clear-Host }
         Write-Host "Tracks for album $($AlbumName): (Page $($page + 1) of $totalPages)`n"
+        
+        # Show confidence summary if available
+        if ($PairedTracks.Count -gt 0 -and $PairedTracks[0].PSObject.Properties['Confidence']) {
+            $highCount = @($PairedTracks | Where-Object { $_.ConfidenceLevel -eq 'High' }).Count
+            $mediumCount = @($PairedTracks | Where-Object { $_.ConfidenceLevel -eq 'Medium' }).Count
+            $lowCount = @($PairedTracks | Where-Object { $_.ConfidenceLevel -eq 'Low' }).Count
+            $markedCount = @($PairedTracks | Where-Object { $_.PSObject.Properties['Marked'] -and $_.Marked }).Count
+            
+            $summary = ""
+            if ($SortMethod) { $summary = "Sort: $SortMethod | " }
+            $summary += "Match Confidence: "
+            if ($highCount -gt 0) { $summary += "✅ $highCount High  " }
+            if ($mediumCount -gt 0) { $summary += "⚠️ $mediumCount Medium  " }
+            if ($lowCount -gt 0) { $summary += "❌ $lowCount Low  " }
+            if ($markedCount -gt 0) { $summary += "🔖 $markedCount Marked  " }
+            
+            Write-Host $summary -ForegroundColor $(if ($lowCount -gt 0) { 'Yellow' } elseif ($mediumCount -gt 0) { 'Cyan' } else { 'Green' })
+            Write-Host ""
+        }
 
         if ($PairedTracks.Count -eq 0) {
             Write-Host "No tracks available for display." -ForegroundColor Yellow
@@ -48,18 +68,17 @@ function Show-Tracks {
                 $audio = $pair.AudioFile
 
                 $filenameDisplay = if ($audio) { "filename: $(Split-Path -Leaf $audio.FilePath)" } else { "" }
-                Write-Host "[$num] $filenameDisplay" -ForegroundColor DarkGray
                 
-                # Display confidence score if available
-                if ($pair.PSObject.Properties['Confidence']) {
-                    $confColor = switch ($pair.ConfidenceLevel) {
-                        'High' { 'Green' }
-                        'Medium' { 'Yellow' }
-                        'Low' { 'Red' }
-                        default { 'Gray' }
-                    }
-                    Write-Host "`tConfidence: $($pair.Confidence)% ($($pair.ConfidenceLevel))" -ForegroundColor $confColor
+                # Add warning indicator for low confidence matches and marked indicator
+                $warningIndicator = ""
+                if ($pair.PSObject.Properties['ConfidenceLevel'] -and $pair.ConfidenceLevel -eq 'Low') {
+                    $warningIndicator = " ⚠️"
                 }
+                
+                $markedIndicator = if ($pair.PSObject.Properties['Marked'] -and $pair.Marked) { " 🔖" } else { "" }
+                $trackNumColor = if ($pair.PSObject.Properties['Marked'] -and $pair.Marked) { 'Cyan' } else { 'DarkGray' }
+                
+                Write-Host "[$num]$markedIndicator $filenameDisplay$warningIndicator" -ForegroundColor $trackNumColor
 
                 $artistDisplay = 'Unknown'
                 if ($spotify) {
@@ -113,7 +132,19 @@ function Show-Tracks {
 
                 if ($audio) {
                     $arrow = if ($Reverse) { '↑' } else { '_' }
-                    $color = if ($spotify -and $audio.Title -eq $spotify.name) { 'Green' } else { 'Yellow' }
+                    
+                    # Set color based on confidence level
+                    $audioColor = if ($pair.PSObject.Properties['ConfidenceLevel']) {
+                        switch ($pair.ConfidenceLevel) {
+                            'High' { 'Green' }
+                            'Medium' { 'Yellow' }
+                            'Low' { 'Red' }
+                            default { 'Yellow' }
+                        }
+                    } else {
+                        # Fallback to old behavior if no confidence data
+                        if ($spotify -and $audio.Title -eq $spotify.name) { 'Green' } else { 'Yellow' }
+                    }
                     
                     # Format audio file duration (stored as milliseconds in Start-OM)
                     $audioDurationStr = if ($audio.Duration) {
@@ -130,7 +161,7 @@ function Show-Tracks {
                         "00:00"
                     }
                     
-                    Write-Host ("$arrow`t{0:D2}.{1:D2}: {2} ({3})" -f $audio.DiscNumber, $audio.TrackNumber, $audio.Title, $audioDurationStr) -ForegroundColor $color
+                    Write-Host ("$arrow`t{0:D2}.{1:D2}: {2} ({3})" -f $audio.DiscNumber, $audio.TrackNumber, $audio.Title, $audioDurationStr) -ForegroundColor $audioColor
 
                     if ($Verbose) {
                         $audioArtist = if ($value = Get-IfExists $audio 'Artist') { $value } else { 'Unknown' }
@@ -203,7 +234,7 @@ function Show-Tracks {
             Write-Host $OptionsText -ForegroundColor $PromptColor
         }
 
-        $promptMessage = if ($supportsCommands) { "Enter command (Enter=next, p=previous, q=tag tracks)" } else { "Press Enter for next page, 'p' for previous, 'q' to quit viewing" }
+        $promptMessage = if ($supportsCommands) { "Enter command (Enter=next, p=previous, q=tag tracks, m=mark tracks)" } else { "Press Enter for next page, 'p' for previous, 'q' to quit viewing" }
         $inputRaw = & $reader $promptMessage
         $inputText = if ($null -ne $inputRaw) { $inputRaw.Trim() } else { '' }
         $inputLower = $inputText.ToLowerInvariant()
@@ -224,6 +255,43 @@ function Show-Tracks {
         if ($inputLower -eq 'q') {
             if ($supportsCommands) { return 'q' }
             return
+        }
+        
+        # Handle marking tracks for review
+        if ($inputLower -eq 'm') {
+            if ($PairedTracks.Count -eq 0) {
+                Write-Host "No tracks to mark." -ForegroundColor Yellow
+                Start-Sleep -Seconds 1
+                continue
+            }
+            
+            $markPrompt = "Enter track numbers to mark (e.g., 12,19 or 21-26): "
+            $markInput = & $reader $markPrompt
+            
+            if ($markInput) {
+                try {
+                    $trackNumbers = Expand-SelectionRange -RangeText $markInput -MaxIndex $PairedTracks.Count
+                    foreach ($trackNum in $trackNumbers) {
+                        $idx = $trackNum - 1
+                        $PairedTracks[$idx] | Add-Member -NotePropertyName 'Marked' -NotePropertyValue $true -Force
+                    }
+                    Write-Host "Marked $($trackNumbers.Count) track(s)." -ForegroundColor Green
+                    Start-Sleep -Seconds 1
+                }
+                catch {
+                    Write-Host "Error marking tracks: $($_.Exception.Message)" -ForegroundColor Red
+                    Start-Sleep -Seconds 2
+                }
+            }
+            continue
+        }
+        
+        # Handle review marked tracks command - pass through to Start-OM
+        if ($inputLower -eq 'rm') {
+            if ($supportsCommands) { return 'rm' }
+            Write-Host "Review marked tracks command not available in this mode." -ForegroundColor Yellow
+            Start-Sleep -Seconds 1
+            continue
         }
 
         if ($supportsCommands -and $commandLookup.ContainsKey($inputLower)) {

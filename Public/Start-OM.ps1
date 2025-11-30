@@ -294,7 +294,16 @@ function Start-OM {
             Write-Host "👤 Original Artist: " -NoNewline -ForegroundColor Yellow
             Write-Host $Artist -ForegroundColor White
             Write-Host "💿 Original Album: " -NoNewline -ForegroundColor Green
-            Write-Host $AlbumName -NoNewline -ForegroundColor White
+            
+            # Try to extract year from folder name (e.g., "2011 - Bach Cello Suites")
+            $folderYear = ""
+            if ($script:album -and $script:album.Name) {
+                if ($script:album.Name -match '^(\d{4})\s*-\s*') {
+                    $folderYear = "$($matches[1]) - "
+                }
+            }
+            
+            Write-Host "$folderYear$AlbumName" -NoNewline -ForegroundColor White
             if ($TrackCount -gt 0) {
                 Write-Host " ($TrackCount tracks)" -ForegroundColor White
             }
@@ -1278,21 +1287,19 @@ function Start-OM {
                         $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
                             Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
                         
-                        Write-Host "DEBUG: sortMethod = '$sortMethod'" -ForegroundColor Yellow
-                        Write-Host "DEBUG: First 3 files from Get-ChildItem:" -ForegroundColor Yellow
-                        $audioFiles | Select-Object -First 3 | ForEach-Object { Write-Host "  $($_.Name)" -ForegroundColor Cyan }
+                        Write-Verbose "sortMethod = '$sortMethod'"
+                        Write-Verbose "First 3 files from Get-ChildItem: $($audioFiles | Select-Object -First 3 | ForEach-Object { $_.Name } | Join-String -Separator ', ')"
                         
                         # Only sort if NOT using byFilesystem (which preserves disk order)
                         if ($sortMethod -ne 'byFilesystem') {
-                            Write-Host "DEBUG: Applying alphabetical sort (sortMethod != 'byFilesystem')" -ForegroundColor Magenta
+                            Write-Verbose "Applying alphabetical sort (sortMethod != 'byFilesystem')"
                             $audioFiles = $audioFiles | Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
                         }
                         else {
-                            Write-Host "DEBUG: Preserving filesystem order (sortMethod == 'byFilesystem')" -ForegroundColor Green
+                            Write-Verbose "Preserving filesystem order (sortMethod == 'byFilesystem')"
                         }
                         
-                        Write-Host "DEBUG: First 3 files after conditional sort:" -ForegroundColor Yellow
-                        $audioFiles | Select-Object -First 3 | ForEach-Object { Write-Host "  $($_.Name)" -ForegroundColor Cyan }
+                        Write-Verbose "First 3 files after conditional sort: $($audioFiles | Select-Object -First 3 | ForEach-Object { $_.Name } | Join-String -Separator ', ')"
                         $audioFiles = foreach ($f in $audioFiles) {
                             try {
                                 $tagFile = [TagLib.File]::Create($f.FullName)
@@ -1705,6 +1712,14 @@ function Start-OM {
                                 }
                                 if ($reverseSource) { $param.Reverse = $true }
                                 $pairedTracks = Set-Tracks @param
+                                
+                                # Sort paired tracks by confidence (High → Medium → Low)
+                                # This makes it easy to spot problematic matches at the bottom
+                                if ($pairedTracks -and $pairedTracks.Count -gt 0 -and $pairedTracks[0].PSObject.Properties['Confidence']) {
+                                    $pairedTracks = $pairedTracks | Sort-Object Confidence -Descending
+                                    Write-Verbose "Sorted $($pairedTracks.Count) tracks by confidence"
+                                }
+                                
                                 $refreshTracks = $false
                                 if ($sortMethod -eq 'Manual') {
                                     # Reset sort method to 'byOrder' after manual selection to prevent re-prompting on refreshes
@@ -1750,8 +1765,8 @@ function Start-OM {
                                     if ($_.Key -eq $sortMethod) { "[*$($_.Value)*]" } else { $_.Value }
                                 }) -join ', '
                                 
-                                $optionsLine = "`nOptions: SortBy $sortMethodDisplay, (r)everse | (S)ave {[A]ll, [T]ags, [F]olderNames} | {C}over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags} | (aa)AlbumArtist, (b)ack/(pr)evious, (P)rovider, (F)indmode, (w)hatIf:$whatIfStatus, (v)erbose:$verboseStatus, (X)ip"
-                                $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'sa', 'st', 'sf', 'cv', 'cvo', 'cs', 'ct', 'aa', 'b', 'pr', 'p', 'pq', 'ps', 'pd', 'pm', 'f', 'w', 'whatif', 'v', 'x')
+                                $optionsLine = "`nOptions: SortBy $sortMethodDisplay, (r)everse | (S)ave {[A]ll, [T]ags, [F]olderNames} | {C}over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags} | (aa)AlbumArtist, (rm)ReviewMarked, (b)ack/(pr)evious, (P)rovider, (F)indmode, (w)hatIf:$whatIfStatus, (v)erbose:$verboseStatus, (X)ip"
+                                $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'rm', 'sa', 'st', 'sf', 'cv', 'cvo', 'cs', 'ct', 'aa', 'b', 'pr', 'p', 'pq', 'ps', 'pd', 'pm', 'f', 'w', 'whatif', 'v', 'x')
                                 $paramshow = @{
                                     PairedTracks  = $pairedTracks
                                     AlbumName     = $ProviderAlbum.name
@@ -1760,6 +1775,7 @@ function Start-OM {
                                     ValidCommands = $commandList
                                     PromptColor   = $HostColor
                                     ProviderName  = $Provider
+                                    SortMethod    = $sortMethod
                                 }
                                 if ($reverseSource) { $paramshow.Reverse = $true }
                                 if ($script:showVerbose) { $paramshow.Verbose = $true }
@@ -1783,6 +1799,138 @@ function Start-OM {
                                 '^m$' { $sortMethod = 'Manual'; $refreshTracks = $true; continue }
                                 '^f$' { $sortMethod = 'byFilesystem'; $refreshTracks = $true; continue }
                                 '^r$' { $ReverseSource = -not $ReverseSource; $refreshTracks = $true; continue }
+                                '^rm$' {
+                                    # Review marked tracks in Manual mode
+                                    $markedTracks = @($pairedTracks | Where-Object { $_.PSObject.Properties['Marked'] -and $_.Marked })
+                                    if ($markedTracks.Count -eq 0) {
+                                        Write-Host "`nNo tracks are marked for review." -ForegroundColor Yellow
+                                        Start-Sleep -Seconds 2
+                                        continue
+                                    }
+                                    
+                                    Write-Host "`n🔖 Reviewing $($markedTracks.Count) marked track(s)..." -ForegroundColor Cyan
+                                    Start-Sleep -Seconds 1
+                                    
+                                    # Build pool of provider tracks from marked pairs
+                                    $providerTrackPool = @($markedTracks | Where-Object { $_.SpotifyTrack } | ForEach-Object { $_.SpotifyTrack })
+                                    
+                                    if ($providerTrackPool.Count -eq 0) {
+                                        Write-Host "No provider tracks in marked pairs to work with." -ForegroundColor Yellow
+                                        Start-Sleep -Seconds 2
+                                        continue
+                                    }
+                                    
+                                    # For each marked track, show audio file and let user pick from the pool
+                                    foreach ($markedTrack in $markedTracks) {
+                                        if (-not $markedTrack.AudioFile) { continue }
+                                        if ($providerTrackPool.Count -eq 0) {
+                                            Write-Host "No more provider tracks in pool." -ForegroundColor Yellow
+                                            break
+                                        }
+                                        
+                                        if ($VerbosePreference -ne 'Continue') { Clear-Host }
+                                        Write-Host "🔖 Select correct match for:" -ForegroundColor Cyan
+                                        
+                                        # Format audio file duration
+                                        $audioDurationStr = if ($markedTrack.AudioFile.Duration) {
+                                            $audioDurationSpan = [TimeSpan]::FromMilliseconds($markedTrack.AudioFile.Duration)
+                                            "{0:mm\:ss}" -f $audioDurationSpan
+                                        } else {
+                                            "00:00"
+                                        }
+                                        
+                                        Write-Host "   $(Split-Path -Leaf $markedTrack.AudioFile.FilePath) ($audioDurationStr)" -ForegroundColor Yellow
+                                        Write-Host ""
+                                        
+                                        # Sort pool by match confidence for current audio file (best match first)
+                                        $scoredPool = @()
+                                        foreach ($track in $providerTrackPool) {
+                                            $confidence = Get-MatchConfidence -ProviderTrack $track -AudioFile $markedTrack.AudioFile
+                                            $scoredPool += [PSCustomObject]@{
+                                                Track = $track
+                                                Score = $confidence.Score
+                                                Level = $confidence.Level
+                                            }
+                                        }
+                                        $scoredPool = $scoredPool | Sort-Object Score -Descending
+                                        
+                                        # Show provider tracks from pool with numbers (sorted by confidence)
+                                        for ($i = 0; $i -lt $scoredPool.Count; $i++) {
+                                            $scored = $scoredPool[$i]
+                                            $track = $scored.Track
+                                            $num = $i + 1
+                                            
+                                            $disc = if ($value = Get-IfExists $track 'disc_number') { $value } else { 1 }
+                                            $trackNum = if ($value = Get-IfExists $track 'track_number') { $value } else { 0 }
+                                            $durationMs = if ($value = Get-IfExists $track 'duration_ms') { $value } elseif ($value = Get-IfExists $track 'duration') { $value } else { 0 }
+                                            $durationSpan = [TimeSpan]::FromMilliseconds($durationMs)
+                                            $durationStr = "{0:mm\:ss}" -f $durationSpan
+                                            
+                                            # Color code by confidence
+                                            $color = switch ($scored.Level) {
+                                                'High' { 'Green' }
+                                                'Medium' { 'Yellow' }
+                                                'Low' { 'Red' }
+                                                default { 'Gray' }
+                                            }
+                                            $confidenceIndicator = " ($($scored.Score)%)"
+                                            
+                                            Write-Host ("[$num] {0:D2}.{1:D2}: {2} ({3}){4}" -f $disc, $trackNum, $track.name, $durationStr, $confidenceIndicator) -ForegroundColor $color
+                                        }
+                                        
+                                        Write-Host ""
+                                        $selection = Read-Host "Enter track number or press Enter for [1] (or 's' to skip)"
+                                        
+                                        # Default to first option if Enter pressed
+                                        if ([string]::IsNullOrWhiteSpace($selection)) {
+                                            $selection = "1"
+                                        }
+                                        
+                                        if ($selection -eq 's') {
+                                            Write-Host "Skipped" -ForegroundColor Gray
+                                            continue
+                                        }
+                                        
+                                        if ($selection -match '^\d+$') {
+                                            $selectedIndex = [int]$selection - 1
+                                            if ($selectedIndex -ge 0 -and $selectedIndex -lt $scoredPool.Count) {
+                                                $selectedTrack = $scoredPool[$selectedIndex].Track
+                                                
+                                                # Update the paired track in main array
+                                                for ($i = 0; $i -lt $pairedTracks.Count; $i++) {
+                                                    if ($pairedTracks[$i].AudioFile.FilePath -eq $markedTrack.AudioFile.FilePath) {
+                                                        $pairedTracks[$i].SpotifyTrack = $selectedTrack
+                                                        $pairedTracks[$i].Marked = $false
+                                                        Write-Host "✓ Updated" -ForegroundColor Green
+                                                        
+                                                        # Remove selected track from pool
+                                                        $providerTrackPool = @($providerTrackPool | Where-Object { 
+                                                            $trackId = if ($_.id) { $_.id } else { $_.name }
+                                                            $selectedId = if ($selectedTrack.id) { $selectedTrack.id } else { $selectedTrack.name }
+                                                            $trackId -ne $selectedId
+                                                        })
+                                                        
+                                                        Start-Sleep -Milliseconds 500
+                                                        break
+                                                    }
+                                                }
+                                            }
+                                            else {
+                                                Write-Host "Invalid selection" -ForegroundColor Red
+                                                Start-Sleep -Seconds 1
+                                            }
+                                        }
+                                        else {
+                                            Write-Host "Invalid input" -ForegroundColor Red
+                                            Start-Sleep -Seconds 1
+                                        }
+                                    }
+                                    
+                                    Write-Host "`n✓ Finished reviewing marked tracks" -ForegroundColor Green
+                                    Start-Sleep -Seconds 1
+                                    $refreshTracks = $true
+                                    continue
+                                }
                                 '^v$' { $script:showVerbose = -not $script:showVerbose; $refreshTracks = $true; continue }
                                 '^aa$' {
                                     # Manual album artist builder
