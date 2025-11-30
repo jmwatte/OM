@@ -49,6 +49,17 @@ function Show-Tracks {
 
                 $filenameDisplay = if ($audio) { "filename: $(Split-Path -Leaf $audio.FilePath)" } else { "" }
                 Write-Host "[$num] $filenameDisplay" -ForegroundColor DarkGray
+                
+                # Display confidence score if available
+                if ($pair.PSObject.Properties['Confidence']) {
+                    $confColor = switch ($pair.ConfidenceLevel) {
+                        'High' { 'Green' }
+                        'Medium' { 'Yellow' }
+                        'Low' { 'Red' }
+                        default { 'Gray' }
+                    }
+                    Write-Host "`tConfidence: $($pair.Confidence)% ($($pair.ConfidenceLevel))" -ForegroundColor $confColor
+                }
 
                 $artistDisplay = 'Unknown'
                 if ($spotify) {

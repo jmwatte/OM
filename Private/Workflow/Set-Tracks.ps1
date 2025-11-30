@@ -198,9 +198,16 @@ function Set-Tracks {
                     -not $usedSpotify.ContainsKey($spotifyId) -and 
                     -not $usedAudio.ContainsKey($audioPath)) {
                     
+                    # Calculate confidence using the new helper function
+                    Write-Verbose "Calculating confidence for match: $($match.Spotify.name) <-> $($match.Audio.Title)"
+                    $confidence = Get-MatchConfidence -ProviderTrack $match.Spotify -AudioFile $match.Audio
+                    Write-Verbose "Confidence: $($confidence.Score)% ($($confidence.Level))"
+                    
                     $pairedTracks += [PSCustomObject]@{
                         SpotifyTrack = $match.Spotify
                         AudioFile    = $match.Audio
+                        Confidence   = $confidence.Score
+                        ConfidenceLevel = $confidence.Level
                     }
                     $usedSpotify[$spotifyId] = $true
                     $usedAudio[$audioPath] = $true
@@ -217,6 +224,8 @@ function Set-Tracks {
                     $pairedTracks += [PSCustomObject]@{
                         SpotifyTrack = $spotify
                         AudioFile    = $null
+                        Confidence   = 0
+                        ConfidenceLevel = "Low"
                     }
                 }
             }
@@ -229,6 +238,8 @@ function Set-Tracks {
                 $pairedTracks += [PSCustomObject]@{
                     SpotifyTrack = $null
                     AudioFile    = $audio
+                    Confidence   = 0
+                    ConfidenceLevel = "Low"
                 }
             }
         }
