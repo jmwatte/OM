@@ -544,6 +544,9 @@ function Get-QAlbumTracks {
                 $featuredArtistsList = @(Get-IfExists $parsed 'FeaturedArtists')
                 $featuredArtistString = if ($featuredArtistsList.Count -gt 0) { $featuredArtistsList -join '; ' } else { $null }
 
+                # DEBUG: Check what $releaseDate contains before creating track object
+                Write-Verbose "Creating track object - releaseDate variable value: [$releaseDate]"
+                
                 $out = [PSCustomObject]@{
                     id           = ($dataTrack -replace '^id:', '')
                     name         = if ($currentWorkTitle) { $currentWorkTitle + "," + $title } else { $title }
