@@ -1167,7 +1167,12 @@ function Start-OM {
                         
                         $stageBResult = Invoke-StageB-AlbumSelection @stageBParams
 
-
+                        # Validate result object before accessing properties
+                        if (-not $stageBResult -or $stageBResult -isnot [hashtable]) {
+                            Write-Error "Stage B did not return a valid result object. Result type: $($stageBResult.GetType().FullName)"
+                            $stage = 'A'
+                            continue stageLoop
+                        }
                                 
                             
                         # Handle results
