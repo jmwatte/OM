@@ -35,15 +35,20 @@ function Search-GQArtist {
         $configuredLocale = $PSCulture
     }
     Write-Verbose "Using Qobuz configured locale: $configuredLocale (PSCulture: $PSCulture)"
-    # (URL locale not needed for this quick web search)
+    # Get URL locale for consistent Qobuz searches
+    if (-not (Get-Command -Name Get-QobuzUrlLocale -ErrorAction SilentlyContinue)) {
+        $privateDir = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+        $qobuzLocalesPath = Join-Path $privateDir 'QobuzLocales.ps1'
+        if (Test-Path $qobuzLocalesPath) { . $qobuzLocalesPath }
+    }
+    $urlLocale = Get-QobuzUrlLocale -CultureCode $configuredLocale
 
     # Prefer qobuz interpreter pages for artists
-    # For DuckDuckGo we still hint site:qobuz.com to prioritize qobuz results.
-    $searchQueryDDG = "site:qobuz.com `"$Query`""
     # For Google (HTML and CSE) prefer searching the artist name only (no site: filter)
     # This helps Google return qobuz interpreter pages when configured to search qobuz.
     $searchQueryGoogle = "`"$Query`""
     $targetUrl = $null
+    $useQobuzFallback = $false
 
     # Try Google Custom Search API first (if configured via config or env)
     $google = Get-OMConfig -Provider Google
@@ -52,56 +57,55 @@ function Search-GQArtist {
     $gCse = Get-IfExists -target $google -path 'Cse'
     if (-not $gCse) { $gCse = $env:GOOGLE_CSE }
     Write-Verbose "Google API key present: $([bool]$gApiKey); Google CSE present: $([bool]$gCse)"
-    # (Google CSE call removed here; we'll try HTML-first then fallback to CSE later)
 
-    # DuckDuckGo HTML fallback
-    # Google CSE (preferred) - try this first if configured
+    # Google CSE (preferred) - commented out for now, using Qobuz fallback
     if (-not $targetUrl -and $gApiKey -and $gCse) {
-        try {
-            # Use the artist-only query for Google CSE
-            $csq = [uri]::EscapeDataString($searchQueryGoogle)
-            $num = 10
-            # Hint the search by country based on configured locale (e.g., en-US -> us)
-            $country = if ($configuredLocale -and ($configuredLocale -match '-')) { ($configuredLocale.Split('-')[-1]).ToLower() } else { $PSCulture.Split('-')[-1].ToLower() }
-            $apiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=$num&gl=$country"
-            $apiResp = Invoke-RestMethod -Uri $apiUrl -Method Get -ErrorAction Stop
-            Write-Verbose "Google CSE API URL: $apiUrl"
-            $count = 0
-            if ($apiResp.items) { $count = $apiResp.items.Count }
-            Write-Verbose ("Google CSE returned {0} items" -f $count)
-            if ($apiResp.items -and $apiResp.items.Count -gt 0) {
-                foreach ($it in $apiResp.items) {
-                    Write-Verbose ("CSE item: {0}" -f $it.link)
-                    if ($it.link -match '/interpreter/') { $targetUrl = $it.link; break }
-                }
-                if (-not $targetUrl) { $targetUrl = $apiResp.items[0].link }
-                Write-Verbose "Google CSE selected url: $targetUrl"
-            }
-            else {
-                Write-Verbose "Google CSE returned 0 items; retrying with siteSearch restriction..."
-                try {
-                    $siteApiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=$num&gl=$country&siteSearch=qobuz.com"
-                    $apiResp2 = Invoke-RestMethod -Uri $siteApiUrl -Method Get -ErrorAction Stop
-                    $count2 = 0
-                    if ($apiResp2.items) { $count2 = $apiResp2.items.Count }
-                    Write-Verbose ("Google CSE siteSearch returned {0} items" -f $count2)
-                    if ($apiResp2.items -and $apiResp2.items.Count -gt 0) {
-                        foreach ($it2 in $apiResp2.items) {
-                            Write-Verbose ("CSE siteSearch item: {0}" -f $it2.link)
-                            if ($it2.link -match '/interpreter/') { $targetUrl = $it2.link; break }
-                        }
-                        if (-not $targetUrl) { $targetUrl = $apiResp2.items[0].link }
-                        Write-Verbose "Google CSE siteSearch selected url: $targetUrl"
-                    }
-                }
-                catch {
-                    Write-Verbose "Google CSE siteSearch retry failed: $_"
-                }
-            }
-        }
-        catch {
-            Write-Verbose "Google CSE failed: $_"
-        }
+        $useQobuzFallback = $true
+        # try {
+        #     # Use the artist-only query for Google CSE
+        #     $csq = [uri]::EscapeDataString($searchQueryGoogle)
+        #     $num = 10
+        #     # Hint the search by country based on configured locale (e.g., en-US -> us)
+        #     $country = if ($configuredLocale -and ($configuredLocale -match '-')) { ($configuredLocale.Split('-')[-1]).ToLower() } else { $PSCulture.Split('-')[-1].ToLower() }
+        #     $apiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=$num&gl=$country"
+        #     $apiResp = Invoke-RestMethod -Uri $apiUrl -Method Get -ErrorAction Stop
+        #     Write-Verbose "Google CSE API URL: $apiUrl"
+        #     $count = 0
+        #     if ($apiResp.items) { $count = $apiResp.items.Count }
+        #     Write-Verbose ("Google CSE returned {0} items" -f $count)
+        #     if ($apiResp.items -and $apiResp.items.Count -gt 0) {
+        #         foreach ($it in $apiResp.items) {
+        #             Write-Verbose ("CSE item: {0}" -f $it.link)
+        #             if ($it.link -match '/interpreter/') { $targetUrl = $it.link; break }
+        #         }
+        #         if (-not $targetUrl) { $targetUrl = $apiResp.items[0].link }
+        #         Write-Verbose "Google CSE selected url: $targetUrl"
+        #     }
+        #     else {
+        #         Write-Verbose "Google CSE returned 0 items; retrying with siteSearch restriction..."
+        #         try {
+        #             $siteApiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=$num&gl=$country&siteSearch=qobuz.com"
+        #             $apiResp2 = Invoke-RestMethod -Uri $siteApiUrl -Method Get -ErrorAction Stop
+        #             $count2 = 0
+        #             if ($apiResp2.items) { $count2 = $apiResp2.items.Count }
+        #             Write-Verbose ("Google CSE siteSearch returned {0} items" -f $count2)
+        #             if ($apiResp2.items -and $apiResp2.items.Count -gt 0) {
+        #                 foreach ($it2 in $apiResp2.items) {
+        #                     Write-Verbose ("CSE siteSearch item: {0}" -f $it2.link)
+        #                     if ($it2.link -match '/interpreter/') { $targetUrl = $it2.link; break }
+        #                 }
+        #                 if (-not $targetUrl) { $targetUrl = $apiResp2.items[0].link }
+        #                 Write-Verbose "Google CSE siteSearch selected url: $targetUrl"
+        #             }
+        #         }
+        #         catch {
+        #             Write-Verbose "Google CSE siteSearch retry failed: $_"
+        #         }
+        #     }
+        # }
+        # catch {
+        #     Write-Verbose "Google CSE failed: $_"
+        # }
     }
 
     # DuckDuckGo HTML fallback (disabled for now - kept for future reference)
@@ -152,58 +156,50 @@ function Search-GQArtist {
     #     }
     # }
 
-                # If Google HTML didn't find results, fall back to CSE when configured
-                # if (-not $targetUrl -and $gApiKey -and $gCse) {
-                #     try {
-                #         # Use the artist-only query for Google CSE as well
-                #         $csq = [uri]::EscapeDataString($searchQueryGoogle)
-                #         $num = 10
-                #         # Hint the search by country based on configured locale (e.g., en-US -> us)
-                #         $country = if ($configuredLocale -and ($configuredLocale -match '-')) { ($configuredLocale.Split('-')[-1]).ToLower() } else { $PSCulture.Split('-')[-1].ToLower() }
-                #         $apiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=$num&gl=$country"
-                #         $apiResp = Invoke-RestMethod -Uri $apiUrl -Method Get -ErrorAction Stop
-                #         Write-Verbose "Google CSE API URL: $apiUrl"
-                #         $count = 0
-                #         if ($apiResp.items) { $count = $apiResp.items.Count }
-                #         Write-Verbose ("Google CSE returned {0} items" -f $count)
-                #         if ($apiResp.items -and $apiResp.items.Count -gt 0) {
-                #             foreach ($it in $apiResp.items) {
-                #                 Write-Verbose ("CSE item: {0}" -f $it.link)
-                #                 if ($it.link -match '/interpreter/') { $targetUrl = $it.link; break }
-                #             }
-                #             if (-not $targetUrl) { $targetUrl = $apiResp.items[0].link }
-                #             Write-Verbose "Google CSE selected url: $targetUrl"
-                #         }
-                #         else {
-                #             Write-Verbose "Google CSE returned 0 items; retrying with siteSearch restriction..."
-                #             try {
-                #                 $siteApiUrl = "https://www.googleapis.com/customsearch/v1?key=$($gApiKey)&cx=$($gCse)&q=$csq&num=$num&gl=$country&siteSearch=qobuz.com"
-                #                 $apiResp2 = Invoke-RestMethod -Uri $siteApiUrl -Method Get -ErrorAction Stop
-                #                 $count2 = 0
-                #                 if ($apiResp2.items) { $count2 = $apiResp2.items.Count }
-                #                 Write-Verbose ("Google CSE siteSearch returned {0} items" -f $count2)
-                #                 if ($apiResp2.items -and $apiResp2.items.Count -gt 0) {
-                #                     foreach ($it2 in $apiResp2.items) {
-                #                         Write-Verbose ("CSE siteSearch item: {0}" -f $it2.link)
-                #                         if ($it2.link -match '/interpreter/') { $targetUrl = $it2.link; break }
-                #                     }
-                #                     if (-not $targetUrl) { $targetUrl = $apiResp2.items[0].link }
-                #                     Write-Verbose "Google CSE siteSearch selected url: $targetUrl"
-                #                 }
-                #             }
-                #             catch {
-                #                 Write-Verbose "Google CSE siteSearch retry failed: $_"
-                #             }
-                #         }
-                #     }
-                #     catch {
-                #         Write-Verbose "Google CSE failed: $_"
-                #     }
-                # }
+    # Fallback to Qobuz native search if Google CSE failed or returned no results
+    if (-not $targetUrl -and $useQobuzFallback) {
+        Write-Verbose "Using Qobuz native search fallback for query: $Query"
+        
+        # Construct Qobuz search URL using the configured locale for consistency
+        $escapedQuery = [uri]::EscapeDataString($Query)
+        $qobuzSearchUrl = "https://www.qobuz.com/$urlLocale/search/artists/$escapedQuery"
+        Write-Verbose "Qobuz search URL (using $urlLocale for consistent HTML): $qobuzSearchUrl"
+        
+        try {
+            $searchResp = Invoke-WebRequest -Uri $qobuzSearchUrl -UseBasicParsing -ErrorAction Stop -TimeoutSec 15
+            $searchDoc = ConvertFrom-Html -Content $searchResp.Content
+            
+            # Look for artist cards in search results
+            # Qobuz uses a consistent structure: article.card with link to /interpreter/
+            $artistCards = $searchDoc.SelectNodes("//article[contains(@class, 'card')]//a[contains(@href, '/interpreter/')]")
+            
+            if ($artistCards -and $artistCards.Count -gt 0) {
+                $firstCard = $artistCards[0]
+                $href = $firstCard.GetAttributeValue('href', '')
+                
+                if ($href) {
+                    # Build full URL if needed
+                    if ($href -match '^https?://') {
+                        $targetUrl = $href
+                    } elseif ($href -match '^/') {
+                        $targetUrl = "https://www.qobuz.com$href"
+                    } else {
+                        $targetUrl = "https://www.qobuz.com/$urlLocale/$href"
+                    }
+                    Write-Verbose "Qobuz native search selected first artist: $targetUrl"
+                }
+            } else {
+                Write-Verbose "Qobuz native search returned no artist cards"
+            }
+        }
+        catch {
+            Write-Verbose "Qobuz native search failed: $_"
+        }
+    }
 
     # If nothing found, return empty result
     if (-not $targetUrl) {
-        Write-Verbose "No Qobuz interpreter URL found via HTML search or CSE; returning empty result."
+        Write-Verbose "No Qobuz interpreter URL found via CSE or native search; returning empty result."
         $res = [PSCustomObject]@{ artists = [PSCustomObject]@{ items = @() } }
         $script:QobuzGQCache[$cacheKey] = $res
         return $res

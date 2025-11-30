@@ -65,9 +65,11 @@ function Search-GQAlbum {
     if (-not $gCse) { $gCse = $env:GOOGLE_CSE }
     Write-Verbose "Google API key present: $([bool]$gApiKey); Google CSE present: $([bool]$gCse)"
 
-    # Google CSE (preferred) - try this first if configured
+    # Google CSE (preferred) - commented out for now, using Qobuz fallback
     if (-not $targetUrl -and $gApiKey -and $gCse) {
-       <#  try {
+        $useQobuzFallback = $true
+        <#
+        try {
             # Use the album-only query for Google CSE
             $csq = [uri]::EscapeDataString($searchQueryGoogle)
             $num = 10  # Google CSE limit per request
@@ -138,20 +140,31 @@ function Search-GQAlbum {
             }
             else {
                 Write-Verbose "Google CSE error. Falling back to Qobuz native search."
-            } #>
+            }
             $useQobuzFallback = $true
         }
-    #}
+        catch {
+            Write-Verbose "Google CSE failed: $_"
+            # Check if it's a rate limit error or any other failure
+            if ($_.Exception.Message -match 'RATE_LIMIT_EXCEEDED|RESOURCE_EXHAUSTED') {
+                Write-Warning "Google CSE rate limit exceeded. Falling back to Qobuz native search."
+            }
+            else {
+                Write-Verbose "Google CSE error. Falling back to Qobuz native search."
+            }
+            $useQobuzFallback = $true
+        }
+        #>
+    }
 
     # Fallback to Qobuz native search if Google CSE failed or returned no results
     if (-not $targetUrl -and $useQobuzFallback) {
         Write-Verbose "Using Qobuz native search fallback for query: $Query"
         
-        # Construct Qobuz search URL - use gb-en for consistent HTML structure
-        # Note: gb-en has more reliable track/credit HTML structure than us-en
+        # Construct Qobuz search URL - use configured urlLocale for consistency with user's settings
         $escapedQuery = [uri]::EscapeDataString($Query)
-        $qobuzSearchUrl = "https://www.qobuz.com/gb-en/search/albums/$escapedQuery"
-        Write-Verbose "Qobuz search URL (using gb-en for consistent HTML): $qobuzSearchUrl"
+        $qobuzSearchUrl = "https://www.qobuz.com/$urlLocale/search/albums/$escapedQuery"
+        Write-Verbose "Qobuz search URL (using $urlLocale): $qobuzSearchUrl"
         
         try {
             $searchResp = Invoke-WebRequest -Uri $qobuzSearchUrl -UseBasicParsing -ErrorAction Stop -TimeoutSec 15
@@ -229,7 +242,8 @@ function Search-GQAlbum {
         if ($targetUrl -match '/album/[^/]+/(\d+)') { $albumId = $matches[1] }
         else { $albumId = ($targetUrl.TrimEnd('/').Split('/')[-1]) }
 
-        Write-Verbose "Extracted album ID: $albumId, fetching tracks to get album metadata..."
+        Write-Verbose "Extracted album ID: $albumId from URL: $targetUrl"
+        Write-Verbose "Fetching tracks from album page to get album metadata..."
         $tracks = Get-QAlbumTracks -Id $targetUrl
 
         if (-not $tracks -or $tracks.Count -eq 0) {

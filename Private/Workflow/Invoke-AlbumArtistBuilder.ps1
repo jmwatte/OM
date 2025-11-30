@@ -137,7 +137,7 @@ function Invoke-AlbumArtistBuilder {
     # Interactive loop
     $done = $false
     while (-not $done) {
-        Clear-Host
+        if ($VerbosePreference -ne 'Continue') { Clear-Host }
         Write-Host "`n========================================" -ForegroundColor Cyan
         Write-Host "=== ALBUM ARTIST BUILDER ===" -ForegroundColor Cyan
         Write-Host "========================================`n" -ForegroundColor Cyan

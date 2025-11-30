@@ -30,7 +30,7 @@ function Search-QItem {
             $resultAlbums= Get-IfExists -target $result -path 'albums.items'
             if ($resultAlbums.Count -gt 0) {
             #if ($result -and $result.albums -and $result.albums.items -and $result.albums.items.Count -gt 0) {
-                Write-Verbose "Found album via Google CSE and parsing; returning result."
+                Write-Verbose "Found album via Qobuz search and parsing; returning result."
                 return $result
             }
         }

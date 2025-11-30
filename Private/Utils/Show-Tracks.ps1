@@ -29,7 +29,7 @@ function Show-Tracks {
     $totalPages = if ($PairedTracks.Count -gt 0) { [math]::Ceiling($PairedTracks.Count / $pageSize) } else { 1 }
 
     while ($true) {
-        Clear-Host  # Temporarily commented to preserve verbose output for debugging
+        if ($VerbosePreference -ne 'Continue') { Clear-Host }
         Write-Host "Tracks for album $($AlbumName): (Page $($page + 1) of $totalPages)`n"
 
         if ($PairedTracks.Count -eq 0) {

@@ -117,7 +117,7 @@ function Invoke-StageB-AlbumSelection {
         [int]$CurrentPage = 1
     )
     
-    Clear-Host
+    if ($VerbosePreference -ne 'Continue') { Clear-Host }
     if ($ShowHeader) {
         & $ShowHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -trackCount $script:trackCount
     }
@@ -410,7 +410,7 @@ function Invoke-StageB-AlbumSelection {
             }
         }
     
-        Clear-Host
+        if ($VerbosePreference -ne 'Continue') { Clear-Host }
     
         # Sort by Jaccard similarity descending
         $albumsForArtist = $albumsForArtist | Sort-Object { - (Get-StringSimilarity-Jaccard -String1 $AlbumName -String2 $_.Name) }
@@ -425,7 +425,7 @@ function Invoke-StageB-AlbumSelection {
 
     # Main album selection loop
     while ($true) {
-        Clear-Host
+        if ($VerbosePreference -ne 'Continue') { Clear-Host }
         if ($ShowHeader) {
             & $ShowHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -trackCount $script:trackCount
         }

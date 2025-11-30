@@ -11,6 +11,34 @@ function Set-Tracks {
     $pairedTracks = @()
     #Write-Host "DEBUG: Starting Set-Tracks with Reverse=$Reverse"
     switch ($SortMethod) {
+        # byFilesystem: Preserve original filesystem order (as files appear on disk)
+        # This is useful when files are already in correct order but lack proper tags/numbering
+        "byFilesystem" {
+            # Files come in as they are ordered in the filesystem
+            # Simply pair them sequentially without any re-sorting
+            if ($Reverse) {
+                foreach ($audio in $AudioFiles) {
+                    $index = [Array]::IndexOf($AudioFiles, $audio)
+                    $spotifyTrack = if ($index -lt $SpotifyTracks.Count) { $SpotifyTracks[$index] } else { $null }
+                    
+                    $pairedTracks += [PSCustomObject]@{
+                        SpotifyTrack = $spotifyTrack
+                        AudioFile    = $audio
+                    }
+                }
+            }
+            else {
+                foreach ($spotify in $SpotifyTracks) {
+                    $index = [Array]::IndexOf($SpotifyTracks, $spotify)
+                    $audioFile = if ($index -lt $AudioFiles.Count) { $AudioFiles[$index] } else { $null }
+                    
+                    $pairedTracks += [PSCustomObject]@{
+                        SpotifyTrack = $spotify
+                        AudioFile    = $audioFile
+                    }
+                }
+            }
+        }
         # byOrder: each one in the order by which they came in
         "byOrder" {
             if ($Reverse) {
@@ -126,8 +154,19 @@ function Set-Tracks {
                     # Primary: Title similarity
                     $titleSimilarity = Get-StringSimilarity-Jaccard -String1 $spotify.name -String2 $audio.Title
                     
-                    # Only consider if similarity is reasonable (>= 0.5)
-                    if ($titleSimilarity -ge 0.5) {
+                    # Boost score if key identifiers match (e.g., BWV numbers, movement names)
+                    $identifierBoost = 0
+                    $spotifyBWV = if ($spotify.name -match 'BWV\s*(\d+)') { $matches[1] } else { $null }
+                    $audioBWV = if ($audio.Title -match 'BWV\s*(\d+)') { $matches[1] } else { $null }
+                    
+                    if ($spotifyBWV -and $audioBWV -and $spotifyBWV -eq $audioBWV) {
+                        $identifierBoost = 0.3  # Same BWV number
+                    }
+                    
+                    $titleSimilarity = [Math]::Min(1.0, $titleSimilarity + $identifierBoost)
+                    
+                    # Only consider if similarity is reasonable (>= 0.4, lowered from 0.5 for complex titles)
+                    if ($titleSimilarity -ge 0.4) {
                         # Secondary: Duration closeness as tiebreaker
                         $diff = [Math]::Abs($spotify.duration_ms - $audio.Duration)
                         $tolerance = [Math]::Max($spotify.duration_ms, 1) * 0.1
@@ -194,32 +233,117 @@ function Set-Tracks {
             }
         }
         "byTrackNumber" {
-            if ($Reverse) {
-                Write-Debug "Using Reverse mode for byTrackNumber"
-                # Iterate over audio files, match to Spotify by disc/track
-                foreach ($audio in $AudioFiles) {
-                    $spotifyTrack = $SpotifyTracks | Where-Object { 
-                        $_.disc_number -eq $audio.DiscNumber -and $_.track_number -eq $audio.TrackNumber 
-                    } | Select-Object -First 1
-                    
-                    $pairedTracks += [PSCustomObject]@{
-                        SpotifyTrack = $spotifyTrack
-                        AudioFile    = $audio
+            # Check if audio files have valid track numbers (not all 0 or missing)
+            $hasValidTrackNumbers = $AudioFiles | Where-Object { 
+                $_.TrackNumber -and $_.TrackNumber -gt 0 
+            } | Measure-Object | Select-Object -ExpandProperty Count
+            
+            $useOrderFallback = ($hasValidTrackNumbers -eq 0)
+            
+            if ($useOrderFallback) {
+                Write-Verbose "Audio files lack valid track numbers, pairing by sorted order"
+                # Sort both lists and pair sequentially
+                $sortedSpotify = $SpotifyTracks | Sort-Object disc_number, track_number
+                
+                # Try to extract numeric prefix from filenames for smarter sorting
+                $sortedAudio = $AudioFiles | Sort-Object {
+                    $filename = [System.IO.Path]::GetFileName($_.FilePath)
+                    # Try to extract leading number (e.g., "01 - Title.flac" -> 1)
+                    if ($filename -match '^(\d+)') {
+                        [int]$matches[1]
+                    } else {
+                        # No number found, sort alphabetically
+                        $_.FilePath
+                    }
+                }
+                
+                if ($Reverse) {
+                    # Iterate over audio files
+                    foreach ($audio in $sortedAudio) {
+                        $index = [Array]::IndexOf($sortedAudio, $audio)
+                        $spotifyTrack = if ($index -lt $sortedSpotify.Count) { $sortedSpotify[$index] } else { $null }
+                        
+                        $pairedTracks += [PSCustomObject]@{
+                            SpotifyTrack = $spotifyTrack
+                            AudioFile    = $audio
+                        }
+                    }
+                }
+                else {
+                    # Iterate over Spotify tracks
+                    foreach ($spotify in $sortedSpotify) {
+                        $index = [Array]::IndexOf($sortedSpotify, $spotify)
+                        $audioFile = if ($index -lt $sortedAudio.Count) { $sortedAudio[$index] } else { $null }
+                        
+                        $pairedTracks += [PSCustomObject]@{
+                            SpotifyTrack = $spotify
+                            AudioFile    = $audioFile
+                        }
                     }
                 }
             }
             else {
-                Write-Debug "Using Normal mode for byTrackNumber"
-                # Original: Iterate over Spotify tracks
-                $SpotifyTracks = $SpotifyTracks | Sort-Object disc_number, track_number
-                foreach ($spotify in $SpotifyTracks) {
-                    $audioFile = $AudioFiles | Where-Object { 
-                        $_.DiscNumber -eq $spotify.disc_number -and $_.TrackNumber -eq $spotify.track_number 
-                    } | Select-Object -First 1
+                Write-Verbose "Matching audio files by existing disc/track numbers"
+                
+                # Check if any audio files have disc numbers
+                $hasDiscNumbers = $AudioFiles | Where-Object { $_.DiscNumber -and $_.DiscNumber -gt 0 } | Select-Object -First 1
+                
+                if ($hasDiscNumbers) {
+                    # Audio files have disc numbers - use exact matching
+                    Write-Verbose "Audio files have disc numbers, matching by disc+track"
+                    if ($Reverse) {
+                        foreach ($audio in $AudioFiles) {
+                            $spotifyTrack = $SpotifyTracks | Where-Object { 
+                                $_.disc_number -eq $audio.DiscNumber -and $_.track_number -eq $audio.TrackNumber 
+                            } | Select-Object -First 1
+                            
+                            $pairedTracks += [PSCustomObject]@{
+                                SpotifyTrack = $spotifyTrack
+                                AudioFile    = $audio
+                            }
+                        }
+                    }
+                    else {
+                        $SpotifyTracks = $SpotifyTracks | Sort-Object disc_number, track_number
+                        foreach ($spotify in $SpotifyTracks) {
+                            $audioFile = $AudioFiles | Where-Object { 
+                                $_.DiscNumber -eq $spotify.disc_number -and $_.TrackNumber -eq $spotify.track_number 
+                            } | Select-Object -First 1
+                            
+                            $pairedTracks += [PSCustomObject]@{
+                                SpotifyTrack = $spotify
+                                AudioFile    = $audioFile
+                            }
+                        }
+                    }
+                }
+                else {
+                    # Audio files lack disc numbers - pair sequentially by position
+                    Write-Verbose "Audio files lack disc numbers, pairing sequentially by position"
+                    $sortedSpotify = $SpotifyTracks | Sort-Object disc_number, track_number
+                    $sortedAudio = $AudioFiles | Sort-Object TrackNumber
                     
-                    $pairedTracks += [PSCustomObject]@{
-                        SpotifyTrack = $spotify
-                        AudioFile    = $audioFile
+                    if ($Reverse) {
+                        foreach ($audio in $sortedAudio) {
+                            $index = [Array]::IndexOf($sortedAudio, $audio)
+                            $spotifyTrack = if ($index -lt $sortedSpotify.Count) { $sortedSpotify[$index] } else { $null }
+                            
+                            $pairedTracks += [PSCustomObject]@{
+                                SpotifyTrack = $spotifyTrack
+                                AudioFile    = $audio
+                            }
+                        }
+                    }
+                    else {
+                        foreach ($spotify in $sortedSpotify) {
+                            $index = [Array]::IndexOf($sortedSpotify, $spotify)
+                            $audioFile = if ($index -lt $sortedAudio.Count) { $sortedAudio[$index] } else { $null }
+                            
+                            $pairedTracks += [PSCustomObject]@{
+                                SpotifyTrack = $spotify
+                                AudioFile    = $audioFile
+                            }
+                        }
                     }
                 }
             }

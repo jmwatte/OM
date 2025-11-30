@@ -220,6 +220,19 @@ function Start-OM {
             }
         }
         
+        # Cache Qobuz locale early to avoid repeated config calls during header display
+        $qobuzUrlLocale = $null
+        if ($Provider -eq 'Qobuz' -or (Get-OMConfig).DefaultProvider -eq 'Qobuz') {
+            $qobuzConfig = Get-OMConfig -Provider Qobuz
+            $qobuzLocale = if ($qobuzConfig -and $qobuzConfig.Locale) { $qobuzConfig.Locale } else { $PSCulture }
+            if (Get-Command -Name Get-QobuzUrlLocale -ErrorAction SilentlyContinue) {
+                $qobuzUrlLocale = Get-QobuzUrlLocale -CultureCode $qobuzLocale
+            } else {
+                $qobuzUrlLocale = $qobuzLocale
+            }
+            Write-Verbose "Cached Qobuz URL locale: $qobuzUrlLocale"
+        }
+        
         # Helper function to normalize Discogs IDs (strip brackets, resolve masters)
         $normalizeDiscogsId = {
             param([string]$InputId)
@@ -270,7 +283,14 @@ function Start-OM {
             Write-Host ""
             Write-Host "🎵 ═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
             Write-Host "🔍 Provider: " -NoNewline -ForegroundColor Magenta
-            Write-Host $Provider -ForegroundColor Cyan
+            
+            # Add locale for Qobuz provider (use cached value from parent scope)
+            if ($Provider -eq 'Qobuz' -and $qobuzUrlLocale) {
+                Write-Host "$Provider ($qobuzUrlLocale)" -ForegroundColor Cyan
+            } else {
+                Write-Host $Provider -ForegroundColor Cyan
+            }
+            
             Write-Host "👤 Original Artist: " -NoNewline -ForegroundColor Yellow
             Write-Host $Artist -ForegroundColor White
             Write-Host "💿 Original Album: " -NoNewline -ForegroundColor Green
@@ -597,7 +617,7 @@ function Start-OM {
             :stageLoop while ($true) {
                 # NEW: Handle quick find mode (only when not in track selection stage)
                 if ($script:findMode -eq 'quick' -and $stage -ne 'C') {
-                    Clear-Host
+                    if ($VerbosePreference -ne 'Continue') { Clear-Host }
                     & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
                     Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
                     Write-Host ""
@@ -739,7 +759,7 @@ function Start-OM {
 
                     # Album selection loop
                     :albumSelectionLoop while ($true) {
-                        Clear-Host
+                        if ($VerbosePreference -ne 'Continue') { Clear-Host }
                         & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
                         Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
                         Write-Host ""
@@ -966,7 +986,7 @@ function Start-OM {
                     
                     "A" {
                         $loadStageBResults = $true
-                        Clear-Host
+                        if ($VerbosePreference -ne 'Continue') { Clear-Host }
                         & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
                         if ($script:findMode -eq 'quick') {
                             Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
@@ -1211,7 +1231,7 @@ function Start-OM {
                         continue stageLoop
                     }
                     "C" {
-                        Clear-Host
+                        if ($VerbosePreference -ne 'Continue') { Clear-Host }
                         & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
                         
                         if ($script:findMode -eq 'quick') {
@@ -1247,17 +1267,64 @@ function Start-OM {
                             # break out of the switch AND the enclosing stage while-loop to continue with next album
                             break 2
                         }
+                        # Initialize sort method (can be changed later by user)
+                        # Default to 'byFilesystem' to preserve disk order (as shown in Windows Explorer #)
+                        # Users can press 'o' for alphabetical order, 't' for track numbers, etc.
+                        if (-not (Get-Variable -Name sortMethod -ErrorAction SilentlyContinue) -or -not $sortMethod) {
+                            $sortMethod = 'byFilesystem'
+                        }
+                        
                         # collect audio files and tags
                         $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
-                            Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
-                            Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
+                            Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
+                        
+                        Write-Host "DEBUG: sortMethod = '$sortMethod'" -ForegroundColor Yellow
+                        Write-Host "DEBUG: First 3 files from Get-ChildItem:" -ForegroundColor Yellow
+                        $audioFiles | Select-Object -First 3 | ForEach-Object { Write-Host "  $($_.Name)" -ForegroundColor Cyan }
+                        
+                        # Only sort if NOT using byFilesystem (which preserves disk order)
+                        if ($sortMethod -ne 'byFilesystem') {
+                            Write-Host "DEBUG: Applying alphabetical sort (sortMethod != 'byFilesystem')" -ForegroundColor Magenta
+                            $audioFiles = $audioFiles | Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
+                        }
+                        else {
+                            Write-Host "DEBUG: Preserving filesystem order (sortMethod == 'byFilesystem')" -ForegroundColor Green
+                        }
+                        
+                        Write-Host "DEBUG: First 3 files after conditional sort:" -ForegroundColor Yellow
+                        $audioFiles | Select-Object -First 3 | ForEach-Object { Write-Host "  $($_.Name)" -ForegroundColor Cyan }
                         $audioFiles = foreach ($f in $audioFiles) {
                             try {
                                 $tagFile = [TagLib.File]::Create($f.FullName)
+                                
+                                # Try to get track number from TagLib's numeric field
+                                $trackNum = $tagFile.Tag.Track
+                                $discNum = $tagFile.Tag.Disc
+                                
+                                # If track is 0 or missing, try to extract from raw track tag text
+                                # (Some files have text like "01. Suite I in G" instead of numeric 1)
+                                if (-not $trackNum -or $trackNum -eq 0) {
+                                    try {
+                                        # For FLAC files with Vorbis comments
+                                        if ($tagFile -is [TagLib.Flac.File]) {
+                                            $vorbisTag = $tagFile.GetTag([TagLib.TagTypes]::Xiph)
+                                            if ($vorbisTag) {
+                                                $trackText = $vorbisTag.GetFirstField("TRACKNUMBER")
+                                                if ($trackText -and $trackText -match '^(\d+)') {
+                                                    $trackNum = [int]$matches[1]
+                                                    Write-Verbose "Extracted track $trackNum from text tag '$trackText'"
+                                                }
+                                            }
+                                        }
+                                    } catch {
+                                        Write-Verbose "Could not extract text-based track number: $_"
+                                    }
+                                }
+                                
                                 [PSCustomObject]@{
                                     FilePath    = $f.FullName
-                                    DiscNumber  = $tagFile.Tag.Disc
-                                    TrackNumber = $tagFile.Tag.Track
+                                    DiscNumber  = $discNum
+                                    TrackNumber = $trackNum
                                     Title       = $tagFile.Tag.Title
                                     TagFile     = $tagFile
                                     Composer    = if ($tagFile.Tag.Composers) { $tagFile.Tag.Composers -join '; ' } else { 'Unknown Composer' }
@@ -1370,7 +1437,7 @@ function Start-OM {
                                     if ($skipChoice -eq 'b') {
                                         if ($canRetryReleases) {
                                             # Show releases again for this master
-                                            Clear-Host
+                                            if ($VerbosePreference -ne 'Continue') { Clear-Host }
                                             Write-Host "📀 Discogs MASTER: $($ProviderAlbum._masterName)" -ForegroundColor Yellow
                                             Write-Host "Found $($ProviderAlbum._masterReleases.Count) releases:`n" -ForegroundColor Cyan
                                             
@@ -1476,7 +1543,7 @@ function Start-OM {
                                 if ($skipChoice -eq 'b') {
                                     if ($canRetryReleases) {
                                         # Show releases again (same code as above)
-                                        Clear-Host
+                                        if ($VerbosePreference -ne 'Continue') { Clear-Host }
                                         Write-Host "📀 Discogs MASTER: $($ProviderAlbum._masterName)" -ForegroundColor Yellow
                                         Write-Host "Found $($ProviderAlbum._masterReleases.Count) releases:`n" -ForegroundColor Cyan
                                         
@@ -1645,7 +1712,7 @@ function Start-OM {
                                 }
 
                                 if ($goC -and -not $goCDisplayShown) {
-                                    Clear-Host
+                                    if ($VerbosePreference -ne 'Continue') { Clear-Host }
                                     $autoReader = { param($prompt) 'q' }
                                     $autoShowParams = @{
                                         PairedTracks  = $pairedTracks
@@ -1667,7 +1734,23 @@ function Start-OM {
                                 if ($useWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
                                 $whatIfStatus = if ($useWhatIf) { "ON" } else { "OFF" }
                                 $verboseStatus = if ($script:showVerbose) { "ON" } else { "OFF" }
-                                $optionsLine = "`nOptions: SortBy (o)rder, Tit(l)e, (d)uration, (t)rackNumber, (n)ame, (h)ybrid, (m)anual, (r)everse | (S)ave {[A]ll, [T]ags, [F]olderNames} | {C}over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags} | (aa)AlbumArtist, (b)ack/(pr)evious, (P)rovider, (F)indmode, (w)hatIf:$whatIfStatus, (v)erbose:$verboseStatus, (X)ip"
+                                
+                                # Build sort method options with active one highlighted
+                                $sortOptions = @{
+                                    'byOrder' = '(o)rder'
+                                    'byTitle' = 'Tit(l)e'
+                                    'byDuration' = '(d)uration'
+                                    'byTrackNumber' = '(t)rackNumber'
+                                    'byName' = '(n)ame'
+                                    'Hybrid' = '(h)ybrid'
+                                    'Manual' = '(m)anual'
+                                    'byFilesystem' = '(f)ilesystem'
+                                }
+                                $sortMethodDisplay = ($sortOptions.GetEnumerator() | ForEach-Object {
+                                    if ($_.Key -eq $sortMethod) { "[*$($_.Value)*]" } else { $_.Value }
+                                }) -join ', '
+                                
+                                $optionsLine = "`nOptions: SortBy $sortMethodDisplay, (r)everse | (S)ave {[A]ll, [T]ags, [F]olderNames} | {C}over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags} | (aa)AlbumArtist, (b)ack/(pr)evious, (P)rovider, (F)indmode, (w)hatIf:$whatIfStatus, (v)erbose:$verboseStatus, (X)ip"
                                 $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'sa', 'st', 'sf', 'cv', 'cvo', 'cs', 'ct', 'aa', 'b', 'pr', 'p', 'pq', 'ps', 'pd', 'pm', 'f', 'w', 'whatif', 'v', 'x')
                                 $paramshow = @{
                                     PairedTracks  = $pairedTracks
@@ -1680,7 +1763,7 @@ function Start-OM {
                                 }
                                 if ($reverseSource) { $paramshow.Reverse = $true }
                                 if ($script:showVerbose) { $paramshow.Verbose = $true }
-                                Clear-Host
+                                if ($VerbosePreference -ne 'Continue') { Clear-Host }
                                 $inputF = Show-Tracks @paramshow
 
                                 if ($null -eq $inputF) { continue }
@@ -1698,6 +1781,7 @@ function Start-OM {
                                 '^l$' { $sortMethod = 'byTitle'; $refreshTracks = $true; continue }
                                 '^h$' { $sortMethod = 'Hybrid'; $refreshTracks = $true; continue }
                                 '^m$' { $sortMethod = 'Manual'; $refreshTracks = $true; continue }
+                                '^f$' { $sortMethod = 'byFilesystem'; $refreshTracks = $true; continue }
                                 '^r$' { $ReverseSource = -not $ReverseSource; $refreshTracks = $true; continue }
                                 '^v$' { $script:showVerbose = -not $script:showVerbose; $refreshTracks = $true; continue }
                                 '^aa$' {
