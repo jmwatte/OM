@@ -150,9 +150,25 @@ function Get-QAlbumTracks {
             }
             #if ($Id -match '^https?://') { $url = $Id.TrimEnd('/') }
             else {
-                # Use gb-en locale for consistent HTML structure (us-en has different node layout)
-                if ($Id -match '^/[a-z]{2}-[a-z]{2}/album/') { $url = "https://www.qobuz.com$($Id.TrimEnd('/'))" }
-                else { $url = "https://www.qobuz.com/gb-en/album/$Id"; Write-Verbose "Best-effort album URL built with gb-en locale: $url" }
+                # If ID already has locale prefix, use it as-is
+                if ($Id -match '^/[a-z]{2}-[a-z]{2}/album/') { 
+                    $url = "https://www.qobuz.com$($Id.TrimEnd('/'))" 
+                }
+                else {
+                    # Use configured locale for URL construction
+                    try {
+                        $config = Get-OMConfig
+                        $configuredLocale = if ($config.Qobuz.Locale) { $config.Qobuz.Locale } else { 'en-GB' }
+                        $urlLocale = Get-QobuzUrlLocale -CultureCode $configuredLocale
+                        Write-Verbose "Using configured locale '$configuredLocale' (URL: '$urlLocale') for album URL"
+                    }
+                    catch {
+                        Write-Verbose "Failed to get configured locale, defaulting to gb-en: $_"
+                        $urlLocale = 'gb-en'
+                    }
+                    $url = "https://www.qobuz.com/$urlLocale/album/$Id"
+                    Write-Verbose "Constructed album URL with locale $urlLocale`: $url"
+                }
             }
 
             Write-Verbose ("Fetching Qobuz album page: {0}" -f $url)
@@ -161,8 +177,59 @@ function Get-QAlbumTracks {
                 $html = $resp.Content
             }
             catch {
-                Write-Warning ("Failed to download album page {0}: {1}" -f $url, $_.Exception.Message)
-                return @()
+                # If 404, try fallback locales (album might not exist in configured locale)
+                $is404 = $false
+                if ($_.Exception.Response) {
+                    try {
+                        $statusCode = [int]$_.Exception.Response.StatusCode
+                        $is404 = ($statusCode -eq 404)
+                    }
+                    catch {
+                        # PowerShell 7+ may use different property access
+                        $is404 = ($_.Exception.Message -match '404')
+                    }
+                }
+                elseif ($_.Exception.Message -match '404') {
+                    $is404 = $true
+                }
+                
+                if ($is404 -and $url -match '/([a-z]{2}-[a-z]{2})/album/([^/?]+)') {
+                    $currentLocale = $matches[1]
+                    $albumId = $matches[2]
+                    
+                    # Try alternative English locales as fallback
+                    $fallbackLocales = @('us-en', 'gb-en') | Where-Object { $_ -ne $currentLocale }
+                    
+                    Write-Verbose "Album not found in $currentLocale locale, trying fallback locales: $($fallbackLocales -join ', ')"
+                    
+                    $fallbackSuccess = $false
+                    foreach ($fbLocale in $fallbackLocales) {
+                        $fallbackUrl = "https://www.qobuz.com/$fbLocale/album/$albumId"
+                        Write-Verbose "Trying fallback URL: $fallbackUrl"
+                        
+                        try {
+                            $resp = Invoke-WebRequest -Uri $fallbackUrl -UseBasicParsing -ErrorAction Stop
+                            $html = $resp.Content
+                            $url = $fallbackUrl
+                            Write-Host "✓ Album found in $fbLocale locale (not available in $currentLocale)" -ForegroundColor Yellow
+                            $fallbackSuccess = $true
+                            break
+                        }
+                        catch {
+                            Write-Verbose "Fallback to $fbLocale failed: $($_.Exception.Message)"
+                        }
+                    }
+                    
+                    if (-not $fallbackSuccess) {
+                        Write-Warning ("Failed to download album page {0}: {1}" -f $url, $_.Exception.Message)
+                        Write-Warning "Album not found in any locale ($currentLocale, $($fallbackLocales -join ', '))"
+                        return @()
+                    }
+                }
+                else {
+                    Write-Warning ("Failed to download album page {0}: {1}" -f $url, $_.Exception.Message)
+                    return @()
+                }
             }
 
             # when verbose, write the HTML to a temp file so you can inspect it
