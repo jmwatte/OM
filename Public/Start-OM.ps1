@@ -398,10 +398,7 @@ function Start-OM {
                             $pairedTracks[$i].AudioFile = $audioFiles[$i]
                         }
                     }
-                    $refreshTracks = $false
-
-
-                    # $refreshTracks = $true
+                    $refreshTracks = $true  # Trigger display refresh to show updated tags
                     
                     # Handle TargetFolder move if specified
                     if ($TargetFolder) {
@@ -2467,7 +2464,7 @@ function Start-OM {
                                             }
                                         }
                                         
-                                        # Update paired tracks with reloaded audio files
+                                        # Update paired tracks with reloaded audio files to preserve pairing
                                         if ($pairedTracks -and $pairedTracks.Count -gt 0) {
                                             for ($i = 0; $i -lt [Math]::Min($pairedTracks.Count, $audioFiles.Count); $i++) {
                                                 $pairedTracks[$i].AudioFile = $audioFiles[$i]
