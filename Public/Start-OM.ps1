@@ -1716,9 +1716,9 @@ function Start-OM {
                                 
                                 # Sort paired tracks by confidence (High → Medium → Low)
                                 # This makes it easy to spot problematic matches at the bottom
-                                if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0 -and $pairedTracks[0].PSObject.Properties['Confidence']) {
+                                if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0 -and $script:pairedTracks[0].PSObject.Properties['Confidence']) {
                                     $script:pairedTracks = $script:pairedTracks | Sort-Object Confidence -Descending
-                                    Write-Verbose "Sorted $($pairedTracks.Count) tracks by confidence"
+                                    Write-Verbose "Sorted $($script:pairedTracks.Count) tracks by confidence"
                                 }
                                 
                                 $script:refreshTracks = $false
