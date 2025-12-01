@@ -886,11 +886,14 @@ function Set-OMTags {
                             }
                             'Comment' { 
                                 # FLAC files use Description field (DESCRIPTION Vorbis comment)
+                                # But also need to clear Comment field to remove COMMENT Vorbis tags
                                 if ($fileObj -is [TagLib.Flac.File]) {
                                     if ($newValue) {
                                         $tag.Description = $newValue
+                                        $tag.Comment = $null  # Clear COMMENT field
                                     } else {
                                         $tag.Description = $null
+                                        $tag.Comment = $null  # Clear both fields
                                     }
                                 } else {
                                     if ($newValue) {

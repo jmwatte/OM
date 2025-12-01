@@ -99,8 +99,10 @@ function Save-TagsForFile {
                     'Comment' {
                         # Store full production credits in Comment/Description field
                         # FLAC files use Description field (DESCRIPTION Vorbis comment)
+                        # Also clear Comment field to remove any COMMENT Vorbis tags
                         if ($tagFile -is [TagLib.Flac.File]) {
                             $tagFile.Tag.Description = $v
+                            $tagFile.Tag.Comment = $null  # Clear COMMENT field
                         } else {
                             $tagFile.Tag.Comment = $v
                         }
