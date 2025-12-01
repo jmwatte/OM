@@ -524,7 +524,7 @@ function Start-OM {
                         }
 
                         # Update paired tracks with reloaded audio files
-                        if ($pairedTracks -and $pairedTracks.Count -gt 0) {
+                        if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
                             for ($i = 0; $i -lt [Math]::Min($pairedTracks.Count, $audioFiles.Count); $i++) {
                                 if ($pairedTracks[$i].AudioFile.TagFile) {
                                     try { $pairedTracks[$i].AudioFile.TagFile.Dispose() } catch { }
@@ -1701,27 +1701,27 @@ function Start-OM {
                         }
                         $exitdo = $false
                         $pairedTracks = $null
-                        $refreshTracks = $true
+                        $script:refreshTracks = $true
                         $goCDisplayShown = $false
                         :doTracks do {
-                            if ($refreshTracks -or -not $pairedTracks) {
+                            if ($script:refreshTracks -or -not $script:pairedTracks) {
                                 if ($useWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
                                 $param = @{
                                     SortMethod    = $sortMethod
-                                    AudioFiles    = $audioFiles
+                                    AudioFiles    = $script:audioFiles
                                     SpotifyTracks = $tracksForAlbum
                                 }
                                 if ($reverseSource) { $param.Reverse = $true }
-                                $pairedTracks = Set-Tracks @param
+                                $script:pairedTracks = Set-Tracks @param
                                 
                                 # Sort paired tracks by confidence (High → Medium → Low)
                                 # This makes it easy to spot problematic matches at the bottom
-                                if ($pairedTracks -and $pairedTracks.Count -gt 0 -and $pairedTracks[0].PSObject.Properties['Confidence']) {
-                                    $pairedTracks = $pairedTracks | Sort-Object Confidence -Descending
+                                if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0 -and $pairedTracks[0].PSObject.Properties['Confidence']) {
+                                    $script:pairedTracks = $script:pairedTracks | Sort-Object Confidence -Descending
                                     Write-Verbose "Sorted $($pairedTracks.Count) tracks by confidence"
                                 }
                                 
-                                $refreshTracks = $false
+                                $script:refreshTracks = $false
                                 if ($sortMethod -eq 'Manual') {
                                     # Reset sort method to 'byOrder' after manual selection to prevent re-prompting on refreshes
                                     $sortMethod = 'byOrder'
@@ -1791,15 +1791,15 @@ function Start-OM {
                             }
 
                             switch -Regex ($inputF) {
-                                '^o$' { $sortMethod = 'byOrder'; $refreshTracks = $true; continue }
-                                '^d$' { $sortMethod = 'byDuration'; $refreshTracks = $true; continue }
-                                '^t$' { $sortMethod = 'byTrackNumber'; $refreshTracks = $true; continue }
-                                '^n$' { $sortMethod = 'byName'; $refreshTracks = $true; continue }
-                                '^l$' { $sortMethod = 'byTitle'; $refreshTracks = $true; continue }
-                                '^h$' { $sortMethod = 'Hybrid'; $refreshTracks = $true; continue }
-                                '^m$' { $sortMethod = 'Manual'; $refreshTracks = $true; continue }
-                                '^f$' { $sortMethod = 'byFilesystem'; $refreshTracks = $true; continue }
-                                '^r$' { $ReverseSource = -not $ReverseSource; $refreshTracks = $true; continue }
+                                '^o$' { $sortMethod = 'byOrder'; $script:refreshTracks = $true; continue }
+                                '^d$' { $sortMethod = 'byDuration'; $script:refreshTracks = $true; continue }
+                                '^t$' { $sortMethod = 'byTrackNumber'; $script:refreshTracks = $true; continue }
+                                '^n$' { $sortMethod = 'byName'; $script:refreshTracks = $true; continue }
+                                '^l$' { $sortMethod = 'byTitle'; $script:refreshTracks = $true; continue }
+                                '^h$' { $sortMethod = 'Hybrid'; $script:refreshTracks = $true; continue }
+                                '^m$' { $sortMethod = 'Manual'; $script:refreshTracks = $true; continue }
+                                '^f$' { $sortMethod = 'byFilesystem'; $script:refreshTracks = $true; continue }
+                                '^r$' { $ReverseSource = -not $ReverseSource; $script:refreshTracks = $true; continue }
                                 '^rm$' {
                                     # Review marked tracks in Manual mode
                                     $markedTracks = @($pairedTracks | Where-Object { $_.PSObject.Properties['Marked'] -and $_.Marked })
@@ -1930,17 +1930,17 @@ function Start-OM {
                                     
                                     Write-Host "`n✓ Finished reviewing marked tracks" -ForegroundColor Green
                                     Start-Sleep -Seconds 1
-                                    $refreshTracks = $true
+                                    $script:refreshTracks = $true
                                     continue
                                 }
-                                '^v$' { $script:showVerbose = -not $script:showVerbose; $refreshTracks = $true; continue }
+                                '^v$' { $script:showVerbose = -not $script:showVerbose; $script:refreshTracks = $true; continue }
                                 '^aa$' {
                                     # Manual album artist builder
                                     if ($tracksForAlbum -and $tracksForAlbum.Count -gt 0) {
                                         $script:ManualAlbumArtist = Invoke-AlbumArtistBuilder -AlbumName $ProviderAlbum.name -Tracks $tracksForAlbum -CurrentAlbumArtist $ProviderArtist.name
                                         if ($script:ManualAlbumArtist) {
                                             Write-Host "`n✓ Album artist set to: $script:ManualAlbumArtist" -ForegroundColor Green
-                                            $refreshTracks = $true
+                                            $script:refreshTracks = $true
                                         }
                                         else {
                                             Write-Host "`nSkipped - album artist unchanged" -ForegroundColor Gray
@@ -2015,7 +2015,7 @@ function Start-OM {
                                 }
                                 '^whatif$|^w$' {
                                     $useWhatIf = -not $useWhatIf
-                                    $refreshTracks = $true
+                                    $script:refreshTracks = $true
                                     continue
                                 }
                                 '^x(ip)?$' { 
@@ -2175,7 +2175,7 @@ function Start-OM {
                                         Write-Host "No tracks were updated." -ForegroundColor Yellow
                                     }
 
-                                    $refreshTracks = $false
+                                    $script:refreshTracks = $false
                                     continue doTracks
                                 }
                                 '^st$' {
@@ -2257,7 +2257,7 @@ function Start-OM {
                                                     continue
                                                 }
                                             }
-                                            $refreshTracks = $true
+                                            $script:refreshTracks = $true
                                         }
                                         # Don't exit the doTracks loop - just refresh and continue
                                         # This avoids re-entering Stage C which would re-fetch tracks from provider
