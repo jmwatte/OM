@@ -2437,6 +2437,45 @@ function Start-OM {
                                     $moveResult = Invoke-MoveAlbumWithRetry -mvArgs $mvArgs -useWhatIf $useWhatIf
                                     #   & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath -album $album -audioFiles $audioFiles -refreshTracks $refreshTracks
                                     & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath
+                                    
+                                    # Reload audio files with updated tags if not in WhatIf mode and folder wasn't moved
+                                    # (handleMoveSuccess reloads if folder was moved, but we need to reload even if it wasn't)
+                                    if (-not $useWhatIf -and $moveResult -and $moveResult.NewAlbumPath -eq $oldpath) {
+                                        Write-Verbose "Reloading audio files to reflect saved tags (folder not moved)"
+                                        # Reload audio files with fresh TagLib handles
+                                        $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                                            Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
+                                            Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
+                                        $audioFiles = foreach ($f in $audioFiles) {
+                                            try {
+                                                $tagFile = [TagLib.File]::Create($f.FullName)
+                                                [PSCustomObject]@{
+                                                    FilePath    = $f.FullName
+                                                    DiscNumber  = $tagFile.Tag.Disc
+                                                    TrackNumber = $tagFile.Tag.Track
+                                                    Title       = $tagFile.Tag.Title
+                                                    TagFile     = $tagFile
+                                                    Composer    = if ($tagFile.Tag.Composers) { $tagFile.Tag.Composers -join '; ' } else { 'Unknown Composer' }
+                                                    Artist      = if ($tagFile.Tag.Performers) { $tagFile.Tag.Performers -join '; ' } else { 'Unknown Artist' }
+                                                    Name        = if ($tagFile.Tag.Title) { $tagFile.Tag.Title } else { $f.BaseName }
+                                                    Duration    = $tagFile.Properties.Duration.TotalMilliseconds
+                                                }
+                                            }
+                                            catch {
+                                                Write-Warning "Skipping corrupted or invalid audio file: $($f.FullName) - Error: $($_.Exception.Message)"
+                                                continue
+                                            }
+                                        }
+                                        
+                                        # Update paired tracks with reloaded audio files
+                                        if ($pairedTracks -and $pairedTracks.Count -gt 0) {
+                                            for ($i = 0; $i -lt [Math]::Min($pairedTracks.Count, $audioFiles.Count); $i++) {
+                                                $pairedTracks[$i].AudioFile = $audioFiles[$i]
+                                            }
+                                        }
+                                        $refreshTracks = $true
+                                    }
+                                    
                                     continue                                   
                                     
                                 }
