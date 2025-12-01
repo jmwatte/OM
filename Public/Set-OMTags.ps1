@@ -886,7 +886,7 @@ function Set-OMTags {
                             }
                             'Comment' { 
                                 # FLAC files use Description field (DESCRIPTION Vorbis comment)
-                                if ($tagFile -is [TagLib.Flac.File]) {
+                                if ($fileObj -is [TagLib.Flac.File]) {
                                     if ($newValue) {
                                         $tag.Description = $newValue
                                     } else {
