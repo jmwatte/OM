@@ -1895,7 +1895,8 @@ function Start-OM {
                                                 
                                                 # Update the paired track in main array
                                                 for ($i = 0; $i -lt $pairedTracks.Count; $i++) {
-                                                    if ($pairedTracks[$i].AudioFile.FilePath -eq $markedTrack.AudioFile.FilePath) {
+                                                    if ($pairedTracks[$i].AudioFile -and 
+                                                        $pairedTracks[$i].AudioFile.FilePath -eq $markedTrack.AudioFile.FilePath) {
                                                         $pairedTracks[$i].SpotifyTrack = $selectedTrack
                                                         $pairedTracks[$i].Marked = $false
                                                         Write-Host "✓ Updated" -ForegroundColor Green
