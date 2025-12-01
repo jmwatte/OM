@@ -78,17 +78,32 @@ function Save-TagsForFile {
                         if ($tagFile.Tag.PSObject.Properties['Conductor']) {
                             $tagFile.Tag.Conductor = $v
                         } else {
-                            # Fallback: add to Comment if Conductor field doesn't exist
-                            if ($tagFile.Tag.Comment) {
-                                $tagFile.Tag.Comment += "`nConductor: $v"
+                            # Fallback: add to Comment/Description if Conductor field doesn't exist
+                            if ($tagFile -is [TagLib.Flac.File]) {
+                                # FLAC uses Description field
+                                if ($tagFile.Tag.Description) {
+                                    $tagFile.Tag.Description += "`nConductor: $v"
+                                } else {
+                                    $tagFile.Tag.Description = "Conductor: $v"
+                                }
                             } else {
-                                $tagFile.Tag.Comment = "Conductor: $v"
+                                # Other formats use Comment
+                                if ($tagFile.Tag.Comment) {
+                                    $tagFile.Tag.Comment += "`nConductor: $v"
+                                } else {
+                                    $tagFile.Tag.Comment = "Conductor: $v"
+                                }
                             }
                         }
                     }
                     'Comment' {
-                        # Store full production credits in Comment field
-                        $tagFile.Tag.Comment = $v
+                        # Store full production credits in Comment/Description field
+                        # FLAC files use Description field (DESCRIPTION Vorbis comment)
+                        if ($tagFile -is [TagLib.Flac.File]) {
+                            $tagFile.Tag.Description = $v
+                        } else {
+                            $tagFile.Tag.Comment = $v
+                        }
                     }
                     default {
                         if ($tagFile.Tag.PSObject.Properties.Match($k)) {

@@ -885,10 +885,19 @@ function Set-OMTags {
                                 }
                             }
                             'Comment' { 
-                                if ($newValue) {
-                                    $tag.Comment = $newValue
+                                # FLAC files use Description field (DESCRIPTION Vorbis comment)
+                                if ($tagFile -is [TagLib.Flac.File]) {
+                                    if ($newValue) {
+                                        $tag.Description = $newValue
+                                    } else {
+                                        $tag.Description = $null
+                                    }
                                 } else {
-                                    $tag.Comment = $null
+                                    if ($newValue) {
+                                        $tag.Comment = $newValue
+                                    } else {
+                                        $tag.Comment = $null
+                                    }
                                 }
                             }
                             'Lyrics' { 
