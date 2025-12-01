@@ -582,6 +582,10 @@ function Start-OM {
         foreach ($albumOriginal in $albums) {
             $script:album = $albumOriginal
             $script:ManualAlbumArtist = $null
+            # Initialize script-scope variables used by handleMoveSuccess scriptblock
+            $script:audioFiles = $null
+            $script:pairedTracks = $null
+            $script:refreshTracks = $false
             # derive album name and year
             # Try to extract year from the start of the folder name (e.g., "2023 - Album Name")
             if ($script:album.Name -match '^(\d{4})\s*[-]?\s*(.+)') {
