@@ -2445,10 +2445,10 @@ function Start-OM {
                                     if (-not $useWhatIf -and $moveResult -and $moveResult.NewAlbumPath -eq $oldpath) {
                                         Write-Verbose "Reloading audio files to reflect saved tags (folder not moved)"
                                         # Reload audio files with fresh TagLib handles
-                                        $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                                        $script:audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
                                             Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
                                             Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
-                                        $audioFiles = foreach ($f in $audioFiles) {
+                                        $script:audioFiles = foreach ($f in $script:audioFiles) {
                                             try {
                                                 $tagFile = [TagLib.File]::Create($f.FullName)
                                                 [PSCustomObject]@{
@@ -2470,12 +2470,12 @@ function Start-OM {
                                         }
                                         
                                         # Update paired tracks with reloaded audio files to preserve pairing
-                                        if ($pairedTracks -and $pairedTracks.Count -gt 0) {
-                                            for ($i = 0; $i -lt [Math]::Min($pairedTracks.Count, $audioFiles.Count); $i++) {
-                                                $pairedTracks[$i].AudioFile = $audioFiles[$i]
+                                        if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
+                                            for ($i = 0; $i -lt [Math]::Min($script:pairedTracks.Count, $script:audioFiles.Count); $i++) {
+                                                $script:pairedTracks[$i].AudioFile = $script:audioFiles[$i]
                                             }
                                         }
-                                        $refreshTracks = $true
+                                        $script:refreshTracks = $true
                                     }
                                     
                                     continue                                   
