@@ -365,10 +365,10 @@ function Start-OM {
                     $script:album = Get-Item -LiteralPath $moveResult.NewAlbumPath
             
                     # Reload audio files with fresh TagLib handles from the NEW album path
-                    $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                    $script:audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
                         Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
                         Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
-                    $audioFiles = foreach ($f in $audioFiles) {
+                    $script:audioFiles = foreach ($f in $script:audioFiles) {
                         try {
                             $tagFile = [TagLib.File]::Create($f.FullName)
                             [PSCustomObject]@{
@@ -390,15 +390,15 @@ function Start-OM {
                     }
 
                     # Update paired tracks with reloaded audio files to reflect updated tags
-                    if ($pairedTracks -and $pairedTracks.Count -gt 0) {
-                        for ($i = 0; $i -lt [Math]::Min($pairedTracks.Count, $audioFiles.Count); $i++) {
-                            if ($pairedTracks[$i].AudioFile.TagFile) {
-                                try { $pairedTracks[$i].AudioFile.TagFile.Dispose() } catch { }
+                    if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
+                        for ($i = 0; $i -lt [Math]::Min($script:pairedTracks.Count, $script:audioFiles.Count); $i++) {
+                            if ($script:pairedTracks[$i].AudioFile.TagFile) {
+                                try { $script:pairedTracks[$i].AudioFile.TagFile.Dispose() } catch { }
                             }
-                            $pairedTracks[$i].AudioFile = $audioFiles[$i]
+                            $script:pairedTracks[$i].AudioFile = $script:audioFiles[$i]
                         }
                     }
-                    $refreshTracks = $true  # Trigger display refresh to show updated tags
+                    $script:refreshTracks = $true  # Trigger display refresh to show updated tags
                     
                     # Handle TargetFolder move if specified
                     if ($TargetFolder) {
