@@ -525,11 +525,11 @@ function Start-OM {
 
                         # Update paired tracks with reloaded audio files
                         if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
-                            for ($i = 0; $i -lt [Math]::Min($pairedTracks.Count, $audioFiles.Count); $i++) {
-                                if ($pairedTracks[$i].AudioFile.TagFile) {
-                                    try { $pairedTracks[$i].AudioFile.TagFile.Dispose() } catch { }
+                            for ($i = 0; $i -lt [Math]::Min($script:pairedTracks.Count, $audioFiles.Count); $i++) {
+                                if ($script:pairedTracks[$i].AudioFile.TagFile) {
+                                    try { $script:pairedTracks[$i].AudioFile.TagFile.Dispose() } catch { }
                                 }
-                                $pairedTracks[$i].AudioFile = $audioFiles[$i]
+                                $script:pairedTracks[$i].AudioFile = $audioFiles[$i]
                             }
                         }
                     }
@@ -1285,23 +1285,23 @@ function Start-OM {
                         }
                         
                         # collect audio files and tags
-                        $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                        $script:audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
                             Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
                         
                         Write-Verbose "sortMethod = '$sortMethod'"
-                        Write-Verbose "First 3 files from Get-ChildItem: $($audioFiles | Select-Object -First 3 | ForEach-Object { $_.Name } | Join-String -Separator ', ')"
+                        Write-Verbose "First 3 files from Get-ChildItem: $($script:audioFiles | Select-Object -First 3 | ForEach-Object { $_.Name } | Join-String -Separator ', ')"
                         
                         # Only sort if NOT using byFilesystem (which preserves disk order)
                         if ($sortMethod -ne 'byFilesystem') {
                             Write-Verbose "Applying alphabetical sort (sortMethod != 'byFilesystem')"
-                            $audioFiles = $audioFiles | Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
+                            $script:audioFiles = $script:audioFiles | Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
                         }
                         else {
                             Write-Verbose "Preserving filesystem order (sortMethod == 'byFilesystem')"
                         }
                         
-                        Write-Verbose "First 3 files after conditional sort: $($audioFiles | Select-Object -First 3 | ForEach-Object { $_.Name } | Join-String -Separator ', ')"
-                        $audioFiles = foreach ($f in $audioFiles) {
+                        Write-Verbose "First 3 files after conditional sort: $($script:audioFiles | Select-Object -First 3 | ForEach-Object { $_.Name } | Join-String -Separator ', ')"
+                        $script:audioFiles = foreach ($f in $script:audioFiles) {
                             try {
                                 $tagFile = [TagLib.File]::Create($f.FullName)
                                 
@@ -1693,18 +1693,24 @@ function Start-OM {
                         try {
                             if ($PSBoundParameters.ContainsKey('Verbose')) {
                                 Write-Verbose "Provider tracks for album: $($ProviderAlbum.name) (count: $($tracksForAlbum.Count))"
+                                Write-Verbose "DEBUG: About to call Format-Table on tracksForAlbum"
                                 $tracksForAlbum | Select-Object id, name, disc_number, track_number | Format-Table -AutoSize
+                                Write-Verbose "DEBUG: Format-Table completed successfully"
                             }
                         }
                         catch {
                             Write-Verbose "Failed to print debug provider tracks: $($_.Exception.Message)"
+                            Write-Warning "Exception in Format-Table: $($_ | Out-String)"
                         }
                         $exitdo = $false
-                        $pairedTracks = $null
+                        $script:pairedTracks = $null
                         $script:refreshTracks = $true
                         $goCDisplayShown = $false
+                        Write-Verbose "DEBUG: Starting doTracks loop, script:pairedTracks is null: $($null -eq $script:pairedTracks)"
                         :doTracks do {
+                            Write-Verbose "DEBUG: Inside doTracks, checking if we need to refresh..."
                             if ($script:refreshTracks -or -not $script:pairedTracks) {
+                                Write-Verbose "DEBUG: Will call Set-Tracks"
                                 if ($useWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
                                 $param = @{
                                     SortMethod    = $sortMethod
@@ -1716,6 +1722,7 @@ function Start-OM {
                                 
                                 # Sort paired tracks by confidence (High → Medium → Low)
                                 # This makes it easy to spot problematic matches at the bottom
+                                Write-Verbose "DEBUG: About to check confidence sorting... script:pairedTracks type: $($script:pairedTracks.GetType().Name), Count: $($script:pairedTracks.Count)"
                                 if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0 -and $script:pairedTracks[0].PSObject.Properties['Confidence']) {
                                     $script:pairedTracks = $script:pairedTracks | Sort-Object Confidence -Descending
                                     Write-Verbose "Sorted $($script:pairedTracks.Count) tracks by confidence"
@@ -1731,7 +1738,7 @@ function Start-OM {
                                     if ($VerbosePreference -ne 'Continue') { Clear-Host }
                                     $autoReader = { param($prompt) 'q' }
                                     $autoShowParams = @{
-                                        PairedTracks  = $pairedTracks
+                                        PairedTracks  = $script:pairedTracks
                                         AlbumName     = $ProviderAlbum.name
                                         SpotifyArtist = $ProviderArtist
                                     }
@@ -1769,7 +1776,7 @@ function Start-OM {
                                 $optionsLine = "`nOptions: SortBy $sortMethodDisplay, (r)everse | (S)ave {[A]ll, [T]ags, [F]olderNames} | {C}over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags} | (aa)AlbumArtist, (rm)ReviewMarked, (b)ack/(pr)evious, (P)rovider, (F)indmode, (w)hatIf:$whatIfStatus, (v)erbose:$verboseStatus, (X)ip"
                                 $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'rm', 'sa', 'st', 'sf', 'cv', 'cvo', 'cs', 'ct', 'aa', 'b', 'pr', 'p', 'pq', 'ps', 'pd', 'pm', 'f', 'w', 'whatif', 'v', 'x')
                                 $paramshow = @{
-                                    PairedTracks  = $pairedTracks
+                                    PairedTracks  = $script:pairedTracks
                                     AlbumName     = $ProviderAlbum.name
                                     SpotifyArtist = $ProviderArtist
                                     OptionsText   = $optionsLine
@@ -1802,7 +1809,7 @@ function Start-OM {
                                 '^r$' { $ReverseSource = -not $ReverseSource; $script:refreshTracks = $true; continue }
                                 '^rm$' {
                                     # Review marked tracks in Manual mode
-                                    $markedTracks = @($pairedTracks | Where-Object { $_.PSObject.Properties['Marked'] -and $_.Marked })
+                                    $markedTracks = @($script:pairedTracks | Where-Object { $_.PSObject.Properties['Marked'] -and $_.Marked })
                                     if ($markedTracks.Count -eq 0) {
                                         Write-Host "`nNo tracks are marked for review." -ForegroundColor Yellow
                                         Start-Sleep -Seconds 2
@@ -1898,11 +1905,11 @@ function Start-OM {
                                                 $selectedTrack = $scoredPool[$selectedIndex].Track
                                                 
                                                 # Update the paired track in main array
-                                                for ($i = 0; $i -lt $pairedTracks.Count; $i++) {
-                                                    if ($pairedTracks[$i].AudioFile -and 
-                                                        $pairedTracks[$i].AudioFile.FilePath -eq $markedTrack.AudioFile.FilePath) {
-                                                        $pairedTracks[$i].SpotifyTrack = $selectedTrack
-                                                        $pairedTracks[$i].Marked = $false
+                                                for ($i = 0; $i -lt $script:pairedTracks.Count; $i++) {
+                                                    if ($script:pairedTracks[$i].AudioFile -and 
+                                                        $script:pairedTracks[$i].AudioFile.FilePath -eq $markedTrack.AudioFile.FilePath) {
+                                                        $script:pairedTracks[$i].SpotifyTrack = $selectedTrack
+                                                        $script:pairedTracks[$i].Marked = $false
                                                         Write-Host "✓ Updated" -ForegroundColor Green
                                                         
                                                         # Remove selected track from pool
@@ -2112,7 +2119,7 @@ function Start-OM {
                                     
                                 }
                                 '^st\s+(?<range>.+)$' {
-                                    if (-not $pairedTracks -or $pairedTracks.Count -eq 0) {
+                                    if (-not $script:pairedTracks -or $script:pairedTracks.Count -eq 0) {
                                         Write-Warning "No track matches available to save."
                                         continue doTracks
                                     }
@@ -2124,7 +2131,7 @@ function Start-OM {
                                     }
 
                                     try {
-                                        $selectedIndices = Expand-SelectionRange -RangeText $rangeText -MaxIndex $pairedTracks.Count
+                                        $selectedIndices = Expand-SelectionRange -RangeText $rangeText -MaxIndex $script:pairedTracks.Count
                                     }
                                     catch {
                                         Write-Warning "Invalid track selection: $($_.Exception.Message)"
@@ -2137,7 +2144,7 @@ function Start-OM {
                                     }
 
                                     try {
-                                        $saveResult = Save-OMTrackSelection -PairedTracks $pairedTracks -SelectedIndices $selectedIndices -ProviderArtist $ProviderArtist -ProviderAlbum $ProviderAlbum -UseWhatIf:$useWhatIf
+                                        $saveResult = Save-OMTrackSelection -PairedTracks $script:pairedTracks -SelectedIndices $selectedIndices -ProviderArtist $ProviderArtist -ProviderAlbum $ProviderAlbum -UseWhatIf:$useWhatIf
                                     }
                                     catch {
                                         Write-Warning "Failed to save selected tracks: $($_.Exception.Message)"
@@ -2169,7 +2176,7 @@ function Start-OM {
                                     $tracksForAlbum = $saveResult.UpdatedSpotifyTracks
 
                                     if ($saveResult.SavedDetails.Count -gt 0) {
-                                        Write-Host ("✓ Processed {0} track(s). Remaining: {1}" -f $saveResult.SavedDetails.Count, $pairedTracks.Count) -ForegroundColor Green
+                                        Write-Host ("✓ Processed {0} track(s). Remaining: {1}" -f $saveResult.SavedDetails.Count, $script:pairedTracks.Count) -ForegroundColor Green
                                     }
                                     else {
                                         Write-Host "No tracks were updated." -ForegroundColor Yellow
@@ -2182,7 +2189,7 @@ function Start-OM {
                                     try {
 
 
-                                        foreach ($pair in $pairedTracks) {
+                                        foreach ($pair in $script:pairedTracks) {
                                             if ($null -ne $pair.AudioFile) {
                                                 $filePath = $pair.AudioFile.FilePath
                                                 $tagsParams = @{
@@ -2279,7 +2286,7 @@ function Start-OM {
 
 
 
-                                    foreach ($pair in $pairedTracks) {
+                                    foreach ($pair in $script:pairedTracks) {
                                         # check if pair has audio and spotify track with get-ifexists
                                         if ($null -ne (Get-IfExists $pair 'AudioFile') -and $null -ne (Get-IfExists $pair 'SpotifyTrack')) {
                                             $filePath = $pair.AudioFile.FilePath
