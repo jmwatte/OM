@@ -14,12 +14,24 @@ function Set-Tracks {
         # byFilesystem: Preserve original filesystem order (as files appear on disk)
         # This is useful when files are already in correct order but lack proper tags/numbering
         "byFilesystem" {
-            # Files come in as they are ordered in the filesystem
-            # Simply pair them sequentially without any re-sorting
+            # Sort audio files by leading track number in filename (natural sort)
+            # Handles "1. Aria", "2. Variation 1", "10. Variation 9", etc.
+            $sortedAudio = $AudioFiles | Sort-Object {
+                $filename = [System.IO.Path]::GetFileName($_.FilePath)
+                # Extract leading number from filename (e.g., "1. Aria" -> 1, "10. Variation" -> 10)
+                if ($filename -match '^(\d+)') {
+                    [int]$matches[1]
+                } else {
+                    # No leading number, use a high value to sort at end
+                    999999
+                }
+            }
+            $sortedSpotify = $SpotifyTracks | Sort-Object disc_number, track_number
+            
             if ($Reverse) {
-                foreach ($audio in $AudioFiles) {
-                    $index = [Array]::IndexOf($AudioFiles, $audio)
-                    $spotifyTrack = if ($index -lt $SpotifyTracks.Count) { $SpotifyTracks[$index] } else { $null }
+                foreach ($audio in $sortedAudio) {
+                    $index = [Array]::IndexOf($sortedAudio, $audio)
+                    $spotifyTrack = if ($index -lt $sortedSpotify.Count) { $sortedSpotify[$index] } else { $null }
                     
                     # Calculate confidence if both tracks exist
                     $confidence = if ($spotifyTrack -and $audio) {
@@ -35,9 +47,9 @@ function Set-Tracks {
                 }
             }
             else {
-                foreach ($spotify in $SpotifyTracks) {
-                    $index = [Array]::IndexOf($SpotifyTracks, $spotify)
-                    $audioFile = if ($index -lt $AudioFiles.Count) { $AudioFiles[$index] } else { $null }
+                foreach ($spotify in $sortedSpotify) {
+                    $index = [Array]::IndexOf($sortedSpotify, $spotify)
+                    $audioFile = if ($index -lt $sortedAudio.Count) { $sortedAudio[$index] } else { $null }
                     
                     # Calculate confidence if both tracks exist
                     $confidence = if ($spotify -and $audioFile) {
@@ -54,12 +66,24 @@ function Set-Tracks {
             }
         }
         # byOrder: each one in the order by which they came in
+        # Also applies natural sorting by leading track number
         "byOrder" {
+            # Sort audio files by leading track number in filename (natural sort)
+            $sortedAudio = $AudioFiles | Sort-Object {
+                $filename = [System.IO.Path]::GetFileName($_.FilePath)
+                if ($filename -match '^(\d+)') {
+                    [int]$matches[1]
+                } else {
+                    999999
+                }
+            }
+            $sortedSpotify = $SpotifyTracks | Sort-Object disc_number, track_number
+            
             if ($Reverse) {
                 # Iterate over audio files, match to Spotify by order
-                foreach ($audio in $AudioFiles) {
-                    $index = [Array]::IndexOf($AudioFiles, $audio)
-                    $spotifyTrack = if ($index -lt $SpotifyTracks.Count) { $SpotifyTracks[$index] } else { $null }
+                foreach ($audio in $sortedAudio) {
+                    $index = [Array]::IndexOf($sortedAudio, $audio)
+                    $spotifyTrack = if ($index -lt $sortedSpotify.Count) { $sortedSpotify[$index] } else { $null }
                     
                     # Calculate confidence if both tracks exist
                     $confidence = if ($spotifyTrack -and $audio) {
@@ -76,9 +100,9 @@ function Set-Tracks {
             }
             else {
                 # Original: Iterate over Spotify tracks
-                foreach ($spotify in $SpotifyTracks) {
-                    $index = [Array]::IndexOf($SpotifyTracks, $spotify)
-                    $audioFile = if ($index -lt $AudioFiles.Count) { $AudioFiles[$index] } else { $null }
+                foreach ($spotify in $sortedSpotify) {
+                    $index = [Array]::IndexOf($sortedSpotify, $spotify)
+                    $audioFile = if ($index -lt $sortedAudio.Count) { $sortedAudio[$index] } else { $null }
                     
                     # Calculate confidence if both tracks exist
                     $confidence = if ($spotify -and $audioFile) {
@@ -344,11 +368,15 @@ function Set-Tracks {
             else {
                 Write-Verbose "Matching audio files by existing disc/track numbers"
                 
-                # Check if any audio files have disc numbers
+                # Check if any audio files have disc numbers (treat disc 0 as "no disc" since many files use it as default)
                 $hasDiscNumbers = $AudioFiles | Where-Object { $_.DiscNumber -and $_.DiscNumber -gt 0 } | Select-Object -First 1
                 
-                if ($hasDiscNumbers) {
-                    # Audio files have disc numbers - use exact matching
+                # Check if provider has multiple discs
+                $providerDiscs = ($SpotifyTracks | Select-Object -ExpandProperty disc_number -Unique | Measure-Object).Count
+                $providerHasMultipleDiscs = $providerDiscs -gt 1
+                
+                if ($hasDiscNumbers -and $providerHasMultipleDiscs) {
+                    # Audio files have disc numbers AND provider has multiple discs - use exact disc+track matching
                     Write-Verbose "Audio files have disc numbers, matching by disc+track"
                     if ($Reverse) {
                         foreach ($audio in $AudioFiles) {
@@ -391,15 +419,17 @@ function Set-Tracks {
                     }
                 }
                 else {
-                    # Audio files lack disc numbers - pair sequentially by position
-                    Write-Verbose "Audio files lack disc numbers, pairing sequentially by position"
+                    # Single disc scenario OR audio files lack disc numbers - match by track number only
+                    Write-Verbose "Single disc or no disc numbers, matching by track number only"
                     $sortedSpotify = $SpotifyTracks | Sort-Object disc_number, track_number
                     $sortedAudio = $AudioFiles | Sort-Object TrackNumber
                     
                     if ($Reverse) {
                         foreach ($audio in $sortedAudio) {
-                            $index = [Array]::IndexOf($sortedAudio, $audio)
-                            $spotifyTrack = if ($index -lt $sortedSpotify.Count) { $sortedSpotify[$index] } else { $null }
+                            # Match by track number only, ignoring disc
+                            $spotifyTrack = $sortedSpotify | Where-Object { 
+                                $_.track_number -eq $audio.TrackNumber 
+                            } | Select-Object -First 1
                             
                             # Calculate confidence if both tracks exist
                             $confidence = if ($spotifyTrack -and $audio) {
@@ -416,8 +446,10 @@ function Set-Tracks {
                     }
                     else {
                         foreach ($spotify in $sortedSpotify) {
-                            $index = [Array]::IndexOf($sortedSpotify, $spotify)
-                            $audioFile = if ($index -lt $sortedAudio.Count) { $sortedAudio[$index] } else { $null }
+                            # Match by track number only
+                            $audioFile = $sortedAudio | Where-Object { 
+                                $_.TrackNumber -eq $spotify.track_number 
+                            } | Select-Object -First 1
                             
                             # Calculate confidence if both tracks exist
                             $confidence = if ($spotify -and $audioFile) {
@@ -519,6 +551,10 @@ function Set-Tracks {
             }
         }
         "hybrid" {
+            # Check if provider has multiple discs - if not, ignore disc number in matching
+            $providerDiscs = ($SpotifyTracks | Select-Object -ExpandProperty disc_number -Unique | Measure-Object).Count
+            $providerHasMultipleDiscs = $providerDiscs -gt 1
+            
             if ($Reverse) {
                 # Hybrid: Iterate over audio files, score against Spotify tracks
                 $discTrackWeight = 50
@@ -530,8 +566,14 @@ function Set-Tracks {
                     foreach ($spotify in $SpotifyTracks) {
                         $score = 0
                         
-                        # Disc/Track match
-                        if ($spotify.disc_number -eq $audio.DiscNumber -and $spotify.track_number -eq $audio.TrackNumber) {
+                        # Disc/Track match - ignore disc if provider is single-disc
+                        $discMatch = if ($providerHasMultipleDiscs) {
+                            $spotify.disc_number -eq $audio.DiscNumber
+                        } else {
+                            $true  # Single disc, always match disc
+                        }
+                        
+                        if ($discMatch -and $spotify.track_number -eq $audio.TrackNumber) {
                             $score += $discTrackWeight
                         }
                         
@@ -587,7 +629,14 @@ function Set-Tracks {
                     foreach ($audio in $AudioFiles) {
                         $score = 0
                         
-                        if ($audio.DiscNumber -eq $spotify.disc_number -and $audio.TrackNumber -eq $spotify.track_number) {
+                        # Disc/Track match - ignore disc if provider is single-disc
+                        $discMatch = if ($providerHasMultipleDiscs) {
+                            $audio.DiscNumber -eq $spotify.disc_number
+                        } else {
+                            $true  # Single disc, always match disc
+                        }
+                        
+                        if ($discMatch -and $audio.TrackNumber -eq $spotify.track_number) {
                             $score += $discTrackWeight
                         }
                         

@@ -35,9 +35,9 @@ function Show-Tracks {
         
         # Show confidence summary if available
         if ($PairedTracks.Count -gt 0 -and $PairedTracks[0].PSObject.Properties['Confidence']) {
-            $highCount = @($PairedTracks | Where-Object { $_.ConfidenceLevel -eq 'High' }).Count
-            $mediumCount = @($PairedTracks | Where-Object { $_.ConfidenceLevel -eq 'Medium' }).Count
-            $lowCount = @($PairedTracks | Where-Object { $_.ConfidenceLevel -eq 'Low' }).Count
+            $highCount = @($PairedTracks | Where-Object { $_.PSObject.Properties['ConfidenceLevel'] -and $_.ConfidenceLevel -eq 'High' }).Count
+            $mediumCount = @($PairedTracks | Where-Object { $_.PSObject.Properties['ConfidenceLevel'] -and $_.ConfidenceLevel -eq 'Medium' }).Count
+            $lowCount = @($PairedTracks | Where-Object { $_.PSObject.Properties['ConfidenceLevel'] -and $_.ConfidenceLevel -eq 'Low' }).Count
             $markedCount = @($PairedTracks | Where-Object { $_.PSObject.Properties['Marked'] -and $_.Marked }).Count
             
             $summary = ""
@@ -239,7 +239,7 @@ function Show-Tracks {
         $inputText = if ($null -ne $inputRaw) { $inputRaw.Trim() } else { '' }
         $inputLower = $inputText.ToLowerInvariant()
 
-        if ($inputLower -eq '' -or $inputLower -eq 'n') {
+        if ($inputLower -eq '') {
             if ($PairedTracks.Count -eq 0) { return $null }
             $page++
             if ($page -ge $totalPages) { $page = [math]::Max($totalPages - 1, 0) }
