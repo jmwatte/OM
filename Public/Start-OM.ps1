@@ -1808,22 +1808,38 @@ function Start-OM {
                                 '^f$' { $sortMethod = 'byFilesystem'; $script:refreshTracks = $true; continue }
                                 '^r$' { $ReverseSource = -not $ReverseSource; $script:refreshTracks = $true; continue }
                                 '^rm$' {
-                                    # Review marked tracks in Manual mode
+                                    # Review marked tracks in Manual mode, or all tracks if none marked
                                     $markedTracks = @($script:pairedTracks | Where-Object { $_.PSObject.Properties['Marked'] -and $_.Marked })
-                                    if ($markedTracks.Count -eq 0) {
-                                        Write-Host "`nNo tracks are marked for review." -ForegroundColor Yellow
-                                        Start-Sleep -Seconds 2
-                                        continue
-                                    }
                                     
-                                    Write-Host "`n🔖 Reviewing $($markedTracks.Count) marked track(s)..." -ForegroundColor Cyan
+                                    # If no marks, use all tracks with audio files
+                                    $reviewAll = $false
+                                    if ($markedTracks.Count -eq 0) {
+                                        $reviewAll = $true
+                                        $markedTracks = @($script:pairedTracks | Where-Object { $_.AudioFile })
+                                        if ($markedTracks.Count -eq 0) {
+                                            Write-Host "`nNo audio files to review." -ForegroundColor Yellow
+                                            Start-Sleep -Seconds 2
+                                            continue
+                                        }
+                                        Write-Host "`n📋 No marks set - reviewing ALL $($markedTracks.Count) track(s)..." -ForegroundColor Cyan
+                                    }
+                                    else {
+                                        Write-Host "`n🔖 Reviewing $($markedTracks.Count) marked track(s)..." -ForegroundColor Cyan
+                                    }
                                     Start-Sleep -Seconds 1
                                     
-                                    # Build pool of provider tracks from marked pairs
-                                    $providerTrackPool = @($markedTracks | Where-Object { $_.SpotifyTrack } | ForEach-Object { $_.SpotifyTrack })
+                                    # Build pool of provider tracks - from marked pairs if marks exist, otherwise from all provider tracks
+                                    if ($reviewAll) {
+                                        # Use all provider tracks for the album
+                                        $providerTrackPool = @($tracksForAlbum)
+                                    }
+                                    else {
+                                        # Use provider tracks from marked pairs only
+                                        $providerTrackPool = @($markedTracks | Where-Object { $_.SpotifyTrack } | ForEach-Object { $_.SpotifyTrack })
+                                    }
                                     
                                     if ($providerTrackPool.Count -eq 0) {
-                                        Write-Host "No provider tracks in marked pairs to work with." -ForegroundColor Yellow
+                                        Write-Host "No provider tracks available to choose from." -ForegroundColor Yellow
                                         Start-Sleep -Seconds 2
                                         continue
                                     }
@@ -1935,7 +1951,8 @@ function Start-OM {
                                         }
                                     }
                                     
-                                    Write-Host "`n✓ Finished reviewing marked tracks" -ForegroundColor Green
+                                    $finishMsg = if ($reviewAll) { "Finished reviewing all tracks" } else { "Finished reviewing marked tracks" }
+                                    Write-Host "`n✓ $finishMsg" -ForegroundColor Green
                                     Start-Sleep -Seconds 1
                                     $script:refreshTracks = $true
                                     continue
