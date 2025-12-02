@@ -1925,7 +1925,10 @@ function Start-OM {
                                                     if ($script:pairedTracks[$i].AudioFile -and 
                                                         $script:pairedTracks[$i].AudioFile.FilePath -eq $markedTrack.AudioFile.FilePath) {
                                                         $script:pairedTracks[$i].SpotifyTrack = $selectedTrack
-                                                        $script:pairedTracks[$i].Marked = $false
+                                                        # Only clear Marked property if it exists
+                                                        if ($script:pairedTracks[$i].PSObject.Properties['Marked']) {
+                                                            $script:pairedTracks[$i].Marked = $false
+                                                        }
                                                         Write-Host "✓ Updated" -ForegroundColor Green
                                                         
                                                         # Remove selected track from pool
