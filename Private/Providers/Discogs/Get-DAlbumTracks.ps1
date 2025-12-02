@@ -268,7 +268,9 @@ function Get-DAlbumTracks {
                 return $results
             }
 
-            if (($Track.type_ -in @('heading','index')) -and -not $Track.title) {
+            # Skip heading/index tracks - these are section markers, not actual tracks
+            # E.g., "Encore" headers in classical music releases
+            if ($Track.type_ -in @('heading','index')) {
                 return $results
             }
 
