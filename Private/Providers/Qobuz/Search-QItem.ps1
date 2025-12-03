@@ -95,14 +95,13 @@ function Search-QItem {
         $totalCards = $cards.Count
         $interrupted = $false
         
-        :cardLoop foreach ($card in $cards) {
-            # Check for user interruption (Q to stop processing)
+        foreach ($card in $cards) {
+            # Check for user interruption
             if ([Console]::KeyAvailable) {
                 $key = [Console]::ReadKey($true)
                 if ($key.Key -eq 'Q' -or $key.Key -eq 'Escape') {
                     Write-Host "Processing interrupted by user. Returning $($items.Count) artists processed so far." -ForegroundColor Yellow
-                    $interrupted = $true
-                    break cardLoop
+                    break
                 }
             }
             
@@ -135,16 +134,6 @@ function Search-QItem {
             $processed++
             Write-Host "Processing artist ${processed}/${totalCards}: $title - getting genres (Press Q to stop)" -ForegroundColor DarkGray
             
-            # Check for user interruption after displaying progress
-            if ([Console]::KeyAvailable) {
-                $key = [Console]::ReadKey($true)
-                if ($key.Key -eq 'Q' -or $key.Key -eq 'Escape') {
-                    Write-Host "Processing interrupted by user. Returning $($items.Count) artists processed so far." -ForegroundColor Yellow
-                    $interrupted = $true
-                    break cardLoop
-                }
-            }
-            
             # Only call ContainsKey if the cache exists and is a hashtable
             if ($cacheKey -and ($script:QobuzArtistGenresCache -is [hashtable]) -and $script:QobuzArtistGenresCache.ContainsKey($cacheKey)) {
                 $genres = $script:QobuzArtistGenresCache[$cacheKey]
@@ -152,16 +141,6 @@ function Search-QItem {
             elseif ($cacheKey) {
                 try {
                     $artistResp = Invoke-WebRequest -Uri $fullUrl -UseBasicParsing -ErrorAction Stop -TimeoutSec 15
-                    
-                    # Check for user interruption after the slow web request
-                    if ([Console]::KeyAvailable) {
-                        $key = [Console]::ReadKey($true)
-                        if ($key.Key -eq 'Q' -or $key.Key -eq 'Escape') {
-                            Write-Host "Processing interrupted by user. Returning $($items.Count) artists processed so far." -ForegroundColor Yellow
-                            $interrupted = $true
-                            break cardLoop
-                        }
-                    }
                     
                     $artistDoc  = ConvertFrom-Html -Content $artistResp.Content
             
