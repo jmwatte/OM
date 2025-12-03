@@ -91,7 +91,21 @@ function Search-QItem {
        
 
         $items = @()
+        $processed = 0
+        $totalCards = $cards.Count
+        $interrupted = $false
+        
         foreach ($card in $cards) {
+            # Check for user interruption (Q to stop processing)
+            if ([Console]::KeyAvailable) {
+                $key = [Console]::ReadKey($true)
+                if ($key.Key -eq 'Q' -or $key.Key -eq 'Escape') {
+                    Write-Host "Processing interrupted by user. Returning $($items.Count) artists processed so far." -ForegroundColor Yellow
+                    $interrupted = $true
+                    break
+                }
+            }
+            
             $title = $card.GetAttributeValue('title', '')
             # fallback: some card variants embed the artist link in a child node
             
@@ -118,7 +132,8 @@ function Search-QItem {
             
             $genres = @()
             $cacheKey = $fullUrl
-            write-host "getting genres for $fullUrl"
+            $processed++
+            Write-Host "Processing artist ${processed}/${totalCards}: $title - getting genres (Press Q to stop)" -ForegroundColor DarkGray
             # Only call ContainsKey if the cache exists and is a hashtable
             if ($cacheKey -and ($script:QobuzArtistGenresCache -is [hashtable]) -and $script:QobuzArtistGenresCache.ContainsKey($cacheKey)) {
                 $genres = $script:QobuzArtistGenresCache[$cacheKey]
