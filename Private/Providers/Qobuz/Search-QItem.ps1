@@ -135,22 +135,25 @@ function Search-QItem {
             $processed++
             Write-Host "Processing artist ${processed}/${totalCards}: $title - getting genres (Press Q to stop)" -ForegroundColor DarkGray
             
-            # Check for user interruption after displaying progress
-            if ([Console]::KeyAvailable) {
-                $key = [Console]::ReadKey($true)
-                if ($key.Key -eq 'Q' -or $key.Key -eq 'Escape') {
-                    Write-Host "Processing interrupted by user. Returning $($items.Count) artists processed so far." -ForegroundColor Yellow
-                    $interrupted = $true
-                    break cardLoop
-                }
-            }
-            
             # Only call ContainsKey if the cache exists and is a hashtable
             if ($cacheKey -and ($script:QobuzArtistGenresCache -is [hashtable]) -and $script:QobuzArtistGenresCache.ContainsKey($cacheKey)) {
                 $genres = $script:QobuzArtistGenresCache[$cacheKey]
             }
             elseif ($cacheKey) {
                 try {
+                    # Give user a moment to press Q before starting network request
+                    Start-Sleep -Milliseconds 200
+                    
+                    # Check for interruption before expensive network call
+                    if ([Console]::KeyAvailable) {
+                        $key = [Console]::ReadKey($true)
+                        if ($key.KeyChar -eq 'q' -or $key.KeyChar -eq 'Q' -or $key.Key -eq 'Escape') {
+                            Write-Host "Processing interrupted by user. Returning $($items.Count) artists processed so far." -ForegroundColor Yellow
+                            $interrupted = $true
+                            break cardLoop
+                        }
+                    }
+                    
                     $artistResp = Invoke-WebRequest -Uri $fullUrl -UseBasicParsing -ErrorAction Stop -TimeoutSec 15
                     
                     # Check for user interruption after the slow web request
