@@ -97,11 +97,9 @@ function Search-QItem {
         
         :cardLoop foreach ($card in $cards) {
             # Check for user interruption (Q to stop processing)
-            Write-Debug "[CHECK1] KeyAvailable: $([Console]::KeyAvailable)"
             if ([Console]::KeyAvailable) {
                 $key = [Console]::ReadKey($true)
-                Write-Host "[DEBUG] Key pressed at loop start: Key='$($key.Key)', KeyChar='$($key.KeyChar)', Modifiers='$($key.Modifiers)'" -ForegroundColor Magenta
-                if ($key.Key -eq 'Escape' -or $key.KeyChar -eq 'q' -or $key.KeyChar -eq 'Q') {
+                if ($key.Key -eq 'Q' -or $key.Key -eq 'Escape') {
                     Write-Host "Processing interrupted by user. Returning $($items.Count) artists processed so far." -ForegroundColor Yellow
                     $interrupted = $true
                     break cardLoop
@@ -138,11 +136,9 @@ function Search-QItem {
             Write-Host "Processing artist ${processed}/${totalCards}: $title - getting genres (Press Q to stop)" -ForegroundColor DarkGray
             
             # Check for user interruption after displaying progress
-            Write-Debug "[CHECK2] KeyAvailable: $([Console]::KeyAvailable)"
             if ([Console]::KeyAvailable) {
                 $key = [Console]::ReadKey($true)
-                Write-Host "[DEBUG] Key pressed after progress: Key='$($key.Key)', KeyChar='$($key.KeyChar)', Modifiers='$($key.Modifiers)'" -ForegroundColor Magenta
-                if ($key.Key -eq 'Escape' -or $key.KeyChar -eq 'q' -or $key.KeyChar -eq 'Q') {
+                if ($key.Key -eq 'Q' -or $key.Key -eq 'Escape') {
                     Write-Host "Processing interrupted by user. Returning $($items.Count) artists processed so far." -ForegroundColor Yellow
                     $interrupted = $true
                     break cardLoop
@@ -158,11 +154,9 @@ function Search-QItem {
                     $artistResp = Invoke-WebRequest -Uri $fullUrl -UseBasicParsing -ErrorAction Stop -TimeoutSec 15
                     
                     # Check for user interruption after the slow web request
-                    Write-Debug "[CHECK3] KeyAvailable: $([Console]::KeyAvailable)"
                     if ([Console]::KeyAvailable) {
                         $key = [Console]::ReadKey($true)
-                        Write-Host "[DEBUG] Key pressed after web request: Key='$($key.Key)', KeyChar='$($key.KeyChar)', Modifiers='$($key.Modifiers)'" -ForegroundColor Magenta
-                        if ($key.Key -eq 'Escape' -or $key.KeyChar -eq 'q' -or $key.KeyChar -eq 'Q') {
+                        if ($key.Key -eq 'Q' -or $key.Key -eq 'Escape') {
                             Write-Host "Processing interrupted by user. Returning $($items.Count) artists processed so far." -ForegroundColor Yellow
                             $interrupted = $true
                             break cardLoop
