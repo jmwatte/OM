@@ -411,7 +411,7 @@ function Start-OM {
                         
                         # Get AlbumArtist from the first audio file's tags (they should all be the same)
                         $albumArtistName = 'Unknown Artist'
-                        if ($audioFiles -and $audioFiles.Count -gt 0) {
+                        if ($audioFiles -and $audioFiles.Count -gt 0 -and $audioFiles[0].PSObject.Properties['FilePath']) {
                             Write-Verbose "Found $($audioFiles.Count) audio files for AlbumArtist extraction"
                             try {
                                 $firstFilePath = $audioFiles[0].FilePath
