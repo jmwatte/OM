@@ -417,7 +417,7 @@ function Start-OM {
                                 $firstFilePath = $audioFiles[0].FilePath
                                 Write-Verbose "Reading AlbumArtist from: $firstFilePath"
                                 # Dispose old handle if exists
-                                if ($audioFiles[0].TagFile) {
+                                if ($audioFiles[0].PSObject.Properties['TagFile'] -and $audioFiles[0].TagFile) {
                                     try { $audioFiles[0].TagFile.Dispose() } catch { }
                                     Write-Verbose "Disposed existing TagFile handle"
                                 }

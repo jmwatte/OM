@@ -95,14 +95,16 @@ function Search-QItem {
         $totalCards = $cards.Count
         $interrupted = $false
         
-        foreach ($card in $cards) {
+        :cardLoop foreach ($card in $cards) {
             # Check for user interruption (Q to stop processing)
+            Write-Debug "[CHECK1] KeyAvailable: $([Console]::KeyAvailable)"
             if ([Console]::KeyAvailable) {
                 $key = [Console]::ReadKey($true)
-                if ($key.Key -eq 'Q' -or $key.Key -eq 'Escape') {
+                Write-Host "[DEBUG] Key pressed at loop start: Key='$($key.Key)', KeyChar='$($key.KeyChar)', Modifiers='$($key.Modifiers)'" -ForegroundColor Magenta
+                if ($key.Key -eq 'Escape' -or $key.KeyChar -eq 'q' -or $key.KeyChar -eq 'Q') {
                     Write-Host "Processing interrupted by user. Returning $($items.Count) artists processed so far." -ForegroundColor Yellow
                     $interrupted = $true
-                    break
+                    break cardLoop
                 }
             }
             
@@ -134,6 +136,19 @@ function Search-QItem {
             $cacheKey = $fullUrl
             $processed++
             Write-Host "Processing artist ${processed}/${totalCards}: $title - getting genres (Press Q to stop)" -ForegroundColor DarkGray
+            
+            # Check for user interruption after displaying progress
+            Write-Debug "[CHECK2] KeyAvailable: $([Console]::KeyAvailable)"
+            if ([Console]::KeyAvailable) {
+                $key = [Console]::ReadKey($true)
+                Write-Host "[DEBUG] Key pressed after progress: Key='$($key.Key)', KeyChar='$($key.KeyChar)', Modifiers='$($key.Modifiers)'" -ForegroundColor Magenta
+                if ($key.Key -eq 'Escape' -or $key.KeyChar -eq 'q' -or $key.KeyChar -eq 'Q') {
+                    Write-Host "Processing interrupted by user. Returning $($items.Count) artists processed so far." -ForegroundColor Yellow
+                    $interrupted = $true
+                    break cardLoop
+                }
+            }
+            
             # Only call ContainsKey if the cache exists and is a hashtable
             if ($cacheKey -and ($script:QobuzArtistGenresCache -is [hashtable]) -and $script:QobuzArtistGenresCache.ContainsKey($cacheKey)) {
                 $genres = $script:QobuzArtistGenresCache[$cacheKey]
@@ -141,6 +156,19 @@ function Search-QItem {
             elseif ($cacheKey) {
                 try {
                     $artistResp = Invoke-WebRequest -Uri $fullUrl -UseBasicParsing -ErrorAction Stop -TimeoutSec 15
+                    
+                    # Check for user interruption after the slow web request
+                    Write-Debug "[CHECK3] KeyAvailable: $([Console]::KeyAvailable)"
+                    if ([Console]::KeyAvailable) {
+                        $key = [Console]::ReadKey($true)
+                        Write-Host "[DEBUG] Key pressed after web request: Key='$($key.Key)', KeyChar='$($key.KeyChar)', Modifiers='$($key.Modifiers)'" -ForegroundColor Magenta
+                        if ($key.Key -eq 'Escape' -or $key.KeyChar -eq 'q' -or $key.KeyChar -eq 'Q') {
+                            Write-Host "Processing interrupted by user. Returning $($items.Count) artists processed so far." -ForegroundColor Yellow
+                            $interrupted = $true
+                            break cardLoop
+                        }
+                    }
+                    
                     $artistDoc  = ConvertFrom-Html -Content $artistResp.Content
             
                     $genreNode = $artistDoc.SelectSingleNode("//*[@id='artist']/section[2]/div[2]/ul/li[1]/div/div[1]/a/div/p[1]")
