@@ -992,6 +992,9 @@ function Start-OM {
                     }
 
                 }
+                # Check if album was skipped in quick find mode before entering stage switch
+                if ($albumDone) { break }
+                
                 switch ($stage) {
                     
                     "A" {
