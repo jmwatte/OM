@@ -55,16 +55,80 @@ function Format-Genres {
         Skip all confirmations.
 
     .EXAMPLE
-        Get-OMTags -Path "C:\Music\Album" | Format-Genres -ShowFrequency | Set-OMTags
+        # Basic usage: Interactively clean up genres and write back to files
+        Get-OMTags -Path "C:\Music\Album" | Format-Genres | Set-OMTags
+        
+        # Or using aliases:
+        GOT "C:\Music\Album" | FOG | SOT
 
     .EXAMPLE
-        Get-OMTags -Path "C:\Music" | Format-Genres -Mode Batch -PassThru -ShowFrequency
+        # Preview all genres with frequency counts before making changes
+        Get-OMTags -Path "C:\Music" | Format-Genres -Mode Review -ShowFrequency
+        
+        # Shows a table with:
+        # ✓ OK    - Genres already in whitelist
+        # ⚙ MAP   - Genres with existing mappings (e.g., "Pop/Rock" → "Pop")
+        # ? NEW   - Unmapped genres that need decisions
+        # ✗ DEL   - Genres marked as garbage
 
     .EXAMPLE
-        Get-OMTags -Path "C:\Music\Album" | Format-Genres -NonInteractive -PassThru
+        # Process multiple albums non-interactively (only applies existing mappings)
+        Get-ChildItem "C:\Music" -Directory | ForEach-Object {
+            GOT $_.FullName | FOG -NonInteractive -PassThru | SOT
+        }
+        
+        # Safe for batch processing - won't prompt, only uses known mappings
 
     .EXAMPLE
-        Get-OMTags -Path "C:\Music\Album" | Format-Genres -Mode Review -WhatIf -ShowFrequency
+        # Interactive mode: Prompt for each unmapped genre as encountered
+        GOT "E:\Music\NewAlbum" | FOG -ShowFrequency | SOT
+        
+        # For each unmapped genre, you'll see options:
+        # [M]ap to existing genre
+        # [N]ew - add to whitelist
+        # [G]arbage - mark for deletion
+        # [S]kip this genre
+
+    .EXAMPLE
+        # Batch mode: Review all unmapped genres first, then decide
+        GOT "C:\Music" | FOG -Mode Batch -ShowFrequency -PassThru | SOT
+        
+        # Collects all unmapped genres across all files, shows frequency,
+        # then prompts once per unique genre for decision
+
+    .EXAMPLE
+        # Auto mode: Silent processing with existing mappings only
+        GOT "D:\MusicLibrary" | FOG -Mode Auto -PassThru | SOT
+        
+        # No prompts, no new mappings created. Perfect for scheduled tasks.
+
+    .EXAMPLE
+        # Safe preview: See what would change without modifying anything
+        GOT "C:\Music\TestAlbum" | FOG -ShowFrequency -PassThru | SOT -WhatIf
+        
+        # Shows exactly which files would be updated and how genres would change
+
+    .EXAMPLE
+        # Process single album and see corrected genres in pipeline
+        $corrected = GOT "E:\10cc" | FOG -NonInteractive -PassThru
+        $corrected | Select-Object Path, Genres
+        
+        # PassThru returns objects with corrected genres for further processing
+
+    .EXAMPLE
+        # Handle locale-specific genres (e.g., French music collection)
+        GOT "C:\Musique" | FOG -ShowFrequency
+        
+        # Prompts to map "Classique" → "Classical", "Variété" → "Pop", etc.
+        # Mappings are saved and reused automatically
+
+    .EXAMPLE
+        # Check current genre mappings in config
+        $config = Get-OMConfig
+        $config.Genres.GenreMappings
+        
+        # Edit config to add/remove mappings:
+        Set-OMConfig -GenresMappings @{"pop/rock" = "Pop"; "classique" = "Classical"}
 
     .LINK
         Get-OMTags

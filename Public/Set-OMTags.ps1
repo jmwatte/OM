@@ -515,10 +515,13 @@ function Set-OMTags {
     
     process {
         # Detect input type
+        $inputTags = $null
         if ($Path -is [PSCustomObject] -or $Path -is [PSObject]) {
             $isPipelineInput = $true
             $filePath = $Path.Path
-            $currentTags = $Path
+            $inputTags = $Path  # Store the modified tags from pipeline
+            # Always re-read file to get actual current state for comparison
+            $currentTags = Get-OMTags -Path $filePath
         } elseif ($Path -is [string]) {
             if ($Path -match '^@{Directory=(.+?); FileName=(.+?);') {
                 $directory = $matches[1]
@@ -552,18 +555,14 @@ function Set-OMTags {
             return
         }
         
+        # Ensure currentTags is populated
+        if (-not $currentTags) {
+            Write-Warning "Could not read tags from: $(Split-Path $filePath -Leaf)"
+            $errorCount++
+            return
+        }
+        
         try {
-            # Read current tags if not already provided via pipeline
-            if (-not $isPipelineInput) {
-                Write-Verbose "Reading current tags from: $(Split-Path $filePath -Leaf)"
-                $currentTags = Get-OMTags -Path $filePath
-                
-                if (-not $currentTags) {
-                    Write-Warning "Could not read tags from: $(Split-Path $filePath -Leaf)"
-                    $errorCount++
-                    return
-                }
-            }
             
             # Determine new tag values
             $newTags = if ($PSCmdlet.ParameterSetName -eq 'Transform') {
@@ -638,27 +637,30 @@ function Set-OMTags {
                 $result
             } else {
                 # Simple or Pipeline mode - apply hashtable updates to current tags
+                # If we have inputTags (pipeline mode), use those as base; otherwise use current
+                $baseTagsForUpdate = if ($inputTags) { $inputTags } else { $currentTags }
+                
                 $updated = [PSCustomObject]@{
-                    Path            = $currentTags.Path
-                    FileName        = $currentTags.FileName
-                    Title           = $currentTags.Title
-                    Artists         = if ($currentTags.Artists) { $currentTags.Artists } else { @() }
-                    AlbumArtists    = if ($currentTags.AlbumArtists) { $currentTags.AlbumArtists } else { @() }
-                    Album           = $currentTags.Album
-                    Track           = $currentTags.Track
-                    TrackCount      = $currentTags.TrackCount
-                    Disc            = $currentTags.Disc
-                    DiscCount       = $currentTags.DiscCount
-                    Year            = $currentTags.Year
-                    Genres          = if ($currentTags.Genres) { $currentTags.Genres } else { @() }
-                    Composers       = if ($currentTags.Composers) { $currentTags.Composers } else { @() }
-                    Comment         = if ($currentTags.Comment) { $currentTags.Comment } else { $null }
-                    Lyrics          = if ($currentTags.Lyrics) { $currentTags.Lyrics } else { $null }
-                    Duration        = $currentTags.Duration
-                    DurationSeconds = $currentTags.DurationSeconds
-                    Bitrate         = $currentTags.Bitrate
-                    SampleRate      = $currentTags.SampleRate
-                    Format          = $currentTags.Format
+                    Path            = $baseTagsForUpdate.Path
+                    FileName        = $baseTagsForUpdate.FileName
+                    Title           = $baseTagsForUpdate.Title
+                    Artists         = if ($baseTagsForUpdate.Artists) { $baseTagsForUpdate.Artists } else { @() }
+                    AlbumArtists    = if ($baseTagsForUpdate.AlbumArtists) { $baseTagsForUpdate.AlbumArtists } else { @() }
+                    Album           = $baseTagsForUpdate.Album
+                    Track           = $baseTagsForUpdate.Track
+                    TrackCount      = $baseTagsForUpdate.TrackCount
+                    Disc            = $baseTagsForUpdate.Disc
+                    DiscCount       = $baseTagsForUpdate.DiscCount
+                    Year            = $baseTagsForUpdate.Year
+                    Genres          = if ($baseTagsForUpdate.Genres) { $baseTagsForUpdate.Genres } else { @() }
+                    Composers       = if ($baseTagsForUpdate.Composers) { $baseTagsForUpdate.Composers } else { @() }
+                    Comment         = if ($baseTagsForUpdate.Comment) { $baseTagsForUpdate.Comment } else { $null }
+                    Lyrics          = if ($baseTagsForUpdate.Lyrics) { $baseTagsForUpdate.Lyrics } else { $null }
+                    Duration        = $baseTagsForUpdate.Duration
+                    DurationSeconds = $baseTagsForUpdate.DurationSeconds
+                    Bitrate         = $baseTagsForUpdate.Bitrate
+                    SampleRate      = $baseTagsForUpdate.SampleRate
+                    Format          = $baseTagsForUpdate.Format
                 }
                 
                 # Parse filename if ParseFilename pattern is specified
