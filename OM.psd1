@@ -71,6 +71,7 @@ Description = 'OM PowerShell module for music organization'
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
     'Add-OMDiscNumbers',
+    'Format-Genres',
     'Get-OMConfig',
     'Get-OMTags',
     'Move-OMTags',
@@ -87,11 +88,12 @@ VariablesToExport = @()
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
 AliasesToExport = @(
-    'SOM',  # Start-OM
-    'SOT',  # Set-OMTags
-    'GOT',  # Get-OMTags
     'AOD',  # Add-OMDiscNumbers
-    'MOT'   # Move-OMTags
+    'FOG',  # Format-Genres
+    'GOT',  # Get-OMTags
+    'MOT',  # Move-OMTags
+    'SOT',  # Set-OMTags
+    'SOM'   # Start-OM
 )
 
 # DSC resources to export from this module
