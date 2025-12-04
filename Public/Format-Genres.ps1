@@ -498,20 +498,24 @@ function Process-UnmappedGenres {
         $originalGenre = $unmapped.original
         $count = $unmapped.count
 
-        Write-Host "`nFound '$originalGenre' in $count file(s)" -ForegroundColor Yellow
-
         $decision = $null
 
         while (-not $decision) {
-            Write-Host "Options:" -ForegroundColor Cyan
+            # Always display the genre being processed (helps when going back)
+            Write-Host "`n╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+            Write-Host "  Found '$originalGenre' in $count file(s)" -ForegroundColor Yellow
+            Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+            
+            Write-Host "`nOptions:" -ForegroundColor Cyan
             Write-Host "  [N]ew      - Add as new standard genre" -ForegroundColor Gray
             Write-Host "  [A]ddTo    - Map to existing standard genre" -ForegroundColor Gray
             Write-Host "  [D]elete   - Mark as garbage, remove from tags" -ForegroundColor Gray
+            Write-Host "  [R]eview   - Review and modify recent decisions" -ForegroundColor Gray
             Write-Host "  [S]kip     - Skip for now (don't decide)" -ForegroundColor Gray
             Write-Host "  [Show]     - Show sample files with this genre" -ForegroundColor Gray
 
             if (-not $Force) {
-                $choice = Read-Host "Choose option (N/A/D/S/Show)"
+                $choice = Read-Host "Choose option (N/A/D/R/S/Show)"
                 $choice = $choice.ToUpper().Substring(0, 1)
             }
             else {
@@ -528,7 +532,7 @@ function Process-UnmappedGenres {
                         # Check if user wants to go back
                         if ($editedGenre -eq 'B' -or $editedGenre -eq 'b') {
                             Write-Host "Going back to main menu..." -ForegroundColor Gray
-                            # Don't set $decision, continue the loop
+                            # Don't set $decision, continue the loop to re-display
                             continue
                         }
                         
@@ -583,6 +587,50 @@ function Process-UnmappedGenres {
                     }
                 }
 
+                'R' {
+                    # Review recent decisions
+                    if ($script:genreDecisions.Count -eq 0) {
+                        Write-Host "No decisions made yet." -ForegroundColor Yellow
+                    }
+                    else {
+                        Write-Host "`n╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+                        Write-Host "  Recent Decisions (this session):" -ForegroundColor Yellow
+                        Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+                        
+                        $decisionList = @()
+                        $index = 1
+                        foreach ($key in $script:genreDecisions.Keys) {
+                            $value = $script:genreDecisions[$key]
+                            $action = if ($null -eq $value) { "DELETE" } else { "→ $value" }
+                            $decisionList += [PSCustomObject]@{
+                                Index = $index
+                                Original = $key
+                                Action = $action
+                            }
+                            Write-Host "  $index. '$key' $action" -ForegroundColor Gray
+                            $index++
+                        }
+                        
+                        Write-Host "`nOptions:" -ForegroundColor Cyan
+                        Write-Host "  Enter number to delete that decision" -ForegroundColor Gray
+                        Write-Host "  'B' to go back" -ForegroundColor Gray
+                        
+                        $reviewChoice = Read-Host "Choice"
+                        
+                        if ($reviewChoice -eq 'B' -or $reviewChoice -eq 'b') {
+                            Write-Host "Going back..." -ForegroundColor Gray
+                        }
+                        elseif ($reviewChoice -match '^\d+$' -and [int]$reviewChoice -ge 1 -and [int]$reviewChoice -le $decisionList.Count) {
+                            $toRemove = $decisionList[[int]$reviewChoice - 1].Original
+                            $script:genreDecisions.Remove($toRemove)
+                            Write-Host "✓ Removed decision for '$toRemove'" -ForegroundColor Green
+                        }
+                        else {
+                            Write-Host "Invalid choice." -ForegroundColor Red
+                        }
+                    }
+                }
+
                 'S' {
                     # Skip
                     Write-Host "Skipping '$originalGenre' - will ask again next time" -ForegroundColor Gray
@@ -601,7 +649,7 @@ function Process-UnmappedGenres {
                 }
 
                 default {
-                    Write-Host "Invalid option. Please choose N, A, D, S, or Show." -ForegroundColor Red
+                    Write-Host "Invalid option. Please choose N, A, D, R, S, or Show." -ForegroundColor Red
                 }
             }
         }
