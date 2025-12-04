@@ -544,7 +544,13 @@ function Process-UnmappedGenres {
                     # Add to allowed genres and create mapping
                     if (-not $AllowedGenresNormalized.ContainsKey($newGenre.ToLower())) {
                         $script:genreDecisions[$originalGenre.ToLower()] = $newGenre
+                        
+                        # Add to the live session lists so it's immediately available
+                        $AllowedGenres += $newGenre
+                        $AllowedGenresNormalized[$newGenre.ToLower()] = $newGenre
+                        
                         Write-Host "✓ Mapping: '$originalGenre' → '$newGenre'" -ForegroundColor Green
+                        Write-Host "  (Now available in standard genres list)" -ForegroundColor Gray
                     }
                     else {
                         Write-Host "⚠ '$newGenre' already exists in standard genres." -ForegroundColor Yellow
