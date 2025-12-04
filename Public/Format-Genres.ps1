@@ -598,8 +598,22 @@ function Update-GenresConfig {
 
     # Save updated config
     try {
-        Set-OMConfig -GenresMappings $Config.Genres.GenreMappings -GenresAllowedGenreNames $Config.Genres.AllowedGenreNames -Merge
-        Write-Verbose "Updated genre mappings in config."
+        $configPath = if ($IsLinux -or $IsMacOS) {
+            Join-Path $HOME '.OM' 'config.json'
+        }
+        else {
+            Join-Path $env:USERPROFILE '.OM' 'config.json'
+        }
+        
+        # Ensure directory exists
+        $configDir = Split-Path $configPath -Parent
+        if (-not (Test-Path $configDir)) {
+            New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+        }
+        
+        # Save entire config with updated genres
+        $Config | ConvertTo-Json -Depth 10 | Set-Content -Path $configPath -Encoding UTF8 -ErrorAction Stop
+        Write-Verbose "Updated genre mappings in config at: $configPath"
     }
     catch {
         Write-Warning "Failed to save genre mappings to config: $_"
