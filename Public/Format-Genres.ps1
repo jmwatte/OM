@@ -330,9 +330,9 @@ function Format-Genres {
                     -AllowedGenres $omConfig.Genres.AllowedGenreNames `
                     -AllowedGenresNormalized $allowedGenresNormalized `
                     -Mode $Mode `
-                    -AllowEditing $AllowGenreEditing `
-                    -Force $Force `
-                    -WhatIf $WhatIf
+                    -AllowEditing ([bool]$AllowGenreEditing) `
+                    -Force ([bool]$Force) `
+                    -WhatIf ([bool]$WhatIf)
             }
         }
 
@@ -584,7 +584,7 @@ function Apply-GenreCorrections {
 function Update-GenresConfig {
     param(
         [hashtable]$NewMappings,
-        [hashtable]$Config
+        [object]$Config
     )
 
     if ($NewMappings.Count -eq 0) {
