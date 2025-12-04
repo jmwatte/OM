@@ -115,7 +115,7 @@ function Format-Genres {
         # Default standard genres - comprehensive list
         $defaultStandardGenres = @(
             # Classical
-            'Western Classical', 'Baroque', 'Romantic', 'Modern Classical', 'Opera',
+            'Classical', 'Western Classical', 'Baroque', 'Romantic', 'Modern Classical', 'Opera',
             'Chamber Music', 'Choral', 'Medieval', 'Renaissance',
             'Indian Classical', 'Persian Classical', 'Andalusian Classical',
             'Korean Court Music', 'Ottoman Classical',
@@ -167,29 +167,38 @@ function Format-Genres {
 
         # Initialize Genres section if missing
         if (-not $omConfig.Genres) {
-            $omConfig.Genres = @{
+            $genresSection = [PSCustomObject]@{
                 AllowedGenreNames = $defaultStandardGenres
                 GenreMappings     = @{}
                 GarbageGenres     = @()
             }
+            $omConfig | Add-Member -NotePropertyName Genres -NotePropertyValue $genresSection -Force
         }
 
         # Ensure AllowedGenreNames exists and is an array
         if (-not $omConfig.Genres.AllowedGenreNames) {
-            $omConfig.Genres.AllowedGenreNames = $defaultStandardGenres
+            $omConfig.Genres | Add-Member -NotePropertyName AllowedGenreNames -NotePropertyValue $defaultStandardGenres -Force
         }
 
         if (-not $omConfig.Genres.GenreMappings) {
-            $omConfig.Genres.GenreMappings = @{}
+            $omConfig.Genres | Add-Member -NotePropertyName GenreMappings -NotePropertyValue @{} -Force
         }
 
         if (-not $omConfig.Genres.GarbageGenres) {
-            $omConfig.Genres.GarbageGenres = @()
+            $omConfig.Genres | Add-Member -NotePropertyName GarbageGenres -NotePropertyValue @() -Force
         }
 
         # Create normalized lookup for case-insensitive matching
+        # Use config genres if available, otherwise use defaults
+        $genresToUse = if ($omConfig.Genres -and $omConfig.Genres.AllowedGenreNames) {
+            $omConfig.Genres.AllowedGenreNames
+        }
+        else {
+            $defaultStandardGenres
+        }
+        
         $allowedGenresNormalized = @{}
-        foreach ($genre in $omConfig.Genres.AllowedGenreNames) {
+        foreach ($genre in $genresToUse) {
             $key = $genre.ToLower()
             if (-not $allowedGenresNormalized.ContainsKey($key)) {
                 $allowedGenresNormalized[$key] = $genre  # Store with original casing
@@ -216,7 +225,9 @@ function Format-Genres {
                     @($InputObject.Genres | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
                 }
                 else {
-                    @($InputObject.Genres)
+                    # Split by comma/semicolon if it's a single string with multiple genres
+                    $genreString = $InputObject.Genres.ToString()
+                    @($genreString -split '[,;]' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
                 }
             }
 
@@ -361,7 +372,7 @@ function Show-GenreFrequencySummary {
     $rows = @()
 
     foreach ($item in $Analysis.allowed) {
-        $rows += @{
+        $rows += [PSCustomObject]@{
             Status = "✓ OK"
             Genre  = $item.original
             Count  = $item.count
@@ -370,7 +381,7 @@ function Show-GenreFrequencySummary {
     }
 
     foreach ($item in $Analysis.mapped) {
-        $rows += @{
+        $rows += [PSCustomObject]@{
             Status = "⚙ MAP"
             Genre  = $item.original
             Count  = $item.count
@@ -379,7 +390,7 @@ function Show-GenreFrequencySummary {
     }
 
     foreach ($item in $Analysis.unmapped) {
-        $rows += @{
+        $rows += [PSCustomObject]@{
             Status = "? NEW"
             Genre  = $item.original
             Count  = $item.count
@@ -388,7 +399,7 @@ function Show-GenreFrequencySummary {
     }
 
     foreach ($item in $Analysis.garbage) {
-        $rows += @{
+        $rows += [PSCustomObject]@{
             Status = "✗ DEL"
             Genre  = $item.original
             Count  = $item.count
