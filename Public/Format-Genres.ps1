@@ -523,7 +523,15 @@ function Process-UnmappedGenres {
                     # New genre - allow editing
                     $newGenre = $originalGenre
                     if ($AllowEditing) {
-                        $editedGenre = Read-Host "Genre name (or Enter to keep '$originalGenre')"
+                        $editedGenre = Read-Host "Genre name (Enter to keep '$originalGenre', or 'B' to go back)"
+                        
+                        # Check if user wants to go back
+                        if ($editedGenre -eq 'B' -or $editedGenre -eq 'b') {
+                            Write-Host "Going back to main menu..." -ForegroundColor Gray
+                            # Don't set $decision, continue the loop
+                            continue
+                        }
+                        
                         if (-not [string]::IsNullOrWhiteSpace($editedGenre)) {
                             $newGenre = $editedGenre
                         }
@@ -547,8 +555,14 @@ function Process-UnmappedGenres {
                         Write-Host "$($i + 1). $($AllowedGenres[$i])" -ForegroundColor Gray
                     }
 
-                    $selection = Read-Host "Map to genre (1-$($AllowedGenres.Count))"
-                    if ($selection -match '^\d+$' -and [int]$selection -ge 1 -and [int]$selection -le $AllowedGenres.Count) {
+                    $selection = Read-Host "Map to genre (1-$($AllowedGenres.Count), or 'B' to go back)"
+                    
+                    # Check if user wants to go back
+                    if ($selection -eq 'B' -or $selection -eq 'b') {
+                        Write-Host "Going back to main menu..." -ForegroundColor Gray
+                        # Don't set $decision, so the while loop continues
+                    }
+                    elseif ($selection -match '^\d+$' -and [int]$selection -ge 1 -and [int]$selection -le $AllowedGenres.Count) {
                         $mappedGenre = $AllowedGenres[[int]$selection - 1]
                         $script:genreDecisions[$originalGenre.ToLower()] = $mappedGenre
                         Write-Host "✓ Mapping: '$originalGenre' → '$mappedGenre'" -ForegroundColor Green
