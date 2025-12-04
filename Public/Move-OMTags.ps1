@@ -326,5 +326,3 @@ function Move-OMTags {
         }
     }
 }
-
-Set-Alias -Name MOT -Value Move-OMTags -Description "Alias for Move-OMTags"
