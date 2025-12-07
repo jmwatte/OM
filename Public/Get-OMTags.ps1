@@ -323,7 +323,7 @@ function Get-OMTags {
                 if ($tag -and $tag.Genres) {
                     $rawGenres = if ($tag.Genres -is [array]) { $tag.Genres } else { @($tag.Genres) }
                     foreach ($g in $rawGenres) {
-                        $genres += $g -split ',' | ForEach-Object { $_.Trim() }
+                        $genres += $g -split '[,;]' | ForEach-Object { $_.Trim() }
                     }
                 }
 

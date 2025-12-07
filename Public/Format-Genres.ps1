@@ -271,11 +271,10 @@ function Format-Genres {
         }
 
         # Track all genres and their frequencies across pipeline
-        if (-not $script:allGenresFrequency) {
-            $script:allGenresFrequency = @{}
-            $script:allInputObjects = @()
-            $script:genreDecisions = @{}
-        }
+        # Always reset for each pipeline invocation
+        $script:allGenresFrequency = @{}
+        $script:allInputObjects = @()
+        $script:genreDecisions = @{}
     }
 
     process {
@@ -561,19 +560,20 @@ function Process-UnmappedGenres {
                 'A' {
                     # AddTo - show list and map
                     Write-Host "`nStandard genres:" -ForegroundColor Cyan
-                    for ($i = 0; $i -lt $AllowedGenres.Count; $i++) {
-                        Write-Host "$($i + 1). $($AllowedGenres[$i])" -ForegroundColor Gray
+                    $sortedGenres = $AllowedGenres | Sort-Object
+                    for ($i = 0; $i -lt $sortedGenres.Count; $i++) {
+                        Write-Host "$($i + 1). $($sortedGenres[$i])" -ForegroundColor Gray
                     }
 
-                    $selection = Read-Host "Map to genre (1-$($AllowedGenres.Count), or 'B' to go back)"
+                    $selection = Read-Host "Map to genre (1-$($sortedGenres.Count), or 'B' to go back)"
                     
                     # Check if user wants to go back
                     if ($selection -eq 'B' -or $selection -eq 'b') {
                         Write-Host "Going back to main menu..." -ForegroundColor Gray
                         # Don't set $decision, so the while loop continues
                     }
-                    elseif ($selection -match '^\d+$' -and [int]$selection -ge 1 -and [int]$selection -le $AllowedGenres.Count) {
-                        $mappedGenre = $AllowedGenres[[int]$selection - 1]
+                    elseif ($selection -match '^\d+$' -and [int]$selection -ge 1 -and [int]$selection -le $sortedGenres.Count) {
+                        $mappedGenre = $sortedGenres[[int]$selection - 1]
                         $script:genreDecisions[$originalGenre.ToLower()] = $mappedGenre
                         Write-Host "✓ Mapping: '$originalGenre' → '$mappedGenre'" -ForegroundColor Green
                         $decision = $true
