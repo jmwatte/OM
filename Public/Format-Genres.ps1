@@ -271,7 +271,7 @@ function Format-Genres {
         }
 
         # Track all genres and their frequencies across pipeline
-        # Always reset for each pipeline invocation
+        # Always clear script variables to prevent accumulation from interrupted runs
         $script:allGenresFrequency = @{}
         $script:allInputObjects = @()
         $script:genreDecisions = @{}
@@ -289,9 +289,10 @@ function Format-Genres {
                     @($InputObject.Genres | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
                 }
                 else {
-                    # Split by comma/semicolon if it's a single string with multiple genres
+                    # Split by comma/semicolon/slash and decode HTML entities (case-insensitive)
                     $genreString = $InputObject.Genres.ToString()
-                    @($genreString -split '[,;]' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+                    $decodedGenre = $genreString -replace '(?i)&amp;', '&' -replace '(?i)&lt;', '<' -replace '(?i)&gt;', '>' -replace '(?i)&quot;', '"' -replace '(?i)&#39;', "'"
+                    @($decodedGenre -split '[,;/]' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
                 }
             }
 
@@ -497,6 +498,13 @@ function Process-UnmappedGenres {
         $originalGenre = $unmapped.original
         $count = $unmapped.count
 
+        # Check if this genre has been resolved already (either directly or via case-insensitive match)
+        $genreLower = $originalGenre.ToLower()
+        if ($AllowedGenresNormalized.ContainsKey($genreLower) -or $script:genreDecisions.ContainsKey($genreLower)) {
+            Write-Verbose "Skipping '$originalGenre' - already resolved"
+            continue
+        }
+
         $decision = $null
 
         while (-not $decision) {
@@ -523,22 +531,26 @@ function Process-UnmappedGenres {
 
             switch ($choice) {
                 'N' {
-                    # New genre - allow editing
-                    $newGenre = $originalGenre
-                    if ($AllowEditing) {
-                        $editedGenre = Read-Host "Genre name (Enter to keep '$originalGenre', or 'B' to go back)"
-                        
-                        # Check if user wants to go back
-                        if ($editedGenre -eq 'B' -or $editedGenre -eq 'b') {
-                            Write-Host "Going back to main menu..." -ForegroundColor Gray
-                            # Don't set $decision, continue the loop to re-display
-                            continue
-                        }
-                        
-                        if (-not [string]::IsNullOrWhiteSpace($editedGenre)) {
-                            $newGenre = $editedGenre
-                        }
+                    # New genre - always allow editing
+                    $editedGenre = Read-Host "Genre name (Enter to keep '$originalGenre', or 'B' to go back)"
+                    
+                    # Check if user wants to go back
+                    if ($editedGenre -eq 'B' -or $editedGenre -eq 'b') {
+                        Write-Host "Going back to main menu..." -ForegroundColor Gray
+                        # Don't set $decision, continue the loop to re-display
+                        continue
                     }
+                    
+                    # Use edited name if provided, otherwise keep original
+                    $newGenre = if (-not [string]::IsNullOrWhiteSpace($editedGenre)) {
+                        $editedGenre
+                    } else {
+                        $originalGenre
+                    }
+                    
+                    # Standardize capitalization to Title Case for consistency
+                    $textInfo = (Get-Culture).TextInfo
+                    $newGenre = $textInfo.ToTitleCase($newGenre.ToLower())
 
                     # Add to allowed genres and create mapping
                     if (-not $AllowedGenresNormalized.ContainsKey($newGenre.ToLower())) {
@@ -548,8 +560,23 @@ function Process-UnmappedGenres {
                         $AllowedGenres += $newGenre
                         $AllowedGenresNormalized[$newGenre.ToLower()] = $newGenre
                         
+                        # Also add to config's AllowedGenreNames so it persists
+                        if ($omConfig.Genres.AllowedGenreNames -notcontains $newGenre) {
+                            $omConfig.Genres.AllowedGenreNames += $newGenre
+                        }
+                        
                         Write-Host "✓ Mapping: '$originalGenre' → '$newGenre'" -ForegroundColor Green
                         Write-Host "  (Now available in standard genres list)" -ForegroundColor Gray
+                        
+                        # Also map any case variants in the unmapped list to this new standard genre
+                        $newGenreLower = $newGenre.ToLower()
+                        foreach ($unmappedItem in $genreAnalysis.unmapped) {
+                            $unmappedLower = $unmappedItem.original.ToLower()
+                            if ($unmappedLower -eq $newGenreLower -and $unmappedItem.original -ne $originalGenre) {
+                                $script:genreDecisions[$unmappedLower] = $newGenre
+                                Write-Host "  ✓ Also mapping case variant: '$($unmappedItem.original)' → '$newGenre'" -ForegroundColor Gray
+                            }
+                        }
                     }
                     else {
                         Write-Host "⚠ '$newGenre' already exists in standard genres." -ForegroundColor Yellow
@@ -559,21 +586,23 @@ function Process-UnmappedGenres {
 
                 'A' {
                     # AddTo - show list and map
+                    # Rebuild list from normalized hashtable to include any newly added genres
+                    $currentAllowedGenres = @($AllowedGenresNormalized.Values | Sort-Object)
+                    
                     Write-Host "`nStandard genres:" -ForegroundColor Cyan
-                    $sortedGenres = $AllowedGenres | Sort-Object
-                    for ($i = 0; $i -lt $sortedGenres.Count; $i++) {
-                        Write-Host "$($i + 1). $($sortedGenres[$i])" -ForegroundColor Gray
+                    for ($i = 0; $i -lt $currentAllowedGenres.Count; $i++) {
+                        Write-Host "$($i + 1). $($currentAllowedGenres[$i])" -ForegroundColor Gray
                     }
 
-                    $selection = Read-Host "Map to genre (1-$($sortedGenres.Count), or 'B' to go back)"
+                    $selection = Read-Host "Map to genre (1-$($currentAllowedGenres.Count), or 'B' to go back)"
                     
                     # Check if user wants to go back
                     if ($selection -eq 'B' -or $selection -eq 'b') {
                         Write-Host "Going back to main menu..." -ForegroundColor Gray
                         # Don't set $decision, so the while loop continues
                     }
-                    elseif ($selection -match '^\d+$' -and [int]$selection -ge 1 -and [int]$selection -le $sortedGenres.Count) {
-                        $mappedGenre = $sortedGenres[[int]$selection - 1]
+                    elseif ($selection -match '^\d+$' -and [int]$selection -ge 1 -and [int]$selection -le $currentAllowedGenres.Count) {
+                        $mappedGenre = $currentAllowedGenres[[int]$selection - 1]
                         $script:genreDecisions[$originalGenre.ToLower()] = $mappedGenre
                         Write-Host "✓ Mapping: '$originalGenre' → '$mappedGenre'" -ForegroundColor Green
                         $decision = $true

@@ -323,7 +323,9 @@ function Get-OMTags {
                 if ($tag -and $tag.Genres) {
                     $rawGenres = if ($tag.Genres -is [array]) { $tag.Genres } else { @($tag.Genres) }
                     foreach ($g in $rawGenres) {
-                        $genres += $g -split '[,;]' | ForEach-Object { $_.Trim() }
+                        # Decode common HTML entities (case-insensitive) and split on common delimiters
+                        $decodedGenre = $g -replace '(?i)&amp;', '&' -replace '(?i)&lt;', '<' -replace '(?i)&gt;', '>' -replace '(?i)&quot;', '"' -replace '(?i)&#39;', "'"
+                        $genres += $decodedGenre -split '[,;/]' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
                     }
                 }
 
