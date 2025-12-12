@@ -964,7 +964,26 @@ function Start-OM {
                             $idx = [int]$albumChoice
                             if ($idx -ge 1 -and $idx -le $albumCandidates.Count) {
                                 $ProviderAlbum = $albumCandidates[$idx - 1]
-                                $ProviderArtist = @{ name = $quickArtist; id = $quickArtist }  # Simplified artist object
+                                
+                                # For Spotify, fetch full artist details with genres instead of using simplified object
+                                if ($Provider -eq 'Spotify' -and $ProviderAlbum.artists -and $ProviderAlbum.artists.Count -gt 0) {
+                                    $artistId = $ProviderAlbum.artists[0].id
+                                    if ($artistId) {
+                                        Write-Verbose "Fetching full artist details for ID: $artistId"
+                                        $ProviderArtist = Invoke-ProviderGetArtist -Provider $Provider -ArtistId $artistId
+                                        if (-not $ProviderArtist) {
+                                            Write-Verbose "Failed to fetch artist details, using simplified object"
+                                            $ProviderArtist = @{ name = $quickArtist; id = $quickArtist }
+                                        }
+                                    }
+                                    else {
+                                        $ProviderArtist = @{ name = $quickArtist; id = $quickArtist }
+                                    }
+                                }
+                                else {
+                                    $ProviderArtist = @{ name = $quickArtist; id = $quickArtist }  # Simplified artist object
+                                }
+                                
                                 $script:backNavigationMode = $false  # Reset back navigation flag
                                 $stage = 'C'
                                 continue stageLoop
