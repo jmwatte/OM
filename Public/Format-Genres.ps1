@@ -516,13 +516,14 @@ function Process-UnmappedGenres {
             Write-Host "`nOptions:" -ForegroundColor Cyan
             Write-Host "  [N]ew      - Add as new standard genre" -ForegroundColor Gray
             Write-Host "  [A]ddTo    - Map to existing standard genre" -ForegroundColor Gray
+            Write-Host "  [C]hange   - Replace with different genre" -ForegroundColor Gray
             Write-Host "  [D]elete   - Mark as garbage, remove from tags" -ForegroundColor Gray
             Write-Host "  [R]eview   - Review and modify recent decisions" -ForegroundColor Gray
             Write-Host "  [S]kip     - Skip for now (don't decide)" -ForegroundColor Gray
             Write-Host "  [Show]     - Show sample files with this genre" -ForegroundColor Gray
 
             if (-not $Force) {
-                $choice = Read-Host "Choose option (N/A/D/R/S/Show)"
+                $choice = Read-Host "Choose option (N/A/C/D/R/S/Show)"
                 $choice = $choice.ToUpper().Substring(0, 1)
             }
             else {
@@ -609,6 +610,81 @@ function Process-UnmappedGenres {
                     }
                     else {
                         Write-Host "Invalid selection." -ForegroundColor Red
+                    }
+                }
+
+                'C' {
+                    # Change - replace with a different genre (existing or new)
+                    Write-Host "`nReplace '$originalGenre' with:" -ForegroundColor Cyan
+                    Write-Host "  [E]xisting - Choose from standard genres" -ForegroundColor Gray
+                    Write-Host "  [N]ew      - Enter a new genre name" -ForegroundColor Gray
+                    Write-Host "  [B]ack     - Go back to main menu" -ForegroundColor Gray
+                    
+                    $changeChoice = Read-Host "Choose option (E/N/B)"
+                    $changeChoice = $changeChoice.ToUpper().Substring(0, 1)
+                    
+                    switch ($changeChoice) {
+                        'E' {
+                            # Choose from existing genres
+                            $currentAllowedGenres = @($AllowedGenresNormalized.Values | Sort-Object)
+                            
+                            Write-Host "`nStandard genres:" -ForegroundColor Cyan
+                            for ($i = 0; $i -lt $currentAllowedGenres.Count; $i++) {
+                                Write-Host "$($i + 1). $($currentAllowedGenres[$i])" -ForegroundColor Gray
+                            }
+
+                            $selection = Read-Host "Replace with genre (1-$($currentAllowedGenres.Count), or 'B' to go back)"
+                            
+                            if ($selection -eq 'B' -or $selection -eq 'b') {
+                                Write-Host "Going back..." -ForegroundColor Gray
+                            }
+                            elseif ($selection -match '^\d+$' -and [int]$selection -ge 1 -and [int]$selection -le $currentAllowedGenres.Count) {
+                                $replacementGenre = $currentAllowedGenres[[int]$selection - 1]
+                                $script:genreDecisions[$originalGenre.ToLower()] = $replacementGenre
+                                Write-Host "✓ Replacing: '$originalGenre' → '$replacementGenre'" -ForegroundColor Green
+                                $decision = $true
+                            }
+                            else {
+                                Write-Host "Invalid selection." -ForegroundColor Red
+                            }
+                        }
+                        'N' {
+                            # Enter new genre name
+                            $newGenreName = Read-Host "Enter new genre name (or 'B' to go back)"
+                            
+                            if ($newGenreName -eq 'B' -or $newGenreName -eq 'b') {
+                                Write-Host "Going back..." -ForegroundColor Gray
+                            }
+                            elseif (-not [string]::IsNullOrWhiteSpace($newGenreName)) {
+                                # Standardize capitalization to Title Case
+                                $textInfo = (Get-Culture).TextInfo
+                                $newGenreName = $textInfo.ToTitleCase($newGenreName.ToLower())
+                                
+                                # Add to allowed genres if not already there
+                                if (-not $AllowedGenresNormalized.ContainsKey($newGenreName.ToLower())) {
+                                    $AllowedGenres += $newGenreName
+                                    $AllowedGenresNormalized[$newGenreName.ToLower()] = $newGenreName
+                                    
+                                    if ($omConfig.Genres.AllowedGenreNames -notcontains $newGenreName) {
+                                        $omConfig.Genres.AllowedGenreNames += $newGenreName
+                                    }
+                                    Write-Host "  (Added '$newGenreName' to standard genres)" -ForegroundColor Gray
+                                }
+                                
+                                $script:genreDecisions[$originalGenre.ToLower()] = $newGenreName
+                                Write-Host "✓ Replacing: '$originalGenre' → '$newGenreName'" -ForegroundColor Green
+                                $decision = $true
+                            }
+                            else {
+                                Write-Host "Invalid genre name." -ForegroundColor Red
+                            }
+                        }
+                        'B' {
+                            Write-Host "Going back to main menu..." -ForegroundColor Gray
+                        }
+                        default {
+                            Write-Host "Invalid choice." -ForegroundColor Red
+                        }
                     }
                 }
 

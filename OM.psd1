@@ -71,11 +71,15 @@ Description = 'OM PowerShell module for music organization'
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
     'Add-OMDiscNumbers',
+    'Export-OMGenres',
     'Format-Genres',
     'Get-OMConfig',
     'Get-OMTags',
+    'Import-OMGenres',
     'Move-OMTags',
+    'Save-OMCoverArt',
     'Set-OMConfig',
+    'Set-OMDiscTrackNumbers',
     'Set-OMTags',
     'Start-OM'
 )
