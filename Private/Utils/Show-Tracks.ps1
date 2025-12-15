@@ -3,6 +3,7 @@ function Show-Tracks {
         [array]$PairedTracks,
         [string]$AlbumName,
         [PSCustomObject]$SpotifyArtist,
+        [PSCustomObject]$ProviderAlbum,
         [switch]$Reverse,
         [string]$OptionsText,
         [string[]]$ValidCommands,
@@ -105,8 +106,13 @@ function Show-Tracks {
                         }
                         Write-Host ("`t`tartist: {0}" -f $artistDisplay)
 
-                        # Prefer track-level genres over artist-level (better for classical, MusicBrainz)
+                        # Genre priority: track-level > album-level > artist-level
+                        # Album-level is important for Discogs, Qobuz, MusicBrainz
                         if ($value = Get-IfExists $spotify 'genres') {
+                            $providerGenres = $value -join ', '
+                            Write-Host ("`t`tgenres: {0}" -f $providerGenres)
+                        }
+                        elseif ($ProviderAlbum -and ($value = Get-IfExists $ProviderAlbum 'genres')) {
                             $providerGenres = $value -join ', '
                             Write-Host ("`t`tgenres: {0}" -f $providerGenres)
                         }

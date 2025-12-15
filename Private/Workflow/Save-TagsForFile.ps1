@@ -3,7 +3,8 @@ function Save-TagsForFile {
     param(
         [Parameter(Mandatory = $true)][string]$FilePath,
         [Parameter(Mandatory = $true)][hashtable]$TagValues,
-        [Parameter()][switch]$WhatIf
+        [Parameter()][switch]$WhatIf,
+        [Parameter()][switch]$GenreMergeMode
     )
 
     if (-not (Test-Path -LiteralPath $FilePath)) {
@@ -48,13 +49,48 @@ function Save-TagsForFile {
                         }
                     }
                     'Genres' {
-                        # Replace genres (don't append). Handle both string and array inputs.
-                        if ($v -is [array]) {
-                            $tagFile.Tag.Genres = $v
-                        } elseif ($v -is [string] -and $v -match ';') {
-                            $tagFile.Tag.Genres = $v -split '\s*;\s*'
-                        } else {
-                            $tagFile.Tag.Genres = @($v)
+                        # Handle genre mode: Replace or Merge
+                        if ($GenreMergeMode) {
+                            # Merge mode: Read existing genres and combine with new ones
+                            $existing = @($tagFile.Tag.Genres | Where-Object { $_ })
+                            
+                            # Parse new genres
+                            $new = if ($v -is [array]) {
+                                $v
+                            } elseif ($v -is [string] -and $v -match ';') {
+                                $v -split '\s*;\s*'
+                            } elseif ($v -is [string] -and $v -match ',') {
+                                $v -split '\s*,\s*'
+                            } else {
+                                @($v)
+                            }
+                            
+                            # Merge and deduplicate (case-insensitive)
+                            $allGenres = @($existing + $new)
+                            $uniqueGenres = @()
+                            $seenLower = @{}
+                            
+                            foreach ($genre in $allGenres) {
+                                if ($genre) {
+                                    $lowerGenre = $genre.ToLowerInvariant()
+                                    if (-not $seenLower.ContainsKey($lowerGenre)) {
+                                        $uniqueGenres += $genre
+                                        $seenLower[$lowerGenre] = $true
+                                    }
+                                }
+                            }
+                            
+                            $tagFile.Tag.Genres = $uniqueGenres
+                        }
+                        else {
+                            # Replace mode (default behavior)
+                            if ($v -is [array]) {
+                                $tagFile.Tag.Genres = $v
+                            } elseif ($v -is [string] -and $v -match ';') {
+                                $tagFile.Tag.Genres = $v -split '\s*;\s*'
+                            } else {
+                                $tagFile.Tag.Genres = @($v)
+                            }
                         }
                     }
                     'Date' { $tagFile.Tag.Year = [uint]$v }

@@ -137,6 +137,13 @@ function Invoke-AlbumArtistBuilder {
     # Interactive loop
     $done = $false
     while (-not $done) {
+        # Ensure selectedArtists is always an array (safety check)
+        if ($null -eq $selectedArtists) {
+            $selectedArtists = @()
+        } elseif ($selectedArtists -isnot [array]) {
+            $selectedArtists = @($selectedArtists)
+        }
+        
         if ($VerbosePreference -ne 'Continue') { Clear-Host }
         Write-Host "`n========================================" -ForegroundColor Cyan
         Write-Host "=== ALBUM ARTIST BUILDER ===" -ForegroundColor Cyan
@@ -201,9 +208,11 @@ function Invoke-AlbumArtistBuilder {
                 if ($idx -ge 0 -and $idx -lt $artistOrder.Count) {
                     $name = $artistOrder[$idx]
                     if ($selectedArtists -contains $name) {
-                        $selectedArtists = $selectedArtists | Where-Object { $_ -ne $name }
+                        # Remove artist - ensure result is always an array
+                        $selectedArtists = @($selectedArtists | Where-Object { $_ -ne $name })
                     } else {
-                        $selectedArtists += $name
+                        # Add artist - ensure result is always an array
+                        $selectedArtists = @($selectedArtists) + $name
                     }
                 } else {
                     Write-Host "Invalid number. Press Enter to continue..." -ForegroundColor Red

@@ -140,6 +140,7 @@ function Start-OM {
         # Initialize verbose display toggle if it doesn't exist
         if (-not (Get-Variable -Name showVerbose -Scope Script -ErrorAction SilentlyContinue)) {
             $script:showVerbose = $false
+            $script:genreMode = 'Replace'  # 'Replace' or 'Merge'
         }
 
         if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
@@ -1763,6 +1764,7 @@ function Start-OM {
                                         PairedTracks  = $script:pairedTracks
                                         AlbumName     = $ProviderAlbum.name
                                         SpotifyArtist = $ProviderArtist
+                                        ProviderAlbum = $ProviderAlbum
                                     }
                                     if ($reverseSource) { $autoShowParams.Reverse = $true }
                                     if ($script:showVerbose) { $autoShowParams.Verbose = $true }
@@ -1795,12 +1797,14 @@ function Start-OM {
                                     if ($_.Key -eq $sortMethod) { "[*$($_.Value)*]" } else { $_.Value }
                                 }) -join ', '
                                 
-                                $optionsLine = "`nOptions: SortBy $sortMethodDisplay, (r)everse | (S)ave {[A]ll, [T]ags, [F]olderNames} | {C}over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags} | (aa)AlbumArtist, (rm)ReviewMarked, (b)ack/(pr)evious, (P)rovider, (F)indmode, (w)hatIf:$whatIfStatus, (v)erbose:$verboseStatus, (X)ip"
-                                $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'rm', 'sa', 'st', 'sf', 'cv', 'cvo', 'cs', 'ct', 'aa', 'b', 'pr', 'p', 'pq', 'ps', 'pd', 'pm', 'f', 'w', 'whatif', 'v', 'x')
+                                $genreModeStatus = $script:genreMode
+                                $optionsLine = "`nOptions: SortBy $sortMethodDisplay, (r)everse | (S)ave {[A]ll, [T]ags, [F]olderNames} | {C}over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags} | (aa)AlbumArtist, (gm)GenreMode:$genreModeStatus, (rm)ReviewMarked, (b)ack/(pr)evious, (P)rovider, (F)indmode, (w)hatIf:$whatIfStatus, (v)erbose:$verboseStatus, (X)ip"
+                                $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'rm', 'sa', 'st', 'sf', 'cv', 'cvo', 'cs', 'ct', 'aa', 'gm', 'b', 'pr', 'p', 'pq', 'ps', 'pd', 'pm', 'f', 'w', 'whatif', 'v', 'x')
                                 $paramshow = @{
                                     PairedTracks  = $script:pairedTracks
                                     AlbumName     = $ProviderAlbum.name
                                     SpotifyArtist = $ProviderArtist
+                                    ProviderAlbum = $ProviderAlbum
                                     OptionsText   = $optionsLine
                                     ValidCommands = $commandList
                                     PromptColor   = $HostColor
@@ -1979,6 +1983,20 @@ function Start-OM {
                                     $finishMsg = if ($reviewAll) { "Finished reviewing all tracks" } else { "Finished reviewing marked tracks" }
                                     Write-Host "`n✓ $finishMsg" -ForegroundColor Green
                                     Start-Sleep -Seconds 1
+                                    $script:refreshTracks = $true
+                                    continue
+                                }
+                                '^gm$' {
+                                    # Toggle genre mode between Replace and Merge
+                                    $script:genreMode = if ($script:genreMode -eq 'Replace') { 'Merge' } else { 'Replace' }
+                                    $modeColor = if ($script:genreMode -eq 'Merge') { 'Cyan' } else { 'Green' }
+                                    Write-Host "`n✓ Genre Mode: $($script:genreMode)" -ForegroundColor $modeColor
+                                    if ($script:genreMode -eq 'Merge') {
+                                        Write-Host "   Genres will be merged with existing tags (deduplicated)" -ForegroundColor Gray
+                                    } else {
+                                        Write-Host "   Genres will replace existing tags" -ForegroundColor Gray
+                                    }
+                                    Start-Sleep -Seconds 2
                                     $script:refreshTracks = $true
                                     continue
                                 }
@@ -2259,7 +2277,8 @@ function Start-OM {
                                                 $tags = Get-Tags @tagsParams
                                                 Write-Verbose ("Saving tags to: {0}" -f $filePath)
                                                 Write-Verbose ("Tag values:\n{0}" -f ($tags | Out-String))
-                                                $res = Save-TagsForFile -FilePath $filePath -TagValues $tags -WhatIf:$useWhatIf
+                                                $genreMerge = ($script:genreMode -eq 'Merge')
+                                                $res = Save-TagsForFile -FilePath $filePath -TagValues $tags -WhatIf:$useWhatIf -GenreMergeMode:$genreMerge
                                                 if ($res.Success) { 
                                                     Write-Host ("Saved tags: {0} -> {1:D2}.{2:D2}: {3}" -f (Split-Path -Leaf $filePath), $tags.Disc, $tags.Track, $tags.Title) -ForegroundColor Green 
                                                 }
@@ -2357,7 +2376,8 @@ function Start-OM {
                                             $tags = Get-Tags @tagsParams
                                             Write-Verbose ("Saving tags to: {0}" -f $filePath)
                                             Write-Verbose ("Tag values:\n{0}" -f ($tags | Out-String))
-                                            $res = Save-TagsForFile -FilePath $filePath -TagValues $tags -WhatIf:$useWhatIf
+                                            $genreMerge = ($script:genreMode -eq 'Merge')
+                                            $res = Save-TagsForFile -FilePath $filePath -TagValues $tags -WhatIf:$useWhatIf -GenreMergeMode:$genreMerge
                                             if ($res.Success) { 
                                                 Write-Host ("Saved tags: {0} -> {1:D2}.{2:D2}: {3}" -f (Split-Path -Leaf $filePath), $tags.Disc, $tags.Track, $tags.Title) -ForegroundColor Green 
                                             }

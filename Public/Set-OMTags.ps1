@@ -125,8 +125,15 @@ function Parse-FilenamePattern {
         # Split property name and format specifier (ignore format for parsing)
         $propertyName = $placeholder -split ':', 2 | Select-Object -First 1
         
-        # Replace with named capture group
-        $captureGroup = "(?<$propertyName>.+?)"
+        # Determine the appropriate regex pattern based on property type
+        $captureGroup = if ($propertyName -match '^(Track|Disc|Year|track|disc|year)$') {
+            # Numeric properties should match digits only
+            "(?<$propertyName>\d+)"
+        } else {
+            # Non-numeric properties match non-greedy any character except separators
+            "(?<$propertyName>.+?)"
+        }
+        
         $regexPattern = $regexPattern -replace [regex]::Escape($fullMatch), $captureGroup
     }
     
@@ -160,8 +167,8 @@ function Parse-FilenamePattern {
             if ($groupName -ne '0') {  # Skip the full match
                 $value = $match.Groups[$groupName].Value.Trim()
                 if ($value) {
-                    # Try to convert numeric values
-                    if ($groupName -match '^(Track|Disc|Year)$' -and $value -match '^\d+$') {
+                    # Try to convert numeric values (case-insensitive check)
+                    if ($groupName -match '^(Track|Disc|Year|track|disc|year)$' -and $value -match '^\d+$') {
                         $result[$groupName] = [int]$value
                     } else {
                         $result[$groupName] = $value
@@ -601,9 +608,31 @@ function Set-OMTags {
                         Write-Verbose "Parsed values from filename:"
                         foreach ($key in $parsedValues.Keys) {
                             Write-Verbose "  $key = '$($parsedValues[$key])'"
+                            
+                            # Normalize property name to match tag object properties (case-insensitive)
+                            $normalizedKey = switch ($key.ToLower()) {
+                                'track' { 'Track' }
+                                'disc' { 'Disc' }
+                                'year' { 'Year' }
+                                'title' { 'Title' }
+                                'album' { 'Album' }
+                                'artists' { 'Artists' }
+                                'albumartists' { 'AlbumArtists' }
+                                'genres' { 'Genres' }
+                                'composers' { 'Composers' }
+                                'trackcount' { 'TrackCount' }
+                                'disccount' { 'DiscCount' }
+                                'comment' { 'Comment' }
+                                'lyrics' { 'Lyrics' }
+                                default { $key }  # Keep original if no mapping
+                            }
+                            
                             # Apply parsed values to updated if they exist as properties
-                            if ($updated.PSObject.Properties.Name -contains $key) {
-                                $updated.$key = $parsedValues[$key]
+                            if ($updated.PSObject.Properties.Name -contains $normalizedKey) {
+                                $updated.$normalizedKey = $parsedValues[$key]
+                                Write-Verbose "    Mapped $key -> $normalizedKey = '$($parsedValues[$key])'"
+                            } else {
+                                Write-Verbose "    Skipped $key (not a valid property)"
                             }
                         }
                     } else {
@@ -674,9 +703,31 @@ function Set-OMTags {
                         Write-Verbose "Parsed values from filename:"
                         foreach ($key in $parsedValues.Keys) {
                             Write-Verbose "  $key = '$($parsedValues[$key])'"
+                            
+                            # Normalize property name to match tag object properties (case-insensitive)
+                            $normalizedKey = switch ($key.ToLower()) {
+                                'track' { 'Track' }
+                                'disc' { 'Disc' }
+                                'year' { 'Year' }
+                                'title' { 'Title' }
+                                'album' { 'Album' }
+                                'artists' { 'Artists' }
+                                'albumartists' { 'AlbumArtists' }
+                                'genres' { 'Genres' }
+                                'composers' { 'Composers' }
+                                'trackcount' { 'TrackCount' }
+                                'disccount' { 'DiscCount' }
+                                'comment' { 'Comment' }
+                                'lyrics' { 'Lyrics' }
+                                default { $key }  # Keep original if no mapping
+                            }
+                            
                             # Apply parsed values to updated if they exist as properties
-                            if ($updated.PSObject.Properties.Name -contains $key) {
-                                $updated.$key = $parsedValues[$key]
+                            if ($updated.PSObject.Properties.Name -contains $normalizedKey) {
+                                $updated.$normalizedKey = $parsedValues[$key]
+                                Write-Verbose "    Mapped $key -> $normalizedKey = '$($parsedValues[$key])'"
+                            } else {
+                                Write-Verbose "    Skipped $key (not a valid property)"
                             }
                         }
                     } else {
