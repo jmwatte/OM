@@ -966,6 +966,30 @@ function Start-OM {
                             if ($idx -ge 1 -and $idx -le $albumCandidates.Count) {
                                 $ProviderAlbum = $albumCandidates[$idx - 1]
                                 
+                                # Extract artist name from album metadata (not folder name)
+                                $artistNameFromAlbum = $null
+                                if ($value = Get-IfExists $ProviderAlbum 'artists') {
+                                    # Spotify/MusicBrainz: artists array
+                                    if ($value -is [array] -and $value.Count -gt 0) {
+                                        $artistNameFromAlbum = if ($value[0].name) { $value[0].name } else { $value[0].ToString() }
+                                    } elseif ($value.name) {
+                                        $artistNameFromAlbum = $value.name
+                                    } else {
+                                        $artistNameFromAlbum = $value.ToString()
+                                    }
+                                } elseif ($value = Get-IfExists $ProviderAlbum 'artist') {
+                                    # Qobuz/Discogs: artist string
+                                    $artistNameFromAlbum = $value
+                                }
+                                
+                                # Fallback to folder name only if album has no artist metadata
+                                if (-not $artistNameFromAlbum) {
+                                    $artistNameFromAlbum = $quickArtist
+                                    Write-Verbose "No artist in album metadata, using folder name: $artistNameFromAlbum"
+                                } else {
+                                    Write-Verbose "Extracted artist from album metadata: $artistNameFromAlbum"
+                                }
+                                
                                 # For Spotify, fetch full artist details with genres instead of using simplified object
                                 if ($Provider -eq 'Spotify' -and $ProviderAlbum.artists -and $ProviderAlbum.artists.Count -gt 0) {
                                     $artistId = $ProviderAlbum.artists[0].id
@@ -973,16 +997,17 @@ function Start-OM {
                                         Write-Verbose "Fetching full artist details for ID: $artistId"
                                         $ProviderArtist = Invoke-ProviderGetArtist -Provider $Provider -ArtistId $artistId
                                         if (-not $ProviderArtist) {
-                                            Write-Verbose "Failed to fetch artist details, using simplified object"
-                                            $ProviderArtist = @{ name = $quickArtist; id = $quickArtist }
+                                            Write-Verbose "Failed to fetch artist details, using simplified object with album artist"
+                                            $ProviderArtist = @{ name = $artistNameFromAlbum; id = $artistNameFromAlbum }
                                         }
                                     }
                                     else {
-                                        $ProviderArtist = @{ name = $quickArtist; id = $quickArtist }
+                                        $ProviderArtist = @{ name = $artistNameFromAlbum; id = $artistNameFromAlbum }
                                     }
                                 }
                                 else {
-                                    $ProviderArtist = @{ name = $quickArtist; id = $quickArtist }  # Simplified artist object
+                                    # Non-Spotify providers: use artist name from album metadata
+                                    $ProviderArtist = @{ name = $artistNameFromAlbum; id = $artistNameFromAlbum }
                                 }
                                 
                                 $script:backNavigationMode = $false  # Reset back navigation flag
