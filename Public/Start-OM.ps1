@@ -1411,7 +1411,7 @@ function Start-OM {
                             Write-Host "All audio files were corrupted or invalid. Skipping this album." -ForegroundColor Yellow
                             Write-Host "`nPress Enter to continue to next album..." -ForegroundColor Cyan
                             Read-Host
-                            break  # Exit to next album
+                            break stageLoop  # Exit stage loop to continue to next album
                         }
                         
                         # Update script:audioFiles to only contain valid files
