@@ -2218,6 +2218,14 @@ function Start-OM {
                                         NewYear      = $year
                                         NewAlbumName = $safeAlbumName
                                     }
+                                    
+                                    # Force garbage collection to release any lingering file handles before folder rename
+                                    Write-Verbose "Forcing garbage collection before folder move to release file handles"
+                                    [System.GC]::Collect()
+                                    [System.GC]::WaitForPendingFinalizers()
+                                    [System.GC]::Collect()
+                                    Start-Sleep -Milliseconds 100  # Brief pause to ensure OS releases locks
+                                    
                                     # call Move-AlbumFolder and pass -WhatIf from the caller (if requested)
                                     $moveResult = Invoke-MoveAlbumWithRetry -mvArgs $mvArgs -useWhatIf $useWhatIf
                                     & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath
@@ -2550,6 +2558,15 @@ function Start-OM {
                                         NewArtist    = $safeArtistName
                                         NewYear      = $year
                                         NewAlbumName = $safeAlbumName
+                                    }
+    
+                                    # Force garbage collection to release any lingering file handles before folder rename
+                                    if (-not $useWhatIf) {
+                                        Write-Verbose "Forcing garbage collection before folder move to release file handles"
+                                        [System.GC]::Collect()
+                                        [System.GC]::WaitForPendingFinalizers()
+                                        [System.GC]::Collect()
+                                        Start-Sleep -Milliseconds 100  # Brief pause to ensure OS releases locks
                                     }
     
                                     $moveResult = Invoke-MoveAlbumWithRetry -mvArgs $mvArgs -useWhatIf $useWhatIf
