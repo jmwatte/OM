@@ -709,7 +709,7 @@ function Start-OM {
                             $QuickAlbumCandidates= get-ifexists $quickResults 'albums.items'
                             if ($null -eq $QuickAlbumCandidates -or $QuickAlbumCandidates.Count -eq 0) {
                                 Write-Host "No albums found for '$quickAlbum' by '$quickArtist' with $Provider." -ForegroundColor Red
-                                $retryChoice = Read-Host "`nPress Enter to retry, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(a)' artist-first mode, (ni) New Item (enter new artist+album), or enter new album name"
+                                $retryChoice = Read-Host "`nPress Enter to retry, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(a)' artist-first mode, (ni) New Item (enter new artist+album), (x) skip album, or enter new album name"
                                 if ($retryChoice -eq 'ps') {
                                     $Provider = 'Spotify'
                                     Write-Host "Switched to provider: $Provider" -ForegroundColor Green
@@ -741,6 +741,12 @@ function Start-OM {
                                     $res = Read-ArtistAlbum -DefaultArtist $currentArtist -DefaultAlbum $currentAlbum
                                     if ($res.ChangedArtist) { $currentArtist = $res.Artist }
                                     if ($res.ChangedAlbum) { $currentAlbum = $res.Album }
+                                }
+                                elseif ($retryChoice -eq 'x' -or $retryChoice -eq 'xip') {
+                                    # Skip this album
+                                    Write-Host "Skipping album: $quickAlbum" -ForegroundColor Yellow
+                                    $albumDone = $true
+                                    break quickSearchLoop
                                 }
                                 elseif ($retryChoice) {
                                     # Assume it's a new album name
@@ -1394,6 +1400,22 @@ function Start-OM {
                                 continue
                             }
                         }
+                        
+                        # Check if any valid audio files were loaded
+                        $validAudioFiles = @($script:audioFiles | Where-Object { $_ -ne $null })
+                        if ($validAudioFiles.Count -eq 0) {
+                            Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Red
+                            Write-Host "⚠️  ERROR: No valid audio files found!" -ForegroundColor Red
+                            Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Red
+                            Write-Host "`nAlbum folder: $($script:album.FullName)" -ForegroundColor Yellow
+                            Write-Host "All audio files were corrupted or invalid. Skipping this album." -ForegroundColor Yellow
+                            Write-Host "`nPress Enter to continue to next album..." -ForegroundColor Cyan
+                            Read-Host
+                            break  # Exit to next album
+                        }
+                        
+                        # Update script:audioFiles to only contain valid files
+                        $script:audioFiles = $validAudioFiles
     
                         # Check if this is a combined album (tracks already fetched) or single album (need to fetch)
                         if (Get-IfExists $ProviderAlbum '_isCombined') {
