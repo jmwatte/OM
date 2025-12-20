@@ -31,8 +31,32 @@ function Get-MatchConfidence {
     $totalScore = 0
     $maxScore = 100
     
+    # Normalize track names by removing common suffixes/metadata
+    # Remove patterns like: (From "Album Name"/Score), (feat. Artist), [Remastered], etc.
+    $providerTitle = $ProviderTrack.name -replace '\s*\(From\s+"[^"]+"/[^)]+\)', '' `
+                                         -replace '\s*\(feat\.\s+[^)]+\)', '' `
+                                         -replace '\s*\[[^\]]+\]', '' `
+                                         -replace '\s+', ' '
+    $providerTitle = $providerTitle.Trim()
+    
+    $audioTitle = $AudioFile.Title -replace '\s*\(From\s+"[^"]+"/[^)]+\)', '' `
+                                   -replace '\s*\(feat\.\s+[^)]+\)', '' `
+                                   -replace '\s*\[[^\]]+\]', '' `
+                                   -replace '\s+', ' '
+    $audioTitle = $audioTitle.Trim()
+    
+    # Classical music: Strip composer prefix like "Ravel: " or "Ravel_ " or "Bach, J.S.: "
+    # Match pattern: "Word(s) followed by : or _" at start of title
+    $providerTitle = $providerTitle -replace '^[A-Z][a-zA-Z\-\.]+(\s+[A-Z]\.)*[:\s_]+\s*', ''
+    $audioTitle = $audioTitle -replace '^[A-Z][a-zA-Z\-\.]+(\s+[A-Z]\.)*[:\s_]+\s*', ''
+    
+    # Normalize punctuation separators: "_ " and "," are equivalent in classical music
+    # Convert both to standardized form for comparison
+    $providerTitle = $providerTitle -replace '[,_]\s*', ', '
+    $audioTitle = $audioTitle -replace '[,_]\s*', ', '
+    
     # 1. Title similarity (50 points max)
-    $titleSimilarity = Get-StringSimilarity-Jaccard -String1 $ProviderTrack.name -String2 $AudioFile.Title
+    $titleSimilarity = Get-StringSimilarity-Jaccard -String1 $providerTitle -String2 $audioTitle
     $titleScore = $titleSimilarity * 50
     $factors['TitleSimilarity'] = [math]::Round($titleSimilarity, 2)
     $totalScore += $titleScore

@@ -33,11 +33,11 @@ function Search-GQAlbum {
 
     # Cache results in script scope
     if (-not (Get-Variable -Name QobuzGQAlbumCache -Scope Script -ErrorAction SilentlyContinue) -or -not ($script:QobuzGQAlbumCache -is [hashtable])) {
-        Set-Variable -Name QobuzGQAlbumCache -Value @{} -Scope Script -Force
+        Set-Variable -Name QobuzGQAlbumCache -Value @{} -Scope Script -Force -WhatIf:$false
     }
     # Use the query as cache key
     $cacheKey = $Query
-    if ($script:QobuzGQAlbumCache.ContainsKey($cacheKey)) { return $script:QobuzGQAlbumCache[$cacheKey] }
+    if ($script:QobuzGQAlbumCache -and $script:QobuzGQAlbumCache.ContainsKey($cacheKey)) { return $script:QobuzGQAlbumCache[$cacheKey] }
 
     # Resolve configured locale (culture) -> URL locale
     # Use Get-IfExists to safely obtain the configured locale

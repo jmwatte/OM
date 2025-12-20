@@ -63,6 +63,29 @@
     If a folder with the same name already exists in the target, a numbered suffix (2), (3), etc. will be added.
     The target directory will be created if it doesn't exist.
 
+.PARAMETER Auto
+    Enables automatic mode for batch processing. When enabled, the function will:
+    - Automatically select the best matching album from search results based on confidence scoring
+    - Try different track sorting strategies and pick the one with the most high-confidence matches
+    - Automatically save tags and optionally cover art if confidence threshold is met
+    - Skip to the next album in the pipeline after successful processing
+    Useful for processing large batches of well-organized albums.
+
+.PARAMETER AutoConfidenceThreshold
+    Sets the minimum confidence score (0.5 to 1.0) required for automatic selection and processing.
+    Default is 0.80 (80%). Higher values require more exact matches.
+
+.PARAMETER AutoFallback
+    Enables automatic provider fallback when the primary provider doesn't have a high-confidence match.
+    The fallback chain prioritizes Qobuz and Spotify as the most reliable providers:
+    - Qobuz → Spotify → Discogs → MusicBrainz
+    - Spotify → Qobuz → Discogs → MusicBrainz
+    This helps ensure successful matches even when one provider has incomplete data.
+
+.PARAMETER AutoSaveCover
+    When used with -Auto, automatically saves cover art to the album folder after saving tags.
+    Requires Auto mode to be enabled.
+
 .EXAMPLE
     Start-OM -Path "C:\Music\MyArtist"
 
@@ -84,6 +107,24 @@
     Processes albums from C:\Music\Unsorted and moves each organized album folder to C:\Music\Organized.
     Albums will be organized into the structure created by the rename pattern (typically Artist\Year - Album).
 
+.EXAMPLE
+    Start-OM -Path "C:\Music\Artist" -Auto -AutoFallback -AutoSaveCover
+
+    Auto-processes all albums under C:\Music\Artist with automatic provider fallback and cover art saving.
+    Automatically selects best matches, tries different sorting strategies, and skips to next album after saving.
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\NewAlbums" -Auto -AutoConfidenceThreshold 0.90 -Provider Qobuz
+
+    Auto-processes albums with Qobuz provider, requiring 90% confidence for automatic selection.
+    If Qobuz doesn't have good matches, stays in interactive mode for manual selection.
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\Collection" -Auto -AutoFallback -WhatIf
+
+    Preview what Auto mode would do without making any changes. Shows which albums would be auto-selected
+    and which would require manual intervention.
+
 .NOTES
     This function requires the TagLib-Sharp library for reading and writing audio file tags.
     It will attempt to install it automatically if it's missing.
@@ -91,6 +132,10 @@
     The function supports -WhatIf to preview changes without applying them.
     Interactive mode supports switching between Quick Album Search and Artist-First Search modes,
     changing providers on the fly, and various track sorting and matching options.
+    
+    Auto mode is best for well-organized libraries where folder names accurately reflect artist and album.
+    Use higher confidence thresholds (0.90+) for conservative matching, or lower (0.70-0.80) for more
+    aggressive batch processing. AutoFallback ensures better match rates across providers.
 
 .LINK
     https://github.com/jmwatte/OM
@@ -121,7 +166,16 @@ function Start-OM {
         [Parameter(Mandatory = $false)]
         [switch]$ReverseSource,
         [Parameter(Mandatory = $false)]
-        [string]$TargetFolder
+        [string]$TargetFolder,
+        [Parameter(Mandatory = $false)]
+        [switch]$Auto,
+        [Parameter(Mandatory = $false)]
+        [ValidateRange(0.5, 1.0)]
+        [double]$AutoConfidenceThreshold = 0.70,
+        [Parameter(Mandatory = $false)]
+        [switch]$AutoFallback,
+        [Parameter(Mandatory = $false)]
+        [switch]$AutoSaveCover
 
     )
 
@@ -543,6 +597,258 @@ function Start-OM {
                 Write-Warning "Move failed or was skipped. Move result: $moveResult"
             }
         }
+        # Helper function: Calculate string similarity (Levenshtein-based)
+        function Get-StringSimilarity {
+            param(
+                $String1,
+                $String2
+            )
+            try {
+                # Handle arrays first (before null checks)
+                if ($String1 -is [array]) { $String1 = $String1[0] }
+                if ($String2 -is [array]) { $String2 = $String2[0] }
+                
+                # Now check for null/empty
+                if (-not $String1 -or -not $String2) { return 0.0 }
+                
+                # Force to string and normalize
+                $s1 = [string]$String1
+                $s2 = [string]$String2
+                
+                # Normalize: remove punctuation that gets replaced in file paths
+                # Approve-PathSegment replaces : \ / with _ for Windows compatibility
+                # So "TRON: Legacy" matches "TRON_ Legacy"
+                $s1 = $s1.ToLower() -replace '[:\\/\-_]', '' -replace '\s+', ' '
+                $s2 = $s2.ToLower() -replace '[:\\/\-_]', '' -replace '\s+', ' '
+                $s1 = $s1.Trim()
+                $s2 = $s2.Trim()
+                
+                if ($s1 -eq $s2) { return 1.0 }
+                
+                [int]$len1 = $s1.Length
+                [int]$len2 = $s2.Length
+                [int]$maxLen = [Math]::Max($len1, $len2)
+                
+                if ($maxLen -eq 0) { return 1.0 }
+                
+                # Use Levenshtein distance - create array differently
+                $matrix = [int[,]]::new($len1 + 1, $len2 + 1)
+                
+                for ($i = 0; $i -le $len1; $i++) { $matrix[$i, 0] = $i }
+                for ($j = 0; $j -le $len2; $j++) { $matrix[0, $j] = $j }
+                
+                for ($i = 1; $i -le $len1; $i++) {
+                    for ($j = 1; $j -le $len2; $j++) {
+                        [int]$cost = if ($s1[$i - 1] -eq $s2[$j - 1]) { 0 } else { 1 }
+                        
+                        # PowerShell multidimensional arrays can return arrays - use GetValue
+                        [int]$deletion = [int]$matrix.GetValue(($i - 1), $j)
+                        [int]$insertion = [int]$matrix.GetValue($i, ($j - 1))
+                        [int]$substitution = [int]$matrix.GetValue(($i - 1), ($j - 1))
+                        
+                        [int]$minVal = [Math]::Min([Math]::Min(($deletion + 1), ($insertion + 1)), ($substitution + $cost))
+                        $matrix.SetValue($minVal, $i, $j)
+                    }
+                }
+                
+                # Extract final distance
+                [int]$distance = [int]$matrix.GetValue($len1, $len2)
+                [double]$result = 1.0 - ([double]$distance / [double]$maxLen)
+                return $result
+            }
+            catch {
+                Write-Warning "Get-StringSimilarity error: $_ | String1 type: $($String1.GetType().Name), String2 type: $($String2.GetType().Name)"
+                return 0.0
+            }
+        }
+        
+        # Helper function: Calculate match confidence for album
+        function Get-AlbumMatchConfidence {
+            param(
+                $Candidate,
+                [string]$LocalArtist,
+                [string]$LocalAlbum,
+                [int]$LocalTrackCount
+            )
+            
+            $score = 0.0
+            $weights = @{
+                Artist = 0.30
+                Album = 0.40
+                TrackCount = 0.30
+            }
+            
+            # Artist similarity
+            $remoteArtist = ''
+            if ($value = Get-IfExists $Candidate 'artists') {
+                if ($value -is [array] -and $value.Count -gt 0) {
+                    $remoteArtist = if ($value[0].name) { $value[0].name } else { $value[0].ToString() }
+                }
+            }
+            if (-not $remoteArtist -and ($value = Get-IfExists $Candidate 'artist')) {
+                $remoteArtist = $value
+            }
+            
+            if ($remoteArtist) {
+                $artistSim = Get-StringSimilarity -String1 $LocalArtist -String2 $remoteArtist
+                if ($artistSim -is [array]) { $artistSim = [double]$artistSim[0] }
+                $score += ([double]$artistSim * $weights.Artist)
+            }
+            
+            # Album similarity
+            $remoteAlbum = Get-IfExists $Candidate 'name'
+            if ($remoteAlbum) {
+                $albumSim = Get-StringSimilarity -String1 $LocalAlbum -String2 $remoteAlbum
+                if ($albumSim -is [array]) { $albumSim = [double]$albumSim[0] }
+                $score += ([double]$albumSim * $weights.Album)
+            }
+            
+            # Track count match
+            $remoteTrackCount = Get-IfExists $Candidate 'total_tracks'
+            if (-not $remoteTrackCount) { $remoteTrackCount = Get-IfExists $Candidate 'track_count' }
+            if (-not $remoteTrackCount) { $remoteTrackCount = Get-IfExists $Candidate 'tracks_count' }
+            
+            # Ensure track count is a scalar integer
+            if ($remoteTrackCount -is [array]) { $remoteTrackCount = $remoteTrackCount[0] }
+            if ($remoteTrackCount) { 
+                try { $remoteTrackCount = [int]$remoteTrackCount } 
+                catch { $remoteTrackCount = $null }
+            }
+            
+            if ($remoteTrackCount -and $LocalTrackCount -gt 0) {
+                $trackDiff = [Math]::Abs($remoteTrackCount - $LocalTrackCount)
+                $trackScore = if ($trackDiff -eq 0) { 1.0 }
+                             elseif ($trackDiff -le 2) { 0.8 }
+                             elseif ($trackDiff -le 5) { 0.5 }
+                             else { 0.0 }
+                $score += $trackScore * $weights.TrackCount
+            }
+            
+            return $score
+        }
+        
+        # Helper function: Get best auto match from candidates
+        function Get-BestAutoMatch {
+            param(
+                $Candidates,
+                [string]$LocalArtist,
+                [string]$LocalAlbum,
+                [int]$LocalTrackCount,
+                [double]$Threshold
+            )
+            
+            $bestMatch = $null
+            $bestScore = 0.0
+            $bestIndex = -1
+            
+            for ($i = 0; $i -lt $Candidates.Count; $i++) {
+                $score = Get-AlbumMatchConfidence -Candidate $Candidates[$i] `
+                    -LocalArtist $LocalArtist -LocalAlbum $LocalAlbum `
+                    -LocalTrackCount $LocalTrackCount
+                
+                if ($score -gt $bestScore) {
+                    $bestScore = $score
+                    $bestMatch = $Candidates[$i]
+                    $bestIndex = $i
+                }
+            }
+            
+            if ($bestScore -ge $Threshold) {
+                return @{
+                    Album = $bestMatch
+                    Index = $bestIndex + 1
+                    Confidence = [Math]::Round($bestScore * 100, 0)
+                }
+            }
+            
+            return $null
+        }
+        
+        # Helper function: Provider fallback with Qobuz → Spotify priority
+        function Invoke-ProviderWithFallback {
+            param(
+                [string]$PrimaryProvider,
+                [string]$Artist,
+                [string]$Album,
+                [int]$TrackCount,
+                [double]$Threshold,
+                [switch]$EnableFallback
+            )
+            
+            # Try primary provider
+            Write-Host "🔍 AUTO: Searching $PrimaryProvider for '$Album' by '$Artist'..." -ForegroundColor Cyan
+            
+            try {
+                $results = Invoke-ProviderSearch -Provider $PrimaryProvider -Album $Album -Artist $Artist -Type album
+                $candidates = if ($results -and $results.albums -and $results.albums.PSObject.Properties.Name -contains 'items' -and $results.albums.items) { @($results.albums.items | Where-Object { $_ -ne $null }) } else { @() }
+            }
+            catch {
+                Write-Verbose "Primary provider search failed: $_"
+                $candidates = @()
+            }
+            
+            if ($candidates.Count -gt 0) {
+                $bestMatch = Get-BestAutoMatch -Candidates $candidates -LocalArtist $Artist `
+                    -LocalAlbum $Album -LocalTrackCount $TrackCount -Threshold $Threshold
+                
+                if ($bestMatch) {
+                    Write-Host "✓ AUTO: Found high-confidence match on $PrimaryProvider ($($bestMatch.Confidence)%)" -ForegroundColor Green
+                    return @{
+                        Provider = $PrimaryProvider
+                        Album = $bestMatch.Album
+                        Confidence = $bestMatch.Confidence
+                        IsFallback = $false
+                    }
+                }
+            }
+            
+            # No good match - try fallback if enabled
+            if (-not $EnableFallback) {
+                Write-Verbose "No high-confidence match on $PrimaryProvider and fallback disabled"
+                return $null
+            }
+            
+            # Fallback chain: Qobuz → Spotify → Discogs → MusicBrainz
+            # Always try Qobuz first (most reliable), then Spotify
+            $fallbackChain = switch ($PrimaryProvider) {
+                'Qobuz' { @('Spotify', 'Discogs', 'MusicBrainz') }
+                'Spotify' { @('Qobuz', 'Discogs', 'MusicBrainz') }
+                'Discogs' { @('Qobuz', 'Spotify', 'MusicBrainz') }
+                'MusicBrainz' { @('Qobuz', 'Spotify', 'Discogs') }
+            }
+            
+            foreach ($fallbackProvider in $fallbackChain) {
+                Write-Host "⚠️  AUTO: No good match on $PrimaryProvider, trying $fallbackProvider..." -ForegroundColor Yellow
+                
+                try {
+                    $fallbackResults = Invoke-ProviderSearch -Provider $fallbackProvider -Album $Album -Artist $Artist -Type album
+                    $fallbackCandidates = if ($fallbackResults -and $fallbackResults.albums -and $fallbackResults.albums.PSObject.Properties.Name -contains 'items' -and $fallbackResults.albums.items) { @($fallbackResults.albums.items | Where-Object { $_ -ne $null }) } else { @() }
+                }
+                catch {
+                    Write-Verbose "Fallback provider $fallbackProvider search failed: $_"
+                    continue
+                }
+                
+                if ($fallbackCandidates.Count -gt 0) {
+                    $bestMatch = Get-BestAutoMatch -Candidates $fallbackCandidates -LocalArtist $Artist `
+                        -LocalAlbum $Album -LocalTrackCount $TrackCount -Threshold $Threshold
+                    
+                    if ($bestMatch) {
+                        Write-Host "✓ AUTO: Found high-confidence match on $fallbackProvider ($($bestMatch.Confidence)% confidence)" -ForegroundColor Green
+                        return @{
+                            Provider = $fallbackProvider
+                            Album = $bestMatch.Album
+                            Confidence = $bestMatch.Confidence
+                            IsFallback = $true
+                        }
+                    }
+                }
+            }
+            
+            Write-Verbose "No high-confidence match found on any provider"
+            return $null
+        }
+        
         $script:album = $null
         
         # Handle single album path: extract artist from parent folder
@@ -635,6 +941,7 @@ function Start-OM {
 
                     # Auto-detect artist and album from folder structure
                     if (-not $skipQuickPrompts) {
+                        Write-Verbose "DEBUG: Running auto-detection (skipQuickPrompts=$skipQuickPrompts)"
                         $folderName = $script:album.Name
                         $artistFolderName = $script:album.Parent.Name
                         
@@ -649,10 +956,77 @@ function Start-OM {
                         # Use parent folder as artist
                         $detectedArtist = $artistFolderName
                         
-                        Write-Host "📁 Auto-detected from folder structure: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Green
+                        # Try to load AlbumArtist tag from first audio file for better detection
+                        $tagArtist = $null
+                        try {
+                            $firstAudioFile = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse -ErrorAction Stop | 
+                                Where-Object { $_.Extension -in '.flac', '.mp3', '.m4a', '.ogg', '.opus', '.wma', '.ape' } |
+                                Select-Object -First 1
+                            
+                            if ($firstAudioFile -and $firstAudioFile.FullName) {
+                                Write-Verbose "DEBUG: Loading tag from $($firstAudioFile.Name)"
+                                
+                                # Load TagLib if not already loaded
+                                if (-not ([System.Management.Automation.PSTypeName]'TagLib.File').Type) {
+                                    $tagLibPath = Join-Path $PSScriptRoot '..' 'lib' 'taglib-sharp.dll'
+                                    if (Test-Path $tagLibPath) {
+                                        Add-Type -Path $tagLibPath -ErrorAction Stop
+                                    }
+                                }
+                                
+                                $tagFile = [TagLib.File]::Create($firstAudioFile.FullName)
+                                $tagArtist = if ($tagFile.Tag.FirstAlbumArtist) { $tagFile.Tag.FirstAlbumArtist } else { $null }
+                                $tagFile.Dispose()
+                                Write-Verbose "DEBUG: AlbumArtist tag='$tagArtist'"
+                            }
+                        }
+                        catch {
+                            Write-Verbose "Failed to load AlbumArtist tag for detection: $_"
+                        }
+                        
+                        # If tag contains folder artist, use the more complete tag value
+                        if ($tagArtist -and $tagArtist -match [regex]::Escape($detectedArtist)) {
+                            Write-Host "📁 Auto-detected from folder: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Gray
+                            Write-Host "🎵 Using AlbumArtist tag for better match: '$tagArtist'" -ForegroundColor Green
+                            $detectedArtist = $tagArtist
+                            
+                            # Also check if album name has "Artist - Title" pattern and strip it
+                            if ($detectedAlbum -match '^([^-]+?)\s*-\s*(.+)$') {
+                                $possibleArtist = $matches[1].Trim()
+                                $possibleAlbumOnly = $matches[2].Trim()
+                                # If the album prefix looks like part of artist name, strip it
+                                if ($possibleArtist -match [regex]::Escape($detectedArtist) -or $detectedArtist -match [regex]::Escape($possibleArtist)) {
+                                    $detectedAlbum = $possibleAlbumOnly
+                                    Write-Host "   Cleaned album name to: '$detectedAlbum'" -ForegroundColor Gray
+                                }
+                            }
+                        }
+                        # Otherwise check if album name has "Artist - Title" pattern
+                        elseif ($detectedAlbum -match '^([^-]+?)\s*-\s*(.+)$') {
+                            $possibleArtist = $matches[1].Trim()
+                            $possibleAlbumOnly = $matches[2].Trim()
+                            
+                            if ($possibleArtist -match [regex]::Escape($detectedArtist)) {
+                                Write-Host "📁 Auto-detected from folder: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Gray
+                                Write-Host "🎵 Using artist from album name: '$possibleArtist'" -ForegroundColor Green
+                                $detectedArtist = $possibleArtist
+                                $detectedAlbum = $possibleAlbumOnly
+                            }
+                            else {
+                                Write-Host "📁 Auto-detected from folder structure: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Green
+                            }
+                        }
+                        else {
+                            Write-Host "📁 Auto-detected from folder structure: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Green
+                        }
+                        
                         $currentArtist = $detectedArtist
                         $currentAlbum = $detectedAlbum
+                        Write-Verbose "DEBUG: Set currentArtist='$currentArtist', currentAlbum='$currentAlbum'"
                         $skipQuickPrompts = $true  # Skip prompts since both detected from structure
+                    }
+                    else {
+                        Write-Verbose "DEBUG: Skipping auto-detection (skipQuickPrompts=$skipQuickPrompts), using currentArtist='$currentArtist'"
                     }
 
                     if (-not $skipQuickPrompts) {
@@ -705,9 +1079,10 @@ function Start-OM {
                             catch {
                                 Write-Warning "Quick search failed: $_"
                                 $albumCandidates = @()
-                            }                          
-                            $QuickAlbumCandidates= get-ifexists $quickResults 'albums.items'
-                            if ($null -eq $QuickAlbumCandidates -or $QuickAlbumCandidates.Count -eq 0) {
+                            }
+                            
+                            # Check if we have candidates (use the properly extracted $albumCandidates)
+                            if ($null -eq $albumCandidates -or $albumCandidates.Count -eq 0) {
                                 Write-Host "No albums found for '$quickAlbum' by '$quickArtist' with $Provider." -ForegroundColor Red
                                 $retryChoice = Read-Host "`nPress Enter to retry, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(a)' artist-first mode, (ni) New Item (enter new artist+album), (x) skip album, or enter new album name"
                                 if ($retryChoice -eq 'ps') {
@@ -769,6 +1144,128 @@ function Start-OM {
                         $script:quickAlbumCandidates = $albumCandidates
                         $script:quickCurrentPage = 1
                         $script:backNavigationMode = $false  # Reset back navigation flag
+                    }
+                    
+                    # AUTO MODE: Check existing candidates first, then try fallback if needed
+                    if ($Auto) {
+                        # First, try to find a good match in the candidates we already have
+                        $bestMatch = $null
+                        if ($albumCandidates.Count -gt 0) {
+                            # Debug: Show confidence scores for all candidates
+                            Write-Host "🤖 AUTO: Calculating confidence scores..." -ForegroundColor Cyan
+                            $index = 1
+                            foreach ($candidate in $albumCandidates) {
+                                $scoreVal = Get-AlbumMatchConfidence -Candidate $candidate -LocalArtist $quickArtist -LocalAlbum $quickAlbum -LocalTrackCount $script:trackCount
+                                $scorePercent = $scoreVal * 100
+                                $displayName = if ($candidate.name) { $candidate.name } else { $candidate.title }
+                                Write-Host "   [$index] $displayName : $([math]::Round($scorePercent, 1))%" -ForegroundColor $(if ($scorePercent -ge ($AutoConfidenceThreshold * 100)) { 'Green' } else { 'Yellow' })
+                                $index++
+                            }
+                            
+                            $bestMatch = Get-BestAutoMatch -Candidates $albumCandidates `
+                                -LocalArtist $quickArtist -LocalAlbum $quickAlbum `
+                                -LocalTrackCount $script:trackCount -Threshold $AutoConfidenceThreshold
+                            
+                            if ($bestMatch) {
+                                Write-Host "✓ AUTO: Found high-confidence match on $Provider ($($bestMatch.Confidence)%)" -ForegroundColor Green
+                            } else {
+                                Write-Host "⚠️  AUTO: Best match below threshold (need $([math]::Round($AutoConfidenceThreshold * 100, 1))%)" -ForegroundColor Yellow
+                            }
+                        }
+                        else {
+                            Write-Host "⚠️  AUTO: No albums found on $Provider" -ForegroundColor Yellow
+                        }
+                        
+                        # If no good match and fallback is enabled, try other providers
+                        if (-not $bestMatch -and $AutoFallback) {
+                            if ($albumCandidates.Count -gt 0) {
+                                Write-Host "⚠️  AUTO: No high-confidence match on $Provider, trying fallback providers..." -ForegroundColor Yellow
+                            }
+                            else {
+                                Write-Host "⚠️  AUTO: Trying fallback providers..." -ForegroundColor Yellow
+                            }
+                            
+                            # Determine fallback chain
+                            $fallbackChain = switch ($Provider) {
+                                'Qobuz' { @('Spotify', 'Discogs', 'MusicBrainz') }
+                                'Spotify' { @('Qobuz', 'Discogs', 'MusicBrainz') }
+                                'Discogs' { @('Qobuz', 'Spotify', 'MusicBrainz') }
+                                'MusicBrainz' { @('Qobuz', 'Spotify', 'Discogs') }
+                            }
+                            
+                            foreach ($fallbackProvider in $fallbackChain) {
+                                Write-Host "   Trying $fallbackProvider..." -ForegroundColor Cyan
+                                
+                                try {
+                                    $fallbackResults = Invoke-ProviderSearch -Provider $fallbackProvider -Album $quickAlbum -Artist $quickArtist -Type album
+                                    $fallbackCandidates = if ($fallbackResults -and $fallbackResults.albums -and $fallbackResults.albums.items) { @($fallbackResults.albums.items | Where-Object { $_ -ne $null }) } else { @() }
+                                }
+                                catch {
+                                    Write-Verbose "Fallback provider $fallbackProvider search failed: $_"
+                                    continue
+                                }
+                                
+                                if ($fallbackCandidates.Count -gt 0) {
+                                    $fallbackMatch = Get-BestAutoMatch -Candidates $fallbackCandidates `
+                                        -LocalArtist $quickArtist -LocalAlbum $quickAlbum `
+                                        -LocalTrackCount $script:trackCount -Threshold $AutoConfidenceThreshold
+                                    
+                                    if ($fallbackMatch) {
+                                        Write-Host "   ✓ Found high-confidence match on $fallbackProvider ($($fallbackMatch.Confidence)%)" -ForegroundColor Green
+                                        $bestMatch = $fallbackMatch
+                                        $Provider = $fallbackProvider
+                                        Write-Host "🔄 AUTO: Switched to provider $Provider for better match" -ForegroundColor Cyan
+                                        break
+                                    }
+                                }
+                            }
+                        }
+                        
+                        # If we found a match (either primary or fallback), proceed
+                        if ($bestMatch) {
+                            $ProviderAlbum = $bestMatch.Album
+                            
+                            # Extract artist from album metadata
+                            $artistNameFromAlbum = $null
+                            if ($value = Get-IfExists $ProviderAlbum 'artists') {
+                                if ($value -is [array] -and $value.Count -gt 0) {
+                                    $artistNameFromAlbum = if ($value[0].name) { $value[0].name } else { $value[0].ToString() }
+                                }
+                            }
+                            elseif ($value = Get-IfExists $ProviderAlbum 'artist') {
+                                $artistNameFromAlbum = $value
+                            }
+                            
+                            if (-not $artistNameFromAlbum) {
+                                $artistNameFromAlbum = $quickArtist
+                            }
+                            
+                            # For Spotify, fetch full artist details
+                            if ($Provider -eq 'Spotify' -and $ProviderAlbum.artists -and $ProviderAlbum.artists.Count -gt 0) {
+                                $artistId = $ProviderAlbum.artists[0].id
+                                if ($artistId) {
+                                    $ProviderArtist = Invoke-ProviderGetArtist -Provider $Provider -ArtistId $artistId
+                                    if (-not $ProviderArtist) {
+                                        $ProviderArtist = @{ name = $artistNameFromAlbum; id = $artistNameFromAlbum }
+                                    }
+                                }
+                                else {
+                                    $ProviderArtist = @{ name = $artistNameFromAlbum; id = $artistNameFromAlbum }
+                                }
+                            }
+                            else {
+                                $ProviderArtist = @{ name = $artistNameFromAlbum; id = $artistNameFromAlbum }
+                            }
+                            
+                            Write-Host "✓ AUTO: Selected album: $($ProviderAlbum.name)" -ForegroundColor Green
+                            $stage = 'C'
+                            $script:autoModeActive = $true
+                            continue stageLoop
+                        }
+                        else {
+                            Write-Warning "AUTO: No high-confidence match found. Falling back to interactive selection."
+                            $script:autoModeActive = $false
+                        }
                     }
 
                     # Album selection for quick mode
@@ -1617,8 +2114,18 @@ function Start-OM {
                                 $canRetryReleases = (Get-IfExists $ProviderAlbum '_masterReleases') -and $ProviderAlbum._masterReleases.Count -gt 0
                                 $backPrompt = if ($canRetryReleases) { "'b' to try different release" } else { "'b' for album selection" }
                                 
-                                $skipChoice = Read-Host "Press Enter to skip, $backPrompt, 'p' to change provider"
-                                if ($skipChoice -eq 'b') {
+                                if ($Auto -and $script:autoModeActive) {
+                                    Write-Host "⚠️  AUTO: Track fetch failed, skipping album..." -ForegroundColor Yellow
+                                    $albumDone = $true
+                                    break stageLoop
+                                }
+                                
+                                $skipChoice = Read-Host "Press Enter to skip, 'r' to retry, $backPrompt, 'p' to change provider"
+                                if ($skipChoice -eq 'r') {
+                                    Write-Host "Retrying..." -ForegroundColor Cyan
+                                    continue stageLoop
+                                }
+                                elseif ($skipChoice -eq 'b') {
                                     if ($canRetryReleases) {
                                         # Show releases again (same code as above)
                                         if ($VerbosePreference -ne 'Continue') { Clear-Host }
@@ -1715,7 +2222,7 @@ function Start-OM {
                         }
                         
                         # Auto-prompt for ambiguous album artist (classical music with multiple artists)
-                        if (-not $NonInteractive -and $tracksForAlbum -and $tracksForAlbum.Count -gt 0) {
+                        if (-not $NonInteractive -and -not $Auto -and $tracksForAlbum -and $tracksForAlbum.Count -gt 0) {
                             $isAmbiguous = Assert-AlbumArtistAmbiguity -Artist $ProviderArtist -Album $ProviderAlbum -Tracks $tracksForAlbum
                             if ($isAmbiguous) {
                                 Write-Host "`n⚠️  This classical album has ambiguous album artist assignment." -ForegroundColor Yellow
@@ -1818,11 +2325,90 @@ function Start-OM {
                                     Show-Tracks @autoShowParams -InputReader $autoReader | Out-Null
                                     $goCDisplayShown = $true
                                 }
+                                
+                                # AUTO MODE: Smart matching with best sort strategy
+                                if ($Auto -and $script:autoModeActive -and -not $goC) {
+                                    Write-Host "🤖 AUTO: Analyzing track matches..." -ForegroundColor Cyan
+                                    
+                                    # Try different sort strategies and pick the best
+                                    $strategies = @('byOrder', 'byTitle', 'byDuration')
+                                    $bestStrategy = $null
+                                    $bestScore = 0
+                                    $bestPairing = $null
+                                    
+                                    foreach ($strategy in $strategies) {
+                                        # Create temporary pairing with this strategy
+                                        $tempParam = @{
+                                            SortMethod    = $strategy
+                                            AudioFiles    = $script:audioFiles
+                                            SpotifyTracks = $tracksForAlbum
+                                        }
+                                        if ($reverseSource) { $tempParam.Reverse = $true }
+                                        $tempPairing = Set-Tracks @tempParam
+                                        
+                                        # Count high-confidence matches
+                                        $highConfCount = @($tempPairing | Where-Object { 
+                                            $_.PSObject.Properties['ConfidenceLevel'] -and $_.ConfidenceLevel -eq 'High'
+                                        }).Count
+                                        
+                                        Write-Verbose "Strategy '$strategy': $highConfCount high-confidence matches"
+                                        
+                                        if ($highConfCount -gt $bestScore) {
+                                            $bestScore = $highConfCount
+                                            $bestStrategy = $strategy
+                                            $bestPairing = $tempPairing
+                                        }
+                                    }
+                                    
+                                    # Use the best pairing
+                                    if ($bestPairing) {
+                                        $script:pairedTracks = $bestPairing
+                                        $sortMethod = $bestStrategy
+                                    }
+                                    
+                                    # Calculate confidence percentage
+                                    $totalTracks = $script:pairedTracks.Count
+                                    $confidencePercent = if ($totalTracks -gt 0) { 
+                                        [Math]::Round(($bestScore / $totalTracks) * 100, 0) 
+                                    } else { 0 }
+                                    
+                                    Write-Host "🤖 AUTO: Best strategy: '$bestStrategy' ($bestScore/$totalTracks matches, $confidencePercent% confidence)" -ForegroundColor Green
+                                    
+                                    # Auto-proceed if confidence is high enough
+                                    if ($confidencePercent -ge ($AutoConfidenceThreshold * 100)) {
+                                        Write-Host "✓ AUTO: Confidence threshold met, auto-saving tags and cover..." -ForegroundColor Green
+                                        
+                                        # Auto-execute save-all command
+                                        $inputF = 'sa'
+                                        $goC = $true  # Simulate goC to trigger save-all
+                                        
+                                        # If AutoSaveCover is enabled, also save cover art
+                                        if ($AutoSaveCover) {
+                                            $coverUrl = Get-IfExists $ProviderAlbum 'cover_url'
+                                            if ($coverUrl) {
+                                                Write-Host "🖼️  AUTO: Saving cover art..." -ForegroundColor Cyan
+                                                $config = Get-OMConfig
+                                                $maxSize = $config.CoverArt.FolderImageSize
+                                                $result = Save-CoverArt -CoverUrl $coverUrl -AlbumPath $script:album.FullName `\n                                                    -Action SaveToFolder -MaxSize $maxSize -WhatIf:$useWhatIf
+                                                if ($result.Success) {
+                                                    Write-Host "✓ AUTO: Cover art saved" -ForegroundColor Green
+                                                }
+                                            }
+                                        }
+                                    }
+                                    else {
+                                        Write-Warning "AUTO: Confidence too low ($confidencePercent%), falling back to interactive mode"
+                                        $script:autoModeActive = $false
+                                    }
+                                }
                             }
 
                             if ($goC) {
                                 Write-Host "goC: auto-applying Save-All for album '$($ProviderAlbum.name)'." -ForegroundColor Yellow
                                 $inputF = 'sa'
+                            }
+                            elseif ($Auto -and $script:autoModeActive -and $inputF -eq 'sa') {
+                                # Auto mode already set inputF to 'sa' above, proceed
                             }
                             else {
                                 if ($useWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
@@ -2609,6 +3195,14 @@ function Start-OM {
                                             }
                                         }
                                         $script:refreshTracks = $true
+                                    }
+                                    
+                                    # AUTO MODE: Skip to next album after successful save
+                                    if ($Auto -and $script:autoModeActive) {
+                                        Write-Host "✓ AUTO: Album completed successfully, moving to next album..." -ForegroundColor Green
+                                        $albumDone = $true
+                                        $exitDo = $true
+                                        break
                                     }
                                     
                                     continue                                   
