@@ -1320,20 +1320,30 @@ function Start-OM {
                                     continue stageLoop
                                 }
                                 
-                                # Fetch album details to get genres
-                                Write-Verbose "Fetching genres from $Provider for album ID: $($ProviderAlbum.id)..."
-                                try {
-                                    $albumDetails = Invoke-ProviderGetAlbum -Provider $Provider -AlbumId $ProviderAlbum.id
-                                    $providerGenres = @()
-                                    
-                                    if ($Provider -eq 'Spotify' -and $albumDetails.genres) {
-                                        $providerGenres = @($albumDetails.genres)
-                                    }
-                                    elseif (($Provider -eq 'Qobuz' -or $Provider -eq 'Discogs' -or $Provider -eq 'MusicBrainz') -and $albumDetails.genre) {
-                                        $providerGenres = @($albumDetails.genre)
-                                    }
-                                    elseif ($albumDetails.styles) {
-                                        $providerGenres = @($albumDetails.styles)
+# Extract genres from $ProviderAlbum (already fetched from search) or $ProviderArtist
+                                    Write-Verbose "Extracting genres from $Provider album/artist..."
+                                    try {
+                                        $providerGenres = @()
+                                        
+                                        # Try album-level genres first
+                                        if ($ProviderAlbum.genres) {
+                                            $providerGenres = @($ProviderAlbum.genres)
+                                            Write-Verbose "Found genres from album: $($providerGenres -join ', ')"
+                                        }
+                                        # Try album genre field (Qobuz/Discogs/MusicBrainz)
+                                        elseif ($ProviderAlbum.genre) {
+                                            $providerGenres = @($ProviderAlbum.genre)
+                                            Write-Verbose "Found genre from album: $($providerGenres -join ', ')"
+                                        }
+                                        # Try styles field (Discogs)
+                                        elseif ($ProviderAlbum.styles) {
+                                            $providerGenres = @($ProviderAlbum.styles)
+                                            Write-Verbose "Found styles from album: $($providerGenres -join ', ')"
+                                        }
+                                        # Fallback to artist genres (Spotify)
+                                        elseif ($ProviderArtist -and $ProviderArtist.genres) {
+                                            $providerGenres = @($ProviderArtist.genres)
+                                            Write-Verbose "Found genres from artist: $($providerGenres -join ', ')"
                                     }
                                     
                                     $providerGenres = @($providerGenres | Where-Object { $_ -and $_ -ne '' } | ForEach-Object { $_.ToString().Trim() })
@@ -1683,23 +1693,26 @@ function Start-OM {
                                         break albumSelectionLoop
                                     }
                                     
-                                    # Fetch album details to get genres
-                                    Write-Host "Fetching genres from $Provider..." -ForegroundColor Cyan
+                                    # Extract genres from $ProviderAlbum (already fetched from search) or $ProviderArtist
+                                    Write-Host "Extracting genres from $Provider..." -ForegroundColor Cyan
                                     try {
-                                        $albumDetails = Invoke-ProviderGetAlbum -Provider $Provider -AlbumId $ProviderAlbum.id
                                         $providerGenres = @()
                                         
-                                        # Extract genres based on provider
-                                        if ($Provider -eq 'Spotify' -and $albumDetails.genres) {
-                                            $providerGenres = @($albumDetails.genres)
+                                        # Try album-level genres first
+                                        if ($ProviderAlbum.genres) {
+                                            $providerGenres = @($ProviderAlbum.genres)
                                         }
-                                        elseif (($Provider -eq 'Qobuz' -or $Provider -eq 'Discogs' -or $Provider -eq 'MusicBrainz') -and $albumDetails.genre) {
-                                            # Qobuz/Discogs/MusicBrainz use 'genre' field
-                                            $providerGenres = @($albumDetails.genre)
+                                        # Try album genre field (Qobuz/Discogs/MusicBrainz)
+                                        elseif ($ProviderAlbum.genre) {
+                                            $providerGenres = @($ProviderAlbum.genre)
                                         }
-                                        elseif ($albumDetails.styles) {
-                                            # Discogs also has 'styles' field
-                                            $providerGenres = @($albumDetails.styles)
+                                        # Try styles field (Discogs)
+                                        elseif ($ProviderAlbum.styles) {
+                                            $providerGenres = @($ProviderAlbum.styles)
+                                        }
+                                        # Fallback to artist genres (Spotify)
+                                        elseif ($ProviderArtist -and $ProviderArtist.genres) {
+                                            $providerGenres = @($ProviderArtist.genres)
                                         }
                                         
                                         # Normalize to array of strings
