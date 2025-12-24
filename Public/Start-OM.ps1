@@ -86,6 +86,25 @@
     When used with -Auto, automatically saves cover art to the album folder after saving tags.
     Requires Auto mode to be enabled.
 
+.PARAMETER UpdateGenresOnly
+    When specified, the function will only update genre tags from the matched album/release.
+    All other tags (Title, Artist, Album, Track numbers, etc.) remain unchanged.
+    This mode:
+    - Uses Quick Find to match albums directly (skips Artist stage)
+    - Fetches genre information from the matched release
+    - Updates only the genre tags on all files in the album
+    - Works with -Auto for batch processing
+    - Respects -GenreMode for Replace vs Merge behavior
+    Useful for adding or updating genre metadata across your library without touching other tags.
+
+.PARAMETER GenreMode
+    Specifies how to handle existing genres when updating genre tags.
+    Valid values:
+    - 'Replace': Completely replace existing genres with provider genres (default)
+    - 'Merge': Add provider genres to existing genres (keeps both, deduplicates)
+    Only applies when -UpdateGenresOnly is used, or when saving tags in interactive mode.
+    Default is 'Replace'.
+
 .EXAMPLE
     Start-OM -Path "C:\Music\MyArtist"
 
@@ -124,6 +143,18 @@
 
     Preview what Auto mode would do without making any changes. Shows which albums would be auto-selected
     and which would require manual intervention.
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\Artist" -UpdateGenresOnly -Provider Discogs -Auto
+
+    Automatically update only genre tags for all albums using Discogs. Replaces existing genres with
+    Discogs genres. Processes all albums in batch mode.
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\Artist" -UpdateGenresOnly -GenreMode Merge -Provider Qobuz
+
+    Interactively update genre tags, adding Qobuz genres to existing genres (keeps both).
+    Allows manual album selection for each folder.
 
 .NOTES
     This function requires the TagLib-Sharp library for reading and writing audio file tags.
@@ -175,7 +206,12 @@ function Start-OM {
         [Parameter(Mandatory = $false)]
         [switch]$AutoFallback,
         [Parameter(Mandatory = $false)]
-        [switch]$AutoSaveCover
+        [switch]$AutoSaveCover,
+        [Parameter(Mandatory = $false)]
+        [switch]$UpdateGenresOnly,
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('Replace', 'Merge')]
+        [string]$GenreMode = 'Replace'
 
     )
 
@@ -195,6 +231,11 @@ function Start-OM {
         if (-not (Get-Variable -Name showVerbose -Scope Script -ErrorAction SilentlyContinue)) {
             $script:showVerbose = $false
             $script:genreMode = 'Replace'  # 'Replace' or 'Merge'
+        }
+        
+        # Set genre mode from parameter if provided
+        if ($PSBoundParameters.ContainsKey('GenreMode')) {
+            $script:genreMode = $GenreMode
         }
 
         if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
@@ -1258,6 +1299,113 @@ function Start-OM {
                             }
                             
                             Write-Host "✓ AUTO: Selected album: $($ProviderAlbum.name)" -ForegroundColor Green
+                            
+                            # UpdateGenresOnly mode in Auto: Skip Stage C and directly update genres
+                            if ($UpdateGenresOnly) {
+                                Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+                                Write-Host "🎵 UPDATE GENRES ONLY MODE (AUTO)" -ForegroundColor Magenta
+                                Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+                                Write-Host ""
+                                Write-Host "Album: $($ProviderAlbum.name)" -ForegroundColor Green
+                                Write-Host "Genre mode: $($script:genreMode)" -ForegroundColor Yellow
+                                Write-Host ""
+                                
+                                # Get audio files
+                                $genreUpdateFiles = @(Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                                    Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' })
+                                
+                                if ($genreUpdateFiles.Count -eq 0) {
+                                    Write-Warning "No audio files found. Skipping."
+                                    $albumDone = $true
+                                    continue stageLoop
+                                }
+                                
+                                # Fetch album details to get genres
+                                Write-Verbose "Fetching genres from $Provider for album ID: $($ProviderAlbum.id)..."
+                                try {
+                                    $albumDetails = Invoke-ProviderGetAlbum -Provider $Provider -AlbumId $ProviderAlbum.id
+                                    $providerGenres = @()
+                                    
+                                    if ($Provider -eq 'Spotify' -and $albumDetails.genres) {
+                                        $providerGenres = @($albumDetails.genres)
+                                    }
+                                    elseif (($Provider -eq 'Qobuz' -or $Provider -eq 'Discogs' -or $Provider -eq 'MusicBrainz') -and $albumDetails.genre) {
+                                        $providerGenres = @($albumDetails.genre)
+                                    }
+                                    elseif ($albumDetails.styles) {
+                                        $providerGenres = @($albumDetails.styles)
+                                    }
+                                    
+                                    $providerGenres = @($providerGenres | Where-Object { $_ -and $_ -ne '' } | ForEach-Object { $_.ToString().Trim() })
+                                    
+                                    if ($providerGenres.Count -eq 0) {
+                                        Write-Warning "No genres found for this album. Skipping."
+                                        $albumDone = $true
+                                        continue stageLoop
+                                    }
+                                    
+                                    Write-Host "Genres: $($providerGenres -join ', ')" -ForegroundColor Green
+                                    
+                                    # Update files
+                                    $updatedCount = 0
+                                    foreach ($audioFile in $genreUpdateFiles) {
+                                        try {
+                                            $currentTags = Get-OMTags -Path $audioFile.FullName
+                                            $currentGenres = if ($currentTags.Genres) { @($currentTags.Genres) } else { @() }
+                                            
+                                            $newGenres = if ($script:genreMode -eq 'Merge') {
+                                                $combined = @($currentGenres) + @($providerGenres)
+                                                @($combined | Select-Object -Unique)
+                                            }
+                                            else {
+                                                $providerGenres
+                                            }
+                                            
+                                            # Check if changed
+                                            $changed = $false
+                                            if ($newGenres.Count -ne $currentGenres.Count) {
+                                                $changed = $true
+                                            }
+                                            else {
+                                                $sortedNew = $newGenres | Sort-Object
+                                                $sortedCurrent = $currentGenres | Sort-Object
+                                                for ($i = 0; $i -lt $newGenres.Count; $i++) {
+                                                    if ($sortedNew[$i] -cne $sortedCurrent[$i]) {
+                                                        $changed = $true
+                                                        break
+                                                    }
+                                                }
+                                            }
+                                            
+                                            if ($changed) {
+                                                Write-Verbose "  Updating: $($audioFile.Name) ($($currentGenres -join ', ') → $($newGenres -join ', '))"
+                                                Set-OMTags -Path $audioFile.FullName -Tags @{ Genres = $newGenres } -Force -WhatIf:$useWhatIf | Out-Null
+                                                $updatedCount++
+                                            }
+                                        }
+                                        catch {
+                                            Write-Warning "Failed to update '$($audioFile.Name)': $_"
+                                        }
+                                    }
+                                    
+                                    if ($useWhatIf) {
+                                        Write-Host "✓ WhatIf: Would update $updatedCount/$($genreUpdateFiles.Count) file(s)" -ForegroundColor Yellow
+                                    }
+                                    else {
+                                        Write-Host "✓ Updated $updatedCount/$($genreUpdateFiles.Count) file(s)" -ForegroundColor Green
+                                    }
+                                    Write-Host ""
+                                    
+                                    $albumDone = $true
+                                    continue stageLoop
+                                }
+                                catch {
+                                    Write-Error "Failed to update genres: $_"
+                                    $albumDone = $true
+                                    continue stageLoop
+                                }
+                            }
+                            
                             $stage = 'C'
                             $script:autoModeActive = $true
                             continue stageLoop
@@ -1514,6 +1662,157 @@ function Start-OM {
                                 }
                                 
                                 $script:backNavigationMode = $false  # Reset back navigation flag
+                                
+                                # UpdateGenresOnly mode: Skip Stage C and directly update genres
+                                if ($UpdateGenresOnly) {
+                                    Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+                                    Write-Host "🎵 UPDATE GENRES ONLY MODE" -ForegroundColor Magenta
+                                    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+                                    Write-Host ""
+                                    Write-Host "Selected album: $($ProviderAlbum.name)" -ForegroundColor Green
+                                    Write-Host "Genre mode: $($script:genreMode)" -ForegroundColor Yellow
+                                    Write-Host ""
+                                    
+                                    # Get audio files in album
+                                    $genreUpdateFiles = @(Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                                        Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' })
+                                    
+                                    if ($genreUpdateFiles.Count -eq 0) {
+                                        Write-Warning "No audio files found in album folder. Skipping."
+                                        $albumDone = $true
+                                        break albumSelectionLoop
+                                    }
+                                    
+                                    # Fetch album details to get genres
+                                    Write-Host "Fetching genres from $Provider..." -ForegroundColor Cyan
+                                    try {
+                                        $albumDetails = Invoke-ProviderGetAlbum -Provider $Provider -AlbumId $ProviderAlbum.id
+                                        $providerGenres = @()
+                                        
+                                        # Extract genres based on provider
+                                        if ($Provider -eq 'Spotify' -and $albumDetails.genres) {
+                                            $providerGenres = @($albumDetails.genres)
+                                        }
+                                        elseif (($Provider -eq 'Qobuz' -or $Provider -eq 'Discogs' -or $Provider -eq 'MusicBrainz') -and $albumDetails.genre) {
+                                            # Qobuz/Discogs/MusicBrainz use 'genre' field
+                                            $providerGenres = @($albumDetails.genre)
+                                        }
+                                        elseif ($albumDetails.styles) {
+                                            # Discogs also has 'styles' field
+                                            $providerGenres = @($albumDetails.styles)
+                                        }
+                                        
+                                        # Normalize to array of strings
+                                        $providerGenres = @($providerGenres | Where-Object { $_ -and $_ -ne '' } | ForEach-Object { $_.ToString().Trim() })
+                                        
+                                        if ($providerGenres.Count -eq 0) {
+                                            Write-Warning "No genres found for this album on $Provider."
+                                            Write-Host "Do you want to (s)kip or (e)nter genres manually? [s]: " -NoNewline -ForegroundColor Yellow
+                                            $genreChoice = Read-Host
+                                            if ($genreChoice -eq 'e') {
+                                                Write-Host "Enter genres (comma-separated): " -NoNewline
+                                                $manualGenres = Read-Host
+                                                $providerGenres = @($manualGenres -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+                                            }
+                                            else {
+                                                Write-Host "Skipping album (no genres to apply)." -ForegroundColor Yellow
+                                                $albumDone = $true
+                                                break albumSelectionLoop
+                                            }
+                                        }
+                                        
+                                        Write-Host "Provider genres: $($providerGenres -join ', ')" -ForegroundColor Green
+                                        Write-Host ""
+                                        
+                                        # Update each file
+                                        $updatedCount = 0
+                                        $skippedCount = 0
+                                        
+                                        foreach ($audioFile in $genreUpdateFiles) {
+                                            try {
+                                                # Read current tags
+                                                $currentTags = Get-OMTags -Path $audioFile.FullName
+                                                $currentGenres = if ($currentTags.Genres) { @($currentTags.Genres) } else { @() }
+                                                
+                                                # Determine new genres based on GenreMode
+                                                $newGenres = if ($script:genreMode -eq 'Merge') {
+                                                    # Merge: combine and deduplicate
+                                                    $combined = @($currentGenres) + @($providerGenres)
+                                                    @($combined | Select-Object -Unique)
+                                                }
+                                                else {
+                                                    # Replace: use provider genres only
+                                                    $providerGenres
+                                                }
+                                                
+                                                # Check if genres actually changed
+                                                $genresChanged = $false
+                                                if ($newGenres.Count -ne $currentGenres.Count) {
+                                                    $genresChanged = $true
+                                                }
+                                                else {
+                                                    $sortedNew = $newGenres | Sort-Object
+                                                    $sortedCurrent = $currentGenres | Sort-Object
+                                                    for ($i = 0; $i -lt $newGenres.Count; $i++) {
+                                                        if ($sortedNew[$i] -cne $sortedCurrent[$i]) {
+                                                            $genresChanged = $true
+                                                            break
+                                                        }
+                                                    }
+                                                }
+                                                
+                                                if ($genresChanged) {
+                                                    Write-Host "  Updating: $($audioFile.Name)" -ForegroundColor Cyan
+                                                    Write-Host "    Old: $($currentGenres -join ', ')" -ForegroundColor Gray
+                                                    Write-Host "    New: $($newGenres -join ', ')" -ForegroundColor Green
+                                                    
+                                                    # Apply the genre update
+                                                    Set-OMTags -Path $audioFile.FullName -Tags @{ Genres = $newGenres } -Force -WhatIf:$useWhatIf | Out-Null
+                                                    $updatedCount++
+                                                }
+                                                else {
+                                                    Write-Verbose "  Skipped (no change): $($audioFile.Name)"
+                                                    $skippedCount++
+                                                }
+                                            }
+                                            catch {
+                                                Write-Warning "Failed to update genres for '$($audioFile.Name)': $_"
+                                            }
+                                        }
+                                        
+                                        Write-Host ""
+                                        Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+                                        if ($useWhatIf) {
+                                            Write-Host "✓ WhatIf: Would update $updatedCount file(s), skip $skippedCount file(s)" -ForegroundColor Yellow
+                                        }
+                                        else {
+                                            Write-Host "✓ Updated $updatedCount file(s), skipped $skippedCount file(s)" -ForegroundColor Green
+                                        }
+                                        Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+                                        Write-Host ""
+                                        
+                                        # In Auto mode, automatically move to next album
+                                        if ($Auto) {
+                                            Write-Host "Auto mode: Moving to next album..." -ForegroundColor Yellow
+                                            $albumDone = $true
+                                            break albumSelectionLoop
+                                        }
+                                        else {
+                                            Write-Host "Press Enter to continue to next album..." -ForegroundColor Cyan
+                                            Read-Host
+                                            $albumDone = $true
+                                            break albumSelectionLoop
+                                        }
+                                    }
+                                    catch {
+                                        Write-Error "Failed to fetch or apply genres: $_"
+                                        Write-Host "Press Enter to skip this album..." -ForegroundColor Yellow
+                                        Read-Host
+                                        $albumDone = $true
+                                        break albumSelectionLoop
+                                    }
+                                }
+                                
                                 $stage = 'C'
                                 continue stageLoop
                             }
