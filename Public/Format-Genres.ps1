@@ -526,7 +526,11 @@ function Process-UnmappedGenres {
 
             if (-not $Force) {
                 $choice = Read-Host "Choose option (N/A/C/D/R/S/Show)"
-                $choice = $choice.ToUpper().Substring(0, 1)
+                $choice = $choice.ToUpper()
+                # Handle 'SHOW' before truncating to first character
+                if ($choice -ne 'SHOW') {
+                    $choice = $choice.Substring(0, 1)
+                }
             }
             else {
                 $choice = 'S'  # Default to skip if force
