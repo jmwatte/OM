@@ -928,7 +928,14 @@ function Set-OMTags {
                                 }
                             }
                             'Genres' { 
-                                # Clear first to prevent duplicates
+                                # For FLAC files, need to clear Vorbis GENRE comments directly to prevent duplicates
+                                if ($fileObj -is [TagLib.Flac.File]) {
+                                    $xiphTag = $fileObj.GetTag([TagLib.TagTypes]::Xiph, $false)
+                                    if ($xiphTag) {
+                                        $xiphTag.RemoveField("GENRE")
+                                    }
+                                }
+                                # Now set via standard API
                                 $tag.Genres = @()
                                 if ($newValue) {
                                     $tag.Genres = $newValue
