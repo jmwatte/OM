@@ -973,6 +973,12 @@ function Start-OM {
             $skipQuickPrompts = $false  # Flag to skip prompts when re-entering quick find after provider change
 
             :stageLoop while ($true) {
+                # Check if album is done FIRST before any other processing
+                if ($albumDone) {
+                    Write-Verbose "DEBUG: albumDone=true, breaking out of stageLoop"
+                    break
+                }
+                
                 # NEW: Handle quick find mode (only when not in track selection stage)
                 if ($script:findMode -eq 'quick' -and $stage -ne 'C') {
                     if ($VerbosePreference -ne 'Continue') { Clear-Host }
@@ -1361,25 +1367,34 @@ function Start-OM {
                                     foreach ($audioFile in $genreUpdateFiles) {
                                         try {
                                             $currentTags = Get-OMTags -Path $audioFile.FullName
-                                            $currentGenres = if ($currentTags.Genres) { @($currentTags.Genres) } else { @() }
+                                            # Ensure currentGenres is always an array
+                                            $currentGenres = @()
+                                            if ($currentTags.Genres) {
+                                                $currentGenres = @($currentTags.Genres)
+                                            }
                                             
-                                            $newGenres = if ($script:genreMode -eq 'Merge') {
+                                            # Ensure newGenres is always an array
+                                            $newGenres = @()
+                                            if ($script:genreMode -eq 'Merge') {
                                                 $combined = @($currentGenres) + @($providerGenres)
-                                                @($combined | Select-Object -Unique)
+                                                $newGenres = @($combined | Select-Object -Unique)
                                             }
                                             else {
-                                                $providerGenres
+                                                $newGenres = @($providerGenres)
                                             }
                                             
-                                            # Check if changed
+                                            # Check if changed (defensive array count)
                                             $changed = $false
-                                            if ($newGenres.Count -ne $currentGenres.Count) {
+                                            $currentCount = if ($currentGenres -is [array]) { $currentGenres.Count } else { if ($currentGenres) { 1 } else { 0 } }
+                                            $newCount = if ($newGenres -is [array]) { $newGenres.Count } else { if ($newGenres) { 1 } else { 0 } }
+                                            
+                                            if ($newCount -ne $currentCount) {
                                                 $changed = $true
                                             }
                                             else {
-                                                $sortedNew = $newGenres | Sort-Object
-                                                $sortedCurrent = $currentGenres | Sort-Object
-                                                for ($i = 0; $i -lt $newGenres.Count; $i++) {
+                                                $sortedNew = @($newGenres | Sort-Object)
+                                                $sortedCurrent = @($currentGenres | Sort-Object)
+                                                for ($i = 0; $i -lt $newCount; $i++) {
                                                     if ($sortedNew[$i] -cne $sortedCurrent[$i]) {
                                                         $changed = $true
                                                         break
@@ -1745,28 +1760,36 @@ function Start-OM {
                                             try {
                                                 # Read current tags
                                                 $currentTags = Get-OMTags -Path $audioFile.FullName
-                                                $currentGenres = if ($currentTags.Genres) { @($currentTags.Genres) } else { @() }
+                                                # Ensure currentGenres is always an array
+                                                $currentGenres = @()
+                                                if ($currentTags.Genres) {
+                                                    $currentGenres = @($currentTags.Genres)
+                                                }
                                                 
-                                                # Determine new genres based on GenreMode
-                                                $newGenres = if ($script:genreMode -eq 'Merge') {
+                                                # Determine new genres based on GenreMode (ensure always an array)
+                                                $newGenres = @()
+                                                if ($script:genreMode -eq 'Merge') {
                                                     # Merge: combine and deduplicate
                                                     $combined = @($currentGenres) + @($providerGenres)
-                                                    @($combined | Select-Object -Unique)
+                                                    $newGenres = @($combined | Select-Object -Unique)
                                                 }
                                                 else {
                                                     # Replace: use provider genres only
-                                                    $providerGenres
+                                                    $newGenres = @($providerGenres)
                                                 }
                                                 
-                                                # Check if genres actually changed
+                                                # Check if genres actually changed (defensive array count)
                                                 $genresChanged = $false
-                                                if ($newGenres.Count -ne $currentGenres.Count) {
+                                                $currentCount = if ($currentGenres -is [array]) { $currentGenres.Count } else { if ($currentGenres) { 1 } else { 0 } }
+                                                $newCount = if ($newGenres -is [array]) { $newGenres.Count } else { if ($newGenres) { 1 } else { 0 } }
+                                                
+                                                if ($newCount -ne $currentCount) {
                                                     $genresChanged = $true
                                                 }
                                                 else {
-                                                    $sortedNew = $newGenres | Sort-Object
-                                                    $sortedCurrent = $currentGenres | Sort-Object
-                                                    for ($i = 0; $i -lt $newGenres.Count; $i++) {
+                                                    $sortedNew = @($newGenres | Sort-Object)
+                                                    $sortedCurrent = @($currentGenres | Sort-Object)
+                                                    for ($i = 0; $i -lt $newCount; $i++) {
                                                         if ($sortedNew[$i] -cne $sortedCurrent[$i]) {
                                                             $genresChanged = $true
                                                             break
@@ -1826,8 +1849,13 @@ function Start-OM {
                                     }
                                 }
                                 
-                                $stage = 'C'
-                                continue stageLoop
+                                # Only proceed to Stage C if not in UpdateGenresOnly mode
+                                # (UpdateGenresOnly sets $albumDone and breaks albumSelectionLoop above)
+                                if (-not $UpdateGenresOnly) {
+                                    $stage = 'C'
+                                    continue stageLoop
+                                }
+                                # else: let $albumDone check handle it
                             }
                             else {
                                 Write-Warning "Invalid selection"

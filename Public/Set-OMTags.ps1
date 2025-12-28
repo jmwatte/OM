@@ -590,11 +590,11 @@ function Set-OMTags {
                     Composers       = if ($currentTags.Composers) { $currentTags.Composers } else { @() }
                     Comment         = if ($currentTags.Comment) { $currentTags.Comment } else { $null }
                     Lyrics          = if ($currentTags.Lyrics) { $currentTags.Lyrics } else { $null }
-                    Duration        = $currentTags.Duration
-                    DurationSeconds = $currentTags.DurationSeconds
-                    Bitrate         = $currentTags.Bitrate
-                    SampleRate      = $currentTags.SampleRate
-                    Format          = $currentTags.Format
+                    Duration        = if ($currentTags.PSObject.Properties.Name -contains 'Duration') { $currentTags.Duration } else { $null }
+                    DurationSeconds = if ($currentTags.PSObject.Properties.Name -contains 'DurationSeconds') { $currentTags.DurationSeconds } else { $null }
+                    Bitrate         = if ($currentTags.PSObject.Properties.Name -contains 'Bitrate') { $currentTags.Bitrate } else { $null }
+                    SampleRate      = if ($currentTags.PSObject.Properties.Name -contains 'SampleRate') { $currentTags.SampleRate } else { $null }
+                    Format          = if ($currentTags.PSObject.Properties.Name -contains 'Format') { $currentTags.Format } else { $null }
                 }
                 
                 # Parse filename if ParseFilename pattern is specified
@@ -685,11 +685,11 @@ function Set-OMTags {
                     Composers       = if ($baseTagsForUpdate.Composers) { $baseTagsForUpdate.Composers } else { @() }
                     Comment         = if ($baseTagsForUpdate.Comment) { $baseTagsForUpdate.Comment } else { $null }
                     Lyrics          = if ($baseTagsForUpdate.Lyrics) { $baseTagsForUpdate.Lyrics } else { $null }
-                    Duration        = $baseTagsForUpdate.Duration
-                    DurationSeconds = $baseTagsForUpdate.DurationSeconds
-                    Bitrate         = $baseTagsForUpdate.Bitrate
-                    SampleRate      = $baseTagsForUpdate.SampleRate
-                    Format          = $baseTagsForUpdate.Format
+                    Duration        = if ($baseTagsForUpdate.PSObject.Properties.Name -contains 'Duration') { $baseTagsForUpdate.Duration } else { $null }
+                    DurationSeconds = if ($baseTagsForUpdate.PSObject.Properties.Name -contains 'DurationSeconds') { $baseTagsForUpdate.DurationSeconds } else { $null }
+                    Bitrate         = if ($baseTagsForUpdate.PSObject.Properties.Name -contains 'Bitrate') { $baseTagsForUpdate.Bitrate } else { $null }
+                    SampleRate      = if ($baseTagsForUpdate.PSObject.Properties.Name -contains 'SampleRate') { $baseTagsForUpdate.SampleRate } else { $null }
+                    Format          = if ($baseTagsForUpdate.PSObject.Properties.Name -contains 'Format') { $baseTagsForUpdate.Format } else { $null }
                 }
                 
                 # Parse filename if ParseFilename pattern is specified
@@ -763,7 +763,11 @@ function Set-OMTags {
             foreach ($prop in $newTags.PSObject.Properties) {
                 $propName = $prop.Name
                 $newValue = $prop.Value
-                $oldValue = $currentTags.$propName
+                $oldValue = if ($currentTags.PSObject.Properties.Name -contains $propName) { 
+                    $currentTags.$propName 
+                } else { 
+                    $null 
+                }
                 
                 # Skip read-only properties
                 if ($propName -in $readOnlyProps) {
