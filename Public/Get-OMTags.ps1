@@ -299,6 +299,15 @@ function Get-OMTags {
                     } else {
                         $artists = @($tag.Performers)
                     }
+                    # Deduplicate case-insensitively, preserving first occurrence's casing
+                    $uniqueArtists = @{}
+                    $artists = $artists | ForEach-Object {
+                        $lowerKey = $_.ToLower()
+                        if (-not $uniqueArtists.ContainsKey($lowerKey)) {
+                            $uniqueArtists[$lowerKey] = $_
+                            $_
+                        }
+                    }
                 }
                 
                 $albumArtists = @()
@@ -307,6 +316,15 @@ function Get-OMTags {
                         $albumArtists = $tag.AlbumArtists
                     } else {
                         $albumArtists = @($tag.AlbumArtists)
+                    }
+                    # Deduplicate case-insensitively, preserving first occurrence's casing
+                    $uniqueAlbumArtists = @{}
+                    $albumArtists = $albumArtists | ForEach-Object {
+                        $lowerKey = $_.ToLower()
+                        if (-not $uniqueAlbumArtists.ContainsKey($lowerKey)) {
+                            $uniqueAlbumArtists[$lowerKey] = $_
+                            $_
+                        }
                     }
                 }
                 
@@ -317,6 +335,15 @@ function Get-OMTags {
                     } else {
                         $composers = @($tag.Composers)
                     }
+                    # Deduplicate case-insensitively, preserving first occurrence's casing
+                    $uniqueComposers = @{}
+                    $composers = $composers | ForEach-Object {
+                        $lowerKey = $_.ToLower()
+                        if (-not $uniqueComposers.ContainsKey($lowerKey)) {
+                            $uniqueComposers[$lowerKey] = $_
+                            $_
+                        }
+                    }
                 }
                 
                 $genres = @()
@@ -326,6 +353,15 @@ function Get-OMTags {
                         # Decode common HTML entities (case-insensitive) and split on common delimiters
                         $decodedGenre = $g -replace '(?i)&amp;', '&' -replace '(?i)&lt;', '<' -replace '(?i)&gt;', '>' -replace '(?i)&quot;', '"' -replace '(?i)&#39;', "'"
                         $genres += $decodedGenre -split '[,;/]' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+                    }
+                    # Deduplicate case-insensitively, preserving first occurrence's casing
+                    $uniqueGenres = @{}
+                    $genres = $genres | ForEach-Object {
+                        $lowerKey = $_.ToLower()
+                        if (-not $uniqueGenres.ContainsKey($lowerKey)) {
+                            $uniqueGenres[$lowerKey] = $_
+                            $_
+                        }
                     }
                 }
 
