@@ -183,7 +183,8 @@ function Get-OMTags {
                 Write-Verbose "Skipping non-audio file: $(Split-Path $Path -Leaf)"
                 return @()
             } elseif ($supportedExtensions -contains $fileExtension) {
-                $files = @($Path)
+                # Convert to absolute path
+                $files = @((Get-Item -LiteralPath $Path).FullName)
             } else {
                 Write-Warning "File '$Path' is not a supported audio format"
                 return @()
@@ -209,7 +210,8 @@ function Get-OMTags {
                         Write-Verbose "Skipping non-audio file: $(Split-Path $p -Leaf)"
                         continue
                     } elseif ($supportedExtensions -contains $fileExtension) {
-                        $files += $p
+                        # Convert to absolute path
+                        $files += (Get-Item -LiteralPath $p).FullName
                     } else {
                         Write-Warning "File '$p' is not a supported audio format"
                         continue

@@ -1,3 +1,62 @@
+function Read-RawTagsForComparison {
+    <#
+    .SYNOPSIS
+        Reads raw tag values from a file using TagLib without any deduplication or processing.
+        Used by Set-OMTags for accurate change detection.
+    
+    .PARAMETER Path
+        The file path to read tags from.
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path
+    )
+    
+    try {
+        $fileObj = [TagLib.File]::Create($Path)
+        try {
+            $tag = $fileObj.Tag
+            $properties = $fileObj.Properties
+            
+            # Read raw arrays without deduplication
+            $artists = if ($tag.Performers) { @($tag.Performers) } else { @() }
+            $albumArtists = if ($tag.AlbumArtists) { @($tag.AlbumArtists) } else { @() }
+            $composers = if ($tag.Composers) { @($tag.Composers) } else { @() }
+            $genres = if ($tag.Genres) { @($tag.Genres) } else { @() }
+            
+            return [PSCustomObject]@{
+                Path            = $Path
+                FileName        = [System.IO.Path]::GetFileName($Path)
+                Title           = if ($tag.Title) { $tag.Title } else { $null }
+                Artists         = $artists
+                AlbumArtists    = $albumArtists
+                Album           = if ($tag.Album) { $tag.Album } else { $null }
+                Track           = if ($tag.Track) { $tag.Track } else { $null }
+                TrackCount      = if ($tag.TrackCount) { $tag.TrackCount } else { $null }
+                Disc            = if ($tag.Disc) { $tag.Disc } else { $null }
+                DiscCount       = if ($tag.DiscCount) { $tag.DiscCount } else { $null }
+                Year            = if ($tag.Year) { $tag.Year } else { $null }
+                Genres          = $genres
+                Composers       = $composers
+                Comment         = if ($tag.Description) { $tag.Description } elseif ($tag.Comment) { $tag.Comment } else { $null }
+                Lyrics          = if ($tag.Lyrics) { $tag.Lyrics } else { $null }
+                Duration        = if ($properties.Duration) { $properties.Duration } else { [TimeSpan]::Zero }
+                DurationSeconds = if ($properties.Duration) { [double]$properties.Duration.TotalSeconds } else { 0.0 }
+                Bitrate         = if ($properties.AudioBitrate) { $properties.AudioBitrate } else { 0 }
+                SampleRate      = if ($properties.AudioSampleRate) { $properties.AudioSampleRate } else { 0 }
+                Format          = [System.IO.Path]::GetExtension($Path).TrimStart('.')
+            }
+        }
+        finally {
+            $fileObj.Dispose()
+        }
+    }
+    catch {
+        Write-Warning "Failed to read tags from '$Path': $_"
+        return $null
+    }
+}
+
 function Expand-RenamePattern {
     <#
     .SYNOPSIS
@@ -528,22 +587,23 @@ function Set-OMTags {
             $filePath = $Path.Path
             $inputTags = $Path  # Store the modified tags from pipeline
             # Always re-read file to get actual current state for comparison
-            $currentTags = Get-OMTags -Path $filePath
+            # Use TagLib directly to avoid Get-OMTags deduplication affecting change detection
+            $currentTags = Read-RawTagsForComparison -Path $filePath
         } elseif ($Path -is [string]) {
             if ($Path -match '^@{Directory=(.+?); FileName=(.+?);') {
                 $directory = $matches[1]
                 $fileName = $matches[2]
                 $filePath = Join-Path $directory $fileName
                 $isPipelineInput = $true
-                $currentTags = Get-OMTags -Path $filePath
+                $currentTags = Read-RawTagsForComparison -Path $filePath
             } elseif ($Path -match '^OMTagObject:(.*)$') {
                 $filePath = $matches[1]
                 $isPipelineInput = $true
-                $currentTags = Get-OMTags -Path $filePath
+                $currentTags = Read-RawTagsForComparison -Path $filePath
             } else {
                 $isPipelineInput = $false
                 $filePath = $Path
-                $currentTags = Get-OMTags -Path $filePath
+                $currentTags = Read-RawTagsForComparison -Path $filePath
             }
         } else {
             Write-Warning "Invalid input type: $($Path.GetType().FullName)"
