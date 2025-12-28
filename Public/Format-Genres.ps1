@@ -43,7 +43,8 @@ function Format-Genres {
         When applying a mapping, apply to all instances of that genre automatically.
 
     .PARAMETER PassThru
-        Return formatted tag objects with corrected genres.
+        Return formatted tag objects with corrected genres for pipeline processing.
+        Required when piping to Set-OMTags. Without this, only a summary is displayed.
 
     .PARAMETER Details
         Return individual file details instead of summary.
@@ -56,11 +57,11 @@ function Format-Genres {
 
     .EXAMPLE
         # Basic usage: Interactively clean up genres and write back to files
-        # IMPORTANT: Use -Details to get individual file objects for Set-OMTags
-        Get-OMTags -Path "C:\Music\Album" -Details | Format-Genres | Set-OMTags
+        # IMPORTANT: Use -PassThru to pass modified tags to Set-OMTags
+        Get-OMTags -Path "C:\Music\Album" -Details | Format-Genres -PassThru | Set-OMTags
         
         # Or using aliases:
-        GOT "C:\Music\Album" -Details | FOG | SOT
+        GOT "C:\Music\Album" -Details | FOG -PassThru | SOT
 
     .EXAMPLE
         # Preview all genres with frequency counts before making changes
@@ -82,7 +83,8 @@ function Format-Genres {
 
     .EXAMPLE
         # Interactive mode: Prompt for each unmapped genre as encountered
-        GOT "E:\Music\NewAlbum" -Details | FOG -ShowFrequency | SOT
+        # Use -PassThru to pipe corrected tags to Set-OMTags
+        GOT "E:\Music\NewAlbum" -Details | FOG -ShowFrequency -PassThru | SOT
         
         # For each unmapped genre, you'll see options:
         # [M]ap to existing genre
