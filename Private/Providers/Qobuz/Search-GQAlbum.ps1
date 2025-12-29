@@ -275,10 +275,10 @@ function Search-GQAlbum {
         $coverNode = $albumDoc.SelectSingleNode("//*[@id='page_catalog_page']/link")
         $coverUrl = if ($coverNode) { $coverNode.GetAttributeValue('href','') } else { '' }
 
-        $item = [PSCustomObject]@{
+        # Create raw album object and normalize it (to ensure proper genre decoding)
+        $rawItem = [PSCustomObject]@{
             name        = $albumName
             id          = $targetUrl
-            #id          = $albumId
             url         = $targetUrl
             artists     = @([PSCustomObject]@{ name = $albumArtistName })
             genres      = $genres
@@ -286,6 +286,13 @@ function Search-GQAlbum {
             track_count = $trackCount
             disc_count  = $discCount
             release_date = $releaseDate
+        }
+
+        # Normalize the album object to ensure genres are HTML-decoded
+        $item = if (Get-Command -Name Normalize-AlbumResult -ErrorAction SilentlyContinue) {
+            Normalize-AlbumResult -Raw $rawItem
+        } else {
+            $rawItem
         }
 
         $res = [PSCustomObject]@{

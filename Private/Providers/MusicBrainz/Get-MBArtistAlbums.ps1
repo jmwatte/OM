@@ -48,8 +48,22 @@ function Get-MBArtistAlbums {
         Write-Verbose "Found $($releases.Count) releases"
         
         # Normalize to Spotify-like structure
-        $normalizedReleases = foreach ($release in $releases) {
-            write-host "extracting release: $($release.title)" -ForegroundColor Cyan
+        $normalizedReleases = @()
+        $processedCount = 0
+        $totalReleases = $releases.Count
+        
+        foreach ($release in $releases) {
+            # Check for user interruption (Q to stop processing)
+            if ([Console]::KeyAvailable) {
+                $key = [Console]::ReadKey($true)
+                if ($key.Key -eq 'Q' -or $key.Key -eq 'q' -or $key.Key -eq 'Escape') {
+                    Write-Host "`nProcessing interrupted by user. Returning $($normalizedReleases.Count) releases processed so far." -ForegroundColor Yellow
+                    break
+                }
+            }
+            
+            $processedCount++
+            Write-Host "extracting release $processedCount/$totalReleases : $($release.title) (Press Q to stop)" -ForegroundColor Cyan
             # Extract release date (MusicBrainz has various date formats)
             $releaseDate = $null
             if (Get-IfExists $release 'date') {
@@ -138,6 +152,22 @@ function Get-MBArtistAlbums {
             }
 
             [PSCustomObject]@{
+                id           = $release.id
+                name         = $release.title
+                displayName  = $displayName
+                year         = $year
+                release_date = $releaseDate
+                track_count  = $track_count
+                disc_count   = if (Get-IfExists $release 'media') { (@($release.media).Count) } else { $null }
+                type         = 'album'  # Assuming all are albums as per query
+                cover_url    = $coverUrl  # Cover Art Archive URL
+                url          = if ($release.id) { "https://musicbrainz.org/release/$($release.id)" } else { $null }
+                artists      = if (Get-IfExists $release 'artist-credit') { 
+                                    @($release.'artist-credit' | ForEach-Object { if (Get-IfExists $_ 'name') { [PSCustomObject]@{ name = $_.name } } }) 
+                                } else { @() }
+            }
+            
+            $normalizedReleases += [PSCustomObject]@{
                 id           = $release.id
                 name         = $release.title
                 displayName  = $displayName
