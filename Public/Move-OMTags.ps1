@@ -125,9 +125,18 @@ function Move-OMTags {
             # Determine AlbumArtist (use first non-empty value)
             $albumArtist = $null
             foreach ($tag in $tags) {
-                if ($tag.AlbumArtists -and $tag.AlbumArtists.Count -gt 0) {
-                    $albumArtist = $tag.AlbumArtists[0]
-                    break
+                if ($tag.AlbumArtists) {
+                    # AlbumArtists can be either a string or an array
+                    if ($tag.AlbumArtists -is [array]) {
+                        if ($tag.AlbumArtists.Count -gt 0) {
+                            $albumArtist = $tag.AlbumArtists[0]
+                            break
+                        }
+                    } else {
+                        # It's a string
+                        $albumArtist = $tag.AlbumArtists
+                        break
+                    }
                 }
             }
             if (-not $albumArtist) {

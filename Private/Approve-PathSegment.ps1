@@ -169,7 +169,7 @@ function Format-Path {
         $sanitizedSegments = @()
         foreach ($seg in $segments) {
             if ($seg -eq '') { continue }
-            $san = Sanitize-PathSegment -Segment $seg -Replacement $Replacement -CollapseRepeating:$CollapseRepeating -Transliterate:$Transliterate -MaxLength $MaxSegmentLength
+            $san = Approve-PathSegment -Segment $seg -Replacement $Replacement -CollapseRepeating:$CollapseRepeating -Transliterate:$Transliterate -MaxLength $MaxSegmentLength
             $sanitizedSegments += $san
         }
 
