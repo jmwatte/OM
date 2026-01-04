@@ -464,27 +464,14 @@ function Start-OM {
                     $script:album = Get-Item -LiteralPath $moveResult.NewAlbumPath
             
                     # Reload audio files with fresh TagLib handles from the NEW album path
-                    $script:audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
-                        Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
-                        Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
-                    $script:audioFiles = foreach ($f in $script:audioFiles) {
-                        try {
-                            $tagFile = [TagLib.File]::Create($f.FullName)
-                            [PSCustomObject]@{
-                                FilePath    = $f.FullName
-                                DiscNumber  = $tagFile.Tag.Disc
-                                TrackNumber = $tagFile.Tag.Track
-                                Title       = $tagFile.Tag.Title
-                                TagFile     = $tagFile
-                                Composer    = if ($tagFile.Tag.Composers) { $tagFile.Tag.Composers -join '; ' } else { 'Unknown Composer' }
-                                Artist      = if ($tagFile.Tag.Performers) { $tagFile.Tag.Performers -join '; ' } else { 'Unknown Artist' }
-                                Name        = if ($tagFile.Tag.Title) { $tagFile.Tag.Title } else { $f.BaseName }
-                                Duration    = if ($f.Extension -eq '.ape') { Get-ApeDuration -FilePath $f.FullName } else { $tagFile.Properties.Duration.TotalMilliseconds }
+                    $script:audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName
+                    # Update paired tracks with reloaded audio files to reflect updated tags
+                    if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
+                        for ($i = 0; $i -lt [Math]::Min($script:pairedTracks.Count, $script:audioFiles.Count); $i++) {
+                            if ($script:pairedTracks[$i].AudioFile.TagFile) {
+                                try { $script:pairedTracks[$i].AudioFile.TagFile.Dispose() } catch { }
                             }
-                        }
-                        catch {
-                            Write-Warning "Skipping corrupted or invalid audio file: $($f.FullName) - Error: $($_.Exception.Message)"
-                            continue
+                            $script:pairedTracks[$i].AudioFile = $script:audioFiles[$i]
                         }
                     }
 
@@ -3063,29 +3050,7 @@ function Start-OM {
                                                 }
                                             }
                                             # Reload audio files with fresh TagLib handles
-                                            $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
-                                                Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
-                                                Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
-                                            $audioFiles = foreach ($f in $audioFiles) {
-                                                try {
-                                                    $tagFile = [TagLib.File]::Create($f.FullName)
-                                                    [PSCustomObject]@{
-                                                        FilePath    = $f.FullName
-                                                        DiscNumber  = $tagFile.Tag.Disc
-                                                        TrackNumber = $tagFile.Tag.Track
-                                                        Title       = $tagFile.Tag.Title
-                                                        TagFile     = $tagFile
-                                                        Composer    = if ($tagFile.Tag.Composers) { $tagFile.Tag.Composers -join '; ' } else { 'Unknown Composer' }
-                                                        Artist      = if ($tagFile.Tag.Performers) { $tagFile.Tag.Performers -join '; ' } else { 'Unknown Artist' }
-                                                        Name        = if ($tagFile.Tag.Title) { $tagFile.Tag.Title } else { $f.BaseName }
-                                                        Duration    = if ($f.Extension -eq '.ape') { Get-ApeDuration -FilePath $f.FullName } else { $tagFile.Properties.Duration.TotalMilliseconds }
-                                                    }
-                                                }
-                                                catch {
-                                                    Write-Warning "Skipping corrupted or invalid audio file: $($f.FullName) - Error: $($_.Exception.Message)"
-                                                    continue
-                                                }
-                                            }
+                                            $audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName
                                             $script:refreshTracks = $true
                                         }
                                         # Don't exit the doTracks loop - just refresh and continue
