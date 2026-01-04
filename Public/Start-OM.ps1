@@ -416,6 +416,16 @@ function Start-OM {
             Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
             Write-Host ""
         }
+        # Replace inline showHeader with wrapper that delegates to Private helper
+        $showHeader = {
+            param(
+                [string]$Provider,
+                [string]$Artist,
+                [string]$AlbumName,
+                [int]$TrackCount = 0
+            )
+            Show-OMHeader -Provider $Provider -Artist $Artist -AlbumName $AlbumName -TrackCount $TrackCount -QobuzUrlLocale $qobuzUrlLocale -ScriptAlbum $script:album
+        }
         # Helper function for album folder move with retry on access errors
         function Invoke-MoveAlbumWithRetry {
             param($mvArgs, $useWhatIf)
