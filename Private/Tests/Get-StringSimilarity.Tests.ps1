@@ -11,6 +11,10 @@ Describe 'Get-StringSimilarity' {
         # Ensure the Function: provider uses the dot-sourced implementation
         $sb = (Get-Command Get-StringSimilarity -ErrorAction SilentlyContinue).ScriptBlock
         if ($sb) { Set-Item Function:\Get-StringSimilarity -Value $sb }
+
+        # Sanity-check the implementation scale: our expected output is 0.0-1.0 (not percentages)
+        $sanity = Get-StringSimilarity 'Hello' 'Helo'
+        if ($sanity -gt 1.0) { Throw "Get-StringSimilarity appears to return percentage values (>1.0): $sanity - override failed" }
     }
 
     It 'returns 1.0 for identical strings' {
@@ -28,7 +32,8 @@ Describe 'Get-StringSimilarity' {
 
     It 'returns a value between 0 and 1 for similar strings' {
         $val = Get-StringSimilarity 'Hello' 'Helo'
-        $val | Should -BeGreaterThan 0.0
-        $val | Should -BeLessThanOrEqual 1.0
+        Write-Verbose "DEBUG: value=[$val] type=[$($val.GetType().FullName)]"
+        ($val -gt 0.0) | Should -BeTrue
+        ($val -le 1.0) | Should -BeTrue
     }
 }
