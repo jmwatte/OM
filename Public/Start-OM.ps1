@@ -426,27 +426,13 @@ function Start-OM {
             )
             Show-OMHeader -Provider $Provider -Artist $Artist -AlbumName $AlbumName -TrackCount $TrackCount -QobuzUrlLocale $qobuzUrlLocale -ScriptAlbum $script:album
         }
-        # Helper function for album folder move with retry on access errors
+        # Wrapper for Invoke-MoveAlbumWithRetry helper (extracted to Private/Utils)
         function Invoke-MoveAlbumWithRetry {
             param($mvArgs, $useWhatIf)
-        
-            $moveSucceeded = $false
-            do {
-                try {
-                    $moveResult = Move-AlbumFolder @mvArgs -WhatIf:$useWhatIf
-                    $moveSucceeded = $true
-                }
-                catch {
-                    Write-Warning "Move-AlbumFolder failed: $($_.Exception.Message)"
-                    $retry = Read-Host "Folder may be in use by another process. Free the folder (close files/apps) and press Enter to retry, or 's' to skip"
-                    if ($retry -eq 's') {
-                        Write-Host "Skipping folder move." -ForegroundColor Yellow
-                        return $null
-                    }
-                }
-            } while (-not $moveSucceeded)
-        
-            return $moveResult
+
+            # Delegate to the extracted helper and provide an interactive OnRetry callback
+            $onRetry = { param($err) return (Read-Host "Folder may be in use by another process. Free the folder (close files/apps) and press Enter to retry, or 's' to skip") }
+            return Invoke-MoveAlbumWithRetryCore -mvArgs $mvArgs -UseWhatIf:$useWhatIf -OnRetry $onRetry
         }
         # Helper scriptblock for handling move success (shared between sf and sa)
         $handleMoveSuccess = {
