@@ -72,7 +72,7 @@ function Invoke-ProviderWithFallback {
                     Provider = $fallbackProvider
                     Album = $bestMatch.Album
                     Confidence = $bestMatch.Confidence
-                    IsFallback = true
+                    IsFallback = $true
                 }
             }
         }
