@@ -1396,12 +1396,9 @@ function Start-OM {
 
                                             if ($providerGenres.Count -eq 0) {
                                                 Write-Warning "No genres found for this album on $Provider."
-                                                Write-Host "Do you want to (s)kip or (e)nter genres manually? [s]: " -NoNewline -ForegroundColor Yellow
-                                                $genreChoice = Read-Host
-                                                if ($genreChoice -eq 'e') {
-                                                    Write-Host "Enter genres (comma-separated): " -NoNewline
-                                                    $manualGenres = Read-Host
-                                                    $providerGenres = @($manualGenres -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+                                                $manual = Prompt-ManualGenres -Provider $Provider
+                                                if ($manual -ne $null) {
+                                                    $providerGenres = @($manual)
                                                 }
                                                 else {
                                                     Write-Host "Skipping album (no genres to apply)." -ForegroundColor Yellow
@@ -1511,14 +1508,9 @@ function Start-OM {
                                         
                                         if ($providerGenres.Count -eq 0) {
                                             Write-Warning "No genres found for this album on $Provider."
-                                            Write-Host "Do you want to (s)kip or (e)nter genres manually? [s]: " -NoNewline -ForegroundColor Yellow
-                                            $genreChoice = Read-Host
-                                            if ($genreChoice -eq 'e') {
-                                                Write-Host "Enter genres (comma-separated): " -NoNewline
-                                                $manualGenres = Read-Host
-                                                $providerGenres = @($manualGenres -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
-                                            }
-                                            else {
+                                                $manual = Prompt-ManualGenres -Provider $Provider -InputReader { param($prompt) Read-Host -Prompt $prompt }
+                                                if ($manual -ne $null) {
+                                                    $providerGenres = @($manual)
                                                 Write-Host "Skipping album (no genres to apply)." -ForegroundColor Yellow
                                                 $albumDone = $true
                                                 break albumSelectionLoop
