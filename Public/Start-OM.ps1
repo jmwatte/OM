@@ -443,7 +443,7 @@ n        # Backwards-compatible local aliases
             param($mvArgs, $useWhatIf)
 
             # Delegate to the extracted helper and provide an interactive OnRetry callback
-            $onRetry = { param($err) return (Read-Host "Folder may be in use by another process. Free the folder (close files/apps) and press Enter to retry, or 's' to skip") }
+            $onRetry = { param($err) return (Show-OMPrompt -Prompt "Folder may be in use by another process. Free the folder (close files/apps) and press Enter to retry, or 's' to skip" -Context $Context) }
             return Invoke-MoveAlbumWithRetryCore -mvArgs $mvArgs -UseWhatIf:$useWhatIf -OnRetry $onRetry
         }
         # Helper scriptblock for handling move success (shared between sf and sa)
@@ -458,7 +458,7 @@ n        # Backwards-compatible local aliases
                     Write-Host -NoNewline -ForegroundColor Green "New: "
                     Write-Host $moveResult.NewAlbumPath
                     if ($moveResult.NewAlbumPath -ne $oldpath -and -not ($NonInteractive -or $goC) -and -not $useWhatIf) {
-                        Read-Host -Prompt "Press Enter to continue"
+                        Prompt-PressEnter -Context $Context
                     }
                     else {
                         Write-Verbose "NonInteractive/goC/WhatIf or no-path-change: skipping pause after move."
@@ -1509,7 +1509,7 @@ n        # Backwards-compatible local aliases
                                         
                                         if ($providerGenres.Count -eq 0) {
                                             Write-Warning "No genres found for this album on $Provider."
-                                                $manual = Prompt-ManualGenres -Provider $Provider -InputReader { param($prompt) Read-Host -Prompt $prompt }
+                                                $manual = Prompt-ManualGenres -Provider $Provider -Context $Context
                                                 if ($manual -ne $null) {
                                                     $providerGenres = @($manual)
                                                 Write-Host "Skipping album (no genres to apply)." -ForegroundColor Yellow
