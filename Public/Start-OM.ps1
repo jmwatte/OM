@@ -1206,156 +1206,213 @@ function Start-OM {
                         [Console]::ForegroundColor = $originalColor
                         if ($albumChoice -eq '') { $albumChoice = '1' }
                         
-                        if ($albumChoice -eq 'p') {
-                            # Show current provider and available shortcuts
-                            $config = Get-OMConfig
-                            $defaultProvider = $config.DefaultProvider
-                            Write-Host "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan
-                            Write-Host "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray
+                        # Parse album choice using centralized helper
+                        try {
+                            $parsed = Parse-AlbumSelectionChoice -Choice $albumChoice -MaxIndex $albumCandidates.Count
+                        }
+                        catch {
+                            Write-Warning "Invalid input: $albumChoice - $_"
                             continue albumSelectionLoop
                         }
-                        elseif ($albumChoice -eq 'ps') {
-                            $Provider = 'Spotify'
-                            Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                            $skipQuickPrompts = $true
-                            $script:backNavigationMode = $false
-                            continue stageLoop
-                        }
-                        elseif ($albumChoice -eq 'pq') {
-                            $Provider = 'Qobuz'
-                            Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                            $skipQuickPrompts = $true
-                            $script:backNavigationMode = $false
-                            continue stageLoop
-                        }
-                        elseif ($albumChoice -eq 'pd') {
-                            $Provider = 'Discogs'
-                            Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                            $skipQuickPrompts = $true
-                            $script:backNavigationMode = $false
-                            continue stageLoop
-                        }
-                        elseif ($albumChoice -eq 'pm') {
-                            $Provider = 'MusicBrainz'
-                            Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                            $skipQuickPrompts = $true
-                            $script:backNavigationMode = $false
-                            continue stageLoop
-                        }
-                        elseif ($albumChoice.ToLower() -eq 'f') {
-                            $script:findMode = 'artist-first'
-                            $script:backNavigationMode = $false
-                            $stage = 'A'
-                            continue stageLoop
-                        }
-                        # 'na' (new artist) removed; use (ni) New Item instead
-                        elseif ($albumChoice -eq 'ni') {
-                            # Prompt for new artist and album in one step
-                            $res = Read-ArtistAlbum -DefaultArtist $currentArtist -DefaultAlbum $currentAlbum
-                            if ($res.ChangedArtist) { $currentArtist = $res.Artist }
-                            if ($res.ChangedAlbum) { $currentAlbum = $res.Album }
-                            $skipQuickPrompts = $true
-                            $script:backNavigationMode = $false
-                            continue stageLoop
-                        }
-                        elseif ($albumChoice -match '^cvo(.*)$') {
-                            $rangeText = $matches[1]
-                            if (-not $rangeText) { $rangeText = "1" }
-                            Write-Verbose "Quickfind cv: Show-CoverArt called with Size='original' Grid='False' AlbumCount=$($albumCandidates.Count)"
-                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false
-                            Read-Host "Press Enter to continue..."
-                            continue albumSelectionLoop
-                        }
-                        elseif ($albumChoice -match '^cv(.*)$') {
-                            $rangeText = $matches[1]
-                            if (-not $rangeText) { $rangeText = "1" }
-                            Write-Verbose "Quickfind cvo: Show-CoverArt called with Size='original' Grid='False' AlbumCount=$($albumCandidates.Count)"
-                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false
-                            Read-Host "Press Enter to continue..."
-                            continue albumSelectionLoop
-                        }
-                        elseif ($albumChoice -match '^cs(.*)$') {
-                            $rangeText = $matches[1]
-                            if (-not $rangeText) { $rangeText = "1" }
-                            try {
-                                $selectedIndices = Expand-SelectionRange -RangeText $rangeText -MaxIndex $albumCandidates.Count
-                            }
-                            catch {
-                                Write-Warning "Invalid range syntax for cs command: $rangeText - $_"
-                                continue albumSelectionLoop
-                            }
-                            if ($selectedIndices -isnot [array]) {
-                                $selectedIndices = @($selectedIndices)
-                            }
-                            if ($selectedIndices.Count -eq 0) {
-                                Write-Warning "No valid albums selected for cs command"
-                                continue albumSelectionLoop
-                            }
-                            $config = Get-OMConfig
-                            $maxSize = $config.CoverArt.FolderImageSize
-                            foreach ($index in $selectedIndices) {
-                                $albumIndex = $index - 1
-                                $selectedAlbum = $albumCandidates[$albumIndex]
-                                if ($selectedAlbum.cover_url) {
-                                    $result = Save-CoverArt -CoverUrl $selectedAlbum.cover_url -AlbumPath $script:album.FullName -Action SaveToFolder -MaxSize $maxSize -WhatIf:$useWhatIf
-                                    if (-not $result.Success) {
-                                        Write-Warning "Failed to save cover art for album $index ($($selectedAlbum.name)): $($result.Error)"
-                                    }
-                                }
-                                else {
-                                    Write-Warning "No cover art available for album $index ($($selectedAlbum.name))"
-                                }
-                            }
-                            continue albumSelectionLoop
-                        }
-                        elseif ($albumChoice -match '^ct(.*)$') {
-                            $rangeText = $matches[1]
-                            if (-not $rangeText) { $rangeText = "1" }
-                            try {
-                                $selectedIndices = Expand-SelectionRange -RangeText $rangeText -MaxIndex $albumCandidates.Count
-                            }
-                            catch {
-                                Write-Warning "Invalid range syntax for ct command: $rangeText - $_"
-                                continue albumSelectionLoop
-                            }
-                            if ($selectedIndices -isnot [array]) {
-                                $selectedIndices = @($selectedIndices)
-                            }
-                            if ($selectedIndices.Count -eq 0) {
-                                Write-Warning "No valid albums selected for ct command"
-                                continue albumSelectionLoop
-                            }
-                            $config = Get-OMConfig
-                            $maxSize = $config.CoverArt.TagImageSize
-                            # Get audio files for embedding
-                            $audioFiles = Get-OMAudioFile -Path $script:album.FullName -SortMethod 'alphabetical' | Where-Object { $_ -ne $null }
 
-                            if ($audioFiles.Count -gt 0) {
-                                foreach ($index in $selectedIndices) {
-                                    $albumIndex = $index - 1
-                                    $selectedAlbum = $albumCandidates[$albumIndex]
-                                    if ($selectedAlbum.cover_url) {
-                                        $result = Save-CoverArt -CoverUrl $selectedAlbum.cover_url -AudioFiles $audioFiles -Action EmbedInTags -MaxSize $maxSize -WhatIf:$useWhatIf
-                                        if (-not $result.Success) {
-                                            Write-Warning "Failed to embed cover art for album $index ($($selectedAlbum.name)): $($result.Error)"
+                        switch ($parsed.Command) {
+                            'Provider' {
+                                $config = Get-OMConfig
+                                $defaultProvider = $config.DefaultProvider
+                                Write-Host "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan
+                                Write-Host "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray
+                                continue albumSelectionLoop
+                            }
+                            'SwitchProvider' {
+                                $Provider = $parsed.Provider
+                                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                                $skipQuickPrompts = $true
+                                $script:backNavigationMode = $false
+                                continue stageLoop
+                            }
+                            'FindMode' {
+                                $script:findMode = 'artist-first'
+                                $script:backNavigationMode = $false
+                                $stage = 'A'
+                                continue stageLoop
+                            }
+                            'NewItem' {
+                                $res = Read-ArtistAlbum -DefaultArtist $currentArtist -DefaultAlbum $currentAlbum
+                                if ($res.ChangedArtist) { $currentArtist = $res.Artist }
+                                if ($res.ChangedAlbum) { $currentAlbum = $res.Album }
+                                $skipQuickPrompts = $true
+                                $script:backNavigationMode = $false
+                                continue stageLoop
+                            }
+                            'CoverOriginal' {
+                                $rangeText = $parsed.RangeText
+                                if (-not $rangeText) { $rangeText = '1' }
+                                Write-Verbose "Quickfind cv: Show-CoverArt called with Size='original' Grid='False' AlbumCount=$($albumCandidates.Count)"
+                                Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false
+                                Read-Host "Press Enter to continue..."
+                                continue albumSelectionLoop
+                            }
+                            'Cover' {
+                                $rangeText = $parsed.RangeText
+                                if (-not $rangeText) { $rangeText = '1' }
+                                Write-Verbose "Quickfind cvo: Show-CoverArt called with Size='original' Grid='False' AlbumCount=$($albumCandidates.Count)"
+                                Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false
+                                Read-Host "Press Enter to continue..."
+                                continue albumSelectionLoop
+                            }
+                            'SaveToFolder' {
+                                $rangeText = $parsed.RangeText
+                                if (-not $rangeText) { $rangeText = '1' }
+                                try {
+                                    $selectedIndices = Expand-SelectionRange -RangeText $rangeText -MaxIndex $albumCandidates.Count
+                                }
+                                catch {
+                                    Write-Warning "Invalid range syntax for cs command: $rangeText - $_"
+                                    continue albumSelectionLoop
+                                }
+                                if ($selectedIndices -isnot [array]) { $selectedIndices = @($selectedIndices) }
+                                if ($selectedIndices.Count -eq 0) {
+                                    Write-Warning "No valid albums selected for cs command"
+                                    continue albumSelectionLoop
+                                }
+                                $res = Invoke-StageB-HandleSelection -Action 'SaveToFolder' -RangeText $rangeText -AlbumCandidates $albumCandidates -AlbumPath $script:album.FullName -UseWhatIf:$useWhatIf -Provider $Provider
+                                if (-not $res.Success -and $res.Error) { Write-Warning $res.Error }
+                                continue albumSelectionLoop
+                            }
+                            'EmbedInTags' {
+                                $rangeText = $parsed.RangeText
+                                if (-not $rangeText) { $rangeText = '1' }
+                                try {
+                                    $selectedIndices = Expand-SelectionRange -RangeText $rangeText -MaxIndex $albumCandidates.Count
+                                }
+                                catch {
+                                    Write-Warning "Invalid range syntax for ct command: $rangeText - $_"
+                                    continue albumSelectionLoop
+                                }
+                                if ($selectedIndices -isnot [array]) { $selectedIndices = @($selectedIndices) }
+                                if ($selectedIndices.Count -eq 0) {
+                                    Write-Warning "No valid albums selected for ct command"
+                                    continue albumSelectionLoop
+                                }
+                                $res = Invoke-StageB-HandleSelection -Action 'EmbedInTags' -RangeText $rangeText -AlbumCandidates $albumCandidates -AlbumPath $script:album.FullName -UseWhatIf:$useWhatIf
+                                if (-not $res.Success -and $res.Error) { Write-Warning $res.Error }
+                                continue albumSelectionLoop
+                            }
+                            'Number' {
+                                $idx = [int]$parsed.Number
+                                if ($idx -ge 1 -and $idx -le $albumCandidates.Count) {
+                                    $ProviderAlbum = $albumCandidates[$idx - 1]
+
+                                    # Extract artist name from album metadata (not folder name)
+                                    $artistNameFromAlbum = $null
+                                    if ($value = Get-IfExists $ProviderAlbum 'artists') {
+                                        # Spotify/MusicBrainz: artists array
+                                        if ($value -is [array] -and $value.Count -gt 0) {
+                                            $artistNameFromAlbum = if ($value[0].name) { $value[0].name } else { $value[0].ToString() }
+                                        } elseif ($value.name) {
+                                            $artistNameFromAlbum = $value.name
+                                        } else {
+                                            $artistNameFromAlbum = $value.ToString()
+                                        }
+                                    } elseif ($value = Get-IfExists $ProviderAlbum 'artist') {
+                                        # Qobuz/Discogs: artist string
+                                        $artistNameFromAlbum = $value
+                                    }
+
+                                    # Fallback to folder name only if album has no artist metadata
+                                    if (-not $artistNameFromAlbum) {
+                                        $artistNameFromAlbum = $quickArtist
+                                        Write-Verbose "No artist in album metadata, using folder name: $artistNameFromAlbum"
+                                    } else {
+                                        Write-Verbose "Extracted artist from album metadata: $artistNameFromAlbum"
+                                    }
+
+                                    # For Spotify, fetch full artist details with genres instead of using simplified object
+                                    if ($Provider -eq 'Spotify' -and $ProviderAlbum.artists -and $ProviderAlbum.artists.Count -gt 0) {
+                                        $artistId = $ProviderAlbum.artists[0].id
+                                        if ($artistId) {
+                                            Write-Verbose "Fetching full artist details for ID: $artistId"
+                                            $ProviderArtist = Invoke-ProviderGetArtist -Provider $Provider -ArtistId $artistId
+                                            if (-not $ProviderArtist) {
+                                                Write-Verbose "Failed to fetch artist details, using simplified object with album artist"
+                                                $ProviderArtist = @{ name = $artistNameFromAlbum; id = $artistNameFromAlbum }
+                                            }
+                                        }
+                                        else {
+                                            $ProviderArtist = @{ name = $artistNameFromAlbum; id = $artistNameFromAlbum }
                                         }
                                     }
                                     else {
-                                        Write-Warning "No cover art available for album $index ($($selectedAlbum.name))"
+                                        # Non-Spotify providers: use artist name from album metadata
+                                        $ProviderArtist = @{ name = $artistNameFromAlbum; id = $artistNameFromAlbum }
                                     }
-                                }
-                                # Clean up tag files
-                                foreach ($af in $audioFiles) {
-                                    if ($af.TagFile) {
-                                        try { $af.TagFile.Dispose() } catch { }
-                                    }
-                                }
-                            }
-                            else {
-                                Write-Warning "No audio files found to embed cover art in"
-                            }
-                            continue albumSelectionLoop
-                        }
+
+                                    $script:backNavigationMode = $false  # Reset back navigation flag
+
+                                    # UpdateGenresOnly mode: Skip Stage C and directly update genres
+                                    if ($UpdateGenresOnly) {
+                                        Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+                                        Write-Host "🎵 UPDATE GENRES ONLY MODE" -ForegroundColor Magenta
+                                        Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+                                        Write-Host ""
+                                        Write-Host "Selected album: $($ProviderAlbum.name)" -ForegroundColor Green
+                                        Write-Host "Genre mode: $($script:genreMode)" -ForegroundColor Yellow
+                                        Write-Host ""
+
+                                        # Get audio files in album via centralized helper and normalize to FullName for compatibility
+                                        $genreUpdateFiles = Get-OMAudioFile -Path $script:album.FullName
+                                        $genreUpdateFiles = $genreUpdateFiles | ForEach-Object { [PSCustomObject]@{ FullName = $_.FilePath } }
+
+                                        if ($genreUpdateFiles.Count -eq 0) {
+                                            Write-Warning "No audio files found in album folder. Skipping."
+                                            $albumDone = $true
+                                            break albumSelectionLoop
+                                        }
+
+                                        # Extract genres from $ProviderAlbum (already fetched from search) or $ProviderArtist
+                                        Write-Host "Extracting genres from $Provider..." -ForegroundColor Cyan
+                                        try {
+                                            $providerGenres = @()
+
+                                            # Try album-level genres first
+                                            if ($ProviderAlbum.genres) {
+                                                $providerGenres = @($ProviderAlbum.genres)
+                                            }
+                                            # Try album genre field (Qobuz/Discogs/MusicBrainz)
+                                            elseif ($ProviderAlbum.genre) {
+                                                $providerGenres = @($ProviderAlbum.genre)
+                                            }
+                                            # Try styles field (Discogs)
+                                            elseif ($ProviderAlbum.styles) {
+                                                $providerGenres = @($ProviderAlbum.styles)
+                                            }
+                                            # Fallback to artist genres (Spotify)
+                                            elseif ($ProviderArtist -and $ProviderArtist.genres) {
+                                                $providerGenres = @($ProviderArtist.genres)
+                                            }
+
+                                            # Normalize to array of strings
+                                            $providerGenres = @($providerGenres | Where-Object { $_ -and $_ -ne '' } | ForEach-Object { $_.ToString().Trim() })
+
+                                            if ($providerGenres.Count -eq 0) {
+                                                Write-Warning "No genres found for this album on $Provider."
+                                                Write-Host "Do you want to (s)kip or (e)nter genres manually? [s]: " -NoNewline -ForegroundColor Yellow
+                                                $genreChoice = Read-Host
+                                                if ($genreChoice -eq 'e') {
+                                                    Write-Host "Enter genres (comma-separated): " -NoNewline
+                                                    $manualGenres = Read-Host
+                                                    $providerGenres = @($manualGenres -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+                                                }
+                                                else {
+                                                    Write-Host "Skipping album (no genres to apply)." -ForegroundColor Yellow
+                                                    $albumDone = $true
+                                                    break albumSelectionLoop
+                                                }
+                                            }
+
+                                            Write-Host "Provider genres: $($providerGenres -join ', ')" -ForegroundColor Green
+                                            Write-Host ""
+                                            (remaining content unchanged)
                         elseif ($albumChoice -match '^\d+$') {
                             $idx = [int]$albumChoice
                             if ($idx -ge 1 -and $idx -le $albumCandidates.Count) {
