@@ -516,9 +516,9 @@ function Invoke-StageB-AlbumSelection {
             
             # If UpdateGenresOnly, handle it here before returning
             if ($UpdateGenresOnly) {
-                # Get audio files
-                $genreUpdateFiles = @(Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
-                    Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' })
+                # Get audio files via centralized helper and normalize to objects with FullName for compatibility
+                $genreUpdateFiles = Get-OMAudioFile -Path $script:album.FullName
+                $genreUpdateFiles = $genreUpdateFiles | ForEach-Object { [PSCustomObject]@{ FullName = $_.FilePath } }
                 
                 if ($genreUpdateFiles.Count -gt 0) {
                     # Extract genres from album object (use artist if album has no genres)
@@ -600,8 +600,9 @@ function Invoke-StageB-AlbumSelection {
             
             # If UpdateGenresOnly, update genres and return AlbumDone
             if ($UpdateGenresOnly -and $selectedAlbum) {
-                $genreUpdateFiles = @(Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
-                    Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' })
+                # Get audio files via centralized helper and normalize to objects with FullName for compatibility
+                $genreUpdateFiles = Get-OMAudioFile -Path $script:album.FullName
+                $genreUpdateFiles = $genreUpdateFiles | ForEach-Object { [PSCustomObject]@{ FullName = $_.FilePath } }
                 
                 if ($genreUpdateFiles.Count -gt 0) {
                     try {
@@ -671,8 +672,9 @@ function Invoke-StageB-AlbumSelection {
             
             # If UpdateGenresOnly, update genres and return AlbumDone
             if ($UpdateGenresOnly -and $selectedAlbum) {
-                $genreUpdateFiles = @(Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
-                    Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' })
+                # Get audio files via centralized helper and normalize to objects with FullName for compatibility
+                $genreUpdateFiles = Get-OMAudioFile -Path $script:album.FullName
+                $genreUpdateFiles = $genreUpdateFiles | ForEach-Object { [PSCustomObject]@{ FullName = $_.FilePath } }
                 
                 if ($genreUpdateFiles.Count -gt 0) {
                     try {
@@ -947,8 +949,9 @@ function Invoke-StageB-AlbumSelection {
                 
                 # If UpdateGenresOnly, update genres and return AlbumDone
                 if ($UpdateGenresOnly -and $selectedAlbum) {
-                    $genreUpdateFiles = @(Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
-                        Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' })
+                    # Get audio files via centralized helper and normalize to objects with FullName for compatibility
+                    $genreUpdateFiles = Get-OMAudioFile -Path $script:album.FullName
+                    $genreUpdateFiles = $genreUpdateFiles | ForEach-Object { [PSCustomObject]@{ FullName = $_.FilePath } }
                     
                     if ($genreUpdateFiles.Count -gt 0) {
                         try {
@@ -1233,12 +1236,12 @@ function Invoke-StageB-AlbumSelection {
                         Write-Host ""
                         
                         # Get audio files from script:album (set by parent)
-                        $genreUpdateFiles = @(Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
-                            Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' })
+                        $genreUpdateFiles = Get-OMAudioFile -Path $script:album.FullName
+                        $genreUpdateFiles = $genreUpdateFiles | ForEach-Object { [PSCustomObject]@{ FullName = $_.FilePath } }
                         
                         if ($genreUpdateFiles.Count -eq 0) {
                             Write-Warning "No audio files found. Skipping."
-                            return @{
+                            return @{ }
                                 NextStage             = 'AlbumDone'
                                 SelectedAlbum         = $null
                                 UpdatedCache          = $CachedAlbums
