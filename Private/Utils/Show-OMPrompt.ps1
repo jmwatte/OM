@@ -11,7 +11,10 @@ function Show-OMPrompt {
         [string]$Default,
 
         [Parameter(Mandatory = $false)]
-        [switch]$NoNewline
+        [switch]$NoNewline,
+
+        [Parameter(Mandatory = $false)][scriptblock]$InputReader,
+        [Parameter(Mandatory = $false)][object]$Context
     )
 
     # Define the standard, universal actions
@@ -40,14 +43,15 @@ function Show-OMPrompt {
         $fullPrompt = "$Prompt ($actionString):"
     }
 
-    # If caller wants no newline, render prompt text and then call Read-Host without -Prompt
+    $reader = if ($InputReader) { $InputReader } elseif ($Context -and $Context.InputReader) { $Context.InputReader } else { { param($prompt) Read-Host -Prompt $prompt } }
+
+    # If caller wants no newline, render prompt text and then call reader without prompt text (to mimic prior behavior)
     if ($NoNewline) {
-        # Render prompt text without newline
         Write-Host -NoNewline $fullPrompt
-        $input = Read-Host
+        $input = & $reader ''
     }
     else {
-        $input = Read-Host -Prompt $fullPrompt
+        $input = & $reader $fullPrompt
     }
 
     if ([string]::IsNullOrEmpty($input) -and $Default -ne $null) {

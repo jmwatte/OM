@@ -8,6 +8,15 @@ Describe 'Show-OMPrompt' {
         $p = $pCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
         if (-not $p) { Throw "Helper not found at runtime: $p" }
         . $p
+
+        # Ensure New-OMContext is available for Context-based tests
+        $cCandidates = @()
+        if ($PSScriptRoot) { $cCandidates += Join-Path $PSScriptRoot '..\Utils\New-OMContext.ps1' }
+        if ($MyInvocation.MyCommand.Path) { $cCandidates += Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\Utils\New-OMContext.ps1' }
+        $cCandidates += Join-Path (Get-Location).Path 'Private\Utils\New-OMContext.ps1'
+        $c = $cCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+        if (-not $c) { Throw "Helper not found: $c" }
+        . $c
     }
 
     It 'returns default when input is empty' {
@@ -26,5 +35,11 @@ Describe 'Show-OMPrompt' {
         Mock -CommandName Read-Host -MockWith { return '' }
         $res = Show-OMPrompt -Prompt 'Album' -Default 'DefaultAlbum' -NoNewline
         $res | Should -Be 'DefaultAlbum'
+    }
+
+    It 'uses Context.InputReader when provided' {
+        $ctx = New-OMContext -InputReader { param($p) return 'CTX-Artist' }
+        $res = Show-OMPrompt -Prompt 'Artist' -Context $ctx
+        $res | Should -Be 'CTX-Artist'
     }
 }
