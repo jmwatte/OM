@@ -1238,7 +1238,7 @@ function Start-OM {
                                 if (-not $rangeText) { $rangeText = '1' }
                                 Write-Verbose "Quickfind cv: Show-CoverArt called with Size='original' Grid='False' AlbumCount=$($albumCandidates.Count)"
                                 Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false
-                                Read-Host "Press Enter to continue..."
+                                Prompt-PressEnter -InputReader $inputReader
                                 continue albumSelectionLoop
                             }
                             'Cover' {
@@ -1246,7 +1246,7 @@ function Start-OM {
                                 if (-not $rangeText) { $rangeText = '1' }
                                 Write-Verbose "Quickfind cvo: Show-CoverArt called with Size='original' Grid='False' AlbumCount=$($albumCandidates.Count)"
                                 Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false
-                                Read-Host "Press Enter to continue..."
+                                Prompt-PressEnter -InputReader $inputReader
                                 continue albumSelectionLoop
                             }
                             'SaveToFolder' {
@@ -3277,7 +3277,7 @@ function Start-OM {
                                     if (-not $rangeText) { $rangeText = "1" }
                                         Write-Verbose "Stage B cvo: Show-CoverArt called with Size='original' Grid='False' Album= $($ProviderAlbum.name)"
                                         Show-CoverArt -Album $ProviderAlbum -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
-                                    Read-Host "Press Enter to continue..."
+                                    Prompt-PressEnter -InputReader $inputReader
                                     continue
                                 }
                                 '^cv(\d*)$' {
@@ -3286,7 +3286,7 @@ function Start-OM {
                                     if (-not $rangeText) { $rangeText = "1" }
                                     Write-Verbose "Stage B cv: Show-CoverArt called with Size='original' Grid='False' Album= $($ProviderAlbum.name)"
                                     Show-CoverArt -Album $ProviderAlbum -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false -LoopLabel 'stageLoop'
-                                    Read-Host "Press Enter to continue..."
+                                    Prompt-PressEnter -InputReader $inputReader
                                     continue
                                 }
                                 '^cs(\d*)$' {

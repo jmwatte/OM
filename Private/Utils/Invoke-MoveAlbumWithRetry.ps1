@@ -3,17 +3,20 @@ function Invoke-MoveAlbumWithRetryCore {
         [hashtable]$mvArgs,
         [switch]$UseWhatIf,
         [ScriptBlock]$OnRetry,
-        [switch]$AutoSkip
+        [switch]$AutoSkip,
+        [int]$MaxRetries = 5
     )
 
     $moveSucceeded = $false
+    $attempts = 0
     do {
         try {
             $moveResult = Move-AlbumFolder @mvArgs -WhatIf:$UseWhatIf
             $moveSucceeded = $true
         }
         catch {
-            Write-Verbose "Invoke-MoveAlbumWithRetryCore: Move-AlbumFolder failed: $($_.Exception.Message)"
+            $attempts++
+            Write-Verbose "Invoke-MoveAlbumWithRetryCore: Move-AlbumFolder failed (attempt $attempts): $($_.Exception.Message)"
 
             if ($AutoSkip) {
                 Write-Verbose "AutoSkip enabled: skipping move"
@@ -39,6 +42,11 @@ function Invoke-MoveAlbumWithRetryCore {
             else {
                 # No callback provided; default to skipping to avoid hanging in tests
                 Write-Verbose "No OnRetry callback provided; skipping"
+                return $null
+            }
+
+            if ($attempts -ge $MaxRetries) {
+                Write-Verbose "Maximum retries ($MaxRetries) reached; giving up"
                 return $null
             }
         }

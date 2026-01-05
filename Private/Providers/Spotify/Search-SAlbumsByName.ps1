@@ -124,7 +124,37 @@ function Search-SAlbumsByName {
         $album | Add-Member -MemberType NoteProperty -Name 'url' -Value $urlVal -Force
 
         $album | Add-Member -MemberType NoteProperty -Name 'disc_count' -Value $null -Force
-        
+
+        # If album has no genres (Spotify typically provides genres on the artist),
+        # try to fetch the primary artist's genres as a fallback.
+        $hasGenres = $false
+        if ($album.PSObject.Properties.Match('genres')) {
+            $rawGenres = $album.genres
+            if ($rawGenres -is [array]) { if ($rawGenres.Count -gt 0) { $hasGenres = $true } }
+            elseif ($rawGenres -and -not [string]::IsNullOrWhiteSpace([string]$rawGenres)) { $hasGenres = $true }
+        }
+
+        if (-not $hasGenres) {
+            $artistId = $null
+            if ($album.artists -and $album.artists.Count -gt 0) {
+                $firstArtist = $album.artists[0]
+                if ($firstArtist -and $firstArtist.id) { $artistId = $firstArtist.id }
+            }
+
+            if ($artistId) {
+                try {
+                    $artistInfo = Invoke-ProviderGetArtist -Provider 'Spotify' -ArtistId $artistId
+                    if ($artistInfo -and $artistInfo.genres) {
+                        $gen = if ($artistInfo.genres -is [array]) { $artistInfo.genres } else { @($artistInfo.genres) }
+                        $album | Add-Member -MemberType NoteProperty -Name 'genres' -Value $gen -Force
+                    }
+                }
+                catch {
+                    Write-Verbose ("Invoke-ProviderGetArtist not available or failed for {0}: {1}" -f $artistId, $_.Exception.Message)
+                }
+            }
+        }
+
         $album
     }
     
