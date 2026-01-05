@@ -28,7 +28,9 @@ function Invoke-AlbumArtistBuilder {
         [array]$Tracks,
         
         [Parameter(Mandatory = $false)]
-        [string]$CurrentAlbumArtist = ""
+        [string]$CurrentAlbumArtist = "",
+        [Parameter(Mandatory = $false)]
+        [object]$Context
     )
 
     if (-not $Tracks -or $Tracks.Count -eq 0) {
@@ -189,7 +191,7 @@ function Invoke-AlbumArtistBuilder {
         Write-Host "  [Enter]     Accept current selection" -ForegroundColor Green
         
         Write-Host ""
-        $userInput = Read-Host "Select option"
+        $userInput = Show-OMPrompt -Prompt 'Select option' -Context $Context
         $userInput = $userInput.Trim().ToLower()
         
         if ([string]::IsNullOrEmpty($userInput)) {
@@ -216,7 +218,7 @@ function Invoke-AlbumArtistBuilder {
                     }
                 } else {
                     Write-Host "Invalid number. Press Enter to continue..." -ForegroundColor Red
-                    Read-Host
+                    Prompt-PressEnter -Context $Context
                 }
             }
             '^a$' {
@@ -228,14 +230,13 @@ function Invoke-AlbumArtistBuilder {
             '^o$' {
                 if ($selectedArtists.Count -lt 2) {
                     Write-Host "Need at least 2 selected artists to reorder. Press Enter..." -ForegroundColor Red
-                    Read-Host
+                    Prompt-PressEnter -Context $Context
                 } else {
                     Write-Host "`nCurrent order:" -ForegroundColor Yellow
                     for ($i = 0; $i -lt $selectedArtists.Count; $i++) {
                         Write-Host "  $($i+1). $($selectedArtists[$i])" -ForegroundColor Cyan
                     }
-                    Write-Host "`nEnter new order (comma-separated, e.g., 2,1,3):" -ForegroundColor Yellow
-                    $orderInput = Read-Host
+                    $orderInput = Show-OMPrompt -Prompt "`nEnter new order (comma-separated, e.g., 2,1,3):" -Context $Context
                     $newOrder = $orderInput.Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ }
                     
                     if ($newOrder.Count -eq $selectedArtists.Count) {
@@ -260,11 +261,11 @@ function Invoke-AlbumArtistBuilder {
                             $selectedArtists = $reordered
                         } else {
                             Write-Host "Invalid order format. Press Enter..." -ForegroundColor Red
-                            Read-Host
+                            Prompt-PressEnter -Context $Context
                         }
                     } else {
                         Write-Host "Must specify all $($selectedArtists.Count) positions. Press Enter..." -ForegroundColor Red
-                        Read-Host
+                        Prompt-PressEnter -Context $Context
                     }
                 }
             }
@@ -284,7 +285,7 @@ function Invoke-AlbumArtistBuilder {
             }
             default {
                 Write-Host "Invalid command. Press Enter to continue..." -ForegroundColor Red
-                Read-Host
+                Prompt-PressEnter -Context $Context
             }
         }
     }

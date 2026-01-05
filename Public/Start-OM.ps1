@@ -2300,9 +2300,9 @@ n        # Backwards-compatible local aliases
                                 }
                                 Write-Host "   Multiple artists found in tracks" -ForegroundColor Gray
                                 Write-Host ""
-                                $response = Read-Host "Press 'a' to build custom album artist, or Enter to use automatic detection"
+                                $response = Show-OMPrompt -Prompt "Press 'a' to build custom album artist, or Enter to use automatic detection" -Context $Context
                                 if ($response -eq 'a') {
-                                    $script:ManualAlbumArtist = Invoke-AlbumArtistBuilder -AlbumName $ProviderAlbum.name -Tracks $tracksForAlbum -CurrentAlbumArtist $ProviderArtist.name
+                                    $script:ManualAlbumArtist = Invoke-AlbumArtistBuilder -AlbumName $ProviderAlbum.name -Tracks $tracksForAlbum -CurrentAlbumArtist $ProviderArtist.name -Context $Context
                                     if ($script:ManualAlbumArtist) {
                                         Write-Host "✓ Album artist set to: $script:ManualAlbumArtist" -ForegroundColor Green
                                     }
@@ -2579,7 +2579,7 @@ n        # Backwards-compatible local aliases
                                 '^aa$' {
                                     # Manual album artist builder
                                     if ($tracksForAlbum -and $tracksForAlbum.Count -gt 0) {
-                                        $script:ManualAlbumArtist = Invoke-AlbumArtistBuilder -AlbumName $ProviderAlbum.name -Tracks $tracksForAlbum -CurrentAlbumArtist $ProviderArtist.name
+                                        $script:ManualAlbumArtist = Invoke-AlbumArtistBuilder -AlbumName $ProviderAlbum.name -Tracks $tracksForAlbum -CurrentAlbumArtist $ProviderArtist.name -Context $Context
                                         if ($script:ManualAlbumArtist) {
                                             Write-Host "`n✓ Album artist set to: $script:ManualAlbumArtist" -ForegroundColor Green
                                             $script:refreshTracks = $true
