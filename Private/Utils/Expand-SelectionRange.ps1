@@ -2,6 +2,7 @@ function Expand-SelectionRange {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
         [string]$RangeText,
 
         [Parameter(Mandatory = $true)]
