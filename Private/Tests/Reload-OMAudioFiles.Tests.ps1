@@ -23,6 +23,14 @@ Describe 'Reload-OMAudioFiles' {
             Write-Verbose "Dot-sourcing APE helper: $apeCandidate"
             . $apeCandidate
         }
+
+        # Dot-source shared Get-OMTagFile helper so tests can mock it consistently
+        $tagHelper = Join-Path (Split-Path -Parent $resolved) 'Get-OMTagFile.ps1'
+        if (Test-Path $tagHelper) {
+            $tagHelper = (Resolve-Path -LiteralPath $tagHelper -ErrorAction SilentlyContinue).Path
+            Write-Verbose "Dot-sourcing Get-OMTagFile helper: $tagHelper"
+            . $tagHelper
+        }
         Write-Host "[RELOAD-TEST] BeforeAll end"
     }
 

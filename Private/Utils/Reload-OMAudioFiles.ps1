@@ -1,9 +1,3 @@
-function Get-OMTagFile {
-    param([string]$FilePath)
-    # wrapper for TagLib file creation to allow mocking in tests
-    return [TagLib.File]::Create($FilePath)
-}
-
 function Reload-OMAudioFiles {
     [CmdletBinding()]
     param(
@@ -11,6 +5,10 @@ function Reload-OMAudioFiles {
         [string[]]$Extensions = @('.mp3','.flac','.wav','.m4a','.aac','.ogg','.ape'),
         [switch]$Trace
     )
+
+    # Note: This function expects Get-OMTagFile to be available (defined in Private/Utils/Get-OMTagFile.ps1)
+    # so tests can mock Get-OMTagFile consistently across helpers.
+
 
     if (-not (Test-Path -LiteralPath $AlbumPath -PathType Container)) {
         throw "Album folder not found: $AlbumPath"
