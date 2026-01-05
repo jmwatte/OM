@@ -29,6 +29,16 @@ Describe 'Show-Tracks' {
     It 'returns command when ValidCommands include rm and user enters rm' {
         $pair = [PSCustomObject]@{ SpotifyTrack = [PSCustomObject]@{ name = 't' }; AudioFile = [PSCustomObject]@{ FilePath = 'C:\1.mp3' } }
         $reader = { param($prompt) return 'rm' }
+
+        # Ensure Mark-PairedTracks helper is available to be mocked
+        $mCandidates = @()
+        if ($PSScriptRoot) { $mCandidates += Join-Path $PSScriptRoot '..\Utils\Mark-PairedTracks.ps1' }
+        if ($MyInvocation.MyCommand.Path) { $mCandidates += Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\Utils\Mark-PairedTracks.ps1' }
+        $mCandidates += Join-Path (Get-Location).Path 'Private\Utils\Mark-PairedTracks.ps1'
+        $mfile = $mCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+        if ($mfile) { . $mfile }
+        Mock -CommandName Mark-PairedTracks -MockWith { param($PairedTracks,$RangeText,$MaxIndex) return 1 }
+
         $res = Show-Tracks -PairedTracks @($pair) -AlbumName 'CmdTest' -ValidCommands @('rm') -InputReader $reader
         $res | Should -Be 'rm'
     }

@@ -270,18 +270,14 @@ function Show-Tracks {
                 Start-Sleep -Seconds 1
                 continue
             }
-            
+
             $markPrompt = "Enter track numbers to mark (e.g., 12,19 or 21-26): "
             $markInput = & $reader $markPrompt
-            
+
             if ($markInput) {
                 try {
-                    $trackNumbers = Expand-SelectionRange -RangeText $markInput -MaxIndex $PairedTracks.Count
-                    foreach ($trackNum in $trackNumbers) {
-                        $idx = $trackNum - 1
-                        $PairedTracks[$idx] | Add-Member -NotePropertyName 'Marked' -NotePropertyValue $true -Force
-                    }
-                    Write-Host "Marked $($trackNumbers.Count) track(s)." -ForegroundColor Green
+                    $markedCount = Mark-PairedTracks -PairedTracks $PairedTracks -RangeText $markInput -MaxIndex $PairedTracks.Count
+                    Write-Host "Marked $markedCount track(s)." -ForegroundColor Green
                     Start-Sleep -Seconds 1
                 }
                 catch {
