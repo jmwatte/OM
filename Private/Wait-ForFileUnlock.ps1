@@ -2,7 +2,8 @@ function Wait-ForFileUnlock {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][string]$Path,
-        [int]$RetryIntervalSeconds = 1
+        [int]$RetryIntervalSeconds = 1,
+        [Parameter(Mandatory = $false)][object]$Context
     )
 
     while ($true) {
@@ -16,7 +17,7 @@ function Wait-ForFileUnlock {
         }
 
         Write-Warning "File appears to be in use: $Path"
-        $choice = Read-Host "Close the app using the file and press Enter to retry, type 'skip' to skip this file, or 'force' to attempt saving anyway"
+        $choice = Show-OMPrompt -Prompt "Close the app using the file and press Enter to retry, type 'skip' to skip this file, or 'force' to attempt saving anyway" -Context $Context
 
         switch ($choice.ToLowerInvariant()) {
             '' { Start-Sleep -Seconds $RetryIntervalSeconds; continue }  # retry
