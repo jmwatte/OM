@@ -1185,18 +1185,7 @@ function Start-OM {
                         Write-Host ""
                         
                         Write-Host "$Provider Album candidates for '$quickAlbum' by '$quickArtist':" -ForegroundColor Green
-                        for ($i = 0; $i -lt $albumCandidates.Count; $i++) {
-                            $album = $albumCandidates[$i]
-                            $artistDisplay = if ($album.artists -and $album.artists[0].name) { $album.artists[0].name } else { 'Unknown Artist' }
-                            
-                            $year = Get-IfExists $album 'release_date'
-                            $trackCount = Get-IfExists $album 'total_tracks'
-                            if (-not $trackCount) { $trackCount = Get-IfExists $album 'track_count' }
-                            if (-not $trackCount) { $trackCount = Get-IfExists $album 'tracks_count' }
-                            $trackInfo = if ($trackCount) { " ($trackCount tracks)" } else { "" }
-                            
-                            Write-Host "[$($i+1)] $($album.name) - $artistDisplay (id: $($album.id)) (year: $year)$trackInfo"
-                        }
+                        Show-AlbumCandidates -AlbumCandidates $albumCandidates -Provider $Provider
 
                         $originalColor = [Console]::ForegroundColor
                         [Console]::ForegroundColor = [ConsoleColor]::Yellow
