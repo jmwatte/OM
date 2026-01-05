@@ -213,6 +213,9 @@ function Start-OM {
         [ValidateSet('Replace', 'Merge')]
         [string]$GenreMode = 'Replace'
 
+        [Parameter(Mandatory = $false)]
+        [object]$Context = $null
+
     )
 
     begin {
@@ -328,10 +331,19 @@ function Start-OM {
             }
             Write-Verbose "Cached Qobuz URL locale: $qobuzUrlLocale"
         }
-        
+
+        # Initialize Context and InputReader / DisplayWriter defaults
+        if (-not $Context) {
+            $Context = New-OMContext -InputReader { param($prompt) Read-Host -Prompt $prompt } -DisplayWriter { param($msg, $foregroundColor = $null) if ($foregroundColor) { Write-Host $msg -ForegroundColor $foregroundColor } else { Write-Host $msg } } -Config (Get-OMConfig) -Provider $Provider -NonInteractive:$NonInteractive -UseWhatIf:$isWhatIf
+        }
+
+n        # Backwards-compatible local aliases
+        $inputReader = $Context.InputReader
+        $displayWriter = $Context.DisplayWriter
+
         # Helper function to normalize Discogs IDs (strip brackets, resolve masters)
         $normalizeDiscogsId = {
-            param([string]$InputId)
+            param([string]$InputId) 
             
             $id = $InputId.Trim()
             
@@ -2515,7 +2527,7 @@ function Start-OM {
                                 '^f$' { $sortMethod = 'byFilesystem'; $script:refreshTracks = $true; continue }
                                 '^r$' { $ReverseSource = -not $ReverseSource; $script:refreshTracks = $true; continue }
                                 '^rm$' {
-                                    $inputReader = { param($prompt) Read-Host $prompt }
+                                    $inputReader = $Context.InputReader
                                     $reviewRes = Invoke-StageB-ReviewMarkedTracks -PairedTracks $script:pairedTracks -TracksForAlbum $tracksForAlbum -InputReader $inputReader
                                     if ($reviewRes.NoProviderTracks) { continue }
                                     continue albumSelectionLoop
