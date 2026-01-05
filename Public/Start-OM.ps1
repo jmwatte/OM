@@ -86,25 +86,6 @@
     When used with -Auto, automatically saves cover art to the album folder after saving tags.
     Requires Auto mode to be enabled.
 
-.PARAMETER UpdateGenresOnly
-    When specified, the function will only update genre tags from the matched album/release.
-    All other tags (Title, Artist, Album, Track numbers, etc.) remain unchanged.
-    This mode:
-    - Uses Quick Find to match albums directly (skips Artist stage)
-    - Fetches genre information from the matched release
-    - Updates only the genre tags on all files in the album
-    - Works with -Auto for batch processing
-    - Respects -GenreMode for Replace vs Merge behavior
-    Useful for adding or updating genre metadata across your library without touching other tags.
-
-.PARAMETER GenreMode
-    Specifies how to handle existing genres when updating genre tags.
-    Valid values:
-    - 'Replace': Completely replace existing genres with provider genres (default)
-    - 'Merge': Add provider genres to existing genres (keeps both, deduplicates)
-    Only applies when -UpdateGenresOnly is used, or when saving tags in interactive mode.
-    Default is 'Replace'.
-
 .EXAMPLE
     Start-OM -Path "C:\Music\MyArtist"
 
@@ -143,18 +124,6 @@
 
     Preview what Auto mode would do without making any changes. Shows which albums would be auto-selected
     and which would require manual intervention.
-
-.EXAMPLE
-    Start-OM -Path "C:\Music\Artist" -UpdateGenresOnly -Provider Discogs -Auto
-
-    Automatically update only genre tags for all albums using Discogs. Replaces existing genres with
-    Discogs genres. Processes all albums in batch mode.
-
-.EXAMPLE
-    Start-OM -Path "C:\Music\Artist" -UpdateGenresOnly -GenreMode Merge -Provider Qobuz
-
-    Interactively update genre tags, adding Qobuz genres to existing genres (keeps both).
-    Allows manual album selection for each folder.
 
 .NOTES
     This function requires the TagLib-Sharp library for reading and writing audio file tags.
@@ -206,15 +175,7 @@ function Start-OM {
         [Parameter(Mandatory = $false)]
         [switch]$AutoFallback,
         [Parameter(Mandatory = $false)]
-        [switch]$AutoSaveCover,
-        [Parameter(Mandatory = $false)]
-        [switch]$UpdateGenresOnly,
-        [Parameter(Mandatory = $false)]
-        [ValidateSet('Replace', 'Merge')]
-        [string]$GenreMode = 'Replace'
-
-        [Parameter(Mandatory = $false)]
-        [object]$Context = $null
+        [switch]$AutoSaveCover
 
     )
 
@@ -234,11 +195,6 @@ function Start-OM {
         if (-not (Get-Variable -Name showVerbose -Scope Script -ErrorAction SilentlyContinue)) {
             $script:showVerbose = $false
             $script:genreMode = 'Replace'  # 'Replace' or 'Merge'
-        }
-        
-        # Set genre mode from parameter if provided
-        if ($PSBoundParameters.ContainsKey('GenreMode')) {
-            $script:genreMode = $GenreMode
         }
 
         if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
@@ -331,19 +287,10 @@ function Start-OM {
             }
             Write-Verbose "Cached Qobuz URL locale: $qobuzUrlLocale"
         }
-
-        # Initialize Context and InputReader / DisplayWriter defaults
-        if (-not $Context) {
-            $Context = New-OMContext -InputReader { param($prompt) Read-Host -Prompt $prompt } -DisplayWriter { param($msg, $foregroundColor = $null) if ($foregroundColor) { Write-Host $msg -ForegroundColor $foregroundColor } else { Write-Host $msg } } -Config (Get-OMConfig) -Provider $Provider -NonInteractive:$NonInteractive -UseWhatIf:$isWhatIf
-        }
-
-n        # Backwards-compatible local aliases
-        $inputReader = $Context.InputReader
-        $displayWriter = $Context.DisplayWriter
-
+        
         # Helper function to normalize Discogs IDs (strip brackets, resolve masters)
         $normalizeDiscogsId = {
-            param([string]$InputId) 
+            param([string]$InputId)
             
             $id = $InputId.Trim()
             
@@ -418,33 +365,30 @@ n        # Backwards-compatible local aliases
             else {
                 Write-Host ""  # Ensure newline
             }
-            
-            # Display original path (folder only)
-            if ($script:album -and $script:album.FullName) {
-                Write-Host "📁 Original Path: " -NoNewline -ForegroundColor Cyan
-                Write-Host $script:album.FullName -ForegroundColor White
-            }
-            
             Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
             Write-Host ""
         }
-        # Replace inline showHeader with wrapper that delegates to Private helper
-        $showHeader = {
-            param(
-                [string]$Provider,
-                [string]$Artist,
-                [string]$AlbumName,
-                [int]$TrackCount = 0
-            )
-            Show-OMHeader -Provider $Provider -Artist $Artist -AlbumName $AlbumName -TrackCount $TrackCount -QobuzUrlLocale $qobuzUrlLocale -ScriptAlbum $script:album
-        }
-        # Wrapper for Invoke-MoveAlbumWithRetry helper (extracted to Private/Utils)
+        # Helper function for album folder move with retry on access errors
         function Invoke-MoveAlbumWithRetry {
             param($mvArgs, $useWhatIf)
-
-            # Delegate to the extracted helper and provide an interactive OnRetry callback
-            $onRetry = { param($err) return (Show-OMPrompt -Prompt "Folder may be in use by another process. Free the folder (close files/apps) and press Enter to retry, or 's' to skip" -Context $Context) }
-            return Invoke-MoveAlbumWithRetryCore -mvArgs $mvArgs -UseWhatIf:$useWhatIf -OnRetry $onRetry
+        
+            $moveSucceeded = $false
+            do {
+                try {
+                    $moveResult = Move-AlbumFolder @mvArgs -WhatIf:$useWhatIf
+                    $moveSucceeded = $true
+                }
+                catch {
+                    Write-Warning "Move-AlbumFolder failed: $($_.Exception.Message)"
+                    $retry = Show-OMPrompt -Prompt "Folder may be in use by another process. Free the folder (close files/apps) and press Enter to retry, or 's' to skip" -Context $Context
+                    if ($retry -eq 's') {
+                        Write-Host "Skipping folder move." -ForegroundColor Yellow
+                        return $null
+                    }
+                }
+            } while (-not $moveSucceeded)
+        
+            return $moveResult
         }
         # Helper scriptblock for handling move success (shared between sf and sa)
         $handleMoveSuccess = {
@@ -476,14 +420,27 @@ n        # Backwards-compatible local aliases
                     $script:album = Get-Item -LiteralPath $moveResult.NewAlbumPath
             
                     # Reload audio files with fresh TagLib handles from the NEW album path
-                    $script:audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName
-                    # Update paired tracks with reloaded audio files to reflect updated tags
-                    if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
-                        for ($i = 0; $i -lt [Math]::Min($script:pairedTracks.Count, $script:audioFiles.Count); $i++) {
-                            if ($script:pairedTracks[$i].AudioFile.TagFile) {
-                                try { $script:pairedTracks[$i].AudioFile.TagFile.Dispose() } catch { }
+                    $script:audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                        Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
+                        Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
+                    $script:audioFiles = foreach ($f in $script:audioFiles) {
+                        try {
+                            $tagFile = [TagLib.File]::Create($f.FullName)
+                            [PSCustomObject]@{
+                                FilePath    = $f.FullName
+                                DiscNumber  = $tagFile.Tag.Disc
+                                TrackNumber = $tagFile.Tag.Track
+                                Title       = $tagFile.Tag.Title
+                                TagFile     = $tagFile
+                                Composer    = if ($tagFile.Tag.Composers) { $tagFile.Tag.Composers -join '; ' } else { 'Unknown Composer' }
+                                Artist      = if ($tagFile.Tag.Performers) { $tagFile.Tag.Performers -join '; ' } else { 'Unknown Artist' }
+                                Name        = if ($tagFile.Tag.Title) { $tagFile.Tag.Title } else { $f.BaseName }
+                                Duration    = if ($f.Extension -eq '.ape') { Get-ApeDuration -FilePath $f.FullName } else { $tagFile.Properties.Duration.TotalMilliseconds }
                             }
-                            $script:pairedTracks[$i].AudioFile = $script:audioFiles[$i]
+                        }
+                        catch {
+                            Write-Warning "Skipping corrupted or invalid audio file: $($f.FullName) - Error: $($_.Exception.Message)"
+                            continue
                         }
                     }
 
@@ -597,9 +554,29 @@ n        # Backwards-compatible local aliases
                         $script:album = Get-Item -LiteralPath $targetPath
                         
                         # Reload audio files with fresh TagLib handles from the target path
-                        $audioFiles = Get-OMAudioFile -Path $script:album.FullName -SortMethod 'alphabetical' -Trace
-                        foreach ($af in $audioFiles) { if ($af.TagFile -and $af.TagFile -is [TagLib.File]) { /* keep handle as-is */ } }
-
+                        $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                            Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
+                            Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
+                        $audioFiles = foreach ($f in $audioFiles) {
+                            try {
+                                $tagFile = [TagLib.File]::Create($f.FullName)
+                                [PSCustomObject]@{
+                                    FilePath    = $f.FullName
+                                    DiscNumber  = $tagFile.Tag.Disc
+                                    TrackNumber = $tagFile.Tag.Track
+                                    Title       = $tagFile.Tag.Title
+                                    TagFile     = $tagFile
+                                    Composer    = if ($tagFile.Tag.Composers) { $tagFile.Tag.Composers -join '; ' } else { 'Unknown Composer' }
+                                    Artist      = if ($tagFile.Tag.Performers) { $tagFile.Tag.Performers -join '; ' } else { 'Unknown Artist' }
+                                    Name        = if ($tagFile.Tag.Title) { $tagFile.Tag.Title } else { $f.BaseName }
+                                    Duration    = if ($f.Extension -eq '.ape') { Get-ApeDuration -FilePath $f.FullName } else { $tagFile.Properties.Duration.TotalMilliseconds }
+                                }
+                            }
+                            catch {
+                                Write-Warning "Skipping corrupted or invalid audio file: $($f.FullName) - Error: $($_.Exception.Message)"
+                                continue
+                            }
+                        }
 
                         # Update paired tracks with reloaded audio files
                         if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
@@ -620,21 +597,257 @@ n        # Backwards-compatible local aliases
                 Write-Warning "Move failed or was skipped. Move result: $moveResult"
             }
         }
-        # Replaced inline Get-StringSimilarity with centralized helper in Private/Utils/Get-StringSimilarity.ps1
-        # See: Private/Utils/Get-StringSimilarity.ps1
+        # Helper function: Calculate string similarity (Levenshtein-based)
+        function Get-StringSimilarity {
+            param(
+                $String1,
+                $String2
+            )
+            try {
+                # Handle arrays first (before null checks)
+                if ($String1 -is [array]) { $String1 = $String1[0] }
+                if ($String2 -is [array]) { $String2 = $String2[0] }
+                
+                # Now check for null/empty
+                if (-not $String1 -or -not $String2) { return 0.0 }
+                
+                # Force to string and normalize
+                $s1 = [string]$String1
+                $s2 = [string]$String2
+                
+                # Normalize: remove punctuation that gets replaced in file paths
+                # Approve-PathSegment replaces : \ / with _ for Windows compatibility
+                # So "TRON: Legacy" matches "TRON_ Legacy"
+                $s1 = $s1.ToLower() -replace '[:\\/\-_]', '' -replace '\s+', ' '
+                $s2 = $s2.ToLower() -replace '[:\\/\-_]', '' -replace '\s+', ' '
+                $s1 = $s1.Trim()
+                $s2 = $s2.Trim()
+                
+                if ($s1 -eq $s2) { return 1.0 }
+                
+                [int]$len1 = $s1.Length
+                [int]$len2 = $s2.Length
+                [int]$maxLen = [Math]::Max($len1, $len2)
+                
+                if ($maxLen -eq 0) { return 1.0 }
+                
+                # Use Levenshtein distance - create array differently
+                $matrix = [int[,]]::new($len1 + 1, $len2 + 1)
+                
+                for ($i = 0; $i -le $len1; $i++) { $matrix[$i, 0] = $i }
+                for ($j = 0; $j -le $len2; $j++) { $matrix[0, $j] = $j }
+                
+                for ($i = 1; $i -le $len1; $i++) {
+                    for ($j = 1; $j -le $len2; $j++) {
+                        [int]$cost = if ($s1[$i - 1] -eq $s2[$j - 1]) { 0 } else { 1 }
+                        
+                        # PowerShell multidimensional arrays can return arrays - use GetValue
+                        [int]$deletion = [int]$matrix.GetValue(($i - 1), $j)
+                        [int]$insertion = [int]$matrix.GetValue($i, ($j - 1))
+                        [int]$substitution = [int]$matrix.GetValue(($i - 1), ($j - 1))
+                        
+                        [int]$minVal = [Math]::Min([Math]::Min(($deletion + 1), ($insertion + 1)), ($substitution + $cost))
+                        $matrix.SetValue($minVal, $i, $j)
+                    }
+                }
+                
+                # Extract final distance
+                [int]$distance = [int]$matrix.GetValue($len1, $len2)
+                [double]$result = 1.0 - ([double]$distance / [double]$maxLen)
+                return $result
+            }
+            catch {
+                Write-Warning "Get-StringSimilarity error: $_ | String1 type: $($String1.GetType().Name), String2 type: $($String2.GetType().Name)"
+                return 0.0
+            }
+        }
         
+        # Helper function: Calculate match confidence for album
+        function Get-AlbumMatchConfidence {
+            param(
+                $Candidate,
+                [string]$LocalArtist,
+                [string]$LocalAlbum,
+                [int]$LocalTrackCount
+            )
+            
+            $score = 0.0
+            $weights = @{
+                Artist = 0.30
+                Album = 0.40
+                TrackCount = 0.30
+            }
+            
+            # Artist similarity
+            $remoteArtist = ''
+            if ($value = Get-IfExists $Candidate 'artists') {
+                if ($value -is [array] -and $value.Count -gt 0) {
+                    $remoteArtist = if ($value[0].name) { $value[0].name } else { $value[0].ToString() }
+                }
+            }
+            if (-not $remoteArtist -and ($value = Get-IfExists $Candidate 'artist')) {
+                $remoteArtist = $value
+            }
+            
+            if ($remoteArtist) {
+                $artistSim = Get-StringSimilarity -String1 $LocalArtist -String2 $remoteArtist
+                if ($artistSim -is [array]) { $artistSim = [double]$artistSim[0] }
+                $score += ([double]$artistSim * $weights.Artist)
+            }
+            
+            # Album similarity
+            $remoteAlbum = Get-IfExists $Candidate 'name'
+            if ($remoteAlbum) {
+                $albumSim = Get-StringSimilarity -String1 $LocalAlbum -String2 $remoteAlbum
+                if ($albumSim -is [array]) { $albumSim = [double]$albumSim[0] }
+                $score += ([double]$albumSim * $weights.Album)
+            }
+            
+            # Track count match
+            $remoteTrackCount = Get-IfExists $Candidate 'total_tracks'
+            if (-not $remoteTrackCount) { $remoteTrackCount = Get-IfExists $Candidate 'track_count' }
+            if (-not $remoteTrackCount) { $remoteTrackCount = Get-IfExists $Candidate 'tracks_count' }
+            
+            # Ensure track count is a scalar integer
+            if ($remoteTrackCount -is [array]) { $remoteTrackCount = $remoteTrackCount[0] }
+            if ($remoteTrackCount) { 
+                try { $remoteTrackCount = [int]$remoteTrackCount } 
+                catch { $remoteTrackCount = $null }
+            }
+            
+            if ($remoteTrackCount -and $LocalTrackCount -gt 0) {
+                $trackDiff = [Math]::Abs($remoteTrackCount - $LocalTrackCount)
+                $trackScore = if ($trackDiff -eq 0) { 1.0 }
+                             elseif ($trackDiff -le 2) { 0.8 }
+                             elseif ($trackDiff -le 5) { 0.5 }
+                             else { 0.0 }
+                $score += $trackScore * $weights.TrackCount
+            }
+            
+            return $score
+        }
         
-        # Replaced inline Get-AlbumMatchConfidence with centralized helper in Private/Utils/Get-AlbumMatchConfidence.ps1
-        # See: Private/Utils/Get-AlbumMatchConfidence.ps1
+        # Helper function: Get best auto match from candidates
+        function Get-BestAutoMatch {
+            param(
+                $Candidates,
+                [string]$LocalArtist,
+                [string]$LocalAlbum,
+                [int]$LocalTrackCount,
+                [double]$Threshold
+            )
+            
+            $bestMatch = $null
+            $bestScore = 0.0
+            $bestIndex = -1
+            
+            for ($i = 0; $i -lt $Candidates.Count; $i++) {
+                $score = Get-AlbumMatchConfidence -Candidate $Candidates[$i] `
+                    -LocalArtist $LocalArtist -LocalAlbum $LocalAlbum `
+                    -LocalTrackCount $LocalTrackCount
+                
+                if ($score -gt $bestScore) {
+                    $bestScore = $score
+                    $bestMatch = $Candidates[$i]
+                    $bestIndex = $i
+                }
+            }
+            
+            if ($bestScore -ge $Threshold) {
+                return @{
+                    Album = $bestMatch
+                    Index = $bestIndex + 1
+                    Confidence = [Math]::Round($bestScore * 100, 0)
+                }
+            }
+            
+            return $null
+        }
         
-        
-        # Replaced inline Get-BestAutoMatch with centralized helper in Private/Utils/Get-BestAutoMatch.ps1
-        # See: Private/Utils/Get-BestAutoMatch.ps1
-        
-        
-        # Delegate provider fallback behavior to centralized helper in Private/Utils
-        # Implementation moved to: Private/Utils/Invoke-ProviderWithFallback.ps1
-        # The function is expected to be available via module import (no inline implementation here).
+        # Helper function: Provider fallback with Qobuz → Spotify priority
+        function Invoke-ProviderWithFallback {
+            param(
+                [string]$PrimaryProvider,
+                [string]$Artist,
+                [string]$Album,
+                [int]$TrackCount,
+                [double]$Threshold,
+                [switch]$EnableFallback
+            )
+            
+            # Try primary provider
+            Write-Host "🔍 AUTO: Searching $PrimaryProvider for '$Album' by '$Artist'..." -ForegroundColor Cyan
+            
+            try {
+                $results = Invoke-ProviderSearch -Provider $PrimaryProvider -Album $Album -Artist $Artist -Type album
+                $candidates = if ($results -and $results.albums -and $results.albums.PSObject.Properties.Name -contains 'items' -and $results.albums.items) { @($results.albums.items | Where-Object { $_ -ne $null }) } else { @() }
+            }
+            catch {
+                Write-Verbose "Primary provider search failed: $_"
+                $candidates = @()
+            }
+            
+            if ($candidates.Count -gt 0) {
+                $bestMatch = Get-BestAutoMatch -Candidates $candidates -LocalArtist $Artist `
+                    -LocalAlbum $Album -LocalTrackCount $TrackCount -Threshold $Threshold
+                
+                if ($bestMatch) {
+                    Write-Host "✓ AUTO: Found high-confidence match on $PrimaryProvider ($($bestMatch.Confidence)%)" -ForegroundColor Green
+                    return @{
+                        Provider = $PrimaryProvider
+                        Album = $bestMatch.Album
+                        Confidence = $bestMatch.Confidence
+                        IsFallback = $false
+                    }
+                }
+            }
+            
+            # No good match - try fallback if enabled
+            if (-not $EnableFallback) {
+                Write-Verbose "No high-confidence match on $PrimaryProvider and fallback disabled"
+                return $null
+            }
+            
+            # Fallback chain: Qobuz → Spotify → Discogs → MusicBrainz
+            # Always try Qobuz first (most reliable), then Spotify
+            $fallbackChain = switch ($PrimaryProvider) {
+                'Qobuz' { @('Spotify', 'Discogs', 'MusicBrainz') }
+                'Spotify' { @('Qobuz', 'Discogs', 'MusicBrainz') }
+                'Discogs' { @('Qobuz', 'Spotify', 'MusicBrainz') }
+                'MusicBrainz' { @('Qobuz', 'Spotify', 'Discogs') }
+            }
+            
+            foreach ($fallbackProvider in $fallbackChain) {
+                Write-Host "⚠️  AUTO: No good match on $PrimaryProvider, trying $fallbackProvider..." -ForegroundColor Yellow
+                
+                try {
+                    $fallbackResults = Invoke-ProviderSearch -Provider $fallbackProvider -Album $Album -Artist $Artist -Type album
+                    $fallbackCandidates = if ($fallbackResults -and $fallbackResults.albums -and $fallbackResults.albums.PSObject.Properties.Name -contains 'items' -and $fallbackResults.albums.items) { @($fallbackResults.albums.items | Where-Object { $_ -ne $null }) } else { @() }
+                }
+                catch {
+                    Write-Verbose "Fallback provider $fallbackProvider search failed: $_"
+                    continue
+                }
+                
+                if ($fallbackCandidates.Count -gt 0) {
+                    $bestMatch = Get-BestAutoMatch -Candidates $fallbackCandidates -LocalArtist $Artist `
+                        -LocalAlbum $Album -LocalTrackCount $TrackCount -Threshold $Threshold
+                    
+                    if ($bestMatch) {
+                        Write-Host "✓ AUTO: Found high-confidence match on $fallbackProvider ($($bestMatch.Confidence)% confidence)" -ForegroundColor Green
+                        return @{
+                            Provider = $fallbackProvider
+                            Album = $bestMatch.Album
+                            Confidence = $bestMatch.Confidence
+                            IsFallback = $true
+                        }
+                    }
+                }
+            }
+            
+            Write-Verbose "No high-confidence match found on any provider"
+            return $null
+        }
         
         $script:album = $null
         
@@ -693,8 +906,9 @@ n        # Backwards-compatible local aliases
                 $albumName = $script:album.Name.Trim()
 
             }
-            # Use centralized helper to get audio files for album detection
-            $audioFilesCheck = Get-OMAudioFile -Path $script:album.FullName
+            $audioFilesCheck = @(Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
+                Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) })
             if (-not $audioFilesCheck -or $audioFilesCheck.Count -eq 0) {
                 Write-Warning "No supported audio files found in album folder: $($script:album.FullName). Skipping album."
                 continue
@@ -718,12 +932,6 @@ n        # Backwards-compatible local aliases
             $skipQuickPrompts = $false  # Flag to skip prompts when re-entering quick find after provider change
 
             :stageLoop while ($true) {
-                # Check if album is done FIRST before any other processing
-                if ($albumDone) {
-                    Write-Verbose "DEBUG: albumDone=true, breaking out of stageLoop"
-                    break
-                }
-                
                 # NEW: Handle quick find mode (only when not in track selection stage)
                 if ($script:findMode -eq 'quick' -and $stage -ne 'C') {
                     if ($VerbosePreference -ne 'Continue') { Clear-Host }
@@ -751,10 +959,12 @@ n        # Backwards-compatible local aliases
                         # Try to load AlbumArtist tag from first audio file for better detection
                         $tagArtist = $null
                         try {
-                            $firstAudioFile = Get-OMAudioFile -Path $script:album.FullName -SortMethod 'byFilesystem' | Select-Object -First 1
+                            $firstAudioFile = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse -ErrorAction Stop | 
+                                Where-Object { $_.Extension -in '.flac', '.mp3', '.m4a', '.ogg', '.opus', '.wma', '.ape' } |
+                                Select-Object -First 1
                             
-                            if ($firstAudioFile -and $firstAudioFile.FilePath) {
-                                Write-Verbose "DEBUG: Loading tag from $([System.IO.Path]::GetFileName($firstAudioFile.FilePath))"
+                            if ($firstAudioFile -and $firstAudioFile.FullName) {
+                                Write-Verbose "DEBUG: Loading tag from $($firstAudioFile.Name)"
                                 
                                 # Load TagLib if not already loaded
                                 if (-not ([System.Management.Automation.PSTypeName]'TagLib.File').Type) {
@@ -764,7 +974,7 @@ n        # Backwards-compatible local aliases
                                     }
                                 }
                                 
-                                $tagFile = [TagLib.File]::Create($firstAudioFile.FilePath)
+                                $tagFile = [TagLib.File]::Create($firstAudioFile.FullName)
                                 $tagArtist = if ($tagFile.Tag.FirstAlbumArtist) { $tagFile.Tag.FirstAlbumArtist } else { $null }
                                 $tagFile.Dispose()
                                 Write-Verbose "DEBUG: AlbumArtist tag='$tagArtist'"
@@ -821,7 +1031,7 @@ n        # Backwards-compatible local aliases
 
                     if (-not $skipQuickPrompts) {
                         # Prompt for artist and album with pre-filled defaults
-                        $userInput = Show-OMPrompt -Prompt "Artist" -Default $currentArtist -NoNewline
+                        $userInput = Show-OMPrompt -Prompt 'Artist' -Default $currentArtist -Context $Context
                         if ($userInput) { $currentArtist = $userInput }
                         $quickArtist = $currentArtist
                         if (-not $quickArtist) {
@@ -831,7 +1041,7 @@ n        # Backwards-compatible local aliases
                             continue stageLoop
                         }
                         
-                        $userInput = Show-OMPrompt -Prompt "Album" -Default $currentAlbum -NoNewline
+                        $userInput = Show-OMPrompt -Prompt 'Album' -Default $currentAlbum -Context $Context
                         if ($userInput) { $currentAlbum = $userInput }
                         $quickAlbum = $currentAlbum
                         if (-not $quickAlbum) {
@@ -872,7 +1082,7 @@ n        # Backwards-compatible local aliases
                             # Check if we have candidates (use the properly extracted $albumCandidates)
                             if ($null -eq $albumCandidates -or $albumCandidates.Count -eq 0) {
                                 Write-Host "No albums found for '$quickAlbum' by '$quickArtist' with $Provider." -ForegroundColor Red
-                                $retryChoice = Read-Host "`nPress Enter to retry, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(a)' artist-first mode, (ni) New Item (enter new artist+album), (x) skip album, or enter new album name"
+                                $retryChoice = Show-OMPrompt -Prompt "Press Enter to retry, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(a)' artist-first mode, (ni) New Item (enter new artist+album), (x) skip album, or enter new album name" -Context $Context
                                 if ($retryChoice -eq 'ps') {
                                     $Provider = 'Spotify'
                                     Write-Host "Switched to provider: $Provider" -ForegroundColor Green
@@ -1046,136 +1256,6 @@ n        # Backwards-compatible local aliases
                             }
                             
                             Write-Host "✓ AUTO: Selected album: $($ProviderAlbum.name)" -ForegroundColor Green
-                            
-                            # UpdateGenresOnly mode in Auto: Skip Stage C and directly update genres
-                            if ($UpdateGenresOnly) {
-                                Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-                                Write-Host "🎵 UPDATE GENRES ONLY MODE (AUTO)" -ForegroundColor Magenta
-                                Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-                                Write-Host ""
-                                Write-Host "Album: $($ProviderAlbum.name)" -ForegroundColor Green
-                                Write-Host "Genre mode: $($script:genreMode)" -ForegroundColor Yellow
-                                Write-Host ""
-                                
-                                # Get audio files via centralized helper and normalize to FullName for compatibility
-                                $genreUpdateFiles = Get-OMAudioFile -Path $script:album.FullName
-                                $genreUpdateFiles = $genreUpdateFiles | ForEach-Object { [PSCustomObject]@{ FullName = $_.FilePath } }
-
-                                if ($genreUpdateFiles.Count -eq 0) {
-                                    Write-Warning "No audio files found. Skipping."
-                                    $albumDone = $true
-                                    continue stageLoop
-                                }
-                                
-# Extract genres from $ProviderAlbum (already fetched from search) or $ProviderArtist
-                                    Write-Verbose "Extracting genres from $Provider album/artist..."
-                                    try {
-                                        $providerGenres = @()
-                                        
-                                        # Try album-level genres first
-                                        if ($ProviderAlbum.genres) {
-                                            $providerGenres = @($ProviderAlbum.genres)
-                                            Write-Verbose "Found genres from album: $($providerGenres -join ', ')"
-                                        }
-                                        # Try album genre field (Qobuz/Discogs/MusicBrainz)
-                                        elseif ($ProviderAlbum.genre) {
-                                            $providerGenres = @($ProviderAlbum.genre)
-                                            Write-Verbose "Found genre from album: $($providerGenres -join ', ')"
-                                        }
-                                        # Try styles field (Discogs)
-                                        elseif ($ProviderAlbum.styles) {
-                                            $providerGenres = @($ProviderAlbum.styles)
-                                            Write-Verbose "Found styles from album: $($providerGenres -join ', ')"
-                                        }
-                                        # Fallback to artist genres (Spotify)
-                                        elseif ($ProviderArtist -and $ProviderArtist.genres) {
-                                            $providerGenres = @($ProviderArtist.genres)
-                                            Write-Verbose "Found genres from artist: $($providerGenres -join ', ')"
-                                        }
-                                        
-                                        # Filter, trim, and decode HTML entities (e.g., &amp; -> &)
-                                        $providerGenres = @($providerGenres | Where-Object { $_ -and $_ -ne '' } | ForEach-Object { 
-                                            $decoded = [System.Net.WebUtility]::HtmlDecode($_.ToString().Trim())
-                                            $decoded
-                                        })
-                                        
-                                        if ($providerGenres.Count -eq 0) {
-                                            Write-Warning "No genres found for this album. Skipping."
-                                            $albumDone = $true
-                                            continue stageLoop
-                                        }
-                                        
-                                        Write-Host "Genres: $($providerGenres -join ', ')" -ForegroundColor Green
-                                        
-                                        # Update files
-                                        $updatedCount = 0
-                                        foreach ($audioFile in $genreUpdateFiles) {
-                                            try {
-                                                $currentTags = Get-OMTags -Path $audioFile.FullName
-                                                # Ensure currentGenres is always an array
-                                                $currentGenres = @()
-                                                if ($currentTags.Genres) {
-                                                    $currentGenres = @($currentTags.Genres)
-                                                }
-                                                
-                                                # Ensure newGenres is always an array
-                                                $newGenres = @()
-                                                if ($script:genreMode -eq 'Merge') {
-                                                    $combined = @($currentGenres) + @($providerGenres)
-                                                    $newGenres = @($combined | Select-Object -Unique)
-                                                }
-                                                else {
-                                                    $newGenres = @($providerGenres)
-                                                }
-                                                
-                                                # Check if changed (defensive array count)
-                                                $changed = $false
-                                                $currentCount = if ($currentGenres -is [array]) { $currentGenres.Count } else { if ($currentGenres) { 1 } else { 0 } }
-                                                $newCount = if ($newGenres -is [array]) { $newGenres.Count } else { if ($newGenres) { 1 } else { 0 } }
-                                                
-                                                if ($newCount -ne $currentCount) {
-                                                    $changed = $true
-                                                }
-                                                else {
-                                                    $sortedNew = @($newGenres | Sort-Object)
-                                                    $sortedCurrent = @($currentGenres | Sort-Object)
-                                                    for ($i = 0; $i -lt $newCount; $i++) {
-                                                        if ($sortedNew[$i] -cne $sortedCurrent[$i]) {
-                                                            $changed = $true
-                                                            break
-                                                        }
-                                                    }
-                                                }
-                                                
-                                                if ($changed) {
-                                                    Write-Verbose "  Updating: $($audioFile.Name) ($($currentGenres -join ', ') → $($newGenres -join ', '))"
-                                                    Set-OMTags -Path $audioFile.FullName -Tags @{ Genres = $newGenres } -Force -WhatIf:$useWhatIf | Out-Null
-                                                    $updatedCount++
-                                                }
-                                            }
-                                            catch {
-                                                Write-Warning "Failed to update '$($audioFile.Name)': $_"
-                                            }
-                                        }
-                                        
-                                        if ($useWhatIf) {
-                                            Write-Host "✓ WhatIf: Would update $updatedCount/$($genreUpdateFiles.Count) file(s)" -ForegroundColor Yellow
-                                        }
-                                        else {
-                                            Write-Host "✓ Updated $updatedCount/$($genreUpdateFiles.Count) file(s)" -ForegroundColor Green
-                                        }
-                                        Write-Host ""
-                                        
-                                        $albumDone = $true
-                                        continue stageLoop
-                                    }
-                                    catch {
-                                        Write-Error "Failed to update genres: $_"
-                                        $albumDone = $true
-                                        continue stageLoop
-                                    }
-                            }
-                            
                             $stage = 'C'
                             $script:autoModeActive = $true
                             continue stageLoop
@@ -1197,220 +1277,191 @@ n        # Backwards-compatible local aliases
                         Write-Host ""
                         
                         Write-Host "$Provider Album candidates for '$quickAlbum' by '$quickArtist':" -ForegroundColor Green
-                        Show-AlbumCandidates -AlbumCandidates $albumCandidates -Provider $Provider
+                        for ($i = 0; $i -lt $albumCandidates.Count; $i++) {
+                            $album = $albumCandidates[$i]
+                            $artistDisplay = if ($album.artists -and $album.artists[0].name) { $album.artists[0].name } else { 'Unknown Artist' }
+                            
+                            $year = Get-IfExists $album 'release_date'
+                            $trackCount = Get-IfExists $album 'total_tracks'
+                            if (-not $trackCount) { $trackCount = Get-IfExists $album 'track_count' }
+                            if (-not $trackCount) { $trackCount = Get-IfExists $album 'tracks_count' }
+                            $trackInfo = if ($trackCount) { " ($trackCount tracks)" } else { "" }
+                            
+                            Write-Host "[$($i+1)] $($album.name) - $artistDisplay (id: $($album.id)) (year: $year)$trackInfo"
+                        }
 
                         $originalColor = [Console]::ForegroundColor
                         [Console]::ForegroundColor = [ConsoleColor]::Yellow
                         $modeIndicator = if (
                         $script:backNavigationMode) { " (Back Navigation - use 'f' to search again)" } else { "" }
-                        $albumChoice = Read-Host "Select album [number] (Enter=first), (P)rovider, {F}indMode, (ni) New Item (enter new artist+album), (x)ip, (C)over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags}, or new search term$modeIndicator"
+                        $albumChoice = Show-OMPrompt -Prompt "Select album [number] (Enter=first), (P)rovider, {F}indMode, (ni) New Item (enter new artist+album), (x)ip, (C)over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags}, or new search term$modeIndicator" -Context $Context
                         [Console]::ForegroundColor = $originalColor
                         if ($albumChoice -eq '') { $albumChoice = '1' }
                         
-                        # Parse album choice using centralized helper
-                        try {
-                            $parsed = Parse-AlbumSelectionChoice -Choice $albumChoice -MaxIndex $albumCandidates.Count
-                        }
-                        catch {
-                            Write-Warning "Invalid input: $albumChoice - $_"
+                        if ($albumChoice -eq 'p') {
+                            # Show current provider and available shortcuts
+                            $config = Get-OMConfig
+                            $defaultProvider = $config.DefaultProvider
+                            Write-Host "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan
+                            Write-Host "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray
                             continue albumSelectionLoop
                         }
-
-                        switch ($parsed.Command) {
-                            'Provider' {
-                                $config = Get-OMConfig
-                                $defaultProvider = $config.DefaultProvider
-                                Write-Host "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan
-                                Write-Host "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray
+                        elseif ($albumChoice -eq 'ps') {
+                            $Provider = 'Spotify'
+                            Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                            $skipQuickPrompts = $true
+                            $script:backNavigationMode = $false
+                            continue stageLoop
+                        }
+                        elseif ($albumChoice -eq 'pq') {
+                            $Provider = 'Qobuz'
+                            Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                            $skipQuickPrompts = $true
+                            $script:backNavigationMode = $false
+                            continue stageLoop
+                        }
+                        elseif ($albumChoice -eq 'pd') {
+                            $Provider = 'Discogs'
+                            Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                            $skipQuickPrompts = $true
+                            $script:backNavigationMode = $false
+                            continue stageLoop
+                        }
+                        elseif ($albumChoice -eq 'pm') {
+                            $Provider = 'MusicBrainz'
+                            Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                            $skipQuickPrompts = $true
+                            $script:backNavigationMode = $false
+                            continue stageLoop
+                        }
+                        elseif ($albumChoice.ToLower() -eq 'f') {
+                            $script:findMode = 'artist-first'
+                            $script:backNavigationMode = $false
+                            $stage = 'A'
+                            continue stageLoop
+                        }
+                        # 'na' (new artist) removed; use (ni) New Item instead
+                        elseif ($albumChoice -eq 'ni') {
+                            # Prompt for new artist and album in one step
+                            $res = Read-ArtistAlbum -DefaultArtist $currentArtist -DefaultAlbum $currentAlbum
+                            if ($res.ChangedArtist) { $currentArtist = $res.Artist }
+                            if ($res.ChangedAlbum) { $currentAlbum = $res.Album }
+                            $skipQuickPrompts = $true
+                            $script:backNavigationMode = $false
+                            continue stageLoop
+                        }
+                        elseif ($albumChoice -match '^cvo(.*)$') {
+                            $rangeText = $matches[1]
+                            if (-not $rangeText) { $rangeText = "1" }
+                            Write-Verbose "Quickfind cv: Show-CoverArt called with Size='original' Grid='False' AlbumCount=$($albumCandidates.Count)"
+                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false
+                            Prompt-PressEnter -Context $Context
+                            continue albumSelectionLoop
+                        }
+                        elseif ($albumChoice -match '^cv(.*)$') {
+                            $rangeText = $matches[1]
+                            if (-not $rangeText) { $rangeText = "1" }
+                            Write-Verbose "Quickfind cvo: Show-CoverArt called with Size='original' Grid='False' AlbumCount=$($albumCandidates.Count)"
+                            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false
+                            Prompt-PressEnter -Context $Context
+                            continue albumSelectionLoop
+                        }
+                        elseif ($albumChoice -match '^cs(.*)$') {
+                            $rangeText = $matches[1]
+                            if (-not $rangeText) { $rangeText = "1" }
+                            try {
+                                $selectedIndices = Expand-SelectionRange -RangeText $rangeText -MaxIndex $albumCandidates.Count
+                            }
+                            catch {
+                                Write-Warning "Invalid range syntax for cs command: $rangeText - $_"
                                 continue albumSelectionLoop
                             }
-                            'SwitchProvider' {
-                                $Provider = $parsed.Provider
-                                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                                $skipQuickPrompts = $true
-                                $script:backNavigationMode = $false
-                                continue stageLoop
+                            if ($selectedIndices -isnot [array]) {
+                                $selectedIndices = @($selectedIndices)
                             }
-                            'FindMode' {
-                                $script:findMode = 'artist-first'
-                                $script:backNavigationMode = $false
-                                $stage = 'A'
-                                continue stageLoop
-                            }
-                            'NewItem' {
-                                $res = Read-ArtistAlbum -DefaultArtist $currentArtist -DefaultAlbum $currentAlbum
-                                if ($res.ChangedArtist) { $currentArtist = $res.Artist }
-                                if ($res.ChangedAlbum) { $currentAlbum = $res.Album }
-                                $skipQuickPrompts = $true
-                                $script:backNavigationMode = $false
-                                continue stageLoop
-                            }
-                            'CoverOriginal' {
-                                $rangeText = $parsed.RangeText
-                                if (-not $rangeText) { $rangeText = '1' }
-                                Write-Verbose "Quickfind cv: Show-CoverArt called with Size='original' Grid='False' AlbumCount=$($albumCandidates.Count)"
-                                Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false
-                                Prompt-PressEnter -InputReader $inputReader
+                            if ($selectedIndices.Count -eq 0) {
+                                Write-Warning "No valid albums selected for cs command"
                                 continue albumSelectionLoop
                             }
-                            'Cover' {
-                                $rangeText = $parsed.RangeText
-                                if (-not $rangeText) { $rangeText = '1' }
-                                Write-Verbose "Quickfind cvo: Show-CoverArt called with Size='original' Grid='False' AlbumCount=$($albumCandidates.Count)"
-                                Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false
-                                Prompt-PressEnter -InputReader $inputReader
+                            $config = Get-OMConfig
+                            $maxSize = $config.CoverArt.FolderImageSize
+                            foreach ($index in $selectedIndices) {
+                                $albumIndex = $index - 1
+                                $selectedAlbum = $albumCandidates[$albumIndex]
+                                if ($selectedAlbum.cover_url) {
+                                    $result = Save-CoverArt -CoverUrl $selectedAlbum.cover_url -AlbumPath $script:album.FullName -Action SaveToFolder -MaxSize $maxSize -WhatIf:$useWhatIf
+                                    if (-not $result.Success) {
+                                        Write-Warning "Failed to save cover art for album $index ($($selectedAlbum.name)): $($result.Error)"
+                                    }
+                                }
+                                else {
+                                    Write-Warning "No cover art available for album $index ($($selectedAlbum.name))"
+                                }
+                            }
+                            continue albumSelectionLoop
+                        }
+                        elseif ($albumChoice -match '^ct(.*)$') {
+                            $rangeText = $matches[1]
+                            if (-not $rangeText) { $rangeText = "1" }
+                            try {
+                                $selectedIndices = Expand-SelectionRange -RangeText $rangeText -MaxIndex $albumCandidates.Count
+                            }
+                            catch {
+                                Write-Warning "Invalid range syntax for ct command: $rangeText - $_"
                                 continue albumSelectionLoop
                             }
-                            'SaveToFolder' {
-                                $rangeText = $parsed.RangeText
-                                if (-not $rangeText) { $rangeText = '1' }
+                            if ($selectedIndices -isnot [array]) {
+                                $selectedIndices = @($selectedIndices)
+                            }
+                            if ($selectedIndices.Count -eq 0) {
+                                Write-Warning "No valid albums selected for ct command"
+                                continue albumSelectionLoop
+                            }
+                            $config = Get-OMConfig
+                            $maxSize = $config.CoverArt.TagImageSize
+                            # Get audio files for embedding
+                            $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                                Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
+                                Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) } | ForEach-Object {
                                 try {
-                                    $selectedIndices = Expand-SelectionRange -RangeText $rangeText -MaxIndex $albumCandidates.Count
+                                    $tagFile = [TagLib.File]::Create($_.FullName)
+                                    [PSCustomObject]@{
+                                        FilePath = $_.FullName
+                                        TagFile  = $tagFile
+                                    }
                                 }
                                 catch {
-                                    Write-Warning "Invalid range syntax for cs command: $rangeText - $_"
-                                    continue albumSelectionLoop
+                                    Write-Warning "Skipping invalid audio file: $($_.FullName)"
+                                    $null
                                 }
-                                if ($selectedIndices -isnot [array]) { $selectedIndices = @($selectedIndices) }
-                                if ($selectedIndices.Count -eq 0) {
-                                    Write-Warning "No valid albums selected for cs command"
-                                    continue albumSelectionLoop
-                                }
-                                $res = Invoke-StageB-HandleSelection -Action 'SaveToFolder' -RangeText $rangeText -AlbumCandidates $albumCandidates -AlbumPath $script:album.FullName -UseWhatIf:$useWhatIf -Provider $Provider
-                                if (-not $res.Success -and $res.Error) { Write-Warning $res.Error }
-                                continue albumSelectionLoop
-                            }
-                            'EmbedInTags' {
-                                $rangeText = $parsed.RangeText
-                                if (-not $rangeText) { $rangeText = '1' }
-                                try {
-                                    $selectedIndices = Expand-SelectionRange -RangeText $rangeText -MaxIndex $albumCandidates.Count
-                                }
-                                catch {
-                                    Write-Warning "Invalid range syntax for ct command: $rangeText - $_"
-                                    continue albumSelectionLoop
-                                }
-                                if ($selectedIndices -isnot [array]) { $selectedIndices = @($selectedIndices) }
-                                if ($selectedIndices.Count -eq 0) {
-                                    Write-Warning "No valid albums selected for ct command"
-                                    continue albumSelectionLoop
-                                }
-                                $res = Invoke-StageB-HandleSelection -Action 'EmbedInTags' -RangeText $rangeText -AlbumCandidates $albumCandidates -AlbumPath $script:album.FullName -UseWhatIf:$useWhatIf
-                                if (-not $res.Success -and $res.Error) { Write-Warning $res.Error }
-                                continue albumSelectionLoop
-                            }
-                            'Number' {
-                                $idx = [int]$parsed.Number
-                                if ($idx -ge 1 -and $idx -le $albumCandidates.Count) {
-                                    $ProviderAlbum = $albumCandidates[$idx - 1]
+                            } | Where-Object { $_ -ne $null }
 
-                                    # Extract artist name from album metadata (not folder name)
-                                    $artistNameFromAlbum = $null
-                                    if ($value = Get-IfExists $ProviderAlbum 'artists') {
-                                        # Spotify/MusicBrainz: artists array
-                                        if ($value -is [array] -and $value.Count -gt 0) {
-                                            $artistNameFromAlbum = if ($value[0].name) { $value[0].name } else { $value[0].ToString() }
-                                        } elseif ($value.name) {
-                                            $artistNameFromAlbum = $value.name
-                                        } else {
-                                            $artistNameFromAlbum = $value.ToString()
-                                        }
-                                    } elseif ($value = Get-IfExists $ProviderAlbum 'artist') {
-                                        # Qobuz/Discogs: artist string
-                                        $artistNameFromAlbum = $value
-                                    }
-
-                                    # Fallback to folder name only if album has no artist metadata
-                                    if (-not $artistNameFromAlbum) {
-                                        $artistNameFromAlbum = $quickArtist
-                                        Write-Verbose "No artist in album metadata, using folder name: $artistNameFromAlbum"
-                                    } else {
-                                        Write-Verbose "Extracted artist from album metadata: $artistNameFromAlbum"
-                                    }
-
-                                    # For Spotify, fetch full artist details with genres instead of using simplified object
-                                    if ($Provider -eq 'Spotify' -and $ProviderAlbum.artists -and $ProviderAlbum.artists.Count -gt 0) {
-                                        $artistId = $ProviderAlbum.artists[0].id
-                                        if ($artistId) {
-                                            Write-Verbose "Fetching full artist details for ID: $artistId"
-                                            $ProviderArtist = Invoke-ProviderGetArtist -Provider $Provider -ArtistId $artistId
-                                            if (-not $ProviderArtist) {
-                                                Write-Verbose "Failed to fetch artist details, using simplified object with album artist"
-                                                $ProviderArtist = @{ name = $artistNameFromAlbum; id = $artistNameFromAlbum }
-                                            }
-                                        }
-                                        else {
-                                            $ProviderArtist = @{ name = $artistNameFromAlbum; id = $artistNameFromAlbum }
+                            if ($audioFiles.Count -gt 0) {
+                                foreach ($index in $selectedIndices) {
+                                    $albumIndex = $index - 1
+                                    $selectedAlbum = $albumCandidates[$albumIndex]
+                                    if ($selectedAlbum.cover_url) {
+                                        $result = Save-CoverArt -CoverUrl $selectedAlbum.cover_url -AudioFiles $audioFiles -Action EmbedInTags -MaxSize $maxSize -WhatIf:$useWhatIf
+                                        if (-not $result.Success) {
+                                            Write-Warning "Failed to embed cover art for album $index ($($selectedAlbum.name)): $($result.Error)"
                                         }
                                     }
                                     else {
-                                        # Non-Spotify providers: use artist name from album metadata
-                                        $ProviderArtist = @{ name = $artistNameFromAlbum; id = $artistNameFromAlbum }
+                                        Write-Warning "No cover art available for album $index ($($selectedAlbum.name))"
                                     }
-
-                                    $script:backNavigationMode = $false  # Reset back navigation flag
-
-                                    # UpdateGenresOnly mode: Skip Stage C and directly update genres
-                                    if ($UpdateGenresOnly) {
-                                        Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-                                        Write-Host "🎵 UPDATE GENRES ONLY MODE" -ForegroundColor Magenta
-                                        Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-                                        Write-Host ""
-                                        Write-Host "Selected album: $($ProviderAlbum.name)" -ForegroundColor Green
-                                        Write-Host "Genre mode: $($script:genreMode)" -ForegroundColor Yellow
-                                        Write-Host ""
-
-                                        # Get audio files in album via centralized helper and normalize to FullName for compatibility
-                                        $genreUpdateFiles = Get-OMAudioFile -Path $script:album.FullName
-                                        $genreUpdateFiles = $genreUpdateFiles | ForEach-Object { [PSCustomObject]@{ FullName = $_.FilePath } }
-
-                                        if ($genreUpdateFiles.Count -eq 0) {
-                                            Write-Warning "No audio files found in album folder. Skipping."
-                                            $albumDone = $true
-                                            break albumSelectionLoop
-                                        }
-
-                                        # Extract genres from $ProviderAlbum (already fetched from search) or $ProviderArtist
-                                        Write-Host "Extracting genres from $Provider..." -ForegroundColor Cyan
-                                        try {
-                                            $providerGenres = @()
-
-                                            # Try album-level genres first
-                                            if ($ProviderAlbum.genres) {
-                                                $providerGenres = @($ProviderAlbum.genres)
-                                            }
-                                            # Try album genre field (Qobuz/Discogs/MusicBrainz)
-                                            elseif ($ProviderAlbum.genre) {
-                                                $providerGenres = @($ProviderAlbum.genre)
-                                            }
-                                            # Try styles field (Discogs)
-                                            elseif ($ProviderAlbum.styles) {
-                                                $providerGenres = @($ProviderAlbum.styles)
-                                            }
-                                            # Fallback to artist genres (Spotify)
-                                            elseif ($ProviderArtist -and $ProviderArtist.genres) {
-                                                $providerGenres = @($ProviderArtist.genres)
-                                            }
-
-                                            # Normalize to array of strings
-                                            $providerGenres = @($providerGenres | Where-Object { $_ -and $_ -ne '' } | ForEach-Object { $_.ToString().Trim() })
-
-                                            if ($providerGenres.Count -eq 0) {
-                                                Write-Warning "No genres found for this album on $Provider."
-                                                $manual = Prompt-ManualGenres -Provider $Provider
-                                                if ($manual -ne $null) {
-                                                    $providerGenres = @($manual)
-                                                }
-                                                else {
-                                                    Write-Host "Skipping album (no genres to apply)." -ForegroundColor Yellow
-                                                    $albumDone = $true
-                                                    break albumSelectionLoop
-                                                }
-                                            }
-
-                                            Write-Host "Provider genres: $($providerGenres -join ', ')" -ForegroundColor Green
-                                            Write-Host ""
-                                            (remaining content unchanged)
+                                }
+                                # Clean up tag files
+                                foreach ($af in $audioFiles) {
+                                    if ($af.TagFile) {
+                                        try { $af.TagFile.Dispose() } catch { }
+                                    }
+                                }
+                            }
+                            else {
+                                Write-Warning "No audio files found to embed cover art in"
+                            }
+                            continue albumSelectionLoop
+                        }
                         elseif ($albumChoice -match '^\d+$') {
                             $idx = [int]$albumChoice
                             if ($idx -ge 1 -and $idx -le $albumCandidates.Count) {
@@ -1461,170 +1512,8 @@ n        # Backwards-compatible local aliases
                                 }
                                 
                                 $script:backNavigationMode = $false  # Reset back navigation flag
-                                
-                                # UpdateGenresOnly mode: Skip Stage C and directly update genres
-                                if ($UpdateGenresOnly) {
-                                    Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-                                    Write-Host "🎵 UPDATE GENRES ONLY MODE" -ForegroundColor Magenta
-                                    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-                                    Write-Host ""
-                                    Write-Host "Selected album: $($ProviderAlbum.name)" -ForegroundColor Green
-                                    Write-Host "Genre mode: $($script:genreMode)" -ForegroundColor Yellow
-                                    Write-Host ""
-                                    
-                                    # Get audio files in album via centralized helper and normalize to FullName for compatibility
-                                    $genreUpdateFiles = Get-OMAudioFile -Path $script:album.FullName
-                                    $genreUpdateFiles = $genreUpdateFiles | ForEach-Object { [PSCustomObject]@{ FullName = $_.FilePath } }
-                                    
-                                    if ($genreUpdateFiles.Count -eq 0) {
-                                        Write-Warning "No audio files found in album folder. Skipping."
-                                        $albumDone = $true
-                                        break albumSelectionLoop
-                                    }
-                                    
-                                    # Extract genres from $ProviderAlbum (already fetched from search) or $ProviderArtist
-                                    Write-Host "Extracting genres from $Provider..." -ForegroundColor Cyan
-                                    try {
-                                        $providerGenres = @()
-                                        
-                                        # Try album-level genres first
-                                        if ($ProviderAlbum.genres) {
-                                            $providerGenres = @($ProviderAlbum.genres)
-                                        }
-                                        # Try album genre field (Qobuz/Discogs/MusicBrainz)
-                                        elseif ($ProviderAlbum.genre) {
-                                            $providerGenres = @($ProviderAlbum.genre)
-                                        }
-                                        # Try styles field (Discogs)
-                                        elseif ($ProviderAlbum.styles) {
-                                            $providerGenres = @($ProviderAlbum.styles)
-                                        }
-                                        # Fallback to artist genres (Spotify)
-                                        elseif ($ProviderArtist -and $ProviderArtist.genres) {
-                                            $providerGenres = @($ProviderArtist.genres)
-                                        }
-                                        
-                                        # Normalize to array of strings
-                                        $providerGenres = @($providerGenres | Where-Object { $_ -and $_ -ne '' } | ForEach-Object { $_.ToString().Trim() })
-                                        
-                                        if ($providerGenres.Count -eq 0) {
-                                            Write-Warning "No genres found for this album on $Provider."
-                                                $manual = Prompt-ManualGenres -Provider $Provider -Context $Context
-                                                if ($manual -ne $null) {
-                                                    $providerGenres = @($manual)
-                                                Write-Host "Skipping album (no genres to apply)." -ForegroundColor Yellow
-                                                $albumDone = $true
-                                                break albumSelectionLoop
-                                            }
-                                        }
-                                        
-                                        Write-Host "Provider genres: $($providerGenres -join ', ')" -ForegroundColor Green
-                                        Write-Host ""
-                                        
-                                        # Update each file
-                                        $updatedCount = 0
-                                        $skippedCount = 0
-                                        
-                                        foreach ($audioFile in $genreUpdateFiles) {
-                                            try {
-                                                # Read current tags
-                                                $currentTags = Get-OMTags -Path $audioFile.FullName
-                                                # Ensure currentGenres is always an array
-                                                $currentGenres = @()
-                                                if ($currentTags.Genres) {
-                                                    $currentGenres = @($currentTags.Genres)
-                                                }
-                                                
-                                                # Determine new genres based on GenreMode (ensure always an array)
-                                                $newGenres = @()
-                                                if ($script:genreMode -eq 'Merge') {
-                                                    # Merge: combine and deduplicate
-                                                    $combined = @($currentGenres) + @($providerGenres)
-                                                    $newGenres = @($combined | Select-Object -Unique)
-                                                }
-                                                else {
-                                                    # Replace: use provider genres only
-                                                    $newGenres = @($providerGenres)
-                                                }
-                                                
-                                                # Check if genres actually changed (defensive array count)
-                                                $genresChanged = $false
-                                                $currentCount = if ($currentGenres -is [array]) { $currentGenres.Count } else { if ($currentGenres) { 1 } else { 0 } }
-                                                $newCount = if ($newGenres -is [array]) { $newGenres.Count } else { if ($newGenres) { 1 } else { 0 } }
-                                                
-                                                if ($newCount -ne $currentCount) {
-                                                    $genresChanged = $true
-                                                }
-                                                else {
-                                                    $sortedNew = @($newGenres | Sort-Object)
-                                                    $sortedCurrent = @($currentGenres | Sort-Object)
-                                                    for ($i = 0; $i -lt $newCount; $i++) {
-                                                        if ($sortedNew[$i] -cne $sortedCurrent[$i]) {
-                                                            $genresChanged = $true
-                                                            break
-                                                        }
-                                                    }
-                                                }
-                                                
-                                                if ($genresChanged) {
-                                                    Write-Host "  Updating: $($audioFile.Name)" -ForegroundColor Cyan
-                                                    Write-Host "    Old: $($currentGenres -join ', ')" -ForegroundColor Gray
-                                                    Write-Host "    New: $($newGenres -join ', ')" -ForegroundColor Green
-                                                    
-                                                    # Apply the genre update
-                                                    Set-OMTags -Path $audioFile.FullName -Tags @{ Genres = $newGenres } -Force -WhatIf:$useWhatIf | Out-Null
-                                                    $updatedCount++
-                                                }
-                                                else {
-                                                    Write-Verbose "  Skipped (no change): $($audioFile.Name)"
-                                                    $skippedCount++
-                                                }
-                                            }
-                                            catch {
-                                                Write-Warning "Failed to update genres for '$($audioFile.Name)': $_"
-                                            }
-                                        }
-                                        
-                                        Write-Host ""
-                                        Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-                                        if ($useWhatIf) {
-                                            Write-Host "✓ WhatIf: Would update $updatedCount file(s), skip $skippedCount file(s)" -ForegroundColor Yellow
-                                        }
-                                        else {
-                                            Write-Host "✓ Updated $updatedCount file(s), skipped $skippedCount file(s)" -ForegroundColor Green
-                                        }
-                                        Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-                                        Write-Host ""
-                                        
-                                        # In Auto mode, automatically move to next album
-                                        if ($Auto) {
-                                            Write-Host "Auto mode: Moving to next album..." -ForegroundColor Yellow
-                                            $albumDone = $true
-                                            break albumSelectionLoop
-                                        }
-                                        else {
-                                            Write-Host "Press Enter to continue to next album..." -ForegroundColor Cyan
-                                            Read-Host
-                                            $albumDone = $true
-                                            break albumSelectionLoop
-                                        }
-                                    }
-                                    catch {
-                                        Write-Error "Failed to fetch or apply genres: $_"
-                                        Write-Host "Press Enter to skip this album..." -ForegroundColor Yellow
-                                        Read-Host
-                                        $albumDone = $true
-                                        break albumSelectionLoop
-                                    }
-                                }
-                                
-                                # Only proceed to Stage C if not in UpdateGenresOnly mode
-                                # (UpdateGenresOnly sets $albumDone and breaks albumSelectionLoop above)
-                                if (-not $UpdateGenresOnly) {
-                                    $stage = 'C'
-                                    continue stageLoop
-                                }
-                                # else: let $albumDone check handle it
+                                $stage = 'C'
+                                continue stageLoop
                             }
                             else {
                                 Write-Warning "Invalid selection"
@@ -1684,7 +1573,7 @@ n        # Backwards-compatible local aliases
                                 Write-Warning "NonInteractive: skipping album because no artist candidates were found for '$artistQuery'."
                                 break
                             }
-                            $inputF = Read-Host "Enter new search, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(x)ip' to skip album, or 'id:<id>' to select by id"
+                            $inputF = Show-OMPrompt -Prompt "Enter new search, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(x)ip' to skip album, or 'id:<id>' to select by id" -Context $Context
                             switch -Regex ($inputF) {
                                 '^x(ip)?$' { 
                                     $albumDone = $true
@@ -1757,8 +1646,7 @@ n        # Backwards-compatible local aliases
                             $stage = 'B'; continue
                         }
 
-                        Write-Host "Select artist [number] (Enter=first), number, '(x)ip' album, 'id:<id>', (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, 'al:<albumName>', '(F)indmode or new search term:" -ForegroundColor Yellow -NoNewline
-                        $inputF = Read-Host
+                        $inputF = Show-OMPrompt -Prompt "Select artist [number] (Enter=first), number, '(x)ip' album, 'id:<id>', (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, 'al:<albumName>', '(F)indmode or new search term" -Context $Context
                         if ($inputF -eq '') { $ProviderArtist = $candidates[0]; $stage = 'B'; continue }
                         if ($inputF -like 'id:*') { 
                             $id = $inputF.Substring(3)
@@ -1804,7 +1692,7 @@ n        # Backwards-compatible local aliases
                         if ($inputF -eq 'f' -or $inputF -eq 'fm') {
                             Write-Host "`nCurrent find mode: $($script:findMode)" -ForegroundColor Cyan
                             Write-Host "Available modes: (q)uick album search, (a)rtist-first search" -ForegroundColor Gray
-                            $newMode = Read-Host "Select mode [q/a]"
+                            $newMode = Show-OMPrompt -Prompt "Select mode [q/a]" -Context $Context
                             if ($newMode -eq 'q' -or $newMode -eq 'quick') {
                                 $script:findMode = 'quick'
                                 $skipQuickPrompts = $false  # Show prompts when switching to quick mode
@@ -1853,10 +1741,6 @@ n        # Backwards-compatible local aliases
                             PerPage            = 10
                             MaxResults         = 10
                             CurrentPage        = $currentAlbumPage
-                            UpdateGenresOnly   = $UpdateGenresOnly
-                            GenreMode          = $script:genreMode
-                            UseWhatIf          = $useWhatIf
-                            Context            = $Context
                         }
                         
                         $stageBResult = Invoke-StageB-AlbumSelection @stageBParams
@@ -1900,12 +1784,6 @@ n        # Backwards-compatible local aliases
                             $albumDone = $true
                             break stageLoop
                             # break
-                        }
-                        
-                        # Handle AlbumDone status (UpdateGenresOnly completed in Stage B)
-                        if ($stage -eq 'AlbumDone') {
-                            $albumDone = $true
-                            break stageLoop
                         }
                         
                         continue stageLoop
@@ -1954,10 +1832,68 @@ n        # Backwards-compatible local aliases
                             $sortMethod = 'byFilesystem'
                         }
                         
-                        # collect audio files and tags via centralized helper
+                        # collect audio files and tags
+                        $script:audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                            Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' }
+                        
                         Write-Verbose "sortMethod = '$sortMethod'"
-                        $script:audioFiles = Get-OMAudioFile -Path $script:album.FullName -SortMethod $sortMethod
-                        Write-Verbose "First 3 files returned: $($script:audioFiles | Select-Object -First 3 | ForEach-Object { Split-Path $_.FilePath -Leaf } | Join-String -Separator ', ')"
+                        Write-Verbose "First 3 files from Get-ChildItem: $($script:audioFiles | Select-Object -First 3 | ForEach-Object { $_.Name } | Join-String -Separator ', ')"
+                        
+                        # Only sort if NOT using byFilesystem (which preserves disk order)
+                        if ($sortMethod -ne 'byFilesystem') {
+                            Write-Verbose "Applying alphabetical sort (sortMethod != 'byFilesystem')"
+                            $script:audioFiles = $script:audioFiles | Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
+                        }
+                        else {
+                            Write-Verbose "Preserving filesystem order (sortMethod == 'byFilesystem')"
+                        }
+                        
+                        Write-Verbose "First 3 files after conditional sort: $($script:audioFiles | Select-Object -First 3 | ForEach-Object { $_.Name } | Join-String -Separator ', ')"
+                        $script:audioFiles = foreach ($f in $script:audioFiles) {
+                            try {
+                                $tagFile = [TagLib.File]::Create($f.FullName)
+                                
+                                # Try to get track number from TagLib's numeric field
+                                $trackNum = $tagFile.Tag.Track
+                                $discNum = $tagFile.Tag.Disc
+                                
+                                # If track is 0 or missing, try to extract from raw track tag text
+                                # (Some files have text like "01. Suite I in G" instead of numeric 1)
+                                if (-not $trackNum -or $trackNum -eq 0) {
+                                    try {
+                                        # For FLAC files with Vorbis comments
+                                        if ($tagFile -is [TagLib.Flac.File]) {
+                                            $vorbisTag = $tagFile.GetTag([TagLib.TagTypes]::Xiph)
+                                            if ($vorbisTag) {
+                                                $trackText = $vorbisTag.GetFirstField("TRACKNUMBER")
+                                                if ($trackText -and $trackText -match '^(\d+)') {
+                                                    $trackNum = [int]$matches[1]
+                                                    Write-Verbose "Extracted track $trackNum from text tag '$trackText'"
+                                                }
+                                            }
+                                        }
+                                    } catch {
+                                        Write-Verbose "Could not extract text-based track number: $_"
+                                    }
+                                }
+                                
+                                [PSCustomObject]@{
+                                    FilePath    = $f.FullName
+                                    DiscNumber  = $discNum
+                                    TrackNumber = $trackNum
+                                    Title       = $tagFile.Tag.Title
+                                    TagFile     = $tagFile
+                                    Composer    = if ($tagFile.Tag.Composers) { $tagFile.Tag.Composers -join '; ' } else { 'Unknown Composer' }
+                                    Artist      = if ($tagFile.Tag.Performers) { $tagFile.Tag.Performers -join '; ' } else { 'Unknown Artist' }
+                                    Name        = if ($tagFile.Tag.Title) { $tagFile.Tag.Title } else { $f.BaseName }
+                                    Duration    = if ($f.Extension -eq '.ape') { Get-ApeDuration -FilePath $f.FullName } else { $tagFile.Properties.Duration.TotalMilliseconds }
+                                }
+                            }
+                            catch {
+                                Write-Warning "Skipping corrupted or invalid audio file: $($f.FullName) - Error: $($_.Exception.Message)"
+                                continue
+                            }
+                        }
                         
                         # Check if any valid audio files were loaded
                         $validAudioFiles = @($script:audioFiles | Where-Object { $_ -ne $null })
@@ -1968,7 +1904,7 @@ n        # Backwards-compatible local aliases
                             Write-Host "`nAlbum folder: $($script:album.FullName)" -ForegroundColor Yellow
                             Write-Host "All audio files were corrupted or invalid. Skipping this album." -ForegroundColor Yellow
                             Write-Host "`nPress Enter to continue to next album..." -ForegroundColor Cyan
-                            Read-Host
+                            Prompt-PressEnter -Context $Context
                             break stageLoop  # Exit stage loop to continue to next album
                         }
                         
@@ -2069,7 +2005,7 @@ n        # Backwards-compatible local aliases
                                     $canRetryReleases = (Get-IfExists $ProviderAlbum '_masterReleases') -and $ProviderAlbum._masterReleases.Count -gt 0
                                     $backPrompt = if ($canRetryReleases) { "'b' to try different release" } else { "'b' to go back to album selection" }
                                     
-                                    $skipChoice = Read-Host "`nPress Enter to skip this album, $backPrompt, or 'p' to change provider"
+                                    $skipChoice = Show-OMPrompt -Prompt "Press Enter to skip this album, $backPrompt, or 'p' to change provider" -Context $Context
                                     if ($skipChoice -eq 'b') {
                                         if ($canRetryReleases) {
                                             # Show releases again for this master
@@ -2090,7 +2026,7 @@ n        # Backwards-compatible local aliases
                                                 Write-Host "... and $($releases.Count - 20) more" -ForegroundColor DarkGray
                                             }
                                             
-                                            $relInput = Read-Host "`nSelect release [1-$($releases.Count)], [0] for main_release, 'b' for album list, or Enter for #1"
+                                            $relInput = Show-OMPrompt -Prompt "Select release [1-$($releases.Count)], [0] for main_release, 'b' for album list, or Enter for #1" -Context $Context
                                             
                                             if ($relInput -eq 'b') {
                                                 $stage = 'B'
@@ -2181,7 +2117,7 @@ n        # Backwards-compatible local aliases
                                     break stageLoop
                                 }
                                 
-                                $skipChoice = Read-Host "Press Enter to skip, 'r' to retry, $backPrompt, 'p' to change provider"
+                                $skipChoice = Show-OMPrompt -Prompt "Press Enter to skip, 'r' to retry, $backPrompt, 'p' to change provider" -Context $Context
                                 if ($skipChoice -eq 'r') {
                                     Write-Host "Retrying..." -ForegroundColor Cyan
                                     continue stageLoop
@@ -2206,7 +2142,7 @@ n        # Backwards-compatible local aliases
                                             Write-Host "... and $($releases.Count - 20) more" -ForegroundColor DarkGray
                                         }
                                         
-                                        $relInput = Read-Host "`nSelect release [1-$($releases.Count)], [0] for main_release, 'b' for album list, or Enter for #1"
+                                        $relInput = Show-OMPrompt -Prompt "Select release [1-$($releases.Count)], [0] for main_release, 'b' for album list, or Enter for #1" -Context $Context
                                         
                                         if ($relInput -eq 'b') {
                                             $stage = 'B'
@@ -2302,7 +2238,7 @@ n        # Backwards-compatible local aliases
                                 Write-Host ""
                                 $response = Show-OMPrompt -Prompt "Press 'a' to build custom album artist, or Enter to use automatic detection" -Context $Context
                                 if ($response -eq 'a') {
-                                    $script:ManualAlbumArtist = Invoke-AlbumArtistBuilder -AlbumName $ProviderAlbum.name -Tracks $tracksForAlbum -CurrentAlbumArtist $ProviderArtist.name -Context $Context
+                                    $script:ManualAlbumArtist = Invoke-AlbumArtistBuilder -AlbumName $ProviderAlbum.name -Tracks $tracksForAlbum -CurrentAlbumArtist $ProviderArtist.name
                                     if ($script:ManualAlbumArtist) {
                                         Write-Host "✓ Album artist set to: $script:ManualAlbumArtist" -ForegroundColor Green
                                     }
@@ -2513,7 +2449,7 @@ n        # Backwards-compatible local aliases
                                 if ($null -eq $inputF) { continue }
                                 if ($inputF -eq 'q') {
                                     Write-Host $optionsLine -ForegroundColor $HostColor
-                                    $inputF = Read-Host "Select tracks(or option):"
+                                    $inputF = Show-OMPrompt -Prompt "Select tracks(or option):" -Context $Context
                                 }
                             }
 
@@ -2528,11 +2464,130 @@ n        # Backwards-compatible local aliases
                                 '^f$' { $sortMethod = 'byFilesystem'; $script:refreshTracks = $true; continue }
                                 '^r$' { $ReverseSource = -not $ReverseSource; $script:refreshTracks = $true; continue }
                                 '^rm$' {
-                                    $inputReader = $Context.InputReader
-                                    $reviewRes = Invoke-StageB-ReviewMarkedTracks -PairedTracks $script:pairedTracks -TracksForAlbum $tracksForAlbum -InputReader $inputReader
-                                    if ($reviewRes.NoProviderTracks) { continue }
-                                    continue albumSelectionLoop
-                                }
+                                    # Review marked tracks in Manual mode, or all tracks if none marked
+                                    $markedTracks = @($script:pairedTracks | Where-Object { $_.PSObject.Properties['Marked'] -and $_.Marked })
+                                    
+                                    # If no marks, use all tracks with audio files
+                                    $reviewAll = $false
+                                    if ($markedTracks.Count -eq 0) {
+                                        $reviewAll = $true
+                                        $markedTracks = @($script:pairedTracks | Where-Object { $_.AudioFile })
+                                        if ($markedTracks.Count -eq 0) {
+                                            Write-Host "`nNo audio files to review." -ForegroundColor Yellow
+                                            Start-Sleep -Seconds 2
+                                            continue
+                                        }
+                                        Write-Host "`n📋 No marks set - reviewing ALL $($markedTracks.Count) track(s)..." -ForegroundColor Cyan
+                                    }
+                                    else {
+                                        Write-Host "`n🔖 Reviewing $($markedTracks.Count) marked track(s)..." -ForegroundColor Cyan
+                                    }
+                                    Start-Sleep -Seconds 1
+                                    
+                                    # Build pool of provider tracks - from marked pairs if marks exist, otherwise from all provider tracks
+                                    if ($reviewAll) {
+                                        # Use all provider tracks for the album
+                                        $providerTrackPool = @($tracksForAlbum)
+                                    }
+                                    else {
+                                        # Use provider tracks from marked pairs only
+                                        $providerTrackPool = @($markedTracks | Where-Object { $_.SpotifyTrack } | ForEach-Object { $_.SpotifyTrack })
+                                    }
+                                    
+                                    if ($providerTrackPool.Count -eq 0) {
+                                        Write-Host "No provider tracks available to choose from." -ForegroundColor Yellow
+                                        Start-Sleep -Seconds 2
+                                        continue
+                                    }
+                                    
+                                    # For each marked track, show audio file and let user pick from the pool
+                                    foreach ($markedTrack in $markedTracks) {
+                                        if (-not $markedTrack.AudioFile) { continue }
+                                        if ($providerTrackPool.Count -eq 0) {
+                                            Write-Host "No more provider tracks in pool." -ForegroundColor Yellow
+                                            break
+                                        }
+                                        
+                                        if ($VerbosePreference -ne 'Continue') { Clear-Host }
+                                        Write-Host "🔖 Select correct match for:" -ForegroundColor Cyan
+                                        
+                                        # Format audio file duration
+                                        $audioDurationStr = if ($markedTrack.AudioFile.Duration) {
+                                            $audioDurationSpan = [TimeSpan]::FromMilliseconds($markedTrack.AudioFile.Duration)
+                                            "{0:mm\:ss}" -f $audioDurationSpan
+                                        } else {
+                                            "00:00"
+                                        }
+                                        
+                                        Write-Host "   $(Split-Path -Leaf $markedTrack.AudioFile.FilePath) ($audioDurationStr)" -ForegroundColor Yellow
+                                        Write-Host ""
+                                        
+                                        # Sort pool by match confidence for current audio file (best match first)
+                                        $scoredPool = @()
+                                        foreach ($track in $providerTrackPool) {
+                                            $confidence = Get-MatchConfidence -ProviderTrack $track -AudioFile $markedTrack.AudioFile
+                                            $scoredPool += [PSCustomObject]@{
+                                                Track = $track
+                                                Score = $confidence.Score
+                                                Level = $confidence.Level
+                                            }
+                                        }
+                                        $scoredPool = $scoredPool | Sort-Object Score -Descending
+                                        
+                                        # Show provider tracks from pool with numbers (sorted by confidence)
+                                        for ($i = 0; $i -lt $scoredPool.Count; $i++) {
+                                            $scored = $scoredPool[$i]
+                                            $track = $scored.Track
+                                            $num = $i + 1
+                                            
+                                            $disc = if ($value = Get-IfExists $track 'disc_number') { $value } else { 1 }
+                                            $trackNum = if ($value = Get-IfExists $track 'track_number') { $value } else { 0 }
+                                            $durationMs = if ($value = Get-IfExists $track 'duration_ms') { $value } elseif ($value = Get-IfExists $track 'duration') { $value } else { 0 }
+                                            $durationSpan = [TimeSpan]::FromMilliseconds($durationMs)
+                                            $durationStr = "{0:mm\:ss}" -f $durationSpan
+                                            
+                                            # Color code by confidence
+                                            $color = switch ($scored.Level) {
+                                                'High' { 'Green' }
+                                                'Medium' { 'Yellow' }
+                                                'Low' { 'Red' }
+                                                default { 'Gray' }
+                                            }
+                                            $confidenceIndicator = " ($($scored.Score)%)"
+                                            
+                                            Write-Host ("[$num] {0:D2}.{1:D2}: {2} ({3}){4}" -f $disc, $trackNum, $track.name, $durationStr, $confidenceIndicator) -ForegroundColor $color
+                                        }
+                                        
+                                        Write-Host ""
+                                        $selection = Show-OMPrompt -Prompt "Enter track number or press Enter for [1] (or 's' to skip)" -Default '1' -Context $Context
+                                        
+                                        # Default to first option if Enter pressed
+                                        if ([string]::IsNullOrWhiteSpace($selection)) {
+                                            $selection = "1"
+                                        }
+                                        
+                                        if ($selection -eq 's') {
+                                            Write-Host "Skipped" -ForegroundColor Gray
+                                            continue
+                                        }
+                                        
+                                        if ($selection -match '^\d+$') {
+                                            $selectedIndex = [int]$selection - 1
+                                            if ($selectedIndex -ge 0 -and $selectedIndex -lt $scoredPool.Count) {
+                                                $selectedTrack = $scoredPool[$selectedIndex].Track
+                                                
+                                                # Update the paired track in main array
+                                                for ($i = 0; $i -lt $script:pairedTracks.Count; $i++) {
+                                                    if ($script:pairedTracks[$i].AudioFile -and 
+                                                        $script:pairedTracks[$i].AudioFile.FilePath -eq $markedTrack.AudioFile.FilePath) {
+                                                        $script:pairedTracks[$i].SpotifyTrack = $selectedTrack
+                                                        # Only clear Marked property if it exists
+                                                        if ($script:pairedTracks[$i].PSObject.Properties['Marked']) {
+                                                            $script:pairedTracks[$i].Marked = $false
+                                                        }
+                                                        Write-Host "✓ Updated" -ForegroundColor Green
+                                                        
+                                                        # Remove selected track from pool
                                                         $providerTrackPool = @($providerTrackPool | Where-Object { 
                                                             $trackId = if ($_.id) { $_.id } else { $_.name }
                                                             $selectedId = if ($selectedTrack.id) { $selectedTrack.id } else { $selectedTrack.name }
@@ -2579,7 +2634,7 @@ n        # Backwards-compatible local aliases
                                 '^aa$' {
                                     # Manual album artist builder
                                     if ($tracksForAlbum -and $tracksForAlbum.Count -gt 0) {
-                                        $script:ManualAlbumArtist = Invoke-AlbumArtistBuilder -AlbumName $ProviderAlbum.name -Tracks $tracksForAlbum -CurrentAlbumArtist $ProviderArtist.name -Context $Context
+                                        $script:ManualAlbumArtist = Invoke-AlbumArtistBuilder -AlbumName $ProviderAlbum.name -Tracks $tracksForAlbum -CurrentAlbumArtist $ProviderArtist.name
                                         if ($script:ManualAlbumArtist) {
                                             Write-Host "`n✓ Album artist set to: $script:ManualAlbumArtist" -ForegroundColor Green
                                             $script:refreshTracks = $true
@@ -2885,7 +2940,29 @@ n        # Backwards-compatible local aliases
                                                 }
                                             }
                                             # Reload audio files with fresh TagLib handles
-                                            $audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName
+                                            $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                                                Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
+                                                Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
+                                            $audioFiles = foreach ($f in $audioFiles) {
+                                                try {
+                                                    $tagFile = [TagLib.File]::Create($f.FullName)
+                                                    [PSCustomObject]@{
+                                                        FilePath    = $f.FullName
+                                                        DiscNumber  = $tagFile.Tag.Disc
+                                                        TrackNumber = $tagFile.Tag.Track
+                                                        Title       = $tagFile.Tag.Title
+                                                        TagFile     = $tagFile
+                                                        Composer    = if ($tagFile.Tag.Composers) { $tagFile.Tag.Composers -join '; ' } else { 'Unknown Composer' }
+                                                        Artist      = if ($tagFile.Tag.Performers) { $tagFile.Tag.Performers -join '; ' } else { 'Unknown Artist' }
+                                                        Name        = if ($tagFile.Tag.Title) { $tagFile.Tag.Title } else { $f.BaseName }
+                                                        Duration    = if ($f.Extension -eq '.ape') { Get-ApeDuration -FilePath $f.FullName } else { $tagFile.Properties.Duration.TotalMilliseconds }
+                                                    }
+                                                }
+                                                catch {
+                                                    Write-Warning "Skipping corrupted or invalid audio file: $($f.FullName) - Error: $($_.Exception.Message)"
+                                                    continue
+                                                }
+                                            }
                                             $script:refreshTracks = $true
                                         }
                                         # Don't exit the doTracks loop - just refresh and continue
@@ -3084,8 +3161,20 @@ n        # Backwards-compatible local aliases
                                     if (-not $useWhatIf -and $moveResult -and $moveResult.NewAlbumPath -eq $oldpath) {
                                         Write-Verbose "Reloading audio files to reflect saved tags (folder not moved)"
                                         # Reload audio files with fresh TagLib handles
-                                        $script:audioFiles = Get-OMAudioFile -Path $script:album.FullName -SortMethod 'alphabetical' -Trace
-                                        # existing callers expect the returned objects to have FilePath, TagFile, etc.
+                                        $script:audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                                            Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
+                                            Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
+                                        $script:audioFiles = foreach ($f in $script:audioFiles) {
+                                            try {
+                                                $tagFile = [TagLib.File]::Create($f.FullName)
+                                                [PSCustomObject]@{
+                                                    FilePath    = $f.FullName
+                                                    DiscNumber  = $tagFile.Tag.Disc
+                                                    TrackNumber = $tagFile.Tag.Track
+                                                    Title       = $tagFile.Tag.Title
+                                                    TagFile     = $tagFile
+                                                    Composer    = if ($tagFile.Tag.Composers) { $tagFile.Tag.Composers -join '; ' } else { 'Unknown Composer' }
+                                                    Artist      = if ($tagFile.Tag.Performers) { $tagFile.Tag.Performers -join '; ' } else { 'Unknown Artist' }
                                                     Name        = if ($tagFile.Tag.Title) { $tagFile.Tag.Title } else { $f.BaseName }
                                                     Duration    = if ($f.Extension -eq '.ape') { Get-ApeDuration -FilePath $f.FullName } else { $tagFile.Properties.Duration.TotalMilliseconds }
                                                 }
@@ -3290,7 +3379,7 @@ n        # Backwards-compatible local aliases
                                     if (-not $rangeText) { $rangeText = "1" }
                                         Write-Verbose "Stage B cvo: Show-CoverArt called with Size='original' Grid='False' Album= $($ProviderAlbum.name)"
                                         Show-CoverArt -Album $ProviderAlbum -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
-                                    Prompt-PressEnter -InputReader $inputReader
+                                    Prompt-PressEnter -Context $Context
                                     continue
                                 }
                                 '^cv(\d*)$' {
@@ -3299,7 +3388,7 @@ n        # Backwards-compatible local aliases
                                     if (-not $rangeText) { $rangeText = "1" }
                                     Write-Verbose "Stage B cv: Show-CoverArt called with Size='original' Grid='False' Album= $($ProviderAlbum.name)"
                                     Show-CoverArt -Album $ProviderAlbum -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false -LoopLabel 'stageLoop'
-                                    Prompt-PressEnter -InputReader $inputReader
+                                    Prompt-PressEnter -Context $Context
                                     continue
                                 }
                                 '^cs(\d*)$' {
@@ -3326,8 +3415,22 @@ n        # Backwards-compatible local aliases
                                     if ($coverUrl) {
                                         $config = Get-OMConfig
                                         $maxSize = $config.CoverArt.TagImageSize
-                                        # Get audio files for embedding via centralized helper
-                                        $audioFilesForCover = Get-OMAudioFile -Path $script:album.FullName -SortMethod 'alphabetical' | Where-Object { $_ -ne $null }
+                                        # Get audio files for embedding
+                                        $audioFilesForCover = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+                                            Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
+                                            Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) } | ForEach-Object {
+                                            try {
+                                                $tagFile = [TagLib.File]::Create($_.FullName)
+                                                [PSCustomObject]@{
+                                                    FilePath = $_.FullName
+                                                    TagFile  = $tagFile
+                                                }
+                                            }
+                                            catch {
+                                                Write-Warning "Skipping invalid audio file: $($_.FullName)"
+                                                $null
+                                            }
+                                        } | Where-Object { $_ -ne $null }
 
                                         if ($audioFilesForCover.Count -gt 0) {
                                             $result = Save-CoverArt -CoverUrl $coverUrl -AudioFiles $audioFilesForCover -Action EmbedInTags -MaxSize $maxSize -WhatIf:$useWhatIf
