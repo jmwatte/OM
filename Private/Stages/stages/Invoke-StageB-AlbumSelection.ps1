@@ -134,7 +134,9 @@ function Invoke-StageB-AlbumSelection {
         [string]$GenreMode = 'Replace',
         
         [Parameter()]
-        [switch]$UseWhatIf
+        [switch]$UseWhatIf,
+        [Parameter()]
+        [object]$Context
     )
     
     if ($VerbosePreference -ne 'Continue') { Clear-Host }
@@ -358,7 +360,7 @@ function Invoke-StageB-AlbumSelection {
                 }
             }
     
-            $inputF = Read-Host "Enter '(b)ack', '(s)kip or (x)ip', 'id:<id>' or album name to filter"
+            $inputF = Show-OMPrompt -Prompt "Enter '(b)ack', '(s)kip or (x)ip', 'id:<id>' or album name to filter" -Context $Context
             switch -Regex ($inputF) {
                 '^b$' {
                     return @{
@@ -742,7 +744,7 @@ function Invoke-StageB-AlbumSelection {
 
         $originalColor = [Console]::ForegroundColor
         [Console]::ForegroundColor = [ConsoleColor]::Yellow
-        $inputF = Read-Host "Select album(s) [number] (Enter=first), number(s) (e.g., 1,3,5-8), '(b)ack', '(n)ext', '(pr)ev', '(x)ip', 'id:<id>', '(p)rovider', '(f)indmode, (c)over {[V]iew,[S]ave,saveIn[T]ags}, '*' (all albums), '(ni)ew item (artist+album)', or text to search:"
+        $inputF = Show-OMPrompt -Prompt "Select album(s) [number] (Enter=first), number(s) (e.g., 1,3,5-8), '(b)ack', '(n)ext', '(pr)ev', '(x)ip', 'id:<id>', '(p)rovider', '(f)indmode, (c)over {[V]iew,[S]ave,saveIn[T]ags}, '*' (all albums), '(ni)ew item (artist+album)', or text to search:" -Context $Context
         [Console]::ForegroundColor = $originalColor
         
         switch -Regex ($inputF) {
@@ -1155,7 +1157,7 @@ function Invoke-StageB-AlbumSelection {
                                     Write-Host "... and $($releases.Count - 20) more" -ForegroundColor DarkGray
                                 }
                                 
-                                $relInput = Read-Host "`nSelect release [1-$($releases.Count)], [0] for main_release, or Enter for #1"
+                                $relInput = Show-OMPrompt -Prompt "`nSelect release [1-$($releases.Count)], [0] for main_release, or Enter for #1" -Context $Context
                                 
                                 $selectedRelease = $null
                                 if ($relInput -eq '') {
@@ -1455,7 +1457,7 @@ function Invoke-StageB-AlbumSelection {
                                     $rangeText = $matches[1]
                                     if (-not $rangeText) { $rangeText = "1" }
                                     Show-CoverArt -AlbumList $albumsForArtist -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
-                                    Read-Host "Press Enter to continue..."
+                                    Prompt-PressEnter -Context $Context
                                     continue
                                 }
                  '^cv(.*)$' {

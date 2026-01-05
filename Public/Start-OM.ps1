@@ -1856,6 +1856,7 @@ n        # Backwards-compatible local aliases
                             UpdateGenresOnly   = $UpdateGenresOnly
                             GenreMode          = $script:genreMode
                             UseWhatIf          = $useWhatIf
+                            Context            = $Context
                         }
                         
                         $stageBResult = Invoke-StageB-AlbumSelection @stageBParams
