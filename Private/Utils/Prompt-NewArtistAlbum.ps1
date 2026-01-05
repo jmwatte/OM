@@ -17,10 +17,9 @@ function Read-ArtistAlbum {
         [string]$DefaultAlbum = ''
     )
 
-    # Prompt for artist (show default in brackets)
-    $promptArtist = if ($DefaultArtist) { "Artist [$DefaultArtist]: " } else { 'Artist: ' }
-    $artistInput = Read-Host -Prompt $promptArtist
-    if ($null -eq $artistInput -or $artistInput -eq '') {
+    # Prompt for artist (use centralized prompt helper)
+    $artistInput = Show-OMPrompt -Prompt 'Artist' -Default $DefaultArtist -NoNewline
+    if ([string]::IsNullOrEmpty($artistInput)) {
         $artist = $DefaultArtist
         $changedArtist = $false
     }
@@ -29,10 +28,9 @@ function Read-ArtistAlbum {
         $changedArtist = $true
     }
 
-    # Prompt for album (show default in brackets)
-    $promptAlbum = if ($DefaultAlbum) { "Album [$DefaultAlbum]: " } else { 'Album: ' }
-    $albumInput = Read-Host -Prompt $promptAlbum
-    if ($null -eq $albumInput -or $albumInput -eq '') {
+    # Prompt for album (use centralized prompt helper)
+    $albumInput = Show-OMPrompt -Prompt 'Album' -Default $DefaultAlbum -NoNewline
+    if ([string]::IsNullOrEmpty($albumInput)) {
         $album = $DefaultAlbum
         $changedAlbum = $false
     }
