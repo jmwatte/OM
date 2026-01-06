@@ -166,7 +166,7 @@ function Save-CoverArt {
             $coverPath = Join-Path $AlbumPath "cover.jpg"
 
             if ($WhatIfPreference) {
-                Write-Host "WhatIf: Would save cover art to: $coverPath (${newWidth}x${newHeight})" -ForegroundColor Cyan
+                if (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) { Show-Message -Message "WhatIf: Would save cover art to: $coverPath (${newWidth}x${newHeight})" -ForegroundColor Cyan } else { Write-Verbose "WhatIf: Would save cover art to: $coverPath (${newWidth}x${newHeight})" }
                 return [PSCustomObject]@{
                     Success = $true
                     Action = "Preview"
@@ -177,7 +177,7 @@ function Save-CoverArt {
 
             if ($PSCmdlet.ShouldProcess($coverPath, "Save cover art")) {
                 [System.IO.File]::WriteAllBytes($coverPath, $resizedBytes)
-                Write-Host "✓ Saved cover art to: $coverPath (${newWidth}x${newHeight})" -ForegroundColor Green
+                if (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) { Show-Message -Message "✓ Saved cover art to: $coverPath (${newWidth}x${newHeight})" -ForegroundColor Green } else { Write-Verbose "✓ Saved cover art to: $coverPath (${newWidth}x${newHeight})" }
                 return [PSCustomObject]@{
                     Success = $true
                     Action = "SavedToFolder"
@@ -188,7 +188,7 @@ function Save-CoverArt {
         }
         elseif ($Action -eq 'EmbedInTags') {
             if ($WhatIfPreference) {
-                Write-Host "WhatIf: Would embed cover art (${newWidth}x${newHeight}) in $($AudioFiles.Count) audio files" -ForegroundColor Cyan
+                if (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) { Show-Message -Message "WhatIf: Would embed cover art (${newWidth}x${newHeight}) in $($AudioFiles.Count) audio files" -ForegroundColor Cyan } else { Write-Verbose "WhatIf: Would embed cover art (${newWidth}x${newHeight}) in $($AudioFiles.Count) audio files" }
                 return [PSCustomObject]@{
                     Success = $true
                     Action = "Preview"
@@ -231,7 +231,7 @@ function Save-CoverArt {
             }
 
             if ($successCount -gt 0) {
-                Write-Host "✓ Embedded cover art (${newWidth}x${newHeight}) in $successCount of $($AudioFiles.Count) files" -ForegroundColor Green
+                if (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) { Show-Message -Message "✓ Embedded cover art (${newWidth}x${newHeight}) in $successCount of $($AudioFiles.Count) files" -ForegroundColor Green } else { Write-Verbose "✓ Embedded cover art (${newWidth}x${newHeight}) in $successCount of $($AudioFiles.Count) files" }
             }
 
             return [PSCustomObject]@{

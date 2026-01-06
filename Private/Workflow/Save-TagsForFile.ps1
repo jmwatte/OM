@@ -27,7 +27,7 @@ function Save-TagsForFile {
 
     try {
         if ($WhatIf.IsPresent -or $WhatIf) {
-            Write-Host "WhatIf: would open and save tags to $FilePath"
+            if (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) { Show-Message -Message "WhatIf: would open and save tags to $FilePath" -ForegroundColor Cyan } else { Write-Verbose "WhatIf: would open and save tags to $FilePath" }
             return @{ Success = $true; WhatIf = $true }
         }
 

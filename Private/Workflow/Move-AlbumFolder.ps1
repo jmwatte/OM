@@ -10,12 +10,21 @@ function Move-AlbumFolder {
     )
 
     begin {
-        Write-Host "--- DEBUG: Move-AlbumFolder ---" -ForegroundColor Magenta
-        Write-Host "Input AlbumPath: $AlbumPath"
-        Write-Host "Input NewArtist: $NewArtist"
-        Write-Host "Input NewYear: $NewYear"
-        Write-Host "Input NewAlbumName: $NewAlbumName"
-        Write-Host "--------------------------------" -ForegroundColor Magenta
+        if (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) {
+            Show-Message -Message "--- DEBUG: Move-AlbumFolder ---" -ForegroundColor Magenta
+            Show-Message -Message "Input AlbumPath: $AlbumPath"
+            Show-Message -Message "Input NewArtist: $NewArtist"
+            Show-Message -Message "Input NewYear: $NewYear"
+            Show-Message -Message "Input NewAlbumName: $NewAlbumName"
+            Show-Message -Message "--------------------------------" -ForegroundColor Magenta
+        } else {
+            Write-Verbose "--- DEBUG: Move-AlbumFolder ---"
+            Write-Verbose "Input AlbumPath: $AlbumPath"
+            Write-Verbose "Input NewArtist: $NewArtist"
+            Write-Verbose "Input NewYear: $NewYear"
+            Write-Verbose "Input NewAlbumName: $NewAlbumName"
+            Write-Verbose "--------------------------------"
+        }
 
         $AlbumPath = $AlbumPath.TrimEnd('\/')
         if (-not (Test-Path -LiteralPath $AlbumPath -PathType Container)) {
@@ -42,16 +51,24 @@ function Move-AlbumFolder {
         $targetArtistPath = Join-Path -Path $artistParentPath -ChildPath $NewArtist
         if ($NewYear) { $baseAlbumName = "$NewYear - $NewAlbumName" } else { $baseAlbumName = $NewAlbumName }
 
-        Write-Host "Derived currentArtistPath: $currentArtistPath"
-        Write-Host "Derived artistParentPath: $artistParentPath"
-        Write-Host "Derived targetArtistPath: $targetArtistPath"
-        Write-Host "Derived baseAlbumName: $baseAlbumName"
-        Write-Host "--------------------------------" -ForegroundColor Magenta
+        if (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) {
+            Show-Message -Message "Derived currentArtistPath: $currentArtistPath"
+            Show-Message -Message "Derived artistParentPath: $artistParentPath"
+            Show-Message -Message "Derived targetArtistPath: $targetArtistPath"
+            Show-Message -Message "Derived baseAlbumName: $baseAlbumName"
+            Show-Message -Message "--------------------------------" -ForegroundColor Magenta
+        } else {
+            Write-Verbose "Derived currentArtistPath: $currentArtistPath"
+            Write-Verbose "Derived artistParentPath: $artistParentPath"
+            Write-Verbose "Derived targetArtistPath: $targetArtistPath"
+            Write-Verbose "Derived baseAlbumName: $baseAlbumName"
+            Write-Verbose "--------------------------------"
+        }
 
         function Get-UniqueAlbumPath {
             param([string]$ArtistPath, [string]$BaseAlbumName, [string]$OriginalAlbumPath)
             $candidate = Join-Path -Path $ArtistPath -ChildPath $BaseAlbumName
-            Write-Host "Get-UniqueAlbumPath candidate: $candidate"
+            if (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) { Show-Message -Message "Get-UniqueAlbumPath candidate: $candidate" } else { Write-Verbose "Get-UniqueAlbumPath candidate: $candidate" }
 
             if (-not (Test-Path -LiteralPath $candidate)) { return $candidate }
 
@@ -102,7 +119,7 @@ function Move-AlbumFolder {
         }
 
         $destAlbumPath = Get-UniqueAlbumPath -ArtistPath $targetArtistPath -BaseAlbumName $baseAlbumName -OriginalAlbumPath $AlbumPath
-        Write-Host "Final destAlbumPath: $destAlbumPath" -ForegroundColor Cyan
+        if (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) { Show-Message -Message "Final destAlbumPath: $destAlbumPath" -ForegroundColor Cyan } else { Write-Verbose "Final destAlbumPath: $destAlbumPath" }
 
         $renamingOnly = ($currentArtistPath.Trim() -ceq $targetArtistPath.Trim())
         $oldLeaf = Split-Path -Leaf $AlbumPath

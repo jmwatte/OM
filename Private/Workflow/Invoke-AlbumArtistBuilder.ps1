@@ -147,7 +147,7 @@ function Invoke-AlbumArtistBuilder {
         }
         
         if ($VerbosePreference -ne 'Continue') { Clear-Host }
-        Write-Host "`n========================================" -ForegroundColor Cyan
+        if (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) { Show-Message -Message "`n========================================" -ForegroundColor Cyan } else { Write-Verbose "`n========================================" }
         Write-Host "=== ALBUM ARTIST BUILDER ===" -ForegroundColor Cyan
         Write-Host "========================================`n" -ForegroundColor Cyan
         
