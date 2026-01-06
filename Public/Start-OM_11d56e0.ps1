@@ -2334,7 +2334,7 @@ function Start-OM {
                                 
                                 # AUTO MODE: Smart matching with best sort strategy
                                 if ($Auto -and $script:autoModeActive -and -not $goC) {
-                                    Write-Host "🤖 AUTO: Analyzing track matches..." -ForegroundColor Cyan
+                                    Show-Message -Message "🤖 AUTO: Analyzing track matches..." -ForegroundColor Cyan -Context $Context
                                     
                                     # Try different sort strategies and pick the best
                                     $strategies = @('byOrder', 'byTitle', 'byDuration')
@@ -2410,7 +2410,7 @@ function Start-OM {
                             }
 
                             if ($goC) {
-                                Write-Host "goC: auto-applying Save-All for album '$($ProviderAlbum.name)'." -ForegroundColor Yellow
+                                Show-Message -Message "goC: auto-applying Save-All for album '$($ProviderAlbum.name)'." -ForegroundColor Yellow -Context $Context
                                 $inputF = 'sa'
                             }
                             elseif ($Auto -and $script:autoModeActive -and $inputF -eq 'sa') {
@@ -2518,7 +2518,7 @@ function Start-OM {
                                         }
                                         
                                         if ($VerbosePreference -ne 'Continue') { Clear-Host }
-                                        Write-Host "🔖 Select correct match for:" -ForegroundColor Cyan
+                                        Show-Message -Message "🔖 Select correct match for:" -ForegroundColor Cyan -Context $Context
                                         
                                         # Format audio file duration
                                         $audioDurationStr = if ($markedTrack.AudioFile.Duration) {
