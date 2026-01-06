@@ -68,11 +68,13 @@ Use the **two-step workflow**:
 
 ## Complete Workflow Examples
 
+> **Note:** These examples use `Show-Message` (preferred) instead of `Write-Host` for testable output. If you run snippets outside the module, dot-source `Private\Utils\Show-Message.ps1` or import the module to make the helper available.
+
 ### Example 1: Classical Music Collection
 ```powershell
 # Find classical albums missing genres
 .\find-missing-genres.ps1 -Path "C:\Music\Classical" -PassThru | ForEach-Object {
-    Write-Host "Processing: $_" -ForegroundColor Cyan
+    Show-Message "Processing: $_" -ForegroundColor Cyan
     # Qobuz is great for classical genres
     Start-OM -Path $_ -UpdateGenresOnly -Auto -Provider Qobuz
 }
@@ -169,7 +171,7 @@ $missing | Select-Object -Skip 25 -First 25 | ForEach-Object {
 .\find-missing-genres.ps1 -Path "C:\Music" -PassThru | ForEach-Object {
     try {
         Start-OM -Path $_ -UpdateGenresOnly -Auto -Provider Discogs -ErrorAction Stop
-        Write-Host "✓ Updated: $_" -ForegroundColor Green
+        Show-Message "✓ Updated: $_" -ForegroundColor Green
     } catch {
         Write-Warning "Failed: $_ - $($_.Exception.Message)"
         # Log failures to file
@@ -186,7 +188,7 @@ $current = 0
 
 $folders | ForEach-Object {
     $current++
-    Write-Host "[$current/$total] Processing: $_" -ForegroundColor Cyan
+    Show-Message "[$current/$total] Processing: $_" -ForegroundColor Cyan
     Start-OM -Path $_ -UpdateGenresOnly -Auto -Provider Discogs
 }
 ```
@@ -195,14 +197,14 @@ $folders | ForEach-Object {
 ```powershell
 # Before
 $before = .\find-missing-genres.ps1 -Path "C:\Music" -PassThru
-Write-Host "Albums missing genres: $($before.Count)"
+Show-Message "Albums missing genres: $($before.Count)"
 
 # ... run updates ...
 
 # After
 $after = .\find-missing-genres.ps1 -Path "C:\Music" -PassThru
-Write-Host "Albums still missing genres: $($after.Count)"
-Write-Host "Updated: $($before.Count - $after.Count) albums"
+Show-Message "Albums still missing genres: $($after.Count)"
+Show-Message "Updated: $($before.Count - $after.Count) albums"
 ```
 
 ---

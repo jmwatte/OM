@@ -23,6 +23,8 @@ Controls how genres are updated:
 
 ## Usage Examples
 
+> **Note:** Prefer using `Show-Message` instead of `Write-Host` for script messages — it supports `-Context` and makes output easier to test. Dot-source `Private\Utils\Show-Message.ps1` if you run snippets outside the module.
+
 ### 1. Interactive Mode - Single Album
 ```powershell
 # Replace genres with Qobuz genres (interactive album selection)
@@ -53,7 +55,7 @@ Start-OM -Path "C:\Music\Artist" -UpdateGenresOnly -Auto -Provider Discogs -What
 Get-ChildItem -Path "C:\Music" -Directory -Recurse | ForEach-Object {
     $tags = Get-OMTags -Path $_.FullName
     if (-not $tags.Genres -or $tags.Genres -eq '*Empty*') {
-        Write-Host "Updating missing genres: $($_.FullName)" -ForegroundColor Yellow
+        Show-Message "Updating missing genres: $($_.FullName)" -ForegroundColor Yellow
         Start-OM -Path $_.FullName -UpdateGenresOnly -Auto -Provider Discogs
     }
 }
