@@ -986,8 +986,8 @@ function Start-OM {
                         
                         # If tag contains folder artist, use the more complete tag value
                         if ($tagArtist -and $tagArtist -match [regex]::Escape($detectedArtist)) {
-                            Write-Host "📁 Auto-detected from folder: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Gray
-                            Write-Host "🎵 Using AlbumArtist tag for better match: '$tagArtist'" -ForegroundColor Green
+                            Show-Message -Message "📁 Auto-detected from folder: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Gray -Context $Context
+                            Show-Message -Message "🎵 Using AlbumArtist tag for better match: '$tagArtist'" -ForegroundColor Green -Context $Context
                             $detectedArtist = $tagArtist
                             
                             # Also check if album name has "Artist - Title" pattern and strip it
@@ -997,7 +997,7 @@ function Start-OM {
                                 # If the album prefix looks like part of artist name, strip it
                                 if ($possibleArtist -match [regex]::Escape($detectedArtist) -or $detectedArtist -match [regex]::Escape($possibleArtist)) {
                                     $detectedAlbum = $possibleAlbumOnly
-                                    Write-Host "   Cleaned album name to: '$detectedAlbum'" -ForegroundColor Gray
+                                    Show-Message -Message "   Cleaned album name to: '$detectedAlbum'" -ForegroundColor Gray -Context $Context
                                 }
                             }
                         }
