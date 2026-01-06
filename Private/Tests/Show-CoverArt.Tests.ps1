@@ -145,7 +145,8 @@ Describe 'Show-CoverArt' {
         $chafaDir = (Join-Path (Get-Location).Path 'Private')
         $chafaFile = Join-Path $chafaDir 'chafa.bat'
         $origPath = $env:PATH
-        $bat = "@echo off`nif "%1"=="--help" ( echo chafa help: supports sixel ) else ( exit /b 0 )"
+        $bat = '@echo off
+if "%1"=="--help" ( echo chafa help: supports sixel ) else ( exit /b 0 )'
         Set-Content -LiteralPath $chafaFile -Value $bat -Encoding ASCII
         $env:PATH = "$chafaDir;$env:PATH"
 
@@ -183,7 +184,8 @@ Describe 'Show-CoverArt' {
         $chafaDir = (Join-Path (Get-Location).Path 'Private')
         $chafaFile = Join-Path $chafaDir 'chafa.bat'
         $origPath = $env:PATH
-        $bat = "@echo off`nif \"%1\"==\"--help\" ( echo chafa help: supports sixel ) else ( exit /b 0 )"
+        $bat = '@echo off
+if "%1"=="--help" ( echo chafa help: supports sixel ) else ( exit /b 0 )'
         Set-Content -LiteralPath $chafaFile -Value $bat -Encoding ASCII
         $env:PATH = "$chafaDir;$env:PATH"
 

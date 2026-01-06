@@ -154,8 +154,7 @@
 
 
     if ($FetchAlbums) {
-        Write-Host "Fetching albums from provider: $Provider"
-        # Enhance artist with full details (including genres) if needed
+            Show-Message -Message "Fetching albums from provider: $Provider" -Context $Context
         if ($Provider -eq 'Spotify' -and $ProviderArtist -and $ProviderArtist.id) {
             if (-not $ProviderArtist.genres -or $ProviderArtist.genres.Count -eq 0) {
                 Write-Verbose "Fetching full artist details with genres for $($ProviderArtist.name)..."
@@ -166,9 +165,9 @@
             }
         }
     
-        Write-Host "Original Artist: $Artist" -ForegroundColor Cyan
-        Write-Host ""
-        Write-Host "Searching for albums for artist: $($ProviderArtist.name) (id: $($ProviderArtist.id))"
+Show-Message -Message "Original Artist: $Artist" -ForegroundColor Cyan -Context $Context
+            Show-Message -Message "" -Context $Context
+            Show-Message -Message "Searching for albums for artist: $($ProviderArtist.name) (id: $($ProviderArtist.id))" -Context $Context
     
         # Clear cache if artist changed
         if ($CachedArtistId -ne $ProviderArtist.id) {
@@ -199,7 +198,7 @@
         
             Write-Verbose "Smart search returned: $($albumsForArtist.Count) albums"
             if ($albumsForArtist.Count -gt 0) {
-                Write-Host "✓ Found $($albumsForArtist.Count) albums via smart search" -ForegroundColor Green
+                Show-Message -Message "✓ Found $($albumsForArtist.Count) albums via smart search" -ForegroundColor Green -Context $Context
             }
             else {
                 Write-Verbose "Smart search returned 0 albums - will fall back to fetching all"
@@ -214,13 +213,13 @@
         # If smart search returned nothing, fetch all albums as fallback
         if (-not $albumsForArtist -or $albumsForArtist.Count -eq 0) {
             if (-not $CachedAlbums) {
-                Write-Host "Smart search returned no results, fetching all albums (this may take a while)..." -ForegroundColor Yellow
+                Show-Message -Message "Smart search returned no results, fetching all albums (this may take a while)..." -ForegroundColor Yellow -Context $Context
                 Write-Verbose "Fetching all albums for artist..."
                 try { 
                     # For Qobuz, use url instead of id (needs full interpreter URL)
                     $artistIdOrUrl = if ($Provider -eq 'Qobuz' -and $ProviderArtist.url) { $ProviderArtist.url } else { $ProviderArtist.id }
                     $CachedAlbums = @(Invoke-ProviderGetAlbums -Provider $Provider -ArtistId $artistIdOrUrl -AlbumType 'Album' | Where-Object {$_ -ne $null})
-                    Write-Host "✓ Fetched $($CachedAlbums.Count) albums" -ForegroundColor Green
+                    Show-Message -Message "✓ Fetched $($CachedAlbums.Count) albums" -ForegroundColor Green -Context $Context
                 }
                 catch { 
                     Write-Warning "Failed to fetch artist albums: $_"
@@ -241,7 +240,7 @@
             
             # Filter to most likely matches based on album title similarity
             if ($null -ne $albumsForArtist -and $albumsForArtist.Count -gt 0) {
-                Write-Host "Filtering albums by similarity to '$AlbumName'..." -ForegroundColor Cyan
+                Show-Message -Message "Filtering albums by similarity to '$AlbumName'..." -ForegroundColor Cyan -Context $Context
                 Write-Verbose "Albums before filtering: $($albumsForArtist.Count)"
                 # wait till usere input a key
                 # Read-Host "Press Enter to continue..."
@@ -312,7 +311,7 @@
                 # Filter to albums with similarity >= 0.3 or top 20 most similar (whichever is larger)
                 $minSimilarity = 0.3
                 $maxResults = 20
-                write-host "----> $($albumsForArtist[0])"
+                Show-Message -Message "----> $($albumsForArtist[0])" -Context $Context
                 $filteredAlbums = @(
                     $albumsWithSimilarity | 
                     Where-Object { $_.Similarity -ge $minSimilarity } | 
@@ -346,7 +345,7 @@
         # Handle no albums found
         if ($null -eq $albumsForArtist -or $albumsForArtist.Count -eq 0) {
             Write-Verbose "No albums found - albumsForArtist is $(if ($null -eq $albumsForArtist) { 'null' } else { 'empty array' })"
-            Write-Host "No albums found for artist id $($ProviderArtist.id)."
+            Show-Message -Message "No albums found for artist id $($ProviderArtist.id)." -Context $Context
         
             if ($NonInteractive) {
                 Write-Warning "NonInteractive: skipping album because no albums found for artist id $($ProviderArtist.id)."
@@ -452,11 +451,11 @@
         
         # Show find mode indicator
         if ($script:findMode -eq 'quick') {
-            Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
+            Show-Message -Message "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta -Context $Context
         } else {
-            Write-Host "🔍 Find Mode: Artist-First" -ForegroundColor Magenta
+            Show-Message -Message "🔍 Find Mode: Artist-First" -ForegroundColor Magenta -Context $Context
         }
-        Write-Host ""
+        Show-Message -Message "" -Context $Context
         
         # Show filter mode indicator for Discogs
         if ($Provider -eq 'Discogs') {
@@ -466,13 +465,13 @@
             else { 
                 "[Filter: ALL RELEASES - type '*' for masters only]" 
             }
-            Write-Host $modeIndicator -ForegroundColor Yellow
+            Show-Message -Message $modeIndicator -ForegroundColor Yellow -Context $Context
         }
         
         
                 $ThisManyAlbums = $albumsForArtist.Count
-        Write-Host "$ThisManyAlbums $Provider albums for artist $($ProviderArtist.name):"
-        Write-Host "for local album: $($AlbumName) (year: $Year)"
+        Show-Message -Message "$ThisManyAlbums $Provider albums for artist $($ProviderArtist.name):" -Context $Context
+        Show-Message -Message "for local album: $($AlbumName) (year: $Year)" -Context $Context
         
         
         $totalPages = [math]::Ceiling($albumsForArtist.Count / $pageSize)
@@ -484,7 +483,7 @@
 
         for ($i = $startIdx; $i -le $endIdx; $i++) {
             if ($Provider -eq 'Discogs' -and -not (Get-IfExists $albumsForArtist[$i] 'track_count')) {
-                Write-Host "Fetching track count for album id $($albumsForArtist[$i].id)..." -ForegroundColor DarkGray
+                Show-Message -Message "Fetching track count for album id $($albumsForArtist[$i].id)..." -ForegroundColor DarkGray -Context $Context
                 try {
                     $releaseDetails = Invoke-DiscogsRequest -Uri "/releases/$($albumsForArtist[$i].id)" -Method 'GET'
                     if ($releaseDetails -and (Get-IfExists $releaseDetails 'tracklist')) {
@@ -509,7 +508,7 @@
             if ($trackCount) {
                 $trackInfo = " ($trackCount tracks)"
             }
-            Write-Host "[$($i+1)] $($album.name)  (id: $($album.id)) (year: $($album.release_date))$trackInfo"
+            Show-Message -Message "[$($i+1)] $($album.name)  (id: $($album.id)) (year: $($album.release_date))$trackInfo" -Context $Context
         }
 
         # Non-interactive album selection
@@ -818,8 +817,8 @@
                 # Show current provider and available shortcuts
                 $config = Get-OMConfig
                 $defaultProvider = $config.DefaultProvider
-                Write-Host "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan
-                Write-Host "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray
+                Show-Message -Message "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan -Context $Context
+                Show-Message -Message "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray -Context $Context
                 continue
             }
             '^ps$' {
