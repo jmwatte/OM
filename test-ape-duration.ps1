@@ -21,7 +21,7 @@ else {
     $apeFile = Get-ChildItem -Path "$PSScriptRoot\testfiles" -Filter "*.ape" -Recurse | Select-Object -First 1
 }
 
-nif (-not $apeFile) {
+if (-not $apeFile) {
     Show-Message -Message "❌ No APE file specified or found" -ForegroundColor Red -Context $null
     Show-Message -Message "Usage: test-ape-duration.ps1 <path-to-ape-file>" -ForegroundColor Gray -Context $null
     exit

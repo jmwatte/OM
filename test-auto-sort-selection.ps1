@@ -14,16 +14,16 @@ $testPath = "C:\Users\jmw\Documents\PowerShell\Modules\OM\testfiles\The Beatles\
 
 if (-not (Test-Path $testPath)) {
     Write-Warning "Test path not found: $testPath"
-    Write-Host "Looking for alternative test folders..."
+    Show-Message -Message "Looking for alternative test folders..." -Context $null
     $alternatives = Get-ChildItem "C:\Users\jmw\Documents\PowerShell\Modules\OM\testfiles" -Directory -Recurse -Depth 2 | 
                     Where-Object { (Get-ChildItem $_.FullName -File -Filter *.mp3 -ErrorAction SilentlyContinue).Count -gt 0 } |
                     Select-Object -First 5
     
     if ($alternatives) {
-        Write-Host "Available test folders:" -ForegroundColor Yellow
-        $alternatives | ForEach-Object { Write-Host "  - $($_.FullName)" -ForegroundColor Gray }
+        Show-Message -Message "Available test folders:" -ForegroundColor Yellow -Context $null
+        $alternatives | ForEach-Object { Show-Message -Message "  - $($_.FullName)" -ForegroundColor Gray -Context $null }
         $testPath = $alternatives[0].FullName
-        Write-Host "`nUsing: $testPath" -ForegroundColor Green
+        Show-Message -Message "`nUsing: $testPath" -ForegroundColor Green -Context $null
     } else {
         Write-Error "No test folders with audio files found!"
         exit
@@ -34,14 +34,14 @@ if (-not (Test-Path $testPath)) {
 Remove-Module OM -ErrorAction SilentlyContinue
 Import-Module C:\Users\jmw\Documents\PowerShell\Modules\OM -Force
 
-Write-Host "Test album: $testPath" -ForegroundColor Green
-Write-Host ""
-Write-Host "Starting OM with auto-sort selection..." -ForegroundColor Yellow
-Write-Host "Watch for '🔍 Auto-selecting best sort method' messages in verbose output" -ForegroundColor Cyan
-Write-Host ""
+Show-Message -Message "Test album: $testPath" -ForegroundColor Green -Context $null
+Show-Message -Message "" -Context $null
+Show-Message -Message "Starting OM with auto-sort selection..." -ForegroundColor Yellow -Context $null
+Show-Message -Message "Watch for '🔍 Auto-selecting best sort method' messages in verbose output" -ForegroundColor Cyan -Context $null
+Show-Message -Message "" -Context $null
 
 # Run Start-OM with verbose to see auto-selection in action
 Start-OM -Path $testPath -Provider Spotify -Verbose
 
-Write-Host "`nTest complete!" -ForegroundColor Green
+Show-Message -Message "`nTest complete!" -ForegroundColor Green -Context $null
 
