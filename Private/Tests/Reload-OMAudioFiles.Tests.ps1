@@ -2,7 +2,7 @@
 
 Describe 'Reload-OMAudioFiles' {
     BeforeAll {
-        Write-Host "[RELOAD-TEST] BeforeAll start"
+        Write-Verbose "[RELOAD-TEST] BeforeAll start"
 
         # compute helper path candidates now that $env:RELOAD_TRACE exists
         $pCandidates = @()
@@ -31,11 +31,11 @@ Describe 'Reload-OMAudioFiles' {
             Write-Verbose "Dot-sourcing Get-OMTagFile helper: $tagHelper"
             . $tagHelper
         }
-        Write-Host "[RELOAD-TEST] BeforeAll end"
+        Write-Verbose "[RELOAD-TEST] BeforeAll end"
     }
 
     It 'returns audio file objects for a small temp folder' {
-        Write-Host "[RELOAD-TEST] it1 start"
+        Write-Verbose "[RELOAD-TEST] it1 start"
         $tmp = Join-Path $env:TEMP "om_reload_test_$([guid]::NewGuid().ToString())"
         New-Item -Path $tmp -ItemType Directory -Force | Out-Null
         $f = Join-Path $tmp '1 - Test.mp3'
@@ -51,11 +51,11 @@ Describe 'Reload-OMAudioFiles' {
         $res[0].Duration | Should -Be 1234
 
         Remove-Item -LiteralPath $tmp -Recurse -Force
-        Write-Host "[RELOAD-TEST] it1 end"
+        Write-Verbose "[RELOAD-TEST] it1 end"
     }
 
     It 'handles .ape files by calling Get-ApeDuration' {
-        Write-Host "[RELOAD-TEST] it2 start"
+        Write-Verbose "[RELOAD-TEST] it2 start"
         $tmp = Join-Path $env:TEMP "om_reload_test_$([guid]::NewGuid().ToString())"
         New-Item -Path $tmp -ItemType Directory -Force | Out-Null
         $f = Join-Path $tmp '1 - Test.ape'
@@ -68,11 +68,11 @@ Describe 'Reload-OMAudioFiles' {
         $res[0].Duration | Should -Be 555
 
         Remove-Item -LiteralPath $tmp -Recurse -Force
-        Write-Host "[RELOAD-TEST] it2 end"
+        Write-Verbose "[RELOAD-TEST] it2 end"
     }
 
     It 'skips corrupted files and logs a warning' {
-        Write-Host "[RELOAD-TEST] it3 start"
+        Write-Verbose "[RELOAD-TEST] it3 start"
         $tmp = Join-Path $env:TEMP "om_reload_test_$([guid]::NewGuid().ToString())"
         New-Item -Path $tmp -ItemType Directory -Force | Out-Null
         $f = Join-Path $tmp '1 - Bad.mp3'
@@ -83,7 +83,7 @@ Describe 'Reload-OMAudioFiles' {
         { Reload-OMAudioFiles -AlbumPath $tmp } | Should -Not -Throw
 
         Remove-Item -LiteralPath $tmp -Recurse -Force
-        Write-Host "[RELOAD-TEST] it3 end"
+        Write-Verbose "[RELOAD-TEST] it3 end"
     }
 
 
