@@ -8,7 +8,8 @@
 - If external contributions are accepted in the future, this policy should be re-evaluated and documented here.
 
 **Note for automation / tools:**
-- Automation or assistants should not create or rely on PR workflows for changes to this repository unless this policy is explicitly changed.
+- Automation or assistants **MUST NOT** propose or create Pull Requests for this repository. GitHub is used only as a remote file store; automation should push directly to `master` or follow explicit, documented instructions from the repository owner.
+- If an assistant suggests creating a PR, stop the operation and notify the repository owner immediately — do not proceed without explicit permission.
 
 **Integration tests:**
 - Some integration tests require isolated environments and may start child processes or interact with the filesystem in ways that can hang under the automated test harness (Pester runspace). These tests are intentionally marked `-Skip` to avoid blocking automated runs.
