@@ -2528,8 +2528,8 @@ function Start-OM {
                                             "00:00"
                                         }
                                         
-                                        Write-Host "   $(Split-Path -Leaf $markedTrack.AudioFile.FilePath) ($audioDurationStr)" -ForegroundColor Yellow
-                                        Write-Host ""
+Show-Message -Message ("   $(Split-Path -Leaf $markedTrack.AudioFile.FilePath) ($audioDurationStr)") -ForegroundColor Yellow -Context $Context
+                                            Show-Message -Message "" -Context $Context
                                         
                                         # Sort pool by match confidence for current audio file (best match first)
                                         $scoredPool = @()
@@ -2576,7 +2576,7 @@ function Start-OM {
                                         }
                                         
                                         if ($selection -eq 's') {
-                                            Write-Host "Skipped" -ForegroundColor Gray
+                                            Show-Message -Message "Skipped" -ForegroundColor Gray -Context $Context
                                             continue
                                         }
                                         
