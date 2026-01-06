@@ -786,7 +786,7 @@ function Start-OM {
             )
             
             # Try primary provider
-            Write-Host "🔍 AUTO: Searching $PrimaryProvider for '$Album' by '$Artist'..." -ForegroundColor Cyan
+            Show-Message -Message "🔍 AUTO: Searching $PrimaryProvider for '$Album' by '$Artist'..." -ForegroundColor Cyan -Context $Context
             
             try {
                 $results = Invoke-ProviderSearch -Provider $PrimaryProvider -Album $Album -Artist $Artist -Type album
@@ -802,7 +802,7 @@ function Start-OM {
                     -LocalAlbum $Album -LocalTrackCount $TrackCount -Threshold $Threshold
                 
                 if ($bestMatch) {
-                    Write-Host "✓ AUTO: Found high-confidence match on $PrimaryProvider ($($bestMatch.Confidence)%)" -ForegroundColor Green
+                    Show-Message -Message "✓ AUTO: Found high-confidence match on $PrimaryProvider ($($bestMatch.Confidence)%)" -ForegroundColor Green -Context $Context
                     return @{
                         Provider = $PrimaryProvider
                         Album = $bestMatch.Album
@@ -828,7 +828,7 @@ function Start-OM {
             }
             
             foreach ($fallbackProvider in $fallbackChain) {
-                Write-Host "⚠️  AUTO: No good match on $PrimaryProvider, trying $fallbackProvider..." -ForegroundColor Yellow
+                Show-Message -Message "⚠️  AUTO: No good match on $PrimaryProvider, trying $fallbackProvider..." -ForegroundColor Yellow -Context $Context
                 
                 try {
                     $fallbackResults = Invoke-ProviderSearch -Provider $fallbackProvider -Album $Album -Artist $Artist -Type album
@@ -844,7 +844,7 @@ function Start-OM {
                         -LocalAlbum $Album -LocalTrackCount $TrackCount -Threshold $Threshold
                     
                     if ($bestMatch) {
-                        Write-Host "✓ AUTO: Found high-confidence match on $fallbackProvider ($($bestMatch.Confidence)% confidence)" -ForegroundColor Green
+                        Show-Message -Message "✓ AUTO: Found high-confidence match on $fallbackProvider ($($bestMatch.Confidence)% confidence)" -ForegroundColor Green -Context $Context
                         return @{
                             Provider = $fallbackProvider
                             Album = $bestMatch.Album
@@ -944,8 +944,8 @@ function Start-OM {
                 if ($script:findMode -eq 'quick' -and $stage -ne 'C') {
                     if ($VerbosePreference -ne 'Continue') { Clear-Host }
                     & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
-                    Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
-                    Write-Host ""
+                    Show-Message -Message "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta -Context $Context
+                    Show-Message -Message "" -Context $Context
 
                     # Auto-detect artist and album from folder structure
                     if (-not $skipQuickPrompts) {
@@ -1175,13 +1175,13 @@ function Start-OM {
                                 -LocalTrackCount $script:trackCount -Threshold $AutoConfidenceThreshold
                             
                             if ($bestMatch) {
-                                Write-Host "✓ AUTO: Found high-confidence match on $Provider ($($bestMatch.Confidence)%)" -ForegroundColor Green
+                                Show-Message -Message "✓ AUTO: Found high-confidence match on $Provider ($($bestMatch.Confidence)%)" -ForegroundColor Green -Context $Context
                             } else {
-                                Write-Host "⚠️  AUTO: Best match below threshold (need $([math]::Round($AutoConfidenceThreshold * 100, 1))%)" -ForegroundColor Yellow
+                                Show-Message -Message "⚠️  AUTO: Best match below threshold (need $([math]::Round($AutoConfidenceThreshold * 100, 1))%)" -ForegroundColor Yellow -Context $Context
                             }
                         }
                         else {
-                            Write-Host "⚠️  AUTO: No albums found on $Provider" -ForegroundColor Yellow
+                            Show-Message -Message "⚠️  AUTO: No albums found on $Provider" -ForegroundColor Yellow -Context $Context
                         }
                         
                         # If no good match and fallback is enabled, try other providers
@@ -1286,7 +1286,7 @@ function Start-OM {
                         Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
                         Write-Host ""
                         
-                        Write-Host "$Provider Album candidates for '$quickAlbum' by '$quickArtist':" -ForegroundColor Green
+                        Show-Message -Message "$Provider Album candidates for '$quickAlbum' by '$quickArtist':" -ForegroundColor Green -Context $Context
                         for ($i = 0; $i -lt $albumCandidates.Count; $i++) {
                             $album = $albumCandidates[$i]
                             $artistDisplay = if ($album.artists -and $album.artists[0].name) { $album.artists[0].name } else { 'Unknown Artist' }
