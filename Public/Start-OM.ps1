@@ -2448,7 +2448,7 @@ function Start-OM {
 
                                 if ($null -eq $inputF) { continue }
                                 if ($inputF -eq 'q') {
-                                    Write-Host $optionsLine -ForegroundColor $HostColor
+                                    Show-Message -Message $optionsLine -ForegroundColor $HostColor -Context $Context
                                     $inputF = Show-OMPrompt -Prompt "Select tracks(or option):" -Context $Context
                                 }
                             }
