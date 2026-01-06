@@ -329,35 +329,11 @@ function Start-OM {
             Write-Verbose "Cached Qobuz URL locale: $qobuzUrlLocale"
         }
         
-        # Helper function to normalize Discogs IDs (strip brackets, resolve masters)
+        # Helper function to normalize Discogs IDs (delegate to Private helper)
         $normalizeDiscogsId = {
             param([string]$InputId)
-            
-            $id = $InputId.Trim()
-            
-            # Remove brackets if present: [r2388472] → r2388472, [m1764178] → m1764178
-            $id = $id -replace '^\[|\]$', ''
-            
-            # Check if it's a master release (m prefix)
-            # if ($id -match '^m(\d+)$') {
-            #     Write-Host "Detected Discogs master release: $id" -ForegroundColor Yellow
-            #     Write-Host "Fetching master to resolve main release..." -ForegroundColor Cyan
-            #     try {
-            #         $masterId = $matches[1]
-            #         $master = Invoke-DiscogsRequest -Uri "/masters/$masterId"
-            #         if ($master -and $master.main_release) {
-            #             $id ="r"+[string]$master.main_release
-            #             Write-Host "✓ Resolved to main release: $id" -ForegroundColor Green
-            #         }
-            #         else {
-            #             Write-Warning "Could not resolve master $masterId to main release, using master ID"
-            #             $id = $masterId
-            #         }
-            #     }
-            #     catch {
-            #         Write-Warning "Failed to fetch master release: $_"
-            #         $id = $masterId
-            #     }
+            Normalize-OMDiscogsId -InputId $InputId
+        }
             # }
             # # Strip 'r' prefix if present: r2388472 → 2388472
             # elseif ($id -match '^r(\d+)$') {
