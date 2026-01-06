@@ -13,17 +13,17 @@ Describe 'Save-OMCoverArt smoke test' {
         . (Join-Path $PSScriptRoot '..\Private\Utils\Show-Message.ps1')
 
         # Ensure config and TagLib checks pass
-        Mock -CommandName Get-OMConfig -MockWith { @{ } }
-        Mock -CommandName Assert-TagLibLoaded -MockWith { } 
+        Mock -CommandName Get-OMConfig -ModuleName OM -MockWith { @{ } }
+        Mock -CommandName Assert-TagLibLoaded -ModuleName OM -MockWith { } 
 
         # Mock provider search to return a cover_url
-        Mock -CommandName Invoke-ProviderSearchAlbums -MockWith {
+        Mock -CommandName Invoke-ProviderSearchAlbums -ModuleName OM -MockWith {
             @([PSCustomObject]@{ artist = 'Artist'; name = 'Album'; id = 'id'; cover_url = 'http://example/cover.jpg' })
         }
 
         # Capture Save-CoverArt calls
         $script:saveCalls = 0
-        Mock -CommandName Save-CoverArt -MockWith { $script:saveCalls++; return @{ Success = $true } }
+        Mock -CommandName Save-CoverArt -ModuleName OM -MockWith { $script:saveCalls++; return @{ Success = $true } }
 
         $out = Save-OMCoverArt -Path $albumFolder -Provider 'Qobuz'
 
