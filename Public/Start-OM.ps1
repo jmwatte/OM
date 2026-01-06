@@ -919,10 +919,8 @@ function Start-OM {
             $cachedAlbums = $null
             $cachedArtistId = $null
             $loadStageBResults = $true 
-            $page = 1
-            $pageSize = 25
+            # Pagination fields (unused right now) removed to avoid analyzer warnings
             $albumDone = $false
-            $mastersOnlyMode = $true  # Track Discogs filter state: true=masters only, false=all releases
             $script:findMode = 'quick'  # Always start in quick find mode
             $script:quickAlbumCandidates = $null
             $script:quickCurrentPage = 1

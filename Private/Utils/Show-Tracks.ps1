@@ -276,7 +276,7 @@ function Show-Tracks {
 
             if ($markInput) {
                 try {
-                    $markedCount = Mark-PairedTracks -PairedTracks $PairedTracks -RangeText $markInput -MaxIndex $PairedTracks.Count
+                    $markedCount = Set-PairedTracks -PairedTracks $PairedTracks -RangeText $markInput -MaxIndex $PairedTracks.Count
                     Write-Host "Marked $markedCount track(s)." -ForegroundColor Green
                     Start-Sleep -Seconds 1
                 }

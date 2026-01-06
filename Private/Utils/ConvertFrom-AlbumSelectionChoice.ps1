@@ -1,4 +1,4 @@
-function Parse-AlbumSelectionChoice {
+function ConvertFrom-AlbumSelectionChoice {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)][string]$Choice,

@@ -53,7 +53,7 @@ function Search-GQAlbum {
     # Prefer qobuz album pages for albums
     # For Google (HTML and CSE) prefer searching the album name only (no site: filter)
     # This helps Google return qobuz album pages when configured to search qobuz.
-    $searchQueryGoogle = "`"$Query`""
+    # (historical: $searchQueryGoogle removed as unused)
     $targetUrl = $null
     $useQobuzFallback = $false
 

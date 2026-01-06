@@ -1,4 +1,4 @@
-function Mark-PairedTracks {
+function Set-PairedTracks {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)][array]$PairedTracks,

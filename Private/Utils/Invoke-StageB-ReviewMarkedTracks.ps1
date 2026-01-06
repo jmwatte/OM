@@ -3,10 +3,20 @@ function Invoke-StageB-ReviewMarkedTracks {
     param(
         [array]$PairedTracks,
         [array]$TracksForAlbum,
-        [Parameter(Mandatory=$false)][scriptblock]$InputReader
+        [Parameter(Mandatory=$false)][scriptblock]$InputReader,
+        [Parameter(Mandatory=$false)][scriptblock]$DisplayWriter
     )
 
     $reader = if ($InputReader) { $InputReader } else { { param($prompt) Read-Host -Prompt $prompt } }
+
+    # Determine writer: prefer explicit DisplayWriter, then Show-Message if available, else use Write-Verbose
+    $display = if ($DisplayWriter) {
+        $DisplayWriter
+    } elseif (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) {
+        { param($msg,$color) Show-Message -Message $msg -ForegroundColor $color }
+    } else {
+        { param($msg,$color) if ($color) { Write-Verbose ("[{0}] {1}" -f $color, $msg) } else { Write-Verbose $msg } }
+    }
 
     $result = [PSCustomObject]@{ Updated = 0; Skipped = 0; Reviewed = 0; NoProviderTracks = $false }
 
@@ -17,15 +27,15 @@ function Invoke-StageB-ReviewMarkedTracks {
         $reviewAll = $true
         $markedTracks = @($PairedTracks | Where-Object { $_.AudioFile })
         if ($markedTracks.Count -eq 0) {
-            Write-Host "`nNo audio files to review." -ForegroundColor Yellow
+            & $display "`nNo audio files to review." "Yellow"
             Start-Sleep -Seconds 2
             $result.NoProviderTracks = $true
             return $result
         }
-        Write-Host "`n📋 No marks set - reviewing ALL $($markedTracks.Count) track(s)..." -ForegroundColor Cyan
+        & $display "`n📋 No marks set - reviewing ALL $($markedTracks.Count) track(s)..." "Cyan"
     }
     else {
-        Write-Host "`n🔖 Reviewing $($markedTracks.Count) marked track(s)..." -ForegroundColor Cyan
+        & $display "`n🔖 Reviewing $($markedTracks.Count) marked track(s)..." "Cyan"
     }
     Start-Sleep -Seconds 1
 
@@ -37,7 +47,7 @@ function Invoke-StageB-ReviewMarkedTracks {
     }
 
     if ($providerTrackPool.Count -eq 0) {
-        Write-Host "No provider tracks available to choose from." -ForegroundColor Yellow
+        & $display "No provider tracks available to choose from." "Yellow"
         Start-Sleep -Seconds 2
         $result.NoProviderTracks = $true
         return $result
@@ -46,12 +56,12 @@ function Invoke-StageB-ReviewMarkedTracks {
     foreach ($markedTrack in $markedTracks) {
         if (-not $markedTrack.AudioFile) { continue }
         if ($providerTrackPool.Count -eq 0) {
-            Write-Host "No more provider tracks in pool." -ForegroundColor Yellow
+            & $display "No more provider tracks in pool." "Yellow"
             break
         }
 
         if ($VerbosePreference -ne 'Continue') { Clear-Host }
-        Write-Host "🔖 Select correct match for:" -ForegroundColor Cyan
+        & $display "🔖 Select correct match for:" "Cyan"
 
         $audioDurationStr = if ($markedTrack.AudioFile.Duration) {
             $audioDurationSpan = [TimeSpan]::FromMilliseconds($markedTrack.AudioFile.Duration)
@@ -60,8 +70,8 @@ function Invoke-StageB-ReviewMarkedTracks {
             "00:00"
         }
 
-        Write-Host "   $(Split-Path -Leaf $markedTrack.AudioFile.FilePath) ($audioDurationStr)" -ForegroundColor Yellow
-        Write-Host ""
+        & $display "   $(Split-Path -Leaf $markedTrack.AudioFile.FilePath) ($audioDurationStr)" "Yellow"
+        & $display "" ""
 
         # Score and sort pool
         $scoredPool = @()
@@ -82,15 +92,15 @@ function Invoke-StageB-ReviewMarkedTracks {
             $durationStr = "{0:mm\:ss}" -f $durationSpan
             $color = switch ($scored.Level) { 'High' { 'Green' } 'Medium' { 'Yellow' } 'Low' { 'Red' } default { 'Gray' } }
             $confidenceIndicator = " ($($scored.Score)%)"
-            Write-Host ("[$num] {0:D2}.{1:D2}: {2} ({3}){4}" -f $disc, $trackNum, $track.name, $durationStr, $confidenceIndicator) -ForegroundColor $color
+            & $display (("[$num] {0:D2}.{1:D2}: {2} ({3}){4}" -f $disc, $trackNum, $track.name, $durationStr, $confidenceIndicator)) $color
         }
 
-        Write-Host ""
+        & $display "" ""
         $selection = & $reader "Enter track number or press Enter for [1] (or 's' to skip)"
         if ([string]::IsNullOrWhiteSpace($selection)) { $selection = '1' }
 
         if ($selection -eq 's') {
-            Write-Host "Skipped" -ForegroundColor Gray
+            & $display "Skipped" "Gray"
             $result.Skipped++
             continue
         }
@@ -103,7 +113,7 @@ function Invoke-StageB-ReviewMarkedTracks {
                     if ($PairedTracks[$i].AudioFile -and $PairedTracks[$i].AudioFile.FilePath -eq $markedTrack.AudioFile.FilePath) {
                         $PairedTracks[$i].SpotifyTrack = $selectedTrack
                         if ($PairedTracks[$i].PSObject.Properties['Marked']) { $PairedTracks[$i].Marked = $false }
-                        Write-Host "✓ Updated" -ForegroundColor Green
+                        & $display "✓ Updated" "Green"
                         $result.Updated++
                         break
                     }

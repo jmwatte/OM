@@ -46,7 +46,7 @@ function Search-GQArtist {
     # Prefer qobuz interpreter pages for artists
     # For Google (HTML and CSE) prefer searching the artist name only (no site: filter)
     # This helps Google return qobuz interpreter pages when configured to search qobuz.
-    $searchQueryGoogle = "`"$Query`""
+    # (historical: $searchQueryGoogle removed as unused)
     $targetUrl = $null
     $useQobuzFallback = $false
 
