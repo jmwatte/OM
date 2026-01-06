@@ -994,8 +994,8 @@ function Start-OM {
                         
                         # If tag contains folder artist, use the more complete tag value
                         if ($tagArtist -and $tagArtist -match [regex]::Escape($detectedArtist)) {
-                            Write-Host "📁 Auto-detected from folder: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Gray
-                            Write-Host "🎵 Using AlbumArtist tag for better match: '$tagArtist'" -ForegroundColor Green
+                            Show-Message -Message "📁 Auto-detected from folder: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Gray -Context $Context
+                            Show-Message -Message "🎵 Using AlbumArtist tag for better match: '$tagArtist'" -ForegroundColor Green -Context $Context
                             $detectedArtist = $tagArtist
                             
                             # Also check if album name has "Artist - Title" pattern and strip it
@@ -1015,13 +1015,13 @@ function Start-OM {
                             $possibleAlbumOnly = $matches[2].Trim()
                             
                             if ($possibleArtist -match [regex]::Escape($detectedArtist)) {
-                                Write-Host "📁 Auto-detected from folder: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Gray
-                                Write-Host "🎵 Using artist from album name: '$possibleArtist'" -ForegroundColor Green
+                                Show-Message -Message "📁 Auto-detected from folder: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Gray -Context $Context
+                                Show-Message -Message "🎵 Using artist from album name: '$possibleArtist'" -ForegroundColor Green -Context $Context
                                 $detectedArtist = $possibleArtist
                                 $detectedAlbum = $possibleAlbumOnly
                             }
                             else {
-                                Write-Host "📁 Auto-detected from folder structure: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Green
+                                Show-Message -Message "📁 Auto-detected from folder structure: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Green -Context $Context
                             }
                         }
                         else {
@@ -1039,23 +1039,21 @@ function Start-OM {
 
                     if (-not $skipQuickPrompts) {
                         # Prompt for artist and album with pre-filled defaults
-                        Write-Host "Artist [$currentArtist]: " -NoNewline
-                        $userInput = Read-Host
+                        $userInput = Show-OMPrompt -Prompt 'Artist' -Default $currentArtist -NoNewline -Context $Context
                         if ($userInput) { $currentArtist = $userInput }
                         $quickArtist = $currentArtist
                         if (-not $quickArtist) {
-                            Write-Host "Artist is required. Switching to artist-first mode." -ForegroundColor Yellow
+                            Show-Message -Message "Artist is required. Switching to artist-first mode." -ForegroundColor Yellow -Context $Context
                             $script:findMode = 'artist-first'
                             $stage = 'A'
                             continue stageLoop
                         }
                         
-                        Write-Host "Album [$currentAlbum]: " -NoNewline
-                        $userInput = Read-Host
+                        $userInput = Show-OMPrompt -Prompt 'Album' -Default $currentAlbum -NoNewline -Context $Context
                         if ($userInput) { $currentAlbum = $userInput }
                         $quickAlbum = $currentAlbum
                         if (-not $quickAlbum) {
-                            Write-Host "Album is required. Switching to artist-first mode." -ForegroundColor Yellow
+                            Show-Message -Message "Album is required. Switching to artist-first mode." -ForegroundColor Yellow -Context $Context
                             $script:findMode = 'artist-first'
                             $stage = 'A'
                             continue stageLoop
@@ -1072,10 +1070,10 @@ function Start-OM {
                     # Check if we have cached albums from back navigation
                     if ($script:backNavigationMode -and $script:quickAlbumCandidates) {
                         $albumCandidates = $script:quickAlbumCandidates
-                        Write-Host "Using cached album results for back navigation..." -ForegroundColor Cyan
+                        Show-Message -Message "Using cached album results for back navigation..." -ForegroundColor Cyan -Context $Context
                     }
                     else {
-                        Write-Host "Searching for '$quickAlbum' by '$quickArtist'..." -ForegroundColor Cyan
+                        Show-Message -Message "Searching for '$quickAlbum' by '$quickArtist'..." -ForegroundColor Cyan -Context $Context
                         
                         :quickSearchLoop while ($true) {
                             $quickAlbum = $currentAlbum
@@ -1127,7 +1125,7 @@ function Start-OM {
                                 }
                                 elseif ($retryChoice -eq 'x' -or $retryChoice -eq 'xip') {
                                     # Skip this album
-                                    Write-Host "Skipping album: $quickAlbum" -ForegroundColor Yellow
+                                    Show-Message -Message "Skipping album: $quickAlbum" -ForegroundColor Yellow -Context $Context
                                     $albumDone = $true
                                     break quickSearchLoop
                                 }
@@ -1160,13 +1158,13 @@ function Start-OM {
                         $bestMatch = $null
                         if ($albumCandidates.Count -gt 0) {
                             # Debug: Show confidence scores for all candidates
-                            Write-Host "🤖 AUTO: Calculating confidence scores..." -ForegroundColor Cyan
+                            Show-Message -Message "🤖 AUTO: Calculating confidence scores..." -ForegroundColor Cyan -Context $Context
                             $index = 1
                             foreach ($candidate in $albumCandidates) {
                                 $scoreVal = Get-AlbumMatchConfidence -Candidate $candidate -LocalArtist $quickArtist -LocalAlbum $quickAlbum -LocalTrackCount $script:trackCount
                                 $scorePercent = $scoreVal * 100
                                 $displayName = if ($candidate.name) { $candidate.name } else { $candidate.title }
-                                Write-Host "   [$index] $displayName : $([math]::Round($scorePercent, 1))%" -ForegroundColor $(if ($scorePercent -ge ($AutoConfidenceThreshold * 100)) { 'Green' } else { 'Yellow' })
+                                Show-Message -Message ("   [$index] $displayName : $([math]::Round($scorePercent, 1))%") -ForegroundColor $(if ($scorePercent -ge ($AutoConfidenceThreshold * 100)) { 'Green' } else { 'Yellow' }) -Context $Context
                                 $index++
                             }
                             
