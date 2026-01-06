@@ -2325,7 +2325,7 @@ function Start-OM {
                                 
                                 # AUTO MODE: Smart matching with best sort strategy
                                 if ($Auto -and $script:autoModeActive -and -not $goC) {
-                                    Write-Host "🤖 AUTO: Analyzing track matches..." -ForegroundColor Cyan
+                                    Show-Message -Message "🤖 AUTO: Analyzing track matches..." -ForegroundColor Cyan -Context $Context
                                     
                                     # Try different sort strategies and pick the best
                                     $strategies = @('byOrder', 'byTitle', 'byDuration')
@@ -2369,11 +2369,11 @@ function Start-OM {
                                         [Math]::Round(($bestScore / $totalTracks) * 100, 0) 
                                     } else { 0 }
                                     
-                                    Write-Host "🤖 AUTO: Best strategy: '$bestStrategy' ($bestScore/$totalTracks matches, $confidencePercent% confidence)" -ForegroundColor Green
+                                    Show-Message -Message "🤖 AUTO: Best strategy: '$bestStrategy' ($bestScore/$totalTracks matches, $confidencePercent% confidence)" -ForegroundColor Green -Context $Context
                                     
                                     # Auto-proceed if confidence is high enough
                                     if ($confidencePercent -ge ($AutoConfidenceThreshold * 100)) {
-                                        Write-Host "✓ AUTO: Confidence threshold met, auto-saving tags and cover..." -ForegroundColor Green
+                                        Show-Message -Message "✓ AUTO: Confidence threshold met, auto-saving tags and cover..." -ForegroundColor Green -Context $Context
                                         
                                         # Auto-execute save-all command
                                         $inputF = 'sa'
@@ -2383,12 +2383,12 @@ function Start-OM {
                                         if ($AutoSaveCover) {
                                             $coverUrl = Get-IfExists $ProviderAlbum 'cover_url'
                                             if ($coverUrl) {
-                                                Write-Host "🖼️  AUTO: Saving cover art..." -ForegroundColor Cyan
+                                                Show-Message -Message "🖼️  AUTO: Saving cover art..." -ForegroundColor Cyan -Context $Context
                                                 $config = Get-OMConfig
                                                 $maxSize = $config.CoverArt.FolderImageSize
                                                 $result = Save-CoverArt -CoverUrl $coverUrl -AlbumPath $script:album.FullName `\n                                                    -Action SaveToFolder -MaxSize $maxSize -WhatIf:$useWhatIf
                                                 if ($result.Success) {
-                                                    Write-Host "✓ AUTO: Cover art saved" -ForegroundColor Green
+                                                    Show-Message -Message "✓ AUTO: Cover art saved" -ForegroundColor Green -Context $Context
                                                 }
                                             }
                                         }
@@ -2401,7 +2401,7 @@ function Start-OM {
                             }
 
                             if ($goC) {
-                                Write-Host "goC: auto-applying Save-All for album '$($ProviderAlbum.name)'." -ForegroundColor Yellow
+                                Show-Message -Message "goC: auto-applying Save-All for album '$($ProviderAlbum.name)'." -ForegroundColor Yellow -Context $Context
                                 $inputF = 'sa'
                             }
                             elseif ($Auto -and $script:autoModeActive -and $inputF -eq 'sa') {
@@ -2495,7 +2495,7 @@ function Start-OM {
                                     }
                                     
                                     if ($providerTrackPool.Count -eq 0) {
-                                        Write-Host "No provider tracks available to choose from." -ForegroundColor Yellow
+                                        Show-Message -Message "No provider tracks available to choose from." -ForegroundColor Yellow -Context $Context
                                         Start-Sleep -Seconds 2
                                         continue
                                     }
