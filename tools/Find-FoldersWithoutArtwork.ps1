@@ -29,12 +29,22 @@ param(
     
     [Parameter(Mandatory = $false)]
     [ValidateSet('Spotify', 'Qobuz', 'Discogs', 'MusicBrainz')]
-    [string]$Provider = 'Qobuz'
+    [string]$Provider = 'Qobuz',
+    [Parameter(Mandatory = $false)][object]$Context
 )
 
-Write-Host "╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "  Finding folders without artwork..." -ForegroundColor Yellow
-Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+# Ensure Show-Message helper available when dot-sourced
+if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+    $candidates = @()
+    if ($PSScriptRoot) { $candidates += Join-Path $PSScriptRoot '..\Private\Utils\Show-Message.ps1' }
+    if ($MyInvocation.MyCommand.Path) { $candidates += Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\Private\Utils\Show-Message.ps1' }
+    $candidates += Join-Path (Get-Location) 'Private\Utils\Show-Message.ps1'
+    foreach ($path in $candidates) { if (Test-Path $path) { . $path; break } }
+}
+
+Show-Message -Message "╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan -Context $Context
+Show-Message -Message "  Finding folders without artwork..." -ForegroundColor Yellow -Context $Context
+Show-Message -Message "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan -Context $Context
 
 # Find folders with audio files but no artwork
 $foldersToProcess = Get-ChildItem -Path $RootPath -Recurse -Directory -ErrorAction SilentlyContinue | 
@@ -52,21 +62,21 @@ $foldersToProcess = Get-ChildItem -Path $RootPath -Recurse -Directory -ErrorActi
     Select-Object -ExpandProperty FullName
 
 if (-not $foldersToProcess -or $foldersToProcess.Count -eq 0) {
-    Write-Host "`n✓ No folders without artwork found!" -ForegroundColor Green
+    Show-Message -Message "`n✓ No folders without artwork found!" -ForegroundColor Green -Context $Context
     return
 }
 
-Write-Host "`nFound $($foldersToProcess.Count) folder(s) without artwork:" -ForegroundColor Yellow
-$foldersToProcess | ForEach-Object { Write-Host "  $_" -ForegroundColor Gray }
+Show-Message -Message "`nFound $($foldersToProcess.Count) folder(s) without artwork:" -ForegroundColor Yellow -Context $Context
+$foldersToProcess | ForEach-Object { Show-Message -Message "  $_" -ForegroundColor Gray -Context $Context }
 
 if ($WhatIfPreference) {
-    Write-Host "`nWhatIf: Would process $($foldersToProcess.Count) folders" -ForegroundColor Cyan
+    Show-Message -Message "`nWhatIf: Would process $($foldersToProcess.Count) folders" -ForegroundColor Cyan -Context $Context
     return
 }
 
-Write-Host "`nStarting artwork download..." -ForegroundColor Cyan
-Write-Host "Provider: $Provider" -ForegroundColor Gray
-Write-Host ""
+Show-Message -Message "`nStarting artwork download..." -ForegroundColor Cyan -Context $Context
+Show-Message -Message "Provider: $Provider" -ForegroundColor Gray -Context $Context
+Show-Message -Message "" -Context $Context
 
 # Process each folder
 $processed = 0
@@ -75,7 +85,7 @@ $failed = 0
 
 foreach ($folder in $foldersToProcess) {
     $processed++
-    Write-Host "[$processed/$($foldersToProcess.Count)] " -NoNewline -ForegroundColor Gray
+    Show-Message -Message "[$processed/$($foldersToProcess.Count)] " -NoNewline -ForegroundColor Gray -Context $Context
     
     try {
         Save-OMCoverArt -Path $folder -Provider $Provider -ErrorAction Stop
@@ -87,10 +97,10 @@ foreach ($folder in $foldersToProcess) {
     }
 }
 
-Write-Host "`n╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "  Summary:" -ForegroundColor Yellow
-Write-Host "    Processed:  $processed" -ForegroundColor Gray
-Write-Host "    Successful: $successful" -ForegroundColor Green
-Write-Host "    Failed:     $failed" -ForegroundColor $(if ($failed -gt 0) { 'Red' } else { 'Gray' })
-Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Show-Message -Message "`n╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan -Context $Context
+Show-Message -Message "  Summary:" -ForegroundColor Yellow -Context $Context
+Show-Message -Message "    Processed:  $processed" -ForegroundColor Gray -Context $Context
+Show-Message -Message "    Successful: $successful" -ForegroundColor Green -Context $Context
+Show-Message -Message "    Failed:     $failed" -ForegroundColor $(if ($failed -gt 0) { 'Red' } else { 'Gray' }) -Context $Context
+Show-Message -Message "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan -Context $Context
 
