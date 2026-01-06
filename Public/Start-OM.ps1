@@ -2853,7 +2853,7 @@ function Start-OM {
                                         $tags = $info.Tags
                                         $filePath = $info.FilePath
                                         $fileName = Split-Path -Leaf $filePath
-                                        Write-Host ("Saved tags: {0} -> {1:D2}.{2:D2}: {3}" -f $fileName, $tags.Disc, $tags.Track, $tags.Title) -ForegroundColor Green
+                                        Show-Message -Message (("Saved tags: {0} -> {1:D2}.{2:D2}: {3}" -f $fileName, $tags.Disc, $tags.Track, $tags.Title)) -ForegroundColor Green -Context $Context
                                     }
 
                                     foreach ($info in $saveResult.Skipped) {
@@ -2874,10 +2874,10 @@ function Start-OM {
                                     $tracksForAlbum = $saveResult.UpdatedSpotifyTracks
 
                                     if ($saveResult.SavedDetails.Count -gt 0) {
-                                        Write-Host ("✓ Processed {0} track(s). Remaining: {1}" -f $saveResult.SavedDetails.Count, $script:pairedTracks.Count) -ForegroundColor Green
+                                        Show-Message -Message (("✓ Processed {0} track(s). Remaining: {1}" -f $saveResult.SavedDetails.Count, $script:pairedTracks.Count)) -ForegroundColor Green -Context $Context
                                     }
                                     else {
-                                        Write-Host "No tracks were updated." -ForegroundColor Yellow
+                                        Show-Message -Message "No tracks were updated." -ForegroundColor Yellow -Context $Context
                                     }
 
                                     $script:refreshTracks = $false
@@ -2970,10 +2970,10 @@ function Start-OM {
                                         continue doTracks
                                     }
                                     catch {
-                                        Write-Host '---- ERROR in save-tags (st) handler ----' -ForegroundColor Red
-                                        Write-Host "Message: $($_.Exception.Message)"
-                                        Write-Host "Exception: $($_ | Out-String)"
-                                        Write-Host "ScriptStackTrace: $($_.ScriptStackTrace)"
+                                        Show-Message -Message '---- ERROR in save-tags (st) handler ----' -ForegroundColor Red -Context $Context
+                                        Show-Message -Message "Message: $($_.Exception.Message)" -Context $Context
+                                        Show-Message -Message "Exception: $($_ | Out-String)" -Context $Context
+                                        Show-Message -Message "ScriptStackTrace: $($_.ScriptStackTrace)" -Context $Context
                                         # keep UI alive; set stage to C so outer loop continues
                                         $stage = 'C'
                                         $exitDo = $true
@@ -3196,7 +3196,7 @@ function Start-OM {
                                     
                                     # AUTO MODE: Skip to next album after successful save
                                     if ($Auto -and $script:autoModeActive) {
-                                        Write-Host "✓ AUTO: Album completed successfully, moving to next album..." -ForegroundColor Green
+                                        Show-Message -Message "✓ AUTO: Album completed successfully, moving to next album..." -ForegroundColor Green -Context $Context
                                         $albumDone = $true
                                         $exitDo = $true
                                         break
@@ -3325,7 +3325,7 @@ function Start-OM {
                                         # Save the tag
                                         $res = Save-TagsForFile -FilePath $filePath -TagValues $tags -WhatIf:$useWhatIf
                                         if ($res.Success) {
-                                            Write-Host ("Updated tag '$actualTagName' for track $idx ($($spotifyTrack.Title)): '$newValue'") -ForegroundColor Green
+                                            Show-Message -Message (("Updated tag '$actualTagName' for track $idx ($($spotifyTrack.Title)): '$newValue'")) -ForegroundColor Green -Context $Context
                                         }
                                         else {
                                             Write-Warning ("Failed to update tag for track $($idx): $($res.Reason)")
