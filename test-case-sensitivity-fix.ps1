@@ -78,14 +78,9 @@ try {
     }
 }
 catch {
-    Write-Host "  ✗ FAIL: Exception: $_" -ForegroundColor Red
-}
-Write-Host ""
-
-# Test 2: Uppercase to proper case
-Write-Host "[Test 2] Uppercase to Proper Case" -ForegroundColor Yellow
-Write-Host "  From: THE BEATLES" -ForegroundColor Gray
-Write-Host "  To:   The Beatles" -ForegroundColor Gray
+        Show-Message -Message "  ✗ FAIL: Exception: $_" -ForegroundColor Red -Context $null
+    }
+    Show-Message -Message "" -Context $null
 
 $moveParams2 = @{
     AlbumPath    = "$testRoot\THE BEATLES\1965 - Help!"
@@ -100,25 +95,25 @@ try {
     if ($result2.Success) {
         $actualFolder = Split-Path -Leaf (Split-Path -Parent $result2.NewAlbumPath)
         if ($actualFolder -ceq "The Beatles") {
-            Write-Host "  ✓ PASS: Folder renamed to correct case: $actualFolder" -ForegroundColor Green
+            Show-Message -Message "  ✓ PASS: Folder renamed to correct case: $actualFolder" -ForegroundColor Green -Context $null
         }
         else {
-            Write-Host "  ✗ FAIL: Folder case incorrect: $actualFolder (expected 'The Beatles')" -ForegroundColor Red
+            Show-Message -Message "  ✗ FAIL: Folder case incorrect: $actualFolder (expected 'The Beatles')" -ForegroundColor Red -Context $null
         }
     }
     else {
-        Write-Host "  ✗ FAIL: Move operation failed" -ForegroundColor Red
+        Show-Message -Message "  ✗ FAIL: Move operation failed" -ForegroundColor Red -Context $null
     }
 }
 catch {
-    Write-Host "  ✗ FAIL: Exception: $_" -ForegroundColor Red
+    Show-Message -Message "  ✗ FAIL: Exception: $_" -ForegroundColor Red -Context $null
 }
-Write-Host ""
+Show-Message -Message "" -Context $null
 
 # Test 3: Already correct case (should still work, but may skip if truly identical)
-Write-Host "[Test 3] Already Correct Case (no change needed)" -ForegroundColor Yellow
-Write-Host "  From: Pink Floyd" -ForegroundColor Gray
-Write-Host "  To:   Pink Floyd" -ForegroundColor Gray
+Show-Message -Message "[Test 3] Already Correct Case (no change needed)" -ForegroundColor Yellow -Context $null
+Show-Message -Message "  From: Pink Floyd" -ForegroundColor Gray -Context $null
+Show-Message -Message "  To:   Pink Floyd" -ForegroundColor Gray -Context $null
 
 $moveParams3 = @{
     AlbumPath    = "$testRoot\Pink Floyd\1973 - The Dark Side of the Moon"
@@ -133,40 +128,40 @@ try {
     if ($result3.Success) {
         $actualFolder = Split-Path -Leaf (Split-Path -Parent $result3.NewAlbumPath)
         if ($actualFolder -ceq "Pink Floyd") {
-            Write-Host "  ✓ PASS: Folder unchanged (correct): $actualFolder" -ForegroundColor Green
+            Show-Message -Message "  ✓ PASS: Folder unchanged (correct): $actualFolder" -ForegroundColor Green -Context $null
         }
         else {
-            Write-Host "  ✗ FAIL: Folder case changed unexpectedly: $actualFolder" -ForegroundColor Red
+            Show-Message -Message "  ✗ FAIL: Folder case changed unexpectedly: $actualFolder" -ForegroundColor Red -Context $null
         }
-        Write-Host "  Action taken: $($result3.Action)" -ForegroundColor Gray
+        Show-Message -Message "  Action taken: $($result3.Action)" -ForegroundColor Gray -Context $null
     }
     else {
-        Write-Host "  ✗ FAIL: Move operation failed" -ForegroundColor Red
+        Show-Message -Message "  ✗ FAIL: Move operation failed" -ForegroundColor Red -Context $null
     }
 }
 catch {
-    Write-Host "  ✗ FAIL: Exception: $_" -ForegroundColor Red
+    Show-Message -Message "  ✗ FAIL: Exception: $_" -ForegroundColor Red -Context $null
 }
-Write-Host ""
+Show-Message -Message "" -Context $null
 
 # Verify final folder structure
-Write-Host "=== Final Folder Structure ===" -ForegroundColor Cyan
+Show-Message -Message "=== Final Folder Structure ===" -ForegroundColor Cyan -Context $null
 Get-ChildItem $testRoot -Directory | ForEach-Object {
-    Write-Host "  $($_.Name)" -ForegroundColor White
+    Show-Message -Message "  $($_.Name)" -ForegroundColor White -Context $null
 }
-Write-Host ""
+Show-Message -Message "" -Context $null
 
 # Clean up
-Write-Host "Cleaning up test directory..." -ForegroundColor Yellow
+Show-Message -Message "Cleaning up test directory..." -ForegroundColor Yellow -Context $null
 Remove-Item -Path $testRoot -Recurse -Force
-Write-Host "✓ Test directory removed" -ForegroundColor Green
-Write-Host ""
+Show-Message -Message "✓ Test directory removed" -ForegroundColor Green -Context $null
+Show-Message -Message "" -Context $null
 
-Write-Host "=== Summary ===" -ForegroundColor Cyan
-Write-Host "Key change:" -ForegroundColor White
-Write-Host "  • Early exit guard now uses -ceq (case-sensitive) instead of -eq" -ForegroundColor Green
-Write-Host "  • Case-only renames (tears for fears → Tears For Fears) now work" -ForegroundColor Green
-Write-Host "  • Folder names match AlbumArtist tag capitalization exactly" -ForegroundColor Green
-Write-Host ""
-Write-Host "Result: Folder structure reflects proper artist name capitalization from tags" -ForegroundColor Cyan
+Show-Message -Message "=== Summary ===" -ForegroundColor Cyan -Context $null
+Show-Message -Message "Key change:" -ForegroundColor White -Context $null
+Show-Message -Message "  • Early exit guard now uses -ceq (case-sensitive) instead of -eq" -ForegroundColor Green -Context $null
+Show-Message -Message "  • Case-only renames (tears for fears → Tears For Fears) now work" -ForegroundColor Green -Context $null
+Show-Message -Message "  • Folder names match AlbumArtist tag capitalization exactly" -ForegroundColor Green -Context $null
+Show-Message -Message "" -Context $null
+Show-Message -Message "Result: Folder structure reflects proper artist name capitalization from tags" -ForegroundColor Cyan -Context $null
 
