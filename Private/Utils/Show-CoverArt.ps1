@@ -75,6 +75,8 @@ function Show-CoverArt {
         $RangeText = "1..$($AlbumList.Count)"  # Default to all albums if no range specified
     }
 
+    Write-Verbose "DBG: RangeText='$RangeText' AlbumList.Count=$($AlbumList.Count)"
+
     try {
         $selectedIndices = Expand-SelectionRange -RangeText $RangeText -MaxIndex $AlbumList.Count
     } catch {
