@@ -18,8 +18,8 @@ Describe 'Start-OM AUTO provider fallback and autosave cover tests' {
             return @{ albums = @{ items = @() } }
         }
 
-        $script:msgs = @()
-        Mock -CommandName Show-Message -MockWith { param($Message,$ForegroundColor,$NoNewline,$DisplayWriter,$Context) $script:msgs += $Message }
+        $script:msgs = New-Object System.Collections.Generic.List[System.String]
+        Mock -CommandName Show-Message -MockWith { param($Message,$ForegroundColor,$NoNewline,$DisplayWriter,$Context) $script:msgs.Add($Message) }
 
         $res = Start-OM -Path $testDir -Auto -AutoFallback -NonInteractive -WhatIf -Confirm:$false
 

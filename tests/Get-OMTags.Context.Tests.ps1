@@ -9,8 +9,8 @@ Describe 'Get-OMTags TagLib failure uses Context' {
         # Mock Add-Type to throw to simulate TagLib load failure
         Mock -CommandName Add-Type -MockWith { throw "Simulated Add-Type failure" }
 
-        $script:msgs = @()
-        Mock -CommandName Show-Message -MockWith { param($Message,$ForegroundColor,$NoNewline,$DisplayWriter,$Context) $script:msgs += $Message }
+        $script:msgs = New-Object System.Collections.Generic.List[System.String]
+        Mock -CommandName Show-Message -MockWith { param($Message,$ForegroundColor,$NoNewline,$DisplayWriter,$Context) $script:msgs.Add($Message) }
 
         # Call Get-OMTags with a fake path (it will attempt to load TagLib and hit the mocked Add-Type)
         $res = Get-OMTags -Path (Join-Path $env:TEMP 'nonexistent_folder') -Context [PSCustomObject]@{}

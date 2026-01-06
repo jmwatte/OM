@@ -8,10 +8,10 @@ Describe 'Format-Genres Context propagation' {
 
         $input = [PSCustomObject]@{ Path = 'fakepath'; Genres = @('UnmappedGenre') }
 
-        $script:msgs = @()
-        Mock -CommandName Show-Message -MockWith { param($Message,$ForegroundColor,$NoNewline,$DisplayWriter,$Context) $script:msgs += $Message }
+        $script:msgs = New-Object System.Collections.Generic.List[System.String]
+        Mock -CommandName Show-Message -MockWith { param($Message,$ForegroundColor,$NoNewline,$DisplayWriter,$Context) $script:msgs.Add($Message) }
 
-        $ctx = [PSCustomObject]@{ DisplayWriter = { param($msg,$color,$no) $script:msgs += "DW: $msg" } }
+        $ctx = [PSCustomObject]@{ DisplayWriter = { param($msg,$color,$no) $script:msgs.Add("DW: $msg") } }
 
         # Run in NonInteractive so it doesn't prompt
         $res = Format-Genres -InputObject $input -NonInteractive -Context $ctx -PassThru:$false -Force:$true
