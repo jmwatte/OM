@@ -1,4 +1,4 @@
-# Test script for case-sensitivity fix in Move-AlbumFolder
+﻿# Test script for case-sensitivity fix in Move-AlbumFolder
 # Verifies that folder names are corrected to match tag case
 
 #Requires -Modules OM
@@ -163,3 +163,4 @@ Write-Host "  • Case-only renames (tears for fears → Tears For Fears) now wo
 Write-Host "  • Folder names match AlbumArtist tag capitalization exactly" -ForegroundColor Green
 Write-Host ""
 Write-Host "Result: Folder structure reflects proper artist name capitalization from tags" -ForegroundColor Cyan
+

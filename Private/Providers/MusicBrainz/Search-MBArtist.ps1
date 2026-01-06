@@ -1,4 +1,4 @@
-function Search-MBArtist {
+﻿function Search-MBArtist {
     <#
     .SYNOPSIS
     Search for artists in MusicBrainz database.
@@ -116,3 +116,4 @@ function Search-MBArtist {
         return @()
     }
 }
+

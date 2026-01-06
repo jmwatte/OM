@@ -1,4 +1,4 @@
-function Import-TrackMapping {
+﻿function Import-TrackMapping {
 <#
 .SYNOPSIS
     Import edited track mapping file and apply changes to audio files.

@@ -1,4 +1,4 @@
-# Test: rm command with tracks that have null AudioFile
+﻿# Test: rm command with tracks that have null AudioFile
 # Simulates marking tracks where some have no audio file match
 
 $ErrorActionPreference = 'Stop'
@@ -154,3 +154,4 @@ if (-not $testFailed) {
     Write-Host "❌ TEST FAILED" -ForegroundColor Red
     exit 1
 }
+

@@ -1,4 +1,4 @@
-function Search-DAlbumsByName {
+﻿function Search-DAlbumsByName {
     <#
     .SYNOPSIS
         Search Discogs for albums by artist and album name.
@@ -293,3 +293,4 @@ function Search-DAlbumsByName {
         return @()
     }
 }
+

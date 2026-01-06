@@ -1,4 +1,4 @@
-function Show-OMHeader {
+﻿function Show-OMHeader {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)]
@@ -51,3 +51,4 @@ function Show-OMHeader {
     Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
     Write-Host ""
 }
+

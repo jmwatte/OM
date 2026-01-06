@@ -2,6 +2,7 @@ function Show-Message {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
         [string]$Message,
 
         [Parameter(Mandatory = $false)]
@@ -23,6 +24,4 @@ function Show-Message {
     else {
         & $writer $Message $ForegroundColor
     }
-
-    return $null
 }

@@ -1,4 +1,4 @@
-function Invoke-StageB-AlbumSelection {
+﻿function Invoke-StageB-AlbumSelection {
     <#
     .SYNOPSIS
         Stage B: Album selection for Start-OM workflow.
@@ -1242,17 +1242,16 @@ function Invoke-StageB-AlbumSelection {
                         $genreUpdateFiles = $genreUpdateFiles | ForEach-Object { [PSCustomObject]@{ FullName = $_.FilePath } }
                         
                         if ($genreUpdateFiles.Count -eq 0) {
-                            Write-Warning "No audio files found. Skipping."
-                            return @{ }
-                                NextStage             = 'AlbumDone'
-                                SelectedAlbum         = $null
-                                UpdatedCache          = $CachedAlbums
-                                UpdatedCachedArtistId = $CachedArtistId
-                                UpdatedProvider       = $Provider
-                                CurrentPage           = $currentPage
+                                Write-Warning "No audio files found. Skipping."
+                                return @{ 
+                                    NextStage             = 'AlbumDone'
+                                    SelectedAlbum         = $null
+                                    UpdatedCache          = $CachedAlbums
+                                    UpdatedCachedArtistId = $CachedArtistId
+                                    UpdatedProvider       = $Provider
+                                    CurrentPage           = $currentPage
+                                }
                             }
-                        }
-                        
                         # Extract genres from selected album (use artist genres if album has none)
                         Write-Verbose "Extracting genres from $Provider album/artist..."
                         try {
@@ -1590,3 +1589,4 @@ function Invoke-StageB-AlbumSelection {
         }
     }
 }
+

@@ -1,4 +1,4 @@
-# Test Format-Genres adding "World" genre
+﻿# Test Format-Genres adding "World" genre
 cd 'c:\Users\resto\Documents\PowerShell\Modules\OM'
 Import-Module ./OM.psd1 -Force
 
@@ -70,3 +70,4 @@ Write-Host "`n5. Showing genres containing 'World':" -ForegroundColor Yellow
 $configAfter.Genres.AllowedGenreNames | Where-Object { $_ -like "*World*" } | ForEach-Object {
     Write-Host "   - $_" -ForegroundColor White
 }
+

@@ -1,4 +1,4 @@
-# Test Format-Genres [N]ew option with World genre
+﻿# Test Format-Genres [N]ew option with World genre
 cd 'c:\Users\resto\Documents\PowerShell\Modules\OM'
 Import-Module ./OM.psd1 -Force
 
@@ -42,3 +42,4 @@ Write-Host "   Then run this to verify:" -ForegroundColor Cyan
 Write-Host "   PS> (Get-OMConfig).Genres.AllowedGenreNames.Count" -ForegroundColor White
 Write-Host "   PS> (Get-OMConfig).Genres.AllowedGenreNames | Where-Object { `$_ -eq 'World' }" -ForegroundColor White
 Write-Host ""
+

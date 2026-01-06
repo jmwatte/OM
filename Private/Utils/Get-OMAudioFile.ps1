@@ -80,6 +80,13 @@ function Get-OMAudioFile {
         }
     }
 
-    if ($Trace) { Write-Host "[Get-OMAudioFile] Returning $($result.Count) files" }
+    if ($Trace) {
+        if (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) {
+            Show-Message -Message "[Get-OMAudioFile] Returning $($result.Count) files" -ForegroundColor Yellow
+        }
+        else {
+            Write-Verbose "[Get-OMAudioFile] Returning $($result.Count) files"
+        }
+    }
     return $result
 }

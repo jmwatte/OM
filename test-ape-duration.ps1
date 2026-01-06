@@ -1,4 +1,4 @@
-# Test APE file duration reading with TagLib
+﻿# Test APE file duration reading with TagLib
 # Usage: test-ape-duration.ps1 <path-to-ape-file>
 param(
     [Parameter(Mandatory=$false)]
@@ -91,3 +91,4 @@ catch {
     Write-Host $_.Exception.GetType().FullName -ForegroundColor Gray
     Write-Host $_.ScriptStackTrace -ForegroundColor Gray
 }
+

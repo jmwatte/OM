@@ -1,4 +1,4 @@
-function Get-BestSortMethod {
+﻿function Get-BestSortMethod {
     <#
     .SYNOPSIS
     Tests all sort methods and returns the one with highest average confidence
@@ -85,3 +85,4 @@ function Get-BestSortMethod {
     
     return $bestMethod.Method
 }
+

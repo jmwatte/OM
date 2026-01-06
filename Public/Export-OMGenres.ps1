@@ -1,4 +1,4 @@
-function Export-OMGenres {
+﻿function Export-OMGenres {
     <#
     .SYNOPSIS
         Export genre configuration (allowed genres, mappings, and garbage list) to a JSON file.
@@ -36,7 +36,10 @@ function Export-OMGenres {
         [string]$Path,
         
         [Parameter()]
-        [switch]$PassThru
+        [switch]$PassThru,
+
+        [Parameter()]
+        [object]$Context
     )
     
     try {
@@ -48,10 +51,19 @@ function Export-OMGenres {
             return
         }
         
+        # Ensure Show-Message helper available when dot-sourced in tests
+        if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+            $candidates = @()
+            if ($PSScriptRoot) { $candidates += Join-Path $PSScriptRoot '..\Private\Utils\Show-Message.ps1' }
+            if ($MyInvocation.MyCommand.Path) { $candidates += Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\Private\Utils\Show-Message.ps1' }
+            $candidates += Join-Path (Get-Location) 'Private\Utils\Show-Message.ps1'
+            foreach ($path in $candidates) { if (Test-Path $path) { . $path; break } }
+        }
+
         # Export Genres section to JSON
         $config.Genres | ConvertTo-Json -Depth 10 | Set-Content -Path $Path -Encoding UTF8
         
-        Write-Host "✓ Genres configuration exported to: $Path" -ForegroundColor Green
+        Show-Message -Message ("✓ Genres configuration exported to: $Path") -ForegroundColor Green -Context $Context
         Write-Verbose "Exported $($config.Genres.AllowedGenreNames.Count) allowed genres, $($config.Genres.GenreMappings.PSObject.Properties.Count) mappings"
         
         if ($PassThru) {
@@ -62,3 +74,4 @@ function Export-OMGenres {
         Write-Error "Failed to export genres configuration: $_"
     }
 }
+

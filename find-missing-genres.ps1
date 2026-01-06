@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Finds album folders with missing or incomplete genre tags.
 
@@ -279,3 +279,4 @@ if ($results.Count -le 50) {
     Write-Host ""
     $results | Format-Table Artist, Folder, TotalFiles, MissingGenres, Reason -AutoSize
 }
+

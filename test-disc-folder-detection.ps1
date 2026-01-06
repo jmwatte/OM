@@ -1,4 +1,4 @@
-# Test script for disc folder detection feature
+﻿# Test script for disc folder detection feature
 # Verifies that multi-disc albums are correctly identified as single albums
 
 #Requires -Modules OM
@@ -151,3 +151,4 @@ Write-Host "  • Album with only disc subfolders → Single album (multi-disc)"
 Write-Host "  • Album with flat audio files → Single album" -ForegroundColor Green
 Write-Host "  • Folder with non-disc subfolders → Artist folder (multiple albums)" -ForegroundColor Green
 Write-Host "  • Folder with mixed disc/non-disc → Artist folder (safety fallback)" -ForegroundColor Green
+

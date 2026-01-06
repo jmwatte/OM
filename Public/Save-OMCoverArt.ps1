@@ -1,4 +1,4 @@
-function Save-OMCoverArt {
+﻿function Save-OMCoverArt {
     <#
     .SYNOPSIS
         Fetches and saves cover art for album folders without artwork.
@@ -87,7 +87,7 @@ function Save-OMCoverArt {
                 Select-Object -First 1
 
             if ($existingCover -and -not $Force) {
-                Write-Host "⊘ Skipping (artwork exists): $Path" -ForegroundColor Gray
+                Write-Output "⊘ Skipping (artwork exists): $Path"
                 return
             }
 
@@ -109,15 +109,15 @@ function Save-OMCoverArt {
             # Strip year prefix from album name (e.g., "2020 - Album Name" -> "Album Name")
             $albumName = $albumFolderItem.Name -replace '^\d{4}\s*-\s*', ''
 
-            Write-Host "`n╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-            Write-Host "  Fetching artwork: $artistName - $albumName" -ForegroundColor Yellow
+            Write-Output "`n╔════════════════════════════════════════════════════════════════╗"
+            Write-Output "  Fetching artwork: $artistName - $albumName"
             if ($isDiscFolder) {
-                Write-Host "  (Disc subfolder detected: saving to $folderName)" -ForegroundColor Gray
+                Write-Output "  (Disc subfolder detected: saving to $folderName)"
             }
-            Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+            Write-Output "╚════════════════════════════════════════════════════════════════╝"
 
             # Search for album using the provider
-            Write-Host "Searching $Provider..." -ForegroundColor Cyan
+            Write-Output "Searching $Provider..."
             
             $searchResults = Invoke-ProviderSearchAlbums -Provider $Provider `
                 -ArtistName $artistName `
@@ -131,8 +131,8 @@ function Save-OMCoverArt {
             # Use the first (best) match
             $bestMatch = $searchResults[0]
             
-            Write-Host "Found: $($bestMatch.artist) - $($bestMatch.name)" -ForegroundColor Green
-            Write-Host "  Provider ID: $($bestMatch.id)" -ForegroundColor Gray
+            Write-Output "Found: $($bestMatch.artist) - $($bestMatch.name)"
+            Write-Output "  Provider ID: $($bestMatch.id)"
 
             # Check if cover URL exists
             if (-not $bestMatch.cover_url) {
@@ -145,7 +145,7 @@ function Save-OMCoverArt {
             $actualMaxSize = if ($MaxSize -gt 0) { $MaxSize } else { 2000 }  # Use 2000 for "original"
 
             # Download and save cover art
-            Write-Host "Downloading cover art..." -ForegroundColor Cyan
+            Write-Output "Downloading cover art..."
             
             $result = Save-CoverArt -CoverUrl $bestMatch.cover_url `
                 -AlbumPath $Path `
@@ -153,7 +153,7 @@ function Save-OMCoverArt {
                 -MaxSize $actualMaxSize
 
             if ($result.Success) {
-                Write-Host "✓ Cover art saved successfully" -ForegroundColor Green
+                Write-Output "✓ Cover art saved successfully"
             } else {
                 Write-Warning "Failed to save cover art: $($result.Error)"
             }
@@ -164,3 +164,4 @@ function Save-OMCoverArt {
         }
     }
 }
+

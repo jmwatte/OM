@@ -1,4 +1,4 @@
-# Test to reproduce "Count property cannot be found" error
+﻿# Test to reproduce "Count property cannot be found" error
 Set-StrictMode -Version Latest
 
 # Simulate the problematic scope scenario
@@ -51,3 +51,4 @@ catch {
 }
 
 Write-Host "`n✓ Test complete" -ForegroundColor Green
+

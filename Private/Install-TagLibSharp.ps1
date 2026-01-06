@@ -1,4 +1,4 @@
-function Install-TagLibSharp {
+﻿function Install-TagLibSharp {
 <#
 .SYNOPSIS
     Helper function to install TagLib-Sharp for MuFo track tagging functionality.

@@ -1,4 +1,4 @@
-# Test script for Auto Mode functionality
+﻿# Test script for Auto Mode functionality
 # This script tests the new Auto mode parameters and functions
 
 Write-Host "========================================" -ForegroundColor Cyan
@@ -98,3 +98,4 @@ Write-Host ""
 Write-Host "To test with real album folders, run:" -ForegroundColor Yellow
 Write-Host "  Start-OM -Path '<your-album-path>' -Auto -WhatIf -Verbose" -ForegroundColor White
 Write-Host ""
+

@@ -1,4 +1,4 @@
-# Test ParseFilename fix for {disc}-{track} pattern
+﻿# Test ParseFilename fix for {disc}-{track} pattern
 
 Write-Host "`n=== Testing ParseFilename Pattern Fix ===" -ForegroundColor Cyan
 
@@ -132,3 +132,4 @@ if ($failed -eq 0) {
 } else {
     Write-Host "`n❌ Some tests failed." -ForegroundColor Red
 }
+

@@ -1,4 +1,4 @@
-function Save-CoverArt {
+﻿function Save-CoverArt {
     <#
     .SYNOPSIS
         Downloads and processes cover art images for albums.

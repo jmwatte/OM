@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Helper script to find and download cover art for folders missing artwork.
 
@@ -93,3 +93,4 @@ Write-Host "    Processed:  $processed" -ForegroundColor Gray
 Write-Host "    Successful: $successful" -ForegroundColor Green
 Write-Host "    Failed:     $failed" -ForegroundColor $(if ($failed -gt 0) { 'Red' } else { 'Gray' })
 Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+

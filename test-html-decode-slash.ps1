@@ -1,4 +1,4 @@
-# Test HTML decoding and slash splitting
+﻿# Test HTML decoding and slash splitting
 cd 'c:\Users\resto\Documents\PowerShell\Modules\OM'
 Import-Module ./OM.psd1 -Force
 
@@ -72,3 +72,4 @@ if ($hasSoul -and $hasFunk -and $hasRnB -and $hasNoB -and $hasNoRampAmp) {
     Write-Host "     - No 'B': $hasNoB" -ForegroundColor $(if ($hasNoB) {'Green'} else {'Red'})
     Write-Host "     - No 'R&Amp': $hasNoRampAmp" -ForegroundColor $(if ($hasNoRampAmp) {'Green'} else {'Red'})
 }
+

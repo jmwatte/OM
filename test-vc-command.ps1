@@ -1,4 +1,4 @@
-# Test script for vc command in quick mode
+﻿# Test script for vc command in quick mode
 Import-Module OM -Force
 
 # Test quick mode album search with vc command

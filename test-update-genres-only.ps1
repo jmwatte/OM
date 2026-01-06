@@ -1,4 +1,4 @@
-# Test UpdateGenresOnly feature in Start-OM
+﻿# Test UpdateGenresOnly feature in Start-OM
 # This test verifies the new -UpdateGenresOnly parameter
 
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
@@ -59,3 +59,4 @@ Write-Host ""
 Write-Host "For batch processing across multiple albums, use -Auto:" -ForegroundColor Cyan
 Write-Host "  Start-OM -Path 'artist_folder' -UpdateGenresOnly -Auto -Provider Discogs" -ForegroundColor White
 Write-Host ""
+

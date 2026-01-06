@@ -1,4 +1,4 @@
-# Test that [A]ddTo list updates after [N]ew adds a genre
+﻿# Test that [A]ddTo list updates after [N]ew adds a genre
 cd 'c:\Users\resto\Documents\PowerShell\Modules\OM'
 Import-Module ./OM.psd1 -Force
 
@@ -36,3 +36,4 @@ Write-Host ""
 Write-Host "   Expected: 'Test Alpha' appears in the [A]ddTo list" -ForegroundColor Green
 Write-Host "   This proves the list updates dynamically!" -ForegroundColor Green
 Write-Host ""
+

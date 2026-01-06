@@ -1,4 +1,4 @@
-# Test intelligent variation matching with Goldberg Variations
+﻿# Test intelligent variation matching with Goldberg Variations
 # This simulates the byTrackNumber sort with smart variation matching
 
 $ErrorActionPreference = 'Stop'
@@ -131,3 +131,4 @@ if ($successfulMatches -ge 30) {
 } else {
     Write-Host "❌ FAILURE: Only $successfulMatches/32 tracks matched" -ForegroundColor Red
 }
+

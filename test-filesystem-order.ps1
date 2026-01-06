@@ -1,4 +1,4 @@
-# Test script to verify filesystem ordering behavior
+﻿# Test script to verify filesystem ordering behavior
 $testPath = "C:\Users\jmw\Documents\PowerShell\Modules\OM\testfiles\Ophelie Gaillard\2011 - Bach Cello Suites"
 
 Write-Host "`n=== Testing Get-ChildItem order ===" -ForegroundColor Cyan
@@ -34,3 +34,4 @@ if ($firstRaw -eq $firstSorted) {
     Write-Host "  Raw first file:    $firstRaw" -ForegroundColor Magenta
     Write-Host "  Sorted first file: $firstSorted" -ForegroundColor Magenta
 }
+

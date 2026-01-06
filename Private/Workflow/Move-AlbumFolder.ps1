@@ -1,4 +1,4 @@
-function Move-AlbumFolder {
+﻿function Move-AlbumFolder {
     [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$AlbumPath,

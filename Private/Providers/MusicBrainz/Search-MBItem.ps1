@@ -1,4 +1,4 @@
-function Search-MBItem {
+﻿function Search-MBItem {
     <#
     .SYNOPSIS
     Search for artists or albums in MusicBrainz database.

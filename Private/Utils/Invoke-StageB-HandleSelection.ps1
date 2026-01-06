@@ -116,7 +116,7 @@ if ($g) { . $g }
         # Clean up tag files if any were created by Save-CoverArt (contract: Save-CoverArt may leave TagFile on each audioFile)
         foreach ($af in $audioFiles) {
             if ($af.TagFile) {
-                try { $af.TagFile.Dispose() } catch { }
+                try { $af.TagFile.Dispose() } catch { Write-Verbose "Dispose failed: $($_.Exception.Message)" }
             }
         }
 

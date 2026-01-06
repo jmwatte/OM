@@ -1,4 +1,4 @@
-# Test: Diagnose FLAC comment/description fields
+﻿# Test: Diagnose FLAC comment/description fields
 # Check if file has multiple comment fields
 
 $ErrorActionPreference = 'Stop'
@@ -100,3 +100,4 @@ if ($tag -is [TagLib.Flac.File]) {
 $tag.Dispose()
 
 Write-Host "`n✓ Diagnostic complete (file not modified)" -ForegroundColor Green
+

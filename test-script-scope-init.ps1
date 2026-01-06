@@ -1,4 +1,4 @@
-# Test: Verify script scope variables are initialized before scriptblock access
+﻿# Test: Verify script scope variables are initialized before scriptblock access
 # This tests the fix for "cannot be retrieved because it has not been set" error
 
 $ErrorActionPreference = 'Stop'
@@ -116,3 +116,4 @@ if ($testPassed) {
     Write-Host "❌ TEST FAILED" -ForegroundColor Red
     exit 1
 }
+

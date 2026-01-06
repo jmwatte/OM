@@ -7,8 +7,19 @@ function Search-QItem {
 
         [Parameter(Mandatory = $true)]
         [ValidateSet('artist', 'album')]
-        [string]$Type
+        [string]$Type,
+
+        [Parameter(Mandatory=$false)][scriptblock]$DisplayWriter
     )
+
+    # Decide writer: prefer explicit DisplayWriter, then Show-Message if available, else fallback to Write-Verbose
+    $display = if ($DisplayWriter) {
+        $DisplayWriter
+    } elseif (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) {
+        { param($msg,$color) Show-Message -Message $msg -ForegroundColor $color }
+    } else {
+        { param($msg,$color) Write-Verbose $msg }
+    }
 
     if ($Type -ne 'artist' -and $Type -ne 'album') {
         throw "Only 'artist' and 'album' types are supported for Qobuz search."
@@ -100,7 +111,7 @@ function Search-QItem {
             if ([Console]::KeyAvailable) {
                 $key = [Console]::ReadKey($true)
                 if ($key.Key -eq 'Q' -or $key.Key -eq 'Escape') {
-                    Write-Host "Processing interrupted by user. Returning $($items.Count) artists processed so far." -ForegroundColor Yellow
+                    & $display "Processing interrupted by user. Returning $($items.Count) artists processed so far." "Yellow"
                     $interrupted = $true
                     break cardLoop
                 }
@@ -133,7 +144,7 @@ function Search-QItem {
             $genres = @()
             $cacheKey = $fullUrl
             $processed++
-            Write-Host "Processing artist ${processed}/${totalCards}: $title - getting genres (Press Q to stop)" -ForegroundColor DarkGray
+            & $display "Processing artist ${processed}/${totalCards}: $title - getting genres (Press Q to stop)" "DarkGray"
             
             # Only call ContainsKey if the cache exists and is a hashtable
             if ($cacheKey -and ($script:QobuzArtistGenresCache -is [hashtable]) -and $script:QobuzArtistGenresCache.ContainsKey($cacheKey)) {
@@ -160,7 +171,7 @@ function Search-QItem {
                     if ([Console]::KeyAvailable) {
                         $key = [Console]::ReadKey($true)
                         if ($key.Key -eq 'Q' -or $key.Key -eq 'Escape') {
-                            Write-Host "Processing interrupted by user. Returning $($items.Count) artists processed so far." -ForegroundColor Yellow
+                            & $display "Processing interrupted by user. Returning $($items.Count) artists processed so far." "Yellow"
                             $interrupted = $true
                             break cardLoop
                         }

@@ -1,4 +1,4 @@
-function Approve-PathSegment {
+﻿function Approve-PathSegment {
     <#
     .SYNOPSIS
         Make a safe file/folder name from an arbitrary string.

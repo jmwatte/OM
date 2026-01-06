@@ -1,4 +1,4 @@
-function Move-OMTags {
+﻿function Move-OMTags {
 <#
 .SYNOPSIS
     Moves album folders and renames files based on audio tags.
@@ -70,7 +70,10 @@ function Move-OMTags {
         [string]$FileRenamePattern = "{Disc}.{Track} - {Title}",
 
         [Parameter(Mandatory = $false)]
-        [switch]$PassThru
+        [switch]$PassThru,
+
+        [Parameter()]
+        [object]$Context
     )
 
     begin {
@@ -79,6 +82,15 @@ function Move-OMTags {
         if (-not $tagLibLoaded) {
             Write-Error "TagLib-Sharp is required. Run Get-OMTags first to load it."
             return
+        }
+
+        # Ensure Show-Message helper available when dot-sourced in tests
+        if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+            $candidates = @()
+            if ($PSScriptRoot) { $candidates += Join-Path $PSScriptRoot '..\Private\Utils\Show-Message.ps1' }
+            if ($MyInvocation.MyCommand.Path) { $candidates += Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\Private\Utils\Show-Message.ps1' }
+            $candidates += Join-Path (Get-Location) 'Private\Utils\Show-Message.ps1'
+            foreach ($path in $candidates) { if (Test-Path $path) { . $path; break } }
         }
 
         # Import Expand-RenamePattern from Set-OMTags if not available
@@ -201,7 +213,7 @@ function Move-OMTags {
                 if ($sourceContents.Count -eq 1 -and $sourceContents[0].Name -like "*$albumName*") {
                     $actualSourcePath = $sourceContents[0].FullName
                     Write-Verbose "Detected single album subfolder: $($sourceContents[0].Name)"
-                }
+                                }
                 
                 # Use a temporary folder to avoid conflicts
                 $tempGuid = [System.Guid]::NewGuid().ToString()
@@ -255,7 +267,7 @@ function Move-OMTags {
                 }
                 
                 $folderMoved = $true
-                Write-Host "Moved folder to: $targetPath" -ForegroundColor Green
+                Show-Message -Message ("Moved folder to: $targetPath") -ForegroundColor Green -Context $Context
             }
 
             # Rename files
@@ -306,7 +318,7 @@ function Move-OMTags {
             }
 
             if ($renamedFiles.Count -gt 0) {
-                Write-Host "Renamed $($renamedFiles.Count) files" -ForegroundColor Green
+                Show-Message -Message ("Renamed $($renamedFiles.Count) files") -ForegroundColor Green -Context $Context
             }
 
             # Prepare result for output

@@ -1,4 +1,4 @@
-# Test genre display in Show-Tracks with ProviderAlbum parameter
+﻿# Test genre display in Show-Tracks with ProviderAlbum parameter
 # This test verifies that genres are properly displayed for all providers
 
 Import-Module "$PSScriptRoot\OM.psd1" -Force
@@ -159,3 +159,4 @@ if ($failed -eq 0) {
 else {
     Write-Host "`n❌ Some tests failed. Please review the genre display logic." -ForegroundColor Red
 }
+

@@ -1,4 +1,4 @@
-# Test: Verify FLAC Comment field is properly cleared
+﻿# Test: Verify FLAC Comment field is properly cleared
 # Tests that setting Comment='' removes both COMMENT and DESCRIPTION Vorbis tags
 
 $ErrorActionPreference = 'Stop'
@@ -90,3 +90,4 @@ if ($commentAfter.Count -eq 0 -and $descAfter.Count -eq 0 -and [string]::IsNullO
     Write-Host "  Get-OMTags Comment: [$($tags.Comment)]"
     exit 1
 }
+

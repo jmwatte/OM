@@ -1,4 +1,4 @@
-function Get-OMTags {
+﻿function Get-OMTags {
 <#
 .SYNOPSIS
     Reads audio file tags using TagLib-Sharp with enhanced classical music support.
@@ -59,7 +59,9 @@ function Get-OMTags {
         
         [switch]$Details,
         
-        [switch]$AllTags
+        [switch]$AllTags,
+
+        [Parameter(Mandatory = $false)][object]$Context
     )
 
     begin {
@@ -114,30 +116,29 @@ function Get-OMTags {
             
             if (-not $tagLibPath) {
                 # TagLib-Sharp not found - offer to install
-                Write-Host "TagLib-Sharp is required for track tag reading but is not installed." -ForegroundColor Yellow
-                Write-Host ""                
-                
+                Write-Output "TagLib-Sharp is required for track tag reading but is not installed."
+                Write-Output ""
+
                 # Only prompt if running interactively
                 if ([Environment]::UserInteractive -and -not $env:CI) {
-                    Write-Host "Would you like to install TagLib-Sharp now? [Y/n]: " -NoNewline -ForegroundColor Cyan
-                    $response = Read-Host
+                    $response = Read-Host "Would you like to install TagLib-Sharp now? [Y/n]"
                     if ($response -eq '' -or $response -match '^[Yy]') {
                         # Use the helper function if available
                         if (Get-Command Install-TagLibSharp -ErrorAction SilentlyContinue) {
                             Install-TagLibSharp
                         } else {
-                            Write-Host "To install TagLib-Sharp:" -ForegroundColor Yellow
-                            Write-Host "  Install-Package TagLibSharp -Force" -ForegroundColor White
-                            Write-Host "  -or-" -ForegroundColor Yellow
-                            Write-Host "  Download from: https://www.nuget.org/packages/TagLibSharp/" -ForegroundColor White
+                            Write-Output "To install TagLib-Sharp:"
+                            Write-Output "  Install-Package TagLibSharp -Force"
+                            Write-Output "  -or-"
+                            Write-Output "  Download from: https://www.nuget.org/packages/TagLibSharp/"
                         }
                     }
                 } else {
-                    Write-Host "To install TagLib-Sharp:" -ForegroundColor Yellow
-                    Write-Host "  Install-Package TagLibSharp" -ForegroundColor White
-                    Write-Host "  -or- Use: Install-TagLibSharp (helper function)" -ForegroundColor White
+                    Write-Output "To install TagLib-Sharp:"
+                    Write-Output "  Install-Package TagLibSharp"
+                    Write-Output "  -or- Use: Install-TagLibSharp (helper function)"
                 }
-                
+
                 return @()
             }
             
@@ -146,8 +147,17 @@ function Get-OMTags {
                 Write-Verbose "Loaded TagLib-Sharp from $tagLibPath"
             } catch {
                 Write-Warning "Failed to load TagLib-Sharp from $tagLibPath`: $($_.Exception.Message)"
-                Write-Host "Please try reinstalling TagLib-Sharp:" -ForegroundColor Yellow
-                Write-Host "  Install-Package TagLibSharp -Force" -ForegroundColor White
+                # Use Show-Message for interactive guidance
+                if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+                    $candidates = @()
+                    if ($PSScriptRoot) { $candidates += Join-Path $PSScriptRoot '..\Utils\Show-Message.ps1' }
+                    if ($MyInvocation.MyCommand.Path) { $candidates += Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\Utils\Show-Message.ps1' }
+                    $candidates += Join-Path (Get-Location) 'Private\Utils\Show-Message.ps1'
+                    foreach ($p in $candidates) { if (Test-Path $p) { . $p; break } }
+                }
+
+                Show-Message -Message "Please try reinstalling TagLib-Sharp:" -ForegroundColor Yellow -Context $Context
+                Show-Message -Message "  Install-Package TagLibSharp -Force" -ForegroundColor White -Context $Context
                 return @()
             }
         }
@@ -519,7 +529,7 @@ function Get-OMTags {
         Write-Verbose "Tag reading complete: $successCount successful, $errorCount errors in $([math]::Round($duration.TotalSeconds, 1))s"
         
         if ($errorCount -gt 0 -and $errorCount -lt $files.Count) {
-            Write-Host "Tag reading: $successCount/$($files.Count) files processed successfully" -ForegroundColor Yellow
+            Show-Message -Message ("Tag reading: $successCount/$($files.Count) files processed successfully") -ForegroundColor Yellow -Context $Context
         } elseif ($successCount -gt 0) {
             Write-Verbose "All $successCount files processed successfully"
         }

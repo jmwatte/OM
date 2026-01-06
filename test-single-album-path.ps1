@@ -1,4 +1,4 @@
-# Test script for single album path detection feature
+﻿# Test script for single album path detection feature
 # Tests the ability to point directly to Artist/Album6 instead of Artist folder
 
 #Requires -Modules OM
@@ -77,3 +77,4 @@ Write-Host "  ✓ Artist folder detection (has album subfolders)" -ForegroundCol
 Write-Host "  ✓ Original multi-album iteration behavior preserved" -ForegroundColor Green
 Write-Host "`nNote: Use -WhatIf removed to test actual processing and user prompts" -ForegroundColor Gray
 Write-Host "      The verbose output should show 'Single album mode' or 'Artist folder mode'" -ForegroundColor Gray
+

@@ -1,4 +1,4 @@
-# Test: Script scope variable access in scriptblock with StrictMode
+﻿# Test: Script scope variable access in scriptblock with StrictMode
 # Demonstrates the pairedTracks scope issue
 
 $ErrorActionPreference = 'Stop'
@@ -71,3 +71,4 @@ if (-not $results.Test1Passed -and $results.Test2Passed) {
     Write-Host "`n❌ Unexpected test result" -ForegroundColor Red
     exit 1
 }
+

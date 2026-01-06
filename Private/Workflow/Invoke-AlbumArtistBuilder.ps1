@@ -1,4 +1,4 @@
-function Invoke-AlbumArtistBuilder {
+﻿function Invoke-AlbumArtistBuilder {
     <#
     .SYNOPSIS
         Interactive album artist builder for classical music and complex releases.
@@ -147,15 +147,12 @@ function Invoke-AlbumArtistBuilder {
         }
         
         if ($VerbosePreference -ne 'Continue') { Clear-Host }
-        if (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) { Show-Message -Message "`n========================================" -ForegroundColor Cyan } else { Write-Verbose "`n========================================" }
-        Write-Host "=== ALBUM ARTIST BUILDER ===" -ForegroundColor Cyan
-        Write-Host "========================================`n" -ForegroundColor Cyan
+        Show-Message -Message "`n========================================`n=== ALBUM ARTIST BUILDER ===`n========================================`n" -ForegroundColor Cyan -Context $Context
         
-        Write-Host "Album: " -NoNewline -ForegroundColor Yellow
-        Write-Host $AlbumName -ForegroundColor Cyan
-        Write-Host ""
+        Show-Message -Message ("Album: $AlbumName") -ForegroundColor Cyan -Context $Context
+        Show-Message -Message "" -Context $Context
         
-        Write-Host "Available artists:" -ForegroundColor Yellow
+        Show-Message -Message "Available artists:" -ForegroundColor Yellow -Context $Context
         for ($i = 0; $i -lt $artistOrder.Count; $i++) {
             $name = $artistOrder[$i]
             $info = $allArtists[$name]
@@ -170,25 +167,17 @@ function Invoke-AlbumArtistBuilder {
             elseif ($info.IsConductor) { $label += " (conductor)" }
             elseif ($info.IsEnsemble) { $label += " (ensemble)" }
             
-            Write-Host "  $label" -ForegroundColor $color
+            Show-Message -Message "  $label" -ForegroundColor $color -Context $Context
         }
         
         Write-Host ""
-        Write-Host "Current album artist: " -NoNewline -ForegroundColor Yellow
         if ($selectedArtists.Count -gt 0) {
-            Write-Host ($selectedArtists -join '; ') -ForegroundColor Green
+            Show-Message -Message ("Current album artist: $($selectedArtists -join '; ')") -ForegroundColor Green -Context $Context
         } else {
-            Write-Host "(none selected)" -ForegroundColor Red
+            Show-Message -Message "Current album artist: (none selected)" -ForegroundColor Red -Context $Context
         }
         
-        Write-Host "`nCommands:" -ForegroundColor Yellow
-        Write-Host "  [1-$($artistOrder.Count)]  Toggle artist selection" -ForegroundColor Gray
-        Write-Host "  [a]         Select all" -ForegroundColor Gray
-        Write-Host "  [c]         Clear selection" -ForegroundColor Gray
-        Write-Host "  [o]         Change order" -ForegroundColor Gray
-        Write-Host "  [r]         Reset to original ($CurrentAlbumArtist)" -ForegroundColor Gray
-        Write-Host "  [s]         Skip/keep original" -ForegroundColor Gray
-        Write-Host "  [Enter]     Accept current selection" -ForegroundColor Green
+        Show-Message -Message "`nCommands:\n  [1-$($artistOrder.Count)]  Toggle artist selection\n  [a]         Select all\n  [c]         Clear selection\n  [o]         Change order\n  [r]         Reset to original ($CurrentAlbumArtist)\n  [s]         Skip/keep original\n  [Enter]     Accept current selection" -ForegroundColor Yellow -Context $Context
         
         Write-Host ""
         $userInput = Show-OMPrompt -Prompt 'Select option' -Context $Context
@@ -197,7 +186,7 @@ function Invoke-AlbumArtistBuilder {
         if ([string]::IsNullOrEmpty($userInput)) {
             # Accept current selection
             if ($selectedArtists.Count -eq 0) {
-                Write-Host "No artists selected. Using original: $CurrentAlbumArtist" -ForegroundColor Yellow
+                Show-Message -Message "No artists selected. Using original: $CurrentAlbumArtist" -ForegroundColor Yellow -Context $Context
                 return $CurrentAlbumArtist
             }
             $done = $true
@@ -297,3 +286,4 @@ function Invoke-AlbumArtistBuilder {
     
     return $result
 }
+

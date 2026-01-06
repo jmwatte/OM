@@ -1,4 +1,4 @@
-function Invoke-StageB-ReviewMarkedTracks {
+﻿function Invoke-StageB-ReviewMarkedTracks {
     [CmdletBinding()]
     param(
         [array]$PairedTracks,

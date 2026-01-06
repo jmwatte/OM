@@ -1,4 +1,4 @@
-function Get-MBArtistLatinName {
+﻿function Get-MBArtistLatinName {
     <#
     .SYNOPSIS
     Get the Latin/romanized name for a MusicBrainz artist.
@@ -91,3 +91,4 @@ function Get-MBArtistLatinName {
         return $OriginalName
     }
 }
+

@@ -1,4 +1,4 @@
-# Test script to verify display refresh after 'sa' command
+﻿# Test script to verify display refresh after 'sa' command
 # This simulates the exact workflow: Start-OM → select album → sa → verify display updates
 
 $ErrorActionPreference = 'Stop'
@@ -144,3 +144,4 @@ if ($allCorrect) {
     Write-Host "   The scope bug still exists" -ForegroundColor Red
     exit 1
 }
+

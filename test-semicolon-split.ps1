@@ -1,4 +1,4 @@
-# Test semicolon splitting in genres
+﻿# Test semicolon splitting in genres
 cd 'c:\Users\resto\Documents\PowerShell\Modules\OM'
 Import-Module ./OM.psd1 -Force
 
@@ -44,3 +44,4 @@ if ($result.Genres.Count -eq 3) {
 } else {
     Write-Host "   ✗ FAILED: Got $($result.Genres.Count) genres (expected 3)" -ForegroundColor Red
 }
+

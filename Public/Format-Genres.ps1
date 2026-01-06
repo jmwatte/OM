@@ -1,4 +1,4 @@
-function Format-Genres {
+﻿function Format-Genres {
     <#
     .SYNOPSIS
         Validates and standardizes audio file genre tags against a whitelist with intelligent mapping.
@@ -175,7 +175,9 @@ function Format-Genres {
         [switch]$Details,
 
         [Parameter(Mandatory = $false)]
-        [switch]$Force
+        [switch]$Force,
+
+        [Parameter(Mandatory = $false)][object]$Context
     )
 
     begin {
@@ -384,12 +386,21 @@ function Format-Genres {
             Show-GenreFrequencySummary -Analysis $genreAnalysis
         }
 
+        # Ensure Show-Message helper available when dot-sourced in tests
+        if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+            $candidates = @()
+            if ($PSScriptRoot) { $candidates += Join-Path $PSScriptRoot '..\Utils\Show-Message.ps1' }
+            if ($MyInvocation.MyCommand.Path) { $candidates += Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\Utils\Show-Message.ps1' }
+            $candidates += Join-Path (Get-Location) 'Private\Utils\Show-Message.ps1'
+            foreach ($p in $candidates) { if (Test-Path $p) { . $p; break } }
+        }
+
         # Handle unmapped genres based on mode
         if ($genreAnalysis.unmapped.Count -gt 0) {
             if ($Mode -eq 'Review' -or $NonInteractive) {
-                Write-Host "`nUnmapped genres (will be left unchanged):" -ForegroundColor Yellow
+                Show-Message -Message "`nUnmapped genres (will be left unchanged):" -ForegroundColor Yellow -Context $Context
                 foreach ($unmapped in $genreAnalysis.unmapped) {
-                    Write-Host "  - '$($unmapped.original)' ($($unmapped.count) files)" -ForegroundColor Gray
+                    Show-Message -Message ("  - '$($unmapped.original)' ($($unmapped.count) files)") -ForegroundColor Gray -Context $Context
                 }
             }
             elseif ($Mode -eq 'Interactive' -or $Mode -eq 'Batch') {
@@ -432,9 +443,9 @@ function Show-GenreFrequencySummary {
         [hashtable]$Analysis
     )
 
-    Write-Host "`n╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-    Write-Host "║                    GENRE ANALYSIS SUMMARY                      ║" -ForegroundColor Cyan
-    Write-Host "╠════════════════════════════════════════════════════════════════╣" -ForegroundColor Cyan
+    Write-Output "`n╔════════════════════════════════════════════════════════════════╗"
+    Write-Output "║                    GENRE ANALYSIS SUMMARY                      ║"
+    Write-Output "╠════════════════════════════════════════════════════════════════╣"
 
     $rows = @()
 
@@ -479,9 +490,9 @@ function Show-GenreFrequencySummary {
         @{ Label = "Genre"; Expression = { $_.Genre }; Width = 25 }
         @{ Label = "Files"; Expression = { $_.Count }; Width = 8 }
         @{ Label = "Action"; Expression = { $_.Action }; Width = 25 }
-    ) | Out-String | Write-Host
+    ) | Out-String | Write-Output
 
-    Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+    Write-Output "╚════════════════════════════════════════════════════════════════╝"
 }
 
 # Helper function to process unmapped genres
@@ -511,18 +522,18 @@ function Process-UnmappedGenres {
 
         while (-not $decision) {
             # Always display the genre being processed (helps when going back)
-            Write-Host "`n╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-            Write-Host "  Found '$originalGenre' in $count file(s)" -ForegroundColor Yellow
-            Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+            Write-Output "`n╔════════════════════════════════════════════════════════════════╗"
+            Write-Output "  Found '$originalGenre' in $count file(s)"
+            Write-Output "╚════════════════════════════════════════════════════════════════╝"
             
-            Write-Host "`nOptions:" -ForegroundColor Cyan
-            Write-Host "  [N]ew      - Add as new standard genre" -ForegroundColor Gray
-            Write-Host "  [A]ddTo    - Map to existing standard genre" -ForegroundColor Gray
-            Write-Host "  [C]hange   - Replace with different genre" -ForegroundColor Gray
-            Write-Host "  [D]elete   - Mark as garbage, remove from tags" -ForegroundColor Gray
-            Write-Host "  [R]eview   - Review and modify recent decisions" -ForegroundColor Gray
-            Write-Host "  [S]kip     - Skip for now (don't decide)" -ForegroundColor Gray
-            Write-Host "  [Show]     - Show sample files with this genre" -ForegroundColor Gray
+            Write-Output "`nOptions:"
+            Write-Output "  [N]ew      - Add as new standard genre"
+            Write-Output "  [A]ddTo    - Map to existing standard genre"
+            Write-Output "  [C]hange   - Replace with different genre"
+            Write-Output "  [D]elete   - Mark as garbage, remove from tags"
+            Write-Output "  [R]eview   - Review and modify recent decisions"
+            Write-Output "  [S]kip     - Skip for now (don't decide)"
+            Write-Output "  [Show]     - Show sample files with this genre"
 
             if (-not $Force) {
                 $choice = Read-Host "Choose option (N/A/C/D/R/S/Show)"
@@ -543,7 +554,7 @@ function Process-UnmappedGenres {
                     
                     # Check if user wants to go back
                     if ($editedGenre -eq 'B' -or $editedGenre -eq 'b') {
-                        Write-Host "Going back to main menu..." -ForegroundColor Gray
+                        Show-Message -Message "Going back to main menu..." -ForegroundColor Gray -Context $Context
                         # Don't set $decision, continue the loop to re-display
                         continue
                     }
@@ -572,8 +583,8 @@ function Process-UnmappedGenres {
                             $omConfig.Genres.AllowedGenreNames += $newGenre
                         }
                         
-                        Write-Host "✓ Mapping: '$originalGenre' → '$newGenre'" -ForegroundColor Green
-                        Write-Host "  (Now available in standard genres list)" -ForegroundColor Gray
+                        Show-Message -Message ("✓ Mapping: '$originalGenre' → '$newGenre'") -ForegroundColor Green -Context $Context
+                        Show-Message -Message "  (Now available in standard genres list)" -ForegroundColor Gray -Context $Context
                         
                         # Also map any case variants in the unmapped list to this new standard genre
                         $newGenreLower = $newGenre.ToLower()
@@ -581,12 +592,12 @@ function Process-UnmappedGenres {
                             $unmappedLower = $unmappedItem.original.ToLower()
                             if ($unmappedLower -eq $newGenreLower -and $unmappedItem.original -ne $originalGenre) {
                                 $script:genreDecisions[$unmappedLower] = $newGenre
-                                Write-Host "  ✓ Also mapping case variant: '$($unmappedItem.original)' → '$newGenre'" -ForegroundColor Gray
+                                Show-Message -Message ("  ✓ Also mapping case variant: '$($unmappedItem.original)' → '$newGenre'") -ForegroundColor Gray -Context $Context
                             }
                         }
                     }
                     else {
-                        Write-Host "⚠ '$newGenre' already exists in standard genres." -ForegroundColor Yellow
+                        Show-Message -Message ("⚠ '$newGenre' already exists in standard genres.") -ForegroundColor Yellow -Context $Context
                     }
                     $decision = $true
                 }
@@ -596,35 +607,35 @@ function Process-UnmappedGenres {
                     # Rebuild list from normalized hashtable to include any newly added genres
                     $currentAllowedGenres = @($AllowedGenresNormalized.Values | Sort-Object)
                     
-                    Write-Host "`nStandard genres:" -ForegroundColor Cyan
+                    Show-Message -Message "`nStandard genres:" -ForegroundColor Cyan -Context $Context
                     for ($i = 0; $i -lt $currentAllowedGenres.Count; $i++) {
-                        Write-Host "$($i + 1). $($currentAllowedGenres[$i])" -ForegroundColor Gray
+                        Show-Message -Message "$($i + 1). $($currentAllowedGenres[$i])" -ForegroundColor Gray -Context $Context
                     }
 
                     $selection = Read-Host "Map to genre (1-$($currentAllowedGenres.Count), or 'B' to go back)"
                     
                     # Check if user wants to go back
                     if ($selection -eq 'B' -or $selection -eq 'b') {
-                        Write-Host "Going back to main menu..." -ForegroundColor Gray
+                        Show-Message -Message "Going back to main menu..." -ForegroundColor Gray -Context $Context
                         # Don't set $decision, so the while loop continues
                     }
                     elseif ($selection -match '^\d+$' -and [int]$selection -ge 1 -and [int]$selection -le $currentAllowedGenres.Count) {
                         $mappedGenre = $currentAllowedGenres[[int]$selection - 1]
                         $script:genreDecisions[$originalGenre.ToLower()] = $mappedGenre
-                        Write-Host "✓ Mapping: '$originalGenre' → '$mappedGenre'" -ForegroundColor Green
+                        Show-Message -Message ("✓ Mapping: '$originalGenre' → '$mappedGenre'") -ForegroundColor Green -Context $Context
                         $decision = $true
                     }
                     else {
-                        Write-Host "Invalid selection." -ForegroundColor Red
+                        Show-Message -Message "Invalid selection." -ForegroundColor Red -Context $Context
                     }
                 }
 
                 'C' {
                     # Change - replace with a different genre (existing or new)
-                    Write-Host "`nReplace '$originalGenre' with:" -ForegroundColor Cyan
-                    Write-Host "  [E]xisting - Choose from standard genres" -ForegroundColor Gray
-                    Write-Host "  [N]ew      - Enter a new genre name" -ForegroundColor Gray
-                    Write-Host "  [B]ack     - Go back to main menu" -ForegroundColor Gray
+                    Show-Message -Message ("`nReplace '$originalGenre' with:") -ForegroundColor Cyan -Context $Context
+                    Show-Message -Message "  [E]xisting - Choose from standard genres" -ForegroundColor Gray -Context $Context
+                    Show-Message -Message "  [N]ew      - Enter a new genre name" -ForegroundColor Gray -Context $Context
+                    Show-Message -Message "  [B]ack     - Go back to main menu" -ForegroundColor Gray -Context $Context
                     
                     $changeChoice = Read-Host "Choose option (E/N/B)"
                     $changeChoice = $changeChoice.ToUpper().Substring(0, 1)
@@ -634,24 +645,24 @@ function Process-UnmappedGenres {
                             # Choose from existing genres
                             $currentAllowedGenres = @($AllowedGenresNormalized.Values | Sort-Object)
                             
-                            Write-Host "`nStandard genres:" -ForegroundColor Cyan
+                            Show-Message -Message "`nStandard genres:" -ForegroundColor Cyan -Context $Context
                             for ($i = 0; $i -lt $currentAllowedGenres.Count; $i++) {
-                                Write-Host "$($i + 1). $($currentAllowedGenres[$i])" -ForegroundColor Gray
+                                Show-Message -Message "$($i + 1). $($currentAllowedGenres[$i])" -ForegroundColor Gray -Context $Context
                             }
 
                             $selection = Read-Host "Replace with genre (1-$($currentAllowedGenres.Count), or 'B' to go back)"
                             
                             if ($selection -eq 'B' -or $selection -eq 'b') {
-                                Write-Host "Going back..." -ForegroundColor Gray
+                                Show-Message -Message "Going back..." -ForegroundColor Gray -Context $Context
                             }
                             elseif ($selection -match '^\d+$' -and [int]$selection -ge 1 -and [int]$selection -le $currentAllowedGenres.Count) {
                                 $replacementGenre = $currentAllowedGenres[[int]$selection - 1]
                                 $script:genreDecisions[$originalGenre.ToLower()] = $replacementGenre
-                                Write-Host "✓ Replacing: '$originalGenre' → '$replacementGenre'" -ForegroundColor Green
+                                Show-Message -Message ("✓ Replacing: '$originalGenre' → '$replacementGenre'") -ForegroundColor Green -Context $Context
                                 $decision = $true
                             }
                             else {
-                                Write-Host "Invalid selection." -ForegroundColor Red
+                                Show-Message -Message "Invalid selection." -ForegroundColor Red -Context $Context
                             }
                         }
                         'N' {
@@ -659,7 +670,7 @@ function Process-UnmappedGenres {
                             $newGenreName = Read-Host "Enter new genre name (or 'B' to go back)"
                             
                             if ($newGenreName -eq 'B' -or $newGenreName -eq 'b') {
-                                Write-Host "Going back..." -ForegroundColor Gray
+                                Show-Message -Message "Going back..." -ForegroundColor Gray -Context $Context
                             }
                             elseif (-not [string]::IsNullOrWhiteSpace($newGenreName)) {
                                 # Standardize capitalization to Title Case
@@ -674,22 +685,22 @@ function Process-UnmappedGenres {
                                     if ($omConfig.Genres.AllowedGenreNames -notcontains $newGenreName) {
                                         $omConfig.Genres.AllowedGenreNames += $newGenreName
                                     }
-                                    Write-Host "  (Added '$newGenreName' to standard genres)" -ForegroundColor Gray
+                                    Show-Message -Message ("  (Added '$newGenreName' to standard genres)") -ForegroundColor Gray -Context $Context
                                 }
                                 
                                 $script:genreDecisions[$originalGenre.ToLower()] = $newGenreName
-                                Write-Host "✓ Replacing: '$originalGenre' → '$newGenreName'" -ForegroundColor Green
+                                Show-Message -Message ("✓ Replacing: '$originalGenre' → '$newGenreName'") -ForegroundColor Green -Context $Context
                                 $decision = $true
                             }
                             else {
-                                Write-Host "Invalid genre name." -ForegroundColor Red
+                                Show-Message -Message "Invalid genre name." -ForegroundColor Red -Context $Context
                             }
                         }
                         'B' {
-                            Write-Host "Going back to main menu..." -ForegroundColor Gray
+                            Show-Message -Message "Going back to main menu..." -ForegroundColor Gray -Context $Context
                         }
                         default {
-                            Write-Host "Invalid choice." -ForegroundColor Red
+                            Show-Message -Message "Invalid choice." -ForegroundColor Red -Context $Context
                         }
                     }
                 }
@@ -699,7 +710,7 @@ function Process-UnmappedGenres {
                     $confirm = Read-Host "Delete '$originalGenre' from all $count file(s)? (y/N)"
                     if ($confirm -eq 'y' -or $confirm -eq 'Y') {
                         $script:genreDecisions[$originalGenre.ToLower()] = $null
-                        Write-Host "✓ Marked '$originalGenre' for deletion" -ForegroundColor Green
+                        Show-Message -Message ("✓ Marked '$originalGenre' for deletion") -ForegroundColor Green -Context $Context
                         $decision = $true
                     }
                 }
@@ -707,12 +718,12 @@ function Process-UnmappedGenres {
                 'R' {
                     # Review recent decisions
                     if ($script:genreDecisions.Count -eq 0) {
-                        Write-Host "No decisions made yet." -ForegroundColor Yellow
+                        Show-Message -Message "No decisions made yet." -ForegroundColor Yellow -Context $Context
                     }
                     else {
-                        Write-Host "`n╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-                        Write-Host "  Recent Decisions (this session):" -ForegroundColor Yellow
-                        Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+                        Show-Message -Message "`n╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan -Context $Context
+                        Show-Message -Message "  Recent Decisions (this session):" -ForegroundColor Yellow -Context $Context
+                        Show-Message -Message "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan -Context $Context
                         
                         $decisionList = @()
                         $index = 1
@@ -724,49 +735,49 @@ function Process-UnmappedGenres {
                                 Original = $key
                                 Action = $action
                             }
-                            Write-Host "  $index. '$key' $action" -ForegroundColor Gray
+                            Show-Message -Message ("  $index. '$key' $action") -ForegroundColor Gray -Context $Context
                             $index++
                         }
                         
-                        Write-Host "`nOptions:" -ForegroundColor Cyan
-                        Write-Host "  Enter number to delete that decision" -ForegroundColor Gray
-                        Write-Host "  'B' to go back" -ForegroundColor Gray
+Write-Output "`nOptions:"
+                    Write-Output "  Enter number to delete that decision"
+                    Write-Output "  'B' to go back"
                         
                         $reviewChoice = Read-Host "Choice"
                         
                         if ($reviewChoice -eq 'B' -or $reviewChoice -eq 'b') {
-                            Write-Host "Going back..." -ForegroundColor Gray
+                            Show-Message -Message "Going back..." -ForegroundColor Gray -Context $Context
                         }
                         elseif ($reviewChoice -match '^\d+$' -and [int]$reviewChoice -ge 1 -and [int]$reviewChoice -le $decisionList.Count) {
                             $toRemove = $decisionList[[int]$reviewChoice - 1].Original
                             $script:genreDecisions.Remove($toRemove)
-                            Write-Host "✓ Removed decision for '$toRemove'" -ForegroundColor Green
+                            Show-Message -Message ("✓ Removed decision for '$toRemove'") -ForegroundColor Green -Context $Context
                         }
                         else {
-                            Write-Host "Invalid choice." -ForegroundColor Red
+                            Show-Message -Message "Invalid choice." -ForegroundColor Red -Context $Context
                         }
                     }
                 }
 
                 'S' {
                     # Skip
-                    Write-Host "Skipping '$originalGenre' - will ask again next time" -ForegroundColor Gray
+                    Show-Message -Message ("Skipping '$originalGenre' - will ask again next time") -ForegroundColor Gray -Context $Context
                     $decision = $true
                 }
 
                 'SHOW' {
                     # Show sample files
-                    Write-Host "`nSample files with '$originalGenre':" -ForegroundColor Cyan
+                    Show-Message -Message "`nSample files with '$originalGenre':" -ForegroundColor Cyan -Context $Context
                     $unmapped.files | Select-Object -First 5 | ForEach-Object {
-                        Write-Host "  - $_" -ForegroundColor Gray
+                        Show-Message -Message ("  - $_") -ForegroundColor Gray -Context $Context
                     }
                     if ($unmapped.files.Count -gt 5) {
-                        Write-Host "  ... and $($unmapped.files.Count - 5) more" -ForegroundColor Gray
+                        Show-Message -Message ("  ... and $($unmapped.files.Count - 5) more") -ForegroundColor Gray -Context $Context
                     }
                 }
 
                 default {
-                    Write-Host "Invalid option. Please choose N, A, D, R, S, or Show." -ForegroundColor Red
+                    Show-Message -Message "Invalid option. Please choose N, A, D, R, S, or Show." -ForegroundColor Red -Context $Context
                 }
             }
         }
@@ -865,3 +876,4 @@ function Update-GenresConfig {
 }
 
 Export-ModuleMember -Function Format-Genres
+

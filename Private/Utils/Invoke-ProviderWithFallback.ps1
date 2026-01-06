@@ -1,4 +1,4 @@
-function Invoke-ProviderWithFallback {
+﻿function Invoke-ProviderWithFallback {
     param(
         [string]$PrimaryProvider,
         [string]$Artist,
@@ -81,3 +81,4 @@ function Invoke-ProviderWithFallback {
     Write-Verbose "No high-confidence match found on any provider"
     return $null
 }
+

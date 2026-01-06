@@ -1,4 +1,4 @@
-function Read-RawTagsForComparison {
+﻿function Read-RawTagsForComparison {
     <#
     .SYNOPSIS
         Reads raw tag values from a file using TagLib without any deduplication or processing.
@@ -559,7 +559,9 @@ function Set-OMTags {
         [switch]$Details,
         
         [Parameter()]
-        [switch]$Force
+        [switch]$Force,
+
+        [Parameter(Mandatory = $false)][object]$Context
     )
     
     begin {
@@ -577,6 +579,15 @@ function Set-OMTags {
         $trackCounter = if ($PSBoundParameters.ContainsKey('RenumberTracks')) { $RenumberTracks } else { 0 }
         
         Write-Verbose "Starting tag update process"
+
+        # Ensure Show-Message helper available when dot-sourced in tests
+        if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+            $candidates = @()
+            if ($PSScriptRoot) { $candidates += Join-Path $PSScriptRoot '..\Private\Utils\Show-Message.ps1' }
+            if ($MyInvocation.MyCommand.Path) { $candidates += Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\Private\Utils\Show-Message.ps1' }
+            $candidates += Join-Path (Get-Location) 'Private\Utils\Show-Message.ps1'
+            foreach ($p in $candidates) { if (Test-Path $p) { . $p; break } }
+        }
     }
     
     process {
@@ -1045,7 +1056,7 @@ function Set-OMTags {
                         $fileObj.Save()
                         Write-Verbose "Successfully updated: $(Split-Path $filePath -Leaf)"
                     } else {
-                        Write-Host "What if: Performing the operation `"Update tags`" on target `"$(Split-Path $filePath -Leaf)`"." -ForegroundColor Yellow
+                        Show-Message -Message ("What if: Performing the operation `"Update tags`" on target `"$(Split-Path $filePath -Leaf)`".") -ForegroundColor Yellow -Context $Context
                     }
                     
                     $processedCount++
@@ -1109,7 +1120,7 @@ function Set-OMTags {
             Write-Verbose "Tag update complete: $processedCount files $verb, $errorCount errors"
             
             if (-not $WhatIfPreference -and $processedCount -gt 0) {
-                Write-Host "✓ Successfully updated $processedCount file(s)" -ForegroundColor Green
+                Show-Message -Message ("✓ Successfully updated $processedCount file(s)") -ForegroundColor Green -Context $Context
             }
         }
         

@@ -1,4 +1,4 @@
-# Test Genre Mode Toggle functionality
+﻿# Test Genre Mode Toggle functionality
 
 Import-Module "$PSScriptRoot\OM.psd1" -Force
 
@@ -176,3 +176,4 @@ Remove-Item $testFile -Force
 if ((Get-ChildItem $testDir).Count -eq 0) {
     Remove-Item $testDir -Force
 }
+

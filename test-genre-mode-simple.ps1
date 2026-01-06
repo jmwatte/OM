@@ -1,4 +1,4 @@
-# Simple test to verify Genre Mode Toggle is available in Start-OM
+﻿# Simple test to verify Genre Mode Toggle is available in Start-OM
 
 Import-Module "$PSScriptRoot\OM.psd1" -Force
 
@@ -71,3 +71,4 @@ Write-Host "   > gm              # Toggle to Merge mode" -ForegroundColor Gray
 Write-Host "   > st              # Save - now genres are combined!" -ForegroundColor Gray
 Write-Host ""
 Write-Host "The options line will show: (gm)GenreMode:Replace or (gm)GenreMode:Merge" -ForegroundColor Cyan
+

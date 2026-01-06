@@ -1,4 +1,4 @@
-function Normalize-OMDiscogsId {
+﻿function Normalize-OMDiscogsId {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)]
@@ -14,3 +14,4 @@ function Normalize-OMDiscogsId {
     
     return $id
 }
+

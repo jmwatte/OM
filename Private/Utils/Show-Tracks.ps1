@@ -1,4 +1,4 @@
-function Show-Tracks {
+﻿function Show-Tracks {
     param (
         [array]$PairedTracks,
         [string]$AlbumName,
@@ -9,6 +9,7 @@ function Show-Tracks {
         [string[]]$ValidCommands,
         [string]$PromptColor = 'Gray',
         [scriptblock]$InputReader,
+        [object]$Context,
         [string]$ProviderName = 'Spotify',
         [string]$SortMethod = '',
         [switch]$Verbose
@@ -26,13 +27,24 @@ function Show-Tracks {
 
     $reader = if ($InputReader) { $InputReader } else { { param($prompt) Read-Host -Prompt $prompt } }
 
+    # Ensure Show-Message helper is available when this file is dot-sourced in tests
+    if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+        $candidates = @()
+        if ($PSScriptRoot) { $candidates += Join-Path $PSScriptRoot 'Show-Message.ps1' }
+        if ($MyInvocation.MyCommand.Path) { $candidates += Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'Show-Message.ps1' }
+        $candidates += Join-Path (Get-Location) 'Private\Utils\Show-Message.ps1'
+        foreach ($p in $candidates) {
+            if (Test-Path $p) { . $p; break }
+        }
+    }
+
     $pageSize = 10
     $page = 0
     $totalPages = if ($PairedTracks.Count -gt 0) { [math]::Ceiling($PairedTracks.Count / $pageSize) } else { 1 }
 
     while ($true) {
         if ($VerbosePreference -ne 'Continue') { Clear-Host }
-        Write-Host "Tracks for album $($AlbumName): (Page $($page + 1) of $totalPages)`n"
+        Show-Message -Message "Tracks for album $($AlbumName): (Page $($page + 1) of $totalPages)`n" -Context $Context
         
         # Show confidence summary if available
         if ($PairedTracks.Count -gt 0 -and $PairedTracks[0].PSObject.Properties['Confidence']) {
@@ -49,13 +61,13 @@ function Show-Tracks {
             if ($lowCount -gt 0) { $summary += "❌ $lowCount Low  " }
             if ($markedCount -gt 0) { $summary += "🔖 $markedCount Marked  " }
             
-            Write-Host $summary -ForegroundColor $(if ($lowCount -gt 0) { 'Yellow' } elseif ($mediumCount -gt 0) { 'Cyan' } else { 'Green' })
-            Write-Host ""
+            Show-Message -Message $summary -Context $Context
+            Show-Message -Message "" -Context $Context
         }
 
         if ($PairedTracks.Count -eq 0) {
-            Write-Host "No tracks available for display." -ForegroundColor Yellow
-            Write-Host "`nPage 1 of 1 (Tracks 0 of 0)"
+            Show-Message -Message "No tracks available for display." -Context $Context
+            Show-Message -Message "`nPage 1 of 1 (Tracks 0 of 0)" -Context $Context
         }
         else {
             $start = $page * $pageSize
@@ -79,7 +91,7 @@ function Show-Tracks {
                 $markedIndicator = if ($pair.PSObject.Properties['Marked'] -and $pair.Marked) { " 🔖" } else { "" }
                 $trackNumColor = if ($pair.PSObject.Properties['Marked'] -and $pair.Marked) { 'Cyan' } else { 'DarkGray' }
                 
-                Write-Host "[$num]$markedIndicator $filenameDisplay$warningIndicator" -ForegroundColor $trackNumColor
+                Show-Message -Message ("[$num]$markedIndicator $filenameDisplay$warningIndicator") -Context $Context
 
                 $artistDisplay = 'Unknown'
                 if ($spotify) {
@@ -91,7 +103,7 @@ function Show-Tracks {
                     $durationSpan = [TimeSpan]::FromMilliseconds($durationMs)
                     $durationStr = "{0:mm\:ss}" -f $durationSpan
                     
-                    Write-Host ("↓`t{0:D2}.{1:D2}: {2} ({3})" -f $disc, $track, $spotify.name, $durationStr)
+                    Show-Message -Message ("↓`t{0:D2}.{1:D2}: {2} ({3})" -f $disc, $track, $spotify.name, $durationStr) -Context $Context
 
                     if ($Verbose) {
                         $a = $spotify.artists
@@ -104,21 +116,21 @@ function Show-Tracks {
                         else {
                             $artistDisplay = $a
                         }
-                        Write-Host ("`t`tartist: {0}" -f $artistDisplay)
+                        Show-Message -Message ("`t`tartist: {0}" -f $artistDisplay) -Context $Context
 
                         # Genre priority: track-level > album-level > artist-level
                         # Album-level is important for Discogs, Qobuz, MusicBrainz
                         if ($value = Get-IfExists $spotify 'genres') {
                             $providerGenres = $value -join ', '
-                            Write-Host ("`t`tgenres: {0}" -f $providerGenres)
+                            Show-Message -Message ("`t`tgenres: {0}" -f $providerGenres) -Context $Context
                         }
                         elseif ($ProviderAlbum -and ($value = Get-IfExists $ProviderAlbum 'genres')) {
                             $providerGenres = $value -join ', '
-                            Write-Host ("`t`tgenres: {0}" -f $providerGenres)
+                            Show-Message -Message ("`t`tgenres: {0}" -f $providerGenres) -Context $Context
                         }
                         elseif ($value = Get-IfExists $SpotifyArtist 'genres') {
                             $providerGenres = $value -join ', '
-                            Write-Host ("`t`tgenres: {0}" -f $providerGenres)
+                            Show-Message -Message ("`t`tgenres: {0}" -f $providerGenres) -Context $Context
                         }
 
                         if ($value = Get-IfExists $spotify 'composer') {
@@ -128,12 +140,12 @@ function Show-Tracks {
                             else {
                                 $providerComposer = $value
                             }
-                            Write-Host ("`t`tcomposer: {0}" -f $providerComposer)
+                            Show-Message -Message ("`t`tcomposer: {0}" -f $providerComposer) -Context $Context
                         }
                     }
                 }
                 else {
-                    Write-Host "↓ No $ProviderName track data available"
+                    Show-Message -Message ("↓ No $ProviderName track data available") -Context $Context
                 }
 
                 if ($audio) {
@@ -167,7 +179,7 @@ function Show-Tracks {
                         "00:00"
                     }
                     
-                    Write-Host ("$arrow`t{0:D2}.{1:D2}: {2} ({3})" -f $audio.DiscNumber, $audio.TrackNumber, $audio.Title, $audioDurationStr) -ForegroundColor $audioColor
+                    Show-Message -Message ("$arrow`t{0:D2}.{1:D2}: {2} ({3})" -f $audio.DiscNumber, $audio.TrackNumber, $audio.Title, $audioDurationStr) -Context $Context
 
                     if ($Verbose) {
                         $audioArtist = if ($value = Get-IfExists $audio 'Artist') { $value } else { 'Unknown' }
@@ -185,39 +197,39 @@ function Show-Tracks {
                             }
                         }
                         $artistColor = if ($spotify -and $audioArtist -eq $artistDisplay) { 'Green' } else { 'Yellow' }
-                        Write-Host ("`t`tartist: {0}" -f $audioArtist) -ForegroundColor $artistColor
+                        Show-Message -Message (("`t`tartist: {0}" -f $audioArtist)) -ForegroundColor $artistColor -Context $Context
 
                         # Read genres from TagLib.Tag (uppercase T)
                         $audioGenresValue = if ($audio.TagFile -and $audio.TagFile.Tag -and $audio.TagFile.Tag.Genres) { $audio.TagFile.Tag.Genres } else { $null }
                         $audioGenres = if ($audioGenresValue) { $audioGenresValue -join ', ' } else { 'Unknown' }
                         $spotifyGenresValue = Get-IfExists $SpotifyArtist 'genres'
                         $genresColor = if ($spotifyGenresValue -and ($audioGenres -eq ($spotifyGenresValue -join ', '))) { 'Green' } else { 'Yellow' }
-                        Write-Host ("`t`tgenres: {0}" -f $audioGenres) -ForegroundColor $genresColor
+                        Show-Message -Message (("`t`tgenres: {0}" -f $audioGenres)) -ForegroundColor $genresColor -Context $Context
 
                         $audioComposerValue = Get-IfExists $audio 'Composer'
                         $audioComposer = if ($audioComposerValue) { if ($audioComposerValue -is [array]) { $audioComposerValue -join ', ' } else { $audioComposerValue } } else { 'Unknown' }
                         $spotifyComposerValue = Get-IfExists $spotify 'Composer'
                         $composerColor = if ($spotifyComposerValue -and ($audioComposer -eq ($spotifyComposerValue -join ', '))) { 'Green' } else { 'Yellow' }
-                        Write-Host ("`t`tcomposer: {0}" -f $audioComposer) -ForegroundColor $composerColor
+                        Show-Message -Message (("`t`tcomposer: {0}" -f $audioComposer)) -ForegroundColor $composerColor -Context $Context
 
                         # Display additional classical music / detailed credits (if from Qobuz)
                         if ($spotifyConductor = Get-IfExists $spotify 'Conductor') {
-                            Write-Host ("`t`tconductor: {0}" -f $spotifyConductor) -ForegroundColor Cyan
+                            Show-Message -Message (("`t`tconductor: {0}" -f $spotifyConductor)) -ForegroundColor Cyan -Context $Context
                         }
                         if ($spotifyEnsemble = Get-IfExists $spotify 'Ensemble') {
-                            Write-Host ("`t`tensemble: {0}" -f $spotifyEnsemble) -ForegroundColor Cyan
+                            Show-Message -Message (("`t`tensemble: {0}" -f $spotifyEnsemble)) -ForegroundColor Cyan -Context $Context
                         }
                         if ($spotifyFeatured = Get-IfExists $spotify 'FeaturedArtist') {
-                            Write-Host ("`t`tfeatured: {0}" -f $spotifyFeatured) -ForegroundColor Cyan
+                            Show-Message -Message (("`t`tfeatured: {0}" -f $spotifyFeatured)) -ForegroundColor Cyan -Context $Context
                         }
                         
                         # Display detailed role breakdown if available (Qobuz rich metadata)
                         if ($detailedRoles = Get-IfExists $spotify 'DetailedRoles') {
                             if ($detailedRoles -and $detailedRoles.Count -gt 0) {
-                                Write-Host "`t`t--- Production Credits ---" -ForegroundColor DarkCyan
+                                Show-Message -Message "`t`t--- Production Credits ---" -ForegroundColor DarkCyan -Context $Context
                                 foreach ($person in ($detailedRoles.Keys | Sort-Object)) {
                                     $roles = $detailedRoles[$person]
-                                    Write-Host ("`t`t{0}: {1}" -f $person, $roles) -ForegroundColor DarkCyan
+                                    Show-Message -Message (("`t`t{0}: {1}" -f $person, $roles)) -ForegroundColor DarkCyan -Context $Context
                                 }
                             }
                         }
@@ -226,18 +238,18 @@ function Show-Tracks {
                     # Filename is now displayed in the header line above
                 }
                 else {
-                    Write-Host "_ No matching audio file" -ForegroundColor Red
+                    Show-Message -Message "_ No matching audio file" -ForegroundColor Red -Context $Context
                 }
 
-                Write-Host ""
+                Show-Message -Message "" -Context $Context
             }
 
             $lastIndex = [math]::Min($end + 1, $PairedTracks.Count)
-            Write-Host "`nPage $($page + 1) of $totalPages (Tracks $($start + 1) to $lastIndex of $($PairedTracks.Count))"
+            Show-Message -Message "`nPage $($page + 1) of $totalPages (Tracks $($start + 1) to $lastIndex of $($PairedTracks.Count))" -Context $Context
         }
 
         if ($supportsCommands -and $OptionsText) {
-            Write-Host $OptionsText -ForegroundColor $PromptColor
+            Show-Message -Message $OptionsText -ForegroundColor $PromptColor -Context $Context
         }
 
         $promptMessage = if ($supportsCommands) { "Enter command (Enter=next, p=previous, q=tag tracks, m=mark tracks)" } else { "Press Enter for next page, 'p' for previous, 'q' to quit viewing" }
@@ -266,7 +278,7 @@ function Show-Tracks {
         # Handle marking tracks for review
         if ($inputLower -eq 'm') {
             if ($PairedTracks.Count -eq 0) {
-                Write-Host "No tracks to mark." -ForegroundColor Yellow
+                Show-Message -Message "No tracks to mark." -ForegroundColor Yellow -Context $Context
                 Start-Sleep -Seconds 1
                 continue
             }
@@ -277,11 +289,11 @@ function Show-Tracks {
             if ($markInput) {
                 try {
                     $markedCount = Set-PairedTracks -PairedTracks $PairedTracks -RangeText $markInput -MaxIndex $PairedTracks.Count
-                    Write-Host "Marked $markedCount track(s)." -ForegroundColor Green
+                    Show-Message -Message "Marked $markedCount track(s)." -ForegroundColor Green -Context $Context
                     Start-Sleep -Seconds 1
                 }
                 catch {
-                    Write-Host "Error marking tracks: $($_.Exception.Message)" -ForegroundColor Red
+                    Show-Message -Message "Error marking tracks: $($_.Exception.Message)" -ForegroundColor Red -Context $Context
                     Start-Sleep -Seconds 2
                 }
             }
@@ -291,7 +303,7 @@ function Show-Tracks {
         # Handle review marked tracks command - pass through to Start-OM
         if ($inputLower -eq 'rm') {
             if ($supportsCommands) { return 'rm' }
-            Write-Host "Review marked tracks command not available in this mode." -ForegroundColor Yellow
+            Show-Message -Message "Review marked tracks command not available in this mode." -ForegroundColor Yellow -Context $Context
             Start-Sleep -Seconds 1
             continue
         }
@@ -308,7 +320,7 @@ function Show-Tracks {
             }
         }
 
-        Write-Host "Unrecognized input: '$inputText'." -ForegroundColor Yellow
+        Show-Message -Message ("Unrecognized input: '$inputText'.") -ForegroundColor Yellow -Context $Context
         Start-Sleep -Seconds 1
     }
 }

@@ -1,4 +1,4 @@
-function Get-MBAlbumTracks {
+﻿function Get-MBAlbumTracks {
     <#
     .SYNOPSIS
     Get tracks (recordings) from a MusicBrainz release.

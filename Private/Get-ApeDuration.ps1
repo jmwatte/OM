@@ -1,4 +1,4 @@
-function Get-ApeDuration {
+﻿function Get-ApeDuration {
     <#
     .SYNOPSIS
         Calculate correct duration for APE files (workaround for TagLib bug)
@@ -171,3 +171,4 @@ function Get-ApeDuration {
         if ($stream) { $stream.Dispose() }
     }
 }
+

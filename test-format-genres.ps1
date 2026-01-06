@@ -1,4 +1,4 @@
-# Comprehensive test script for Format-Genres function
+﻿# Comprehensive test script for Format-Genres function
 param(
     [switch]$CleanupOnly
 )
@@ -107,3 +107,4 @@ Write-Host "══════════════════════�
 Write-Host "`n✓ All basic functionality tests passed!" -ForegroundColor Green
 Write-Host "`nNote: Interactive mode testing requires manual interaction." -ForegroundColor Yellow
 Write-Host "To test actual tag writing, use: Get-OMTags | Format-Genres | Set-OMTags" -ForegroundColor Yellow
+

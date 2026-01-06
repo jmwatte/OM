@@ -1,4 +1,4 @@
-function Get-DArtistAlbums {
+﻿function Get-DArtistAlbums {
     <#
     .SYNOPSIS
     Get albums/releases for a Discogs artist.
@@ -171,3 +171,4 @@ function Get-DArtistAlbums {
         return @()
     }
 }
+

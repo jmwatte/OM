@@ -1,4 +1,4 @@
-function Import-OMGenres {
+﻿function Import-OMGenres {
     <#
     .SYNOPSIS
         Import genre configuration from a JSON file exported by Export-OMGenres.
@@ -50,7 +50,10 @@ function Import-OMGenres {
         [switch]$Merge,
         
         [Parameter()]
-        [switch]$Force
+        [switch]$Force,
+
+        [Parameter()]
+        [object]$Context
     )
     
     try {
@@ -77,11 +80,20 @@ function Import-OMGenres {
         # Get current config
         $config = Get-OMConfig
         
+        # Ensure Show-Message helper available when dot-sourced in tests
+        if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+            $candidates = @()
+            if ($PSScriptRoot) { $candidates += Join-Path $PSScriptRoot '..\Private\Utils\Show-Message.ps1' }
+            if ($MyInvocation.MyCommand.Path) { $candidates += Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\Private\Utils\Show-Message.ps1' }
+            $candidates += Join-Path (Get-Location) 'Private\Utils\Show-Message.ps1'
+            foreach ($path in $candidates) { if (Test-Path $path) { . $path; break } }
+        }
+
         # Confirmation
         if (-not $Force -and -not $PSCmdlet.ShouldProcess(
             "OM Genres Configuration",
             "Replace existing genres configuration with imported data?")) {
-            Write-Host "Import cancelled." -ForegroundColor Yellow
+            Show-Message -Message "Import cancelled." -ForegroundColor Yellow -Context $Context
             return
         }
         
@@ -109,7 +121,7 @@ function Import-OMGenres {
                 $config.Genres.GarbageGenres = @($existingGarbage + $newGarbage)
             }
             
-            Write-Host "✓ Merged $($newAllowed.Count) new allowed genres, $(@($importedGenres.GenreMappings.PSObject.Properties).Count) mappings" -ForegroundColor Green
+            Show-Message -Message ("✓ Merged $($newAllowed.Count) new allowed genres, $(@($importedGenres.GenreMappings.PSObject.Properties).Count) mappings") -ForegroundColor Green -Context $Context
         }
         else {
             Write-Verbose "Replacing existing genres configuration..."
@@ -119,7 +131,7 @@ function Import-OMGenres {
             $config.Genres.GenreMappings = $importedGenres.GenreMappings
             $config.Genres.GarbageGenres = $importedGenres.GarbageGenres
             
-            Write-Host "✓ Imported $($importedGenres.AllowedGenreNames.Count) allowed genres, $(@($importedGenres.GenreMappings.PSObject.Properties).Count) mappings" -ForegroundColor Green
+            Show-Message -Message ("✓ Imported $($importedGenres.AllowedGenreNames.Count) allowed genres, $(@($importedGenres.GenreMappings.PSObject.Properties).Count) mappings") -ForegroundColor Green -Context $Context
         }
         
         # Save config
@@ -131,9 +143,10 @@ function Import-OMGenres {
         
         $config | ConvertTo-Json -Depth 10 | Set-Content -Path $configPath -Encoding UTF8
         
-        Write-Host "✓ Genres configuration saved to: $configPath" -ForegroundColor Green
+        Show-Message -Message ("✓ Genres configuration saved to: $configPath") -ForegroundColor Green -Context $Context
     }
     catch {
         Write-Error "Failed to import genres configuration: $_"
     }
 }
+

@@ -1,4 +1,4 @@
-function Set-OMConfig {
+﻿function Set-OMConfig {
     <#
     .SYNOPSIS
     Sets OM configuration values including API credentials.
@@ -114,7 +114,10 @@ function Set-OMConfig {
         [string]$ConfigPath,
 
         [Parameter(Mandatory = $false)]
-        [switch]$Merge
+        [switch]$Merge,
+
+        [Parameter()]
+        [object]$Context
     )
 
     # Determine config file path
@@ -133,6 +136,15 @@ function Set-OMConfig {
             New-Item -Path $configDir -ItemType Directory -Force | Out-Null
             Write-Verbose "Created config directory: $configDir"
         }
+    }
+
+    # Ensure Show-Message helper available when dot-sourced in tests
+    if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+        $candidates = @()
+        if ($PSScriptRoot) { $candidates += Join-Path $PSScriptRoot '..\Private\Utils\Show-Message.ps1' }
+        if ($MyInvocation.MyCommand.Path) { $candidates += Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\Private\Utils\Show-Message.ps1' }
+        $candidates += Join-Path (Get-Location) 'Private\Utils\Show-Message.ps1'
+        foreach ($path in $candidates) { if (Test-Path $path) { . $path; break } }
     }
 
     # Load existing config (if present) so we merge new values by default
@@ -256,7 +268,7 @@ function Set-OMConfig {
     if ($PSCmdlet.ShouldProcess($ConfigPath, "Save configuration")) {
         try {
             $config | ConvertTo-Json -Depth 10 | Set-Content -Path $ConfigPath -Encoding UTF8 -ErrorAction Stop
-            Write-Host "✓ Configuration saved to: $ConfigPath" -ForegroundColor Green
+            Show-Message -Message ("✓ Configuration saved to: $ConfigPath") -ForegroundColor Green -Context $Context
             
             # Set restrictive permissions on config file (contains secrets)
             if ($IsLinux -or $IsMacOS) {
@@ -311,3 +323,4 @@ function Set-OMConfig {
         }
     }
 }
+

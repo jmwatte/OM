@@ -1,4 +1,4 @@
-# Test automatic sort method selection
+﻿# Test automatic sort method selection
 
 Write-Host "Testing automatic sort method selection..." -ForegroundColor Cyan
 Write-Host ""
@@ -38,3 +38,4 @@ Write-Host ""
 Start-OM -Path $testPath -Provider Spotify -Verbose
 
 Write-Host "`nTest complete!" -ForegroundColor Green
+
