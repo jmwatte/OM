@@ -46,7 +46,7 @@ function Search-GQArtist {
     # Prefer qobuz interpreter pages for artists
     # For Google (HTML and CSE) prefer searching the artist name only (no site: filter)
     # This helps Google return qobuz interpreter pages when configured to search qobuz.
-    # (historical: $searchQueryGoogle removed as unused)
+    # (historical: artist-only Google CSE code was removed/disabled)
     $targetUrl = $null
     $useQobuzFallback = $false
 
@@ -63,7 +63,7 @@ function Search-GQArtist {
         $useQobuzFallback = $true
         # try {
         #     # Use the artist-only query for Google CSE
-        #     $csq = [uri]::EscapeDataString($searchQueryGoogle)
+        #     (disabled) $csq = [uri]::EscapeDataString($Query)
         #     $num = 10
         #     # Hint the search by country based on configured locale (e.g., en-US -> us)
         #     $country = if ($configuredLocale -and ($configuredLocale -match '-')) { ($configuredLocale.Split('-')[-1]).ToLower() } else { $PSCulture.Split('-')[-1].ToLower() }

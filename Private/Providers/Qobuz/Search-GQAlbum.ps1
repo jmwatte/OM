@@ -46,14 +46,14 @@ function Search-GQAlbum {
         $configuredLocale = $PSCulture
     }
     Write-Verbose "Using Qobuz configured locale: $configuredLocale (PSCulture: $PSCulture)"
-    # Get URL locale and language for prioritization
+    # Get URL locale (previous code also captured language for prioritization but it is unused)
     $urlLocale = Get-QobuzUrlLocale -CultureCode $configuredLocale
-    $language = ($urlLocale -split '-')[1]
+    # (language variable intentionally not captured; prioritization uses $urlLocale directly)
 
     # Prefer qobuz album pages for albums
     # For Google (HTML and CSE) prefer searching the album name only (no site: filter)
     # This helps Google return qobuz album pages when configured to search qobuz.
-    # (historical: $searchQueryGoogle removed as unused)
+    # (historical: album-only Google CSE code was removed/disabled)
     $targetUrl = $null
     $useQobuzFallback = $false
 
