@@ -185,6 +185,16 @@ function Start-OM {
             Install-TagLibSharp | Out-Null
         }
         # ensure TagLib is present for this function (Install-TagLibSharp should make TagLib available)
+
+        # Ensure Show-Message helper available when dot-sourced in tests
+        if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+            $candidates = @()
+            if ($PSScriptRoot) { $candidates += Join-Path $PSScriptRoot '..\Private\Utils\Show-Message.ps1' }
+            if ($MyInvocation.MyCommand.Path) { $candidates += Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\Private\Utils\Show-Message.ps1' }
+            $candidates += Join-Path (Get-Location) 'Private\Utils\Show-Message.ps1'
+            foreach ($path in $candidates) { if (Test-Path $path) { . $path; break } }
+        }
+
         Set-StrictMode -Version Latest
         $ErrorActionPreference = 'Stop'
 
@@ -335,20 +345,20 @@ function Start-OM {
                 [string]$AlbumName,
                 [int]$TrackCount = 0
             )
-            Write-Host ""
-            Write-Host "🎵 ═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
-            Write-Host "🔍 Provider: " -NoNewline -ForegroundColor Magenta
+            Show-Message -Message "" -Context $Context
+            Show-Message -Message "🎵 ═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan -Context $Context
+            Show-Message -Message "🔍 Provider: " -NoNewline -ForegroundColor Magenta -Context $Context
             
             # Add locale for Qobuz provider (use cached value from parent scope)
             if ($Provider -eq 'Qobuz' -and $qobuzUrlLocale) {
-                Write-Host "$Provider ($qobuzUrlLocale)" -ForegroundColor Cyan
+                Show-Message -Message "$Provider ($qobuzUrlLocale)" -ForegroundColor Cyan -Context $Context
             } else {
-                Write-Host $Provider -ForegroundColor Cyan
+                Show-Message -Message $Provider -ForegroundColor Cyan -Context $Context
             }
             
-            Write-Host "👤 Original Artist: " -NoNewline -ForegroundColor Yellow
-            Write-Host $Artist -ForegroundColor White
-            Write-Host "💿 Original Album: " -NoNewline -ForegroundColor Green
+            Show-Message -Message "👤 Original Artist: " -NoNewline -ForegroundColor Yellow -Context $Context
+            Show-Message -Message $Artist -ForegroundColor White -Context $Context
+            Show-Message -Message "💿 Original Album: " -NoNewline -ForegroundColor Green -Context $Context
             
             # Try to extract year from folder name (e.g., "2011 - Bach Cello Suites")
             $folderYear = ""
@@ -358,15 +368,15 @@ function Start-OM {
                 }
             }
             
-            Write-Host "$folderYear$AlbumName" -NoNewline -ForegroundColor White
+            Show-Message -Message "$folderYear$AlbumName" -NoNewline -ForegroundColor White -Context $Context
             if ($TrackCount -gt 0) {
-                Write-Host " ($TrackCount tracks)" -ForegroundColor White
+                Show-Message -Message " ($TrackCount tracks)" -ForegroundColor White -Context $Context
             }
             else {
-                Write-Host ""  # Ensure newline
+                Show-Message -Message "" -Context $Context  # Ensure newline
             }
-            Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
-            Write-Host ""
+            Show-Message -Message "═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan -Context $Context
+            Show-Message -Message "" -Context $Context
         }
         # Helper function for album folder move with retry on access errors
         function Invoke-MoveAlbumWithRetry {
@@ -382,7 +392,7 @@ function Start-OM {
                     Write-Warning "Move-AlbumFolder failed: $($_.Exception.Message)"
                     $retry = Read-Host "Folder may be in use by another process. Free the folder (close files/apps) and press Enter to retry, or 's' to skip"
                     if ($retry -eq 's') {
-                        Write-Host "Skipping folder move." -ForegroundColor Yellow
+                        Show-Message -Message "Skipping folder move." -ForegroundColor Yellow -Context $Context
                         return $null
                     }
                 }
@@ -396,24 +406,24 @@ function Start-OM {
     
             if ($moveResult -and $moveResult.Success) {
                 if ($useWhatIf) {
-                    Write-Host "WhatIf: album would be moved:" -ForegroundColor Yellow
-                    Write-Host -NoNewline -ForegroundColor Green "Old: "
-                    Write-Host $oldpath
-                    Write-Host -NoNewline -ForegroundColor Green "New: "
-                    Write-Host $moveResult.NewAlbumPath
+                    Show-Message -Message "WhatIf: album would be moved:" -ForegroundColor Yellow -Context $Context
+                    Show-Message -Message "Old: " -NoNewline -ForegroundColor Green -Context $Context
+                    Show-Message -Message $oldpath -Context $Context
+                    Show-Message -Message "New: " -NoNewline -ForegroundColor Green -Context $Context
+                    Show-Message -Message $moveResult.NewAlbumPath -Context $Context
                     if ($moveResult.NewAlbumPath -ne $oldpath -and -not ($NonInteractive -or $goC) -and -not $useWhatIf) {
-                        Read-Host -Prompt "Press Enter to continue"
+                        Prompt-PressEnter -Context $Context
                     }
                     else {
                         Write-Verbose "NonInteractive/goC/WhatIf or no-path-change: skipping pause after move."
                     }
-                    Write-Host "Album saved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
+                    Show-Message -Message "Album saved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow -Context $Context
                     # continue doTracks
                 }
                 else {
                     if ($moveResult.NewAlbumPath -eq $oldpath) {
                         Write-Verbose "Move result indicates no change to album path; continuing."
-                        Write-Host "Album saved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
+                        Show-Message -Message "Album saved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow -Context $Context
                         #  continue doTracks
                     }
                     # Folder was moved - update $album and reload audio files from new location
@@ -525,7 +535,7 @@ function Start-OM {
                         }
                         
                         # Move album to target folder
-                        Write-Host "Moving album to target folder: $targetPath" -ForegroundColor Cyan
+                        Show-Message -Message ("Moving album to target folder: $targetPath") -ForegroundColor Cyan -Context $Context
                         Move-Item -LiteralPath $currentPath -Destination $targetPath -Force
                         
                         # Clean up empty parent folder if it's now empty
@@ -540,7 +550,7 @@ function Start-OM {
                             if ($remainingItems.Count -eq 0) {
                                 Write-Verbose "Removing empty parent folder: $originalParentFolder"
                                 Remove-Item -LiteralPath $originalParentFolder -Force
-                                Write-Host "Cleaned up empty folder: $originalParentFolder" -ForegroundColor Gray
+                                Show-Message -Message ("Cleaned up empty folder: $originalParentFolder") -ForegroundColor Gray -Context $Context
                             }
                             else {
                                 Write-Verbose "Parent folder not empty ($(($remainingItems.Count)) items remaining), keeping it"
@@ -589,7 +599,7 @@ function Start-OM {
                         }
                     }
                     
-                    Write-Host "Album saved and folder moved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
+                    Show-Message -Message "Album saved and folder moved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow -Context $Context
                     #  continue doTracks
                 }
             }
@@ -1899,13 +1909,13 @@ function Start-OM {
                         # Check if any valid audio files were loaded
                         $validAudioFiles = @($script:audioFiles | Where-Object { $_ -ne $null })
                         if ($validAudioFiles.Count -eq 0) {
-                            Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Red
-                            Write-Host "⚠️  ERROR: No valid audio files found!" -ForegroundColor Red
-                            Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Red
-                            Write-Host "`nAlbum folder: $($script:album.FullName)" -ForegroundColor Yellow
-                            Write-Host "All audio files were corrupted or invalid. Skipping this album." -ForegroundColor Yellow
-                            Write-Host "`nPress Enter to continue to next album..." -ForegroundColor Cyan
-                            Read-Host
+                            Show-Message -Message "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Red -Context $Context
+                            Show-Message -Message "⚠️  ERROR: No valid audio files found!" -ForegroundColor Red -Context $Context
+                            Show-Message -Message "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Red -Context $Context
+                            Show-Message -Message "`nAlbum folder: $($script:album.FullName)" -ForegroundColor Yellow -Context $Context
+                            Show-Message -Message "All audio files were corrupted or invalid. Skipping this album." -ForegroundColor Yellow -Context $Context
+                            Show-Message -Message "`nPress Enter to continue to next album..." -ForegroundColor Cyan -Context $Context
+                            Prompt-PressEnter -Context $Context
                             break stageLoop  # Exit stage loop to continue to next album
                         }
                         

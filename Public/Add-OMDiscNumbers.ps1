@@ -102,7 +102,10 @@ function Add-OMDiscNumbers {
         [switch]$tracks,
 
         [Parameter(Mandatory = $false)]
-        [switch]$forceTracks
+        [switch]$forceTracks,
+
+        [Parameter()]
+        [object]$Context
     )
 
     # Ensure the base folder exists
@@ -117,6 +120,15 @@ function Add-OMDiscNumbers {
     }
     # Assert-TagLibLoaded may return a value; suppress it to avoid printing a stray Boolean
     [void](Assert-TagLibLoaded)
+
+    # Ensure Show-Message helper available when dot-sourced in tests
+    if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+        $candidates = @()
+        if ($PSScriptRoot) { $candidates += Join-Path $PSScriptRoot '..\Private\Utils\Show-Message.ps1' }
+        if ($MyInvocation.MyCommand.Path) { $candidates += Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\Private\Utils\Show-Message.ps1' }
+        $candidates += Join-Path (Get-Location) 'Private\Utils\Show-Message.ps1'
+        foreach ($path in $candidates) { if (Test-Path $path) { . $path; break } }
+    }
 
     # Collect planned changes for a clear WhatIf summary
     $plannedChanges = @()
@@ -220,7 +232,7 @@ function Add-OMDiscNumbers {
 
                 if ($changes.Count -gt 0) {
                     $tagFile.Save()
-                    Write-Host "Updated $($file.Name): $($changes -join ', ')"
+                    Show-Message -Message ("Updated $($file.Name): $($changes -join ', ')") -Context $Context
                 }
                 else {
                     Write-Verbose "No changes needed for $($file.Name)"
@@ -244,11 +256,11 @@ function Add-OMDiscNumbers {
 
     # If there were planned changes, display a concise WhatIf-style summary
     if ($plannedChanges.Count -gt 0 -and $PSCmdlet.MyInvocation.BoundParameters.ContainsKey('WhatIf') -and $PSCmdlet.MyInvocation.BoundParameters['WhatIf']) {
-        Write-Host "`nPlanned changes summary:`n" -ForegroundColor Cyan
+        Show-Message -Message "`nPlanned changes summary:`n" -ForegroundColor Cyan -Context $Context
         foreach ($entry in $plannedChanges) {
-            Write-Host "$($entry.File) -> $($entry.Actions -join ', ')"
+            Show-Message -Message ("$($entry.File) -> $($entry.Actions -join ', ')") -Context $Context
         }
-        Write-Host "`nUse -WhatIf to preview changes or run without -WhatIf to apply them." -ForegroundColor Yellow
+        Show-Message -Message "`nUse -WhatIf to preview changes or run without -WhatIf to apply them." -ForegroundColor Yellow -Context $Context
     } else {
         Write-Verbose "No planned changes detected across processed files."
     }
