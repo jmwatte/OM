@@ -2,7 +2,13 @@
 
 Import-Module "$PSScriptRoot\OM.psd1" -Force
 
-Write-Host "`n=== Testing Genre Mode Toggle ===" -ForegroundColor Cyan
+# Ensure Show-Message helper available when running standalone
+if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+    $p = Join-Path $PSScriptRoot 'Private\Utils\Show-Message.ps1'
+    if (Test-Path $p) { . $p }
+}
+
+Show-Message -Message "`n=== Testing Genre Mode Toggle ===" -ForegroundColor Cyan -Context $null
 
 # Create a test file
 $testDir = Join-Path $PSScriptRoot "testfiles\genre_mode_test"
@@ -14,21 +20,21 @@ $testFile = Join-Path $testDir "test.mp3"
 
 # Create a simple MP3 file if it doesn't exist (we'll use TagLib to create it)
 if (-not (Test-Path $testFile)) {
-    Write-Host "Creating test file..." -ForegroundColor Gray
+    Show-Message -Message "Creating test file..." -ForegroundColor Gray -Context $null
     # Copy an existing test file if available
     $existingTest = Get-ChildItem "$PSScriptRoot\testfiles" -Recurse -Filter "*.mp3" | Select-Object -First 1
     if ($existingTest) {
         Copy-Item $existingTest.FullName $testFile
     } else {
-        Write-Host "No test MP3 file found. Please run this test with an existing MP3 file." -ForegroundColor Yellow
+        Show-Message -Message "No test MP3 file found. Please run this test with an existing MP3 file." -ForegroundColor Yellow -Context $null
         return
     }
 }
 
-Write-Host "Using test file: $testFile" -ForegroundColor Gray
+Show-Message -Message "Using test file: $testFile" -ForegroundColor Gray -Context $null
 
 # Test 1: Replace Mode (default)
-Write-Host "`n--- Test 1: Replace Mode ---" -ForegroundColor Yellow
+Show-Message -Message "`n--- Test 1: Replace Mode ---" -ForegroundColor Yellow -Context $null
 $tagValues1 = @{
     Title = "Test Track"
     Track = "01"
@@ -42,19 +48,19 @@ $tagValues1 = @{
 
 $result1 = Save-TagsForFile -FilePath $testFile -TagValues $tagValues1
 if ($result1.Success) {
-    Write-Host "✅ Saved initial genres: rock, indie rock" -ForegroundColor Green
+    Show-Message -Message "✅ Saved initial genres: rock, indie rock" -ForegroundColor Green -Context $null
 } else {
-    Write-Host "❌ Failed to save" -ForegroundColor Red
+    Show-Message -Message "❌ Failed to save" -ForegroundColor Red -Context $null
 }
 
 # Read back
 $tagFile = [TagLib.File]::Create($testFile)
 $currentGenres = $tagFile.Tag.Genres -join ', '
 $tagFile.Dispose()
-Write-Host "Current genres: $currentGenres" -ForegroundColor Cyan
+Show-Message -Message "Current genres: $currentGenres" -ForegroundColor Cyan -Context $null
 
 # Test 2: Replace Mode with different genres
-Write-Host "`n--- Test 2: Replace Mode (overwrite) ---" -ForegroundColor Yellow
+Show-Message -Message "`n--- Test 2: Replace Mode (overwrite) ---" -ForegroundColor Yellow -Context $null
 $tagValues2 = @{
     Title = "Test Track"
     Track = "01"
@@ -68,9 +74,9 @@ $tagValues2 = @{
 
 $result2 = Save-TagsForFile -FilePath $testFile -TagValues $tagValues2 -GenreMergeMode:$false
 if ($result2.Success) {
-    Write-Host "✅ Replaced with: pop, electronic" -ForegroundColor Green
+    Show-Message -Message "✅ Replaced with: pop, electronic" -ForegroundColor Green -Context $null
 } else {
-    Write-Host "❌ Failed to save" -ForegroundColor Red
+    Show-Message -Message "❌ Failed to save" -ForegroundColor Red -Context $null
 }
 
 $tagFile = [TagLib.File]::Create($testFile)
@@ -80,13 +86,13 @@ Write-Host "Current genres: $currentGenres" -ForegroundColor Cyan
 
 $test2Pass = $currentGenres -eq "pop, electronic"
 if ($test2Pass) {
-    Write-Host "✅ Replace mode working correctly" -ForegroundColor Green
+    Show-Message -Message "✅ Replace mode working correctly" -ForegroundColor Green -Context $null
 } else {
-    Write-Host "❌ Replace mode failed - expected 'pop, electronic' but got '$currentGenres'" -ForegroundColor Red
+    Show-Message -Message "❌ Replace mode failed - expected 'pop, electronic' but got '$currentGenres'" -ForegroundColor Red -Context $null
 }
 
 # Test 3: Merge Mode
-Write-Host "`n--- Test 3: Merge Mode ---" -ForegroundColor Yellow
+Show-Message -Message "`n--- Test 3: Merge Mode ---" -ForegroundColor Yellow -Context $null
 $tagValues3 = @{
     Title = "Test Track"
     Track = "01"
@@ -100,28 +106,28 @@ $tagValues3 = @{
 
 $result3 = Save-TagsForFile -FilePath $testFile -TagValues $tagValues3 -GenreMergeMode:$true
 if ($result3.Success) {
-    Write-Host "✅ Merged with: alternative rock, indie pop" -ForegroundColor Green
+    Show-Message -Message "✅ Merged with: alternative rock, indie pop" -ForegroundColor Green -Context $null
 } else {
-    Write-Host "❌ Failed to save" -ForegroundColor Red
+    Show-Message -Message "❌ Failed to save" -ForegroundColor Red -Context $null
 }
 
 $tagFile = [TagLib.File]::Create($testFile)
 $currentGenres = $tagFile.Tag.Genres
 $tagFile.Dispose()
-Write-Host "Current genres: $($currentGenres -join ', ')" -ForegroundColor Cyan
-Write-Host "Genre count: $($currentGenres.Count)" -ForegroundColor Gray
+Show-Message -Message "Current genres: $($currentGenres -join ', ')" -ForegroundColor Cyan -Context $null
+Show-Message -Message "Genre count: $($currentGenres.Count)" -ForegroundColor Gray -Context $null
 
 # Check if merge worked (should have 4 unique genres)
 $expectedGenres = @("pop", "electronic", "alternative rock", "indie pop")
 $test3Pass = $currentGenres.Count -eq 4
 if ($test3Pass) {
-    Write-Host "✅ Merge mode working correctly - all genres preserved and deduplicated" -ForegroundColor Green
+    Show-Message -Message "✅ Merge mode working correctly - all genres preserved and deduplicated" -ForegroundColor Green -Context $null
 } else {
-    Write-Host "❌ Merge mode issue - expected 4 genres but got $($currentGenres.Count)" -ForegroundColor Red
+    Show-Message -Message "❌ Merge mode issue - expected 4 genres but got $($currentGenres.Count)" -ForegroundColor Red -Context $null
 }
 
 # Test 4: Merge with duplicate (case-insensitive)
-Write-Host "`n--- Test 4: Merge Mode with duplicate ---" -ForegroundColor Yellow
+Show-Message -Message "`n--- Test 4: Merge Mode with duplicate ---" -ForegroundColor Yellow -Context $null
 $tagValues4 = @{
     Title = "Test Track"
     Track = "01"
@@ -135,43 +141,43 @@ $tagValues4 = @{
 
 $result4 = Save-TagsForFile -FilePath $testFile -TagValues $tagValues4 -GenreMergeMode:$true
 if ($result4.Success) {
-    Write-Host "✅ Merged with deduplication" -ForegroundColor Green
+    Show-Message -Message "✅ Merged with deduplication" -ForegroundColor Green -Context $null
 } else {
-    Write-Host "❌ Failed to save" -ForegroundColor Red
+    Show-Message -Message "❌ Failed to save" -ForegroundColor Red -Context $null
 }
 
 $tagFile = [TagLib.File]::Create($testFile)
 $currentGenres = $tagFile.Tag.Genres
 $tagFile.Dispose()
-Write-Host "Current genres: $($currentGenres -join ', ')" -ForegroundColor Cyan
-Write-Host "Genre count: $($currentGenres.Count)" -ForegroundColor Gray
+Show-Message -Message "Current genres: $($currentGenres -join ', ')" -ForegroundColor Cyan -Context $null
+Show-Message -Message "Genre count: $($currentGenres.Count)" -ForegroundColor Gray -Context $null
 
 # Should have 5 unique genres (pop, electronic, alternative rock, indie pop, jazz)
 # Pop and ELECTRONIC should not be duplicated
 $test4Pass = $currentGenres.Count -eq 5
 if ($test4Pass) {
-    Write-Host "✅ Deduplication working correctly" -ForegroundColor Green
+    Show-Message -Message "✅ Deduplication working correctly" -ForegroundColor Green -Context $null
 } else {
-    Write-Host "❌ Deduplication issue - expected 5 genres but got $($currentGenres.Count)" -ForegroundColor Red
+    Show-Message -Message "❌ Deduplication issue - expected 5 genres but got $($currentGenres.Count)" -ForegroundColor Red -Context $null
 }
 
 # Summary
-Write-Host "`n=== Test Summary ===" -ForegroundColor Cyan
+Show-Message -Message "`n=== Test Summary ===" -ForegroundColor Cyan -Context $null
 $passed = @($test2Pass, $test3Pass, $test4Pass) | Where-Object { $_ } | Measure-Object | Select-Object -ExpandProperty Count
 $total = 3
-Write-Host "Passed: $passed / $total" -ForegroundColor $(if ($passed -eq $total) { 'Green' } else { 'Yellow' })
+Show-Message -Message "Passed: $passed / $total" -ForegroundColor $(if ($passed -eq $total) { 'Green' } else { 'Yellow' }) -Context $null
 
 if ($passed -eq $total) {
-    Write-Host "`n✅ Genre Mode Toggle is working correctly!" -ForegroundColor Green
-    Write-Host "   - Replace mode overwrites existing genres" -ForegroundColor Gray
-    Write-Host "   - Merge mode combines and deduplicates genres" -ForegroundColor Gray
-    Write-Host "`nYou can now use 'gm' command in Start-OM to toggle between modes." -ForegroundColor Cyan
+    Show-Message -Message "`n✅ Genre Mode Toggle is working correctly!" -ForegroundColor Green -Context $null
+    Show-Message -Message "   - Replace mode overwrites existing genres" -ForegroundColor Gray -Context $null
+    Show-Message -Message "   - Merge mode combines and deduplicates genres" -ForegroundColor Gray -Context $null
+    Show-Message -Message "`nYou can now use 'gm' command in Start-OM to toggle between modes." -ForegroundColor Cyan -Context $null
 } else {
-    Write-Host "`n❌ Some tests failed. Please review the implementation." -ForegroundColor Red
+    Show-Message -Message "`n❌ Some tests failed. Please review the implementation." -ForegroundColor Red -Context $null
 }
 
 # Cleanup
-Write-Host "`nCleaning up test file..." -ForegroundColor Gray
+Show-Message -Message "`nCleaning up test file..." -ForegroundColor Gray -Context $null
 Remove-Item $testFile -Force
 if ((Get-ChildItem $testDir).Count -eq 0) {
     Remove-Item $testDir -Force
