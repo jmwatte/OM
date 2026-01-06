@@ -7,11 +7,12 @@ Describe 'Start-OM AUTO provider fallback and autosave cover tests' {
         New-Item -ItemType Directory -Path $testDir | Out-Null
         $albumFolder = Join-Path $testDir 'Artist\2020 - Album'
         New-Item -ItemType Directory -Path $albumFolder -Force | Out-Null
+        New-Item -ItemType File -Path (Join-Path $albumFolder '01 - track.mp3') | Out-Null
 
-        Mock -CommandName Assert-TagLibLoaded -MockWith { }
+        Mock -CommandName Assert-TagLibLoaded -ModuleName OM -MockWith { }
 
         # Mock provider search to return nothing for Spotify, results for Qobuz
-        Mock -CommandName Invoke-ProviderSearch -MockWith {
+        Mock -CommandName Invoke-ProviderSearch -ModuleName OM -MockWith {
             param($Provider,$Album,$Artist,$Type)
             if ($Provider -eq 'Spotify') { return @{ albums = @{ items = @() } } }
             if ($Provider -eq 'Qobuz') { return @{ albums = @{ items = @([PSCustomObject]@{ id='q1'; name='Album'; album_artist='Artist' }) } } }
@@ -48,7 +49,7 @@ Describe 'Start-OM AUTO provider fallback and autosave cover tests' {
         }
 
         $script:saveCalls = 0
-        Mock -CommandName Save-CoverArt -MockWith { $script:saveCalls++; return @{ Success = $true } }
+        Mock -CommandName Save-CoverArt -ModuleName OM -MockWith { $script:saveCalls++; return @{ Success = $true } }
         Mock -CommandName Show-Message -MockWith { }
 
         $res = Start-OM -Path $testDir -Auto -AutoSaveCover -NonInteractive -WhatIf -Confirm:$false
