@@ -1281,8 +1281,8 @@ function Start-OM {
                     :albumSelectionLoop while ($true) {
                         if ($VerbosePreference -ne 'Continue') { Clear-Host }
                         & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
-                        Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
-                        Write-Host ""
+                        Show-Message -Message "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta -Context $Context
+                        Show-Message -Message "" -Context $Context
                         
                         Show-Message -Message "$Provider Album candidates for '$quickAlbum' by '$quickArtist':" -ForegroundColor Green -Context $Context
                         for ($i = 0; $i -lt $albumCandidates.Count; $i++) {
@@ -1295,7 +1295,7 @@ function Start-OM {
                             if (-not $trackCount) { $trackCount = Get-IfExists $album 'tracks_count' }
                             $trackInfo = if ($trackCount) { " ($trackCount tracks)" } else { "" }
                             
-                            Write-Host "[$($i+1)] $($album.name) - $artistDisplay (id: $($album.id)) (year: $year)$trackInfo"
+                            Show-Message -Message ("[$($i+1)] $($album.name) - $artistDisplay (id: $($album.id)) (year: $year)$trackInfo") -Context $Context
                         }
 
                         $originalColor = [Console]::ForegroundColor
@@ -1310,8 +1310,8 @@ function Start-OM {
                             # Show current provider and available shortcuts
                             $config = Get-OMConfig
                             $defaultProvider = $config.DefaultProvider
-                            Write-Host "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan
-                            Write-Host "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray
+                            Show-Message -Message "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan -Context $Context
+                            Show-Message -Message "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray -Context $Context
                             continue albumSelectionLoop
                         }
                         elseif ($albumChoice -eq 'ps') {
@@ -1535,7 +1535,7 @@ function Start-OM {
                         else {
                             # New search term - update album name and restart search
                             if ($script:backNavigationMode) {
-                                Write-Host "Back navigation mode: Enter album number to select, or use commands. To search again, use 'f' to change find mode first." -ForegroundColor Yellow
+                                Show-Message -Message "Back navigation mode: Enter album number to select, or use commands. To search again, use 'f' to change find mode first." -ForegroundColor Yellow -Context $Context
                                 continue albumSelectionLoop
                             }
                             else {
@@ -1576,7 +1576,7 @@ function Start-OM {
                         Write-Verbose "Search returned $($candidates.Count) candidates"
     
                         if (-not $candidates -or $candidates.Count -eq 0) {
-                            Write-Host "No artist candidates found for '$artistQuery'."
+                            Show-Message -Message "No artist candidates found for '$artistQuery'." -Context $Context
                             if ($NonInteractive) {
                                 Write-Warning "NonInteractive: skipping album because no artist candidates were found for '$artistQuery'."
                                 break
@@ -1699,8 +1699,8 @@ function Start-OM {
                             continue stageLoop
                         }
                         if ($inputF -eq 'f' -or $inputF -eq 'fm') {
-                            Write-Host "`nCurrent find mode: $($script:findMode)" -ForegroundColor Cyan
-                            Write-Host "Available modes: (q)uick album search, (a)rtist-first search" -ForegroundColor Gray
+                            Show-Message -Message "`nCurrent find mode: $($script:findMode)" -ForegroundColor Cyan -Context $Context
+                            Show-Message -Message "Available modes: (q)uick album search, (a)rtist-first search" -ForegroundColor Gray -Context $Context
                             $newMode = Read-Host "Select mode [q/a]"
                             if ($newMode -eq 'q' -or $newMode -eq 'quick') {
                                 $script:findMode = 'quick'
@@ -1822,7 +1822,7 @@ function Start-OM {
                             Write-Host ""
                         }
                         else {
-                            Write-Host "Searching tracks for album: $($ProviderAlbum.name) (id: $($ProviderAlbum.id))"
+                            Show-Message -Message ("Searching tracks for album: $($ProviderAlbum.name) (id: $($ProviderAlbum.id))") -Context $Context
                         }
                         
                         # If the caller asked for non-interactive behavior, do not try to drive the
@@ -2004,11 +2004,11 @@ function Start-OM {
                                 }
                                 
                                 if (-not $tracksForAlbum -or $tracksForAlbum.Count -eq 0) {
-                                    Write-Host "`n❌ No tracks returned from $Provider for album ID: $albumIdToFetch" -ForegroundColor Red
-                                    Write-Host "   This can happen if:" -ForegroundColor Yellow
-                                    Write-Host "   - The album/release has no track data in the provider's database" -ForegroundColor Gray
-                                    Write-Host "   - The ID is for a master release (try selecting a specific release)" -ForegroundColor Gray
-                                    Write-Host "   - The resource was deleted or moved" -ForegroundColor Gray
+                                    Show-Message -Message "`n❌ No tracks returned from $Provider for album ID: $albumIdToFetch" -ForegroundColor Red -Context $Context
+                                    Show-Message -Message "   This can happen if:" -ForegroundColor Yellow -Context $Context
+                                    Show-Message -Message "   - The album/release has no track data in the provider's database" -ForegroundColor Gray -Context $Context
+                                    Show-Message -Message "   - The ID is for a master release (try selecting a specific release)" -ForegroundColor Gray -Context $Context
+                                    Show-Message -Message "   - The resource was deleted or moved" -ForegroundColor Gray -Context $Context
                                     
                                     # Check if this was a master release with stored releases list
                                     $canRetryReleases = (Get-IfExists $ProviderAlbum '_masterReleases') -and $ProviderAlbum._masterReleases.Count -gt 0
@@ -2019,8 +2019,8 @@ function Start-OM {
                                         if ($canRetryReleases) {
                                             # Show releases again for this master
                                             if ($VerbosePreference -ne 'Continue') { Clear-Host }
-                                            Write-Host "📀 Discogs MASTER: $($ProviderAlbum._masterName)" -ForegroundColor Yellow
-                                            Write-Host "Found $($ProviderAlbum._masterReleases.Count) releases:`n" -ForegroundColor Cyan
+                                            Show-Message -Message "📀 Discogs MASTER: $($ProviderAlbum._masterName)" -ForegroundColor Yellow -Context $Context
+                                            Show-Message -Message ("Found $($ProviderAlbum._masterReleases.Count) releases:`n") -ForegroundColor Cyan -Context $Context
                                             
                                             $releases = $ProviderAlbum._masterReleases
                                             for ($i = 0; $i -lt [Math]::Min(20, $releases.Count); $i++) {
@@ -2080,7 +2080,7 @@ function Start-OM {
                                             }
                                             
                                             # Update the album object with new release selection
-                                            Write-Host "✓ Selected release: $($selectedRelease.id) - $($selectedRelease.title)" -ForegroundColor Green
+                                            Show-Message -Message "✓ Selected release: $($selectedRelease.id) - $($selectedRelease.title)" -ForegroundColor Green -Context $Context
                                             $ProviderAlbum = @{
                                                 id                  = [string]$selectedRelease.id
                                                 name                = $selectedRelease.title
