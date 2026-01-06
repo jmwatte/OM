@@ -9,7 +9,7 @@ Describe 'Set-OMTags Context propagation' {
         New-Item -ItemType File -Path $file | Out-Null
 
         # Mock Save-TagsForFile to simulate success without touching disk
-        Mock -CommandName Save-TagsForFile -MockWith { return @{ Success = $true } }
+        Mock -CommandName Save-TagsForFile -ModuleName OM -MockWith { return @{ Success = $true } }
 
         $script:messages = @()
         Mock -CommandName Show-Message -MockWith { param($Message,$ForegroundColor,$NoNewline,$DisplayWriter,$Context) $script:messages += $Message }
