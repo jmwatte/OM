@@ -1,47 +1,52 @@
 ﻿# Test semicolon splitting in genres
+# Ensure Show-Message helper available when running standalone
+if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+    $p = Join-Path $PSScriptRoot 'Private\Utils\Show-Message.ps1'
+    if (Test-Path $p) { . $p }
+}
 cd 'c:\Users\resto\Documents\PowerShell\Modules\OM'
 Import-Module ./OM.psd1 -Force
 
 $testPath = "C:\Users\resto\Documents\PowerShell\Modules\OM\testdata\albums\Sergei rachmaninov\1995 - Rachmaninoff_ Vespers, Op. 37 (Live)"
 
-Write-Host "=== Testing Semicolon Genre Splitting ===" -ForegroundColor Cyan
-Write-Host ""
+Show-Message -Message "=== Testing Semicolon Genre Splitting ===" -ForegroundColor Cyan -Context $null
+Show-Message -Message "" -Context $null
 
 # Test 1: Write semicolon-separated genres
-Write-Host "1. Writing 'Classic Rock;Hard Rock;70s' to first file..." -ForegroundColor Yellow
+Show-Message -Message "1. Writing 'Classic Rock;Hard Rock;70s' to first file..." -ForegroundColor Yellow -Context $null
 $firstFile = got $testPath -Details | Select-Object -First 1
 $firstFile.Genres = @('Classic Rock;Hard Rock;70s')
 $firstFile | sot | Out-Null
-Write-Host "   ✓ Written" -ForegroundColor Green
+Show-Message -Message "   ✓ Written" -ForegroundColor Green -Context $null
 
 # Test 2: Read back and verify splitting
-Write-Host "`n2. Reading back genres..." -ForegroundColor Yellow
+Show-Message -Message "`n2. Reading back genres..." -ForegroundColor Yellow -Context $null
 $result = got $testPath -Details | Select-Object -First 1
-Write-Host "   Genres as array:" -ForegroundColor Gray
-$result.Genres | ForEach-Object { Write-Host "     - '$_'" -ForegroundColor White }
+Show-Message -Message "   Genres as array:" -ForegroundColor Gray -Context $null
+$result.Genres | ForEach-Object { Show-Message -Message "     - '$_'" -ForegroundColor White -Context $null }
 
 # Test 3: Verify count
-Write-Host "`n3. Verification:" -ForegroundColor Yellow
+Show-Message -Message "`n3. Verification:" -ForegroundColor Yellow -Context $null
 $expectedCount = 3
 $actualCount = $result.Genres.Count
 if ($actualCount -eq $expectedCount) {
-    Write-Host "   ✓ SUCCESS: Got $actualCount genres (expected $expectedCount)" -ForegroundColor Green
+    Show-Message -Message "   ✓ SUCCESS: Got $actualCount genres (expected $expectedCount)" -ForegroundColor Green -Context $null
 } else {
-    Write-Host "   ✗ FAILED: Got $actualCount genres (expected $expectedCount)" -ForegroundColor Red
+    Show-Message -Message "   ✗ FAILED: Got $actualCount genres (expected $expectedCount)" -ForegroundColor Red -Context $null
 }
 
 # Test 4: Mixed separators
-Write-Host "`n4. Testing mixed comma and semicolon..." -ForegroundColor Yellow
+Show-Message -Message "`n4. Testing mixed comma and semicolon..." -ForegroundColor Yellow -Context $null
 $firstFile = got $testPath -Details | Select-Object -First 1
 $firstFile.Genres = @('Rock, Pop; Jazz')
 $firstFile | sot | Out-Null
 $result = got $testPath -Details | Select-Object -First 1
-Write-Host "   Input: 'Rock, Pop; Jazz'" -ForegroundColor Gray
-Write-Host "   Output:" -ForegroundColor Gray
-$result.Genres | ForEach-Object { Write-Host "     - '$_'" -ForegroundColor White }
+Show-Message -Message "   Input: 'Rock, Pop; Jazz'" -ForegroundColor Gray -Context $null
+Show-Message -Message "   Output:" -ForegroundColor Gray -Context $null
+$result.Genres | ForEach-Object { Show-Message -Message "     - '$_'" -ForegroundColor White -Context $null }
 if ($result.Genres.Count -eq 3) {
-    Write-Host "   ✓ SUCCESS: Split on both separators" -ForegroundColor Green
+    Show-Message -Message "   ✓ SUCCESS: Split on both separators" -ForegroundColor Green -Context $null
 } else {
-    Write-Host "   ✗ FAILED: Got $($result.Genres.Count) genres (expected 3)" -ForegroundColor Red
+    Show-Message -Message "   ✗ FAILED: Got $($result.Genres.Count) genres (expected 3)" -ForegroundColor Red -Context $null
 }
 

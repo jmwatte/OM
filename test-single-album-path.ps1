@@ -3,7 +3,13 @@
 
 #Requires -Modules OM
 
-Write-Host "`n=== Testing Single Album Path Detection ===" -ForegroundColor Cyan
+# Ensure Show-Message helper available when running standalone
+if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+    $p = Join-Path $PSScriptRoot 'Private\Utils\Show-Message.ps1'
+    if (Test-Path $p) { . $p }
+}
+
+Show-Message -Message "`n=== Testing Single Album Path Detection ===" -ForegroundColor Cyan -Context $null
 
 # Test 1: Single album path (Artist/Album)
 Write-Host "`n[Test 1] Single album path: testfiles\The Beatles\1965 - Help!" -ForegroundColor Yellow
@@ -28,20 +34,20 @@ else {
 }
 
 # Test 2: Artist folder with multiple albums (original behavior)
-Write-Host "`n[Test 2] Artist folder path: testfiles\The Beatles" -ForegroundColor Yellow
-Write-Host "Expected: Should detect as artist folder and iterate through all album subfolders" -ForegroundColor Gray
+Show-Message -Message "`n[Test 2] Artist folder path: testfiles\The Beatles" -ForegroundColor Yellow -Context $null
+Show-Message -Message "Expected: Should detect as artist folder and iterate through all album subfolders" -ForegroundColor Gray -Context $null
 
 $artistFolderPath = Join-Path $PSScriptRoot "testfiles\The Beatles"
 
 if (Test-Path $artistFolderPath) {
-    Write-Host "Testing with -Verbose to see detection logic..." -ForegroundColor Cyan
+    Show-Message -Message "Testing with -Verbose to see detection logic..." -ForegroundColor Cyan -Context $null
     
     try {
         Start-OM -Path $artistFolderPath -Provider Spotify -WhatIf -Verbose -NonInteractive
-        Write-Host "`n✓ Test 2 passed: Artist folder processed successfully" -ForegroundColor Green
+        Show-Message -Message "`n✓ Test 2 passed: Artist folder processed successfully" -ForegroundColor Green -Context $null
     }
     catch {
-        Write-Host "`n✗ Test 2 failed: $($_.Exception.Message)" -ForegroundColor Red
+        Show-Message -Message "`n✗ Test 2 failed: $($_.Exception.Message)" -ForegroundColor Red -Context $null
     }
 }
 else {
@@ -49,32 +55,32 @@ else {
 }
 
 # Test 3: Single album path with testdata
-Write-Host "`n[Test 3] Single album path: testdata\albums\Sergei rachmaninov\1995 - Rachmaninoff..." -ForegroundColor Yellow
-Write-Host "Expected: Should detect 'Sergei rachmaninov' as artist from parent folder" -ForegroundColor Gray
+Show-Message -Message "`n[Test 3] Single album path: testdata\albums\Sergei rachmaninov\1995 - Rachmaninoff..." -ForegroundColor Yellow -Context $null
+Show-Message -Message "Expected: Should detect 'Sergei rachmaninov' as artist from parent folder" -ForegroundColor Gray -Context $null
 
 $singleAlbumPath2 = Join-Path $PSScriptRoot "testdata\albums\Sergei rachmaninov\1995 - Rachmaninoff_ Vespers, Op. 37 (Live)"
 
 if (Test-Path $singleAlbumPath2) {
-    Write-Host "Testing with -Verbose to see detection logic..." -ForegroundColor Cyan
+    Show-Message -Message "Testing with -Verbose to see detection logic..." -ForegroundColor Cyan -Context $null
     
     try {
         Start-OM -Path $singleAlbumPath2 -Provider Spotify -WhatIf -Verbose -NonInteractive
-        Write-Host "`n✓ Test 3 passed: Single album path processed successfully" -ForegroundColor Green
+        Show-Message -Message "`n✓ Test 3 passed: Single album path processed successfully" -ForegroundColor Green -Context $null
     }
     catch {
-        Write-Host "`n✗ Test 3 failed: $($_.Exception.Message)" -ForegroundColor Red
+        Show-Message -Message "`n✗ Test 3 failed: $($_.Exception.Message)" -ForegroundColor Red -Context $null
     }
 }
 else {
     Write-Warning "Test path not found: $singleAlbumPath2"
 }
 
-Write-Host "`n=== Test Summary ===" -ForegroundColor Cyan
-Write-Host "Key features tested:" -ForegroundColor White
-Write-Host "  ✓ Single album path detection (has audio files directly)" -ForegroundColor Green
-Write-Host "  ✓ Artist extraction from parent folder name" -ForegroundColor Green
-Write-Host "  ✓ Artist folder detection (has album subfolders)" -ForegroundColor Green
-Write-Host "  ✓ Original multi-album iteration behavior preserved" -ForegroundColor Green
-Write-Host "`nNote: Use -WhatIf removed to test actual processing and user prompts" -ForegroundColor Gray
-Write-Host "      The verbose output should show 'Single album mode' or 'Artist folder mode'" -ForegroundColor Gray
+Show-Message -Message "`n=== Test Summary ===" -ForegroundColor Cyan -Context $null
+Show-Message -Message "Key features tested:" -ForegroundColor White -Context $null
+Show-Message -Message "  ✓ Single album path detection (has audio files directly)" -ForegroundColor Green -Context $null
+Show-Message -Message "  ✓ Artist extraction from parent folder name" -ForegroundColor Green -Context $null
+Show-Message -Message "  ✓ Artist folder detection (has album subfolders)" -ForegroundColor Green -Context $null
+Show-Message -Message "  ✓ Original multi-album iteration behavior preserved" -ForegroundColor Green -Context $null
+Show-Message -Message "`nNote: Use -WhatIf removed to test actual processing and user prompts" -ForegroundColor Gray -Context $null
+Show-Message -Message "      The verbose output should show 'Single album mode' or 'Artist folder mode'" -ForegroundColor Gray -Context $null
 

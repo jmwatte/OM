@@ -1,10 +1,16 @@
 ﻿# Test UpdateGenresOnly feature in Start-OM
 # This test verifies the new -UpdateGenresOnly parameter
 
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-Write-Host "TEST: UpdateGenresOnly Feature" -ForegroundColor Magenta
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-Write-Host ""
+# Ensure Show-Message helper available when running standalone
+if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+    $p = Join-Path $PSScriptRoot 'Private\Utils\Show-Message.ps1'
+    if (Test-Path $p) { . $p }
+}
+
+Show-Message -Message "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan -Context $null
+Show-Message -Message "TEST: UpdateGenresOnly Feature" -ForegroundColor Magenta -Context $null
+Show-Message -Message "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan -Context $null
+Show-Message -Message "" -Context $null
 
 # Find a test album folder with audio files
 $testAlbum = Get-ChildItem -Path "c:\Users\jmw\Documents\PowerShell\Modules\OM\testfiles" -Directory -Recurse | 
@@ -15,48 +21,48 @@ $testAlbum = Get-ChildItem -Path "c:\Users\jmw\Documents\PowerShell\Modules\OM\t
     } | Select-Object -First 1
 
 if (-not $testAlbum) {
-    Write-Host "❌ No test album folder found with audio files" -ForegroundColor Red
+    Show-Message -Message "❌ No test album folder found with audio files" -ForegroundColor Red -Context $null
     exit
 }
 
-Write-Host "Test album: $($testAlbum.FullName)" -ForegroundColor Green
-Write-Host ""
+Show-Message -Message "Test album: $($testAlbum.FullName)" -ForegroundColor Green -Context $null
+Show-Message -Message "" -Context $null
 
 # Test 1: WhatIf mode with Replace
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Yellow
-Write-Host "TEST 1: WhatIf Mode with Replace (Qobuz)" -ForegroundColor Yellow
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Yellow
-Write-Host ""
-Write-Host "This will show what genres would be replaced (does not make changes)" -ForegroundColor Cyan
-Write-Host "Press Ctrl+C to abort before album selection, or follow prompts..." -ForegroundColor Gray
-Write-Host ""
+Show-Message -Message "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Yellow -Context $null
+Show-Message -Message "TEST 1: WhatIf Mode with Replace (Qobuz)" -ForegroundColor Yellow -Context $null
+Show-Message -Message "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Yellow -Context $null
+Show-Message -Message "" -Context $null
+Show-Message -Message "This will show what genres would be replaced (does not make changes)" -ForegroundColor Cyan -Context $null
+Show-Message -Message "Press Ctrl+C to abort before album selection, or follow prompts..." -ForegroundColor Gray -Context $null
+Show-Message -Message "" -Context $null
 
 Start-OM -Path $testAlbum.FullName -UpdateGenresOnly -GenreMode Replace -Provider Qobuz -WhatIf
 
-Write-Host ""
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Yellow
-Write-Host "TEST 2: Interactive Mode with Merge (Discogs)" -ForegroundColor Yellow
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Yellow
-Write-Host ""
-Write-Host "This will interactively prompt you to select album and show genre merging" -ForegroundColor Cyan
-Write-Host "Genres will be ADDED to existing genres (keeps both)" -ForegroundColor Cyan
-Write-Host "Press Ctrl+C to abort, or follow prompts..." -ForegroundColor Gray
-Write-Host ""
+Show-Message -Message "" -Context $null
+Show-Message -Message "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Yellow -Context $null
+Show-Message -Message "TEST 2: Interactive Mode with Merge (Discogs)" -ForegroundColor Yellow -Context $null
+Show-Message -Message "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Yellow -Context $null
+Show-Message -Message "" -Context $null
+Show-Message -Message "This will interactively prompt you to select album and show genre merging" -ForegroundColor Cyan -Context $null
+Show-Message -Message "Genres will be ADDED to existing genres (keeps both)" -ForegroundColor Cyan -Context $null
+Show-Message -Message "Press Ctrl+C to abort, or follow prompts..." -ForegroundColor Gray -Context $null
+Show-Message -Message "" -Context $null
 
 $continue = Read-Host "Run Test 2? (y/n) [n]"
 if ($continue -eq 'y') {
     Start-OM -Path $testAlbum.FullName -UpdateGenresOnly -GenreMode Merge -Provider Discogs -WhatIf
 }
 
-Write-Host ""
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Green
-Write-Host "✓ Tests Complete" -ForegroundColor Green
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Green
-Write-Host ""
-Write-Host "To actually update genres (not WhatIf), remove the -WhatIf parameter:" -ForegroundColor Cyan
-Write-Host "  Start-OM -Path 'album_folder' -UpdateGenresOnly -Provider Qobuz" -ForegroundColor White
-Write-Host ""
-Write-Host "For batch processing across multiple albums, use -Auto:" -ForegroundColor Cyan
-Write-Host "  Start-OM -Path 'artist_folder' -UpdateGenresOnly -Auto -Provider Discogs" -ForegroundColor White
-Write-Host ""
+Show-Message -Message "" -Context $null
+Show-Message -Message "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Green -Context $null
+Show-Message -Message "✓ Tests Complete" -ForegroundColor Green -Context $null
+Show-Message -Message "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Green -Context $null
+Show-Message -Message "" -Context $null
+Show-Message -Message "To actually update genres (not WhatIf), remove the -WhatIf parameter:" -ForegroundColor Cyan -Context $null
+Show-Message -Message "  Start-OM -Path 'album_folder' -UpdateGenresOnly -Provider Qobuz" -ForegroundColor White -Context $null
+Show-Message -Message "" -Context $null
+Show-Message -Message "For batch processing across multiple albums, use -Auto:" -ForegroundColor Cyan -Context $null
+Show-Message -Message "  Start-OM -Path 'artist_folder' -UpdateGenresOnly -Auto -Provider Discogs" -ForegroundColor White -Context $null
+Show-Message -Message "" -Context $null
 

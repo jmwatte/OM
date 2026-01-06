@@ -13,18 +13,24 @@ $testTags = [PSCustomObject]@{
     Genres = @("Rock", "Pop")
 }
 
-Write-Host "Testing Expand-RenamePattern function:"
+# Ensure Show-Message helper available when running standalone
+if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+    $p = Join-Path $PSScriptRoot 'Private\Utils\Show-Message.ps1'
+    if (Test-Path $p) { . $p }
+}
+
+Show-Message -Message "Testing Expand-RenamePattern function:" -Context $null
 
 # Test basic pattern
 $result1 = Expand-RenamePattern -Pattern "{Track:D2} - {Title}" -TagObject $testTags -FileExtension ".mp3"
-Write-Host "Basic pattern: $result1"
+Show-Message -Message "Basic pattern: $result1" -Context $null
 
 # Test case formatting
 $result2 = Expand-RenamePattern -Pattern "{Artist:Upper} - {Title:TitleCase}" -TagObject $testTags -FileExtension ".flac"
-Write-Host "Case formatting: $result2"
+Show-Message -Message "Case formatting: $result2" -Context $null
 
 # Test array property (should take first item)
 $result3 = Expand-RenamePattern -Pattern "{Artist} - {Genre}" -TagObject $testTags -FileExtension ".mp3"
-Write-Host "Array property: $result3"
+Show-Message -Message "Array property: $result3" -Context $null
 
-Write-Host "All tests completed successfully!"
+Show-Message -Message "All tests completed successfully!" -Context $null

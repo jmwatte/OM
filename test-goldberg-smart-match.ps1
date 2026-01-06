@@ -4,13 +4,19 @@
 $ErrorActionPreference = 'Stop'
 Import-Module "C:\Users\jmw\Documents\PowerShell\Modules\OM\OM.psd1" -Force
 
+# Ensure Show-Message helper available when running standalone
+if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+    $p = Join-Path $PSScriptRoot 'Private\Utils\Show-Message.ps1'
+    if (Test-Path $p) { . $p }
+}
+
 # Dot-source Set-Tracks and its dependencies
 . "C:\Users\jmw\Documents\PowerShell\Modules\OM\Private\Utils\Get-StringSimilarity-Jaccard.ps1"
 . "C:\Users\jmw\Documents\PowerShell\Modules\OM\Private\Utils\Get-MatchConfidence.ps1"
 . "C:\Users\jmw\Documents\PowerShell\Modules\OM\Private\Workflow\Set-Tracks.ps1"
 
-Write-Host "`n=== Testing Intelligent Variation Matching ===" -ForegroundColor Cyan
-Write-Host "Album: Scott Ross - Goldberg Variations (32 tracks)`n" -ForegroundColor Gray
+Show-Message -Message "`n=== Testing Intelligent Variation Matching ===" -ForegroundColor Cyan -Context $null
+Show-Message -Message "Album: Scott Ross - Goldberg Variations (32 tracks)`n" -ForegroundColor Gray -Context $null
 
 # Load audio files
 $albumPath = "C:\Users\jmw\Documents\PowerShell\Modules\OM\testfiles\Scott Ross\0 - Bach - Goldberg Variations"
@@ -31,7 +37,7 @@ $audioFiles = foreach ($f in $audioFiles) {
     }
 }
 
-Write-Host "Loaded $($audioFiles.Count) audio files" -ForegroundColor Green
+Show-Message -Message "Loaded $($audioFiles.Count) audio files" -ForegroundColor Green -Context $null
 
 # Create mock provider tracks (simulating Discogs/Spotify Goldberg Variations)
 $providerTracks = @(
@@ -72,26 +78,26 @@ $providerTracks = @(
 Write-Host "Created $($providerTracks.Count) mock provider tracks`n" -ForegroundColor Green
 
 # Test Set-Tracks with byTrackNumber method (which includes smart matching)
-Write-Host "Testing Set-Tracks with byTrackNumber (should trigger smart matching)..." -ForegroundColor Yellow
-Write-Host "Looking for: 'Using smart variation/movement matching (X matched)'" -ForegroundColor Gray
-Write-Host ""
+Show-Message -Message "Testing Set-Tracks with byTrackNumber (should trigger smart matching)..." -ForegroundColor Yellow -Context $null
+Show-Message -Message "Looking for: 'Using smart variation/movement matching (X matched)'" -ForegroundColor Gray -Context $null
+Show-Message -Message "" -Context $null
 
 $result = Set-Tracks -AudioFiles $audioFiles -SpotifyTracks $providerTracks -SortMethod byTrackNumber -Reverse:$false -Verbose 4>&1
 
 # Extract verbose messages about smart matching
 $smartMatchMsg = $result | Where-Object { $_ -match "smart.*variation|Using smart" }
 if ($smartMatchMsg) {
-    Write-Host "`n✅ SMART MATCHING ACTIVATED:" -ForegroundColor Green
-    $smartMatchMsg | ForEach-Object { Write-Host "   $_" -ForegroundColor Cyan }
+    Show-Message -Message "`n✅ SMART MATCHING ACTIVATED:" -ForegroundColor Green -Context $null
+    $smartMatchMsg | ForEach-Object { Show-Message -Message "   $_" -ForegroundColor Cyan -Context $null }
 } else {
-    Write-Host "`n⚠️  Smart matching message not found in verbose output" -ForegroundColor Yellow
+    Show-Message -Message "`n⚠️  Smart matching message not found in verbose output" -ForegroundColor Yellow -Context $null
 }
 
 # Get the actual paired tracks result
 $pairedTracks = $result | Where-Object { $_.PSObject.TypeNames[0] -eq 'System.Management.Automation.PSCustomObject' }
 
-Write-Host "`n=== Pairing Results ===" -ForegroundColor Cyan
-Write-Host "Total pairs: $($pairedTracks.Count)" -ForegroundColor White
+Show-Message -Message "`n=== Pairing Results ===" -ForegroundColor Cyan -Context $null
+Show-Message -Message "Total pairs: $($pairedTracks.Count)" -ForegroundColor White -Context $null
 
 # Count successful matches
 $successfulMatches = @($pairedTracks | Where-Object { $_.AudioFile -and $_.SpotifyTrack }).Count
@@ -99,13 +105,13 @@ $highConfidence = @($pairedTracks | Where-Object { $_.ConfidenceLevel -eq 'High'
 $mediumConfidence = @($pairedTracks | Where-Object { $_.ConfidenceLevel -eq 'Medium' }).Count
 $lowConfidence = @($pairedTracks | Where-Object { $_.ConfidenceLevel -eq 'Low' }).Count
 
-Write-Host "Successful matches: $successfulMatches / 32" -ForegroundColor $(if ($successfulMatches -ge 30) { 'Green' } else { 'Red' })
-Write-Host "  High confidence: $highConfidence" -ForegroundColor Green
-Write-Host "  Medium confidence: $mediumConfidence" -ForegroundColor Yellow
-Write-Host "  Low confidence: $lowConfidence" -ForegroundColor Red
+Show-Message -Message "Successful matches: $successfulMatches / 32" -ForegroundColor $(if ($successfulMatches -ge 30) { 'Green' } else { 'Red' }) -Context $null
+Show-Message -Message "  High confidence: $highConfidence" -ForegroundColor Green -Context $null
+Show-Message -Message "  Medium confidence: $mediumConfidence" -ForegroundColor Yellow -Context $null
+Show-Message -Message "  Low confidence: $lowConfidence" -ForegroundColor Red -Context $null
 
 # Show first 10 pairings
-Write-Host "`n=== First 10 Pairings ===" -ForegroundColor Cyan
+Show-Message -Message "`n=== First 10 Pairings ===" -ForegroundColor Cyan -Context $null
 $pairedTracks | Select-Object -First 10 | ForEach-Object {
     $audioName = if ($_.AudioFile) { [System.IO.Path]::GetFileNameWithoutExtension($_.AudioFile.FilePath) } else { "[UNPAIRED]" }
     $providerName = if ($_.SpotifyTrack) { $_.SpotifyTrack.name } else { "[UNPAIRED]" }
@@ -115,8 +121,8 @@ $pairedTracks | Select-Object -First 10 | ForEach-Object {
         'Low' { 'Red' }
         default { 'Gray' }
     }
-    Write-Host "  $($audioName.PadRight(50)) ↔ $providerName" -ForegroundColor $color
-}
+    Show-Message -Message "  $($audioName.PadRight(50)) ↔ $providerName" -ForegroundColor $color -Context $null
+} 
 
 # Cleanup
 foreach ($af in $audioFiles) {
@@ -125,10 +131,10 @@ foreach ($af in $audioFiles) {
     }
 }
 
-Write-Host "`n=== Test Complete ===" -ForegroundColor Cyan
+Show-Message -Message "`n=== Test Complete ===" -ForegroundColor Cyan -Context $null
 if ($successfulMatches -ge 30) {
-    Write-Host "✅ SUCCESS: Smart matching working! ($successfulMatches/32 tracks matched)" -ForegroundColor Green
+    Show-Message -Message "✅ SUCCESS: Smart matching working! ($successfulMatches/32 tracks matched)" -ForegroundColor Green -Context $null
 } else {
-    Write-Host "❌ FAILURE: Only $successfulMatches/32 tracks matched" -ForegroundColor Red
+    Show-Message -Message "❌ FAILURE: Only $successfulMatches/32 tracks matched" -ForegroundColor Red -Context $null
 }
 

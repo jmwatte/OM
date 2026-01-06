@@ -4,7 +4,13 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-Write-Host "`n=== Test: Script Scope Variable Access ===" -ForegroundColor Cyan
+# Ensure Show-Message helper available when running standalone
+if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+    $p = Join-Path $PSScriptRoot 'Private\Utils\Show-Message.ps1'
+    if (Test-Path $p) { . $p }
+}
+
+Show-Message -Message "`n=== Test: Script Scope Variable Access ===" -ForegroundColor Cyan -Context $null
 
 # Simulate Start-OM structure: local variable in function
 function Test-ScopeIssue {
@@ -19,35 +25,35 @@ function Test-ScopeIssue {
         [PSCustomObject]@{ Name = "Track 2" }
     )
     
-    Write-Host "Local pairedTracks initialized: $($pairedTracks.Count) items" -ForegroundColor Green
+    Show-Message -Message "Local pairedTracks initialized: $($pairedTracks.Count) items" -ForegroundColor Green -Context $null
     
     # Scriptblock that tries to access $script:pairedTracks
     $testScriptblock = {
         param($testName)
         
-        Write-Host "`n--- $testName ---" -ForegroundColor Yellow
+        Show-Message -Message "`n--- $testName ---" -ForegroundColor Yellow -Context $null
         
         # This will FAIL with StrictMode if $script:pairedTracks doesn't exist
         try {
             if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
-                Write-Host "✓ script:pairedTracks exists: $($script:pairedTracks.Count) items" -ForegroundColor Green
+                Show-Message -Message "✓ script:pairedTracks exists: $($script:pairedTracks.Count) items" -ForegroundColor Green -Context $null
             } else {
-                Write-Host "script:pairedTracks is null or empty" -ForegroundColor Gray
+                Show-Message -Message "script:pairedTracks is null or empty" -ForegroundColor Gray -Context $null
             }
         }
         catch {
-            Write-Host "❌ ERROR accessing script:pairedTracks: $($_.Exception.Message)" -ForegroundColor Red
+            Show-Message -Message "❌ ERROR accessing script:pairedTracks: $($_.Exception.Message)" -ForegroundColor Red -Context $null
             return $false
         }
         return $true
     }
     
     # Test 1: Invoke scriptblock with local variable only
-    Write-Host "`nTest 1: Local `$pairedTracks only (no script scope)" -ForegroundColor Cyan
+    Show-Message -Message "`nTest 1: Local `$pairedTracks only (no script scope)" -ForegroundColor Cyan -Context $null
     $result1 = & $testScriptblock "Access script:pairedTracks"
     
     # Test 2: Now create script-scope variable and try again
-    Write-Host "`nTest 2: After creating `$script:pairedTracks" -ForegroundColor Cyan
+    Show-Message -Message "`nTest 2: After creating `$script:pairedTracks" -ForegroundColor Cyan -Context $null
     $script:pairedTracks = $pairedTracks
     $result2 = & $testScriptblock "Access script:pairedTracks (now exists)"
     

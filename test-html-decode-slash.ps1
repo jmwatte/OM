@@ -2,53 +2,59 @@
 cd 'c:\Users\resto\Documents\PowerShell\Modules\OM'
 Import-Module ./OM.psd1 -Force
 
+# Ensure Show-Message helper available when running standalone
+if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+    $p = Join-Path $PSScriptRoot 'Private\Utils\Show-Message.ps1'
+    if (Test-Path $p) { . $p }
+}
+
 $testPath = "C:\Users\resto\Documents\PowerShell\Modules\OM\testdata\albums\Sergei rachmaninov\1995 - Rachmaninoff_ Vespers, Op. 37 (Live)"
 
-Write-Host "=== Testing HTML Decode & Slash Splitting ===" -ForegroundColor Cyan
-Write-Host ""
+Show-Message -Message "=== Testing HTML Decode & Slash Splitting ===" -ForegroundColor Cyan -Context $null
+Show-Message -Message "" -Context $null
 
 # Test 1: HTML entity decoding
-Write-Host "1. Testing HTML entity '&amp;' decoding..." -ForegroundColor Yellow
+Show-Message -Message "1. Testing HTML entity '&amp;' decoding..." -ForegroundColor Yellow -Context $null
 $firstFile = got $testPath -Details | Select-Object -First 1
 $firstFile.Genres = @('R&amp;B', 'Soul')
 $firstFile | sot | Out-Null
 $result = got $testPath -Details | Select-Object -First 1
-Write-Host "   Input: 'R&amp;B', 'Soul'" -ForegroundColor Gray
-Write-Host "   Output:" -ForegroundColor Gray
-$result.Genres | ForEach-Object { Write-Host "     - '$_'" -ForegroundColor White }
+Show-Message -Message "   Input: 'R&amp;B', 'Soul'" -ForegroundColor Gray -Context $null
+Show-Message -Message "   Output:" -ForegroundColor Gray -Context $null
+$result.Genres | ForEach-Object { Show-Message -Message "     - '$_'" -ForegroundColor White -Context $null }
 $hasRnB = $result.Genres -contains 'R&B'
 if ($hasRnB) {
-    Write-Host "   ✓ SUCCESS: HTML decoded to 'R&B'" -ForegroundColor Green
+    Show-Message -Message "   ✓ SUCCESS: HTML decoded to 'R&B'" -ForegroundColor Green -Context $null
 } else {
-    Write-Host "   ✗ FAILED: Did not decode properly" -ForegroundColor Red
+    Show-Message -Message "   ✗ FAILED: Did not decode properly" -ForegroundColor Red -Context $null
 }
 
 # Test 2: Slash splitting
-Write-Host "`n2. Testing slash splitting..." -ForegroundColor Yellow
+Show-Message -Message "`n2. Testing slash splitting..." -ForegroundColor Yellow -Context $null
 $firstFile = got $testPath -Details | Select-Object -First 1
 $firstFile.Genres = @('Soul/Funk/R&B')
 $firstFile | sot | Out-Null
 $result = got $testPath -Details | Select-Object -First 1
-Write-Host "   Input: 'Soul/Funk/R&B'" -ForegroundColor Gray
-Write-Host "   Output:" -ForegroundColor Gray
-$result.Genres | ForEach-Object { Write-Host "     - '$_'" -ForegroundColor White }
+Show-Message -Message "   Input: 'Soul/Funk/R&B'" -ForegroundColor Gray -Context $null
+Show-Message -Message "   Output:" -ForegroundColor Gray -Context $null
+$result.Genres | ForEach-Object { Show-Message -Message "     - '$_'" -ForegroundColor White -Context $null }
 $expectedCount = 3
 $actualCount = $result.Genres.Count
 if ($actualCount -eq $expectedCount) {
-    Write-Host "   ✓ SUCCESS: Split into $actualCount genres" -ForegroundColor Green
+    Show-Message -Message "   ✓ SUCCESS: Split into $actualCount genres" -ForegroundColor Green -Context $null
 } else {
-    Write-Host "   ✗ FAILED: Got $actualCount genres (expected $expectedCount)" -ForegroundColor Red
+    Show-Message -Message "   ✗ FAILED: Got $actualCount genres (expected $expectedCount)" -ForegroundColor Red -Context $null
 }
 
 # Test 3: Complex case (your Funkadelic example)
-Write-Host "`n3. Testing complex case: 'Soul/Funk/R&amp;B'..." -ForegroundColor Yellow
+Show-Message -Message "`n3. Testing complex case: 'Soul/Funk/R&amp;B'..." -ForegroundColor Yellow -Context $null
 $firstFile = got $testPath -Details | Select-Object -First 1
 $firstFile.Genres = @('Soul/Funk/R&amp;B')
 $firstFile | sot | Out-Null
 $result = got $testPath -Details | Select-Object -First 1
-Write-Host "   Input: 'Soul/Funk/R&amp;B'" -ForegroundColor Gray
-Write-Host "   Output:" -ForegroundColor Gray
-$result.Genres | ForEach-Object { Write-Host "     - '$_'" -ForegroundColor White }
+Show-Message -Message "   Input: 'Soul/Funk/R&amp;B'" -ForegroundColor Gray -Context $null
+Show-Message -Message "   Output:" -ForegroundColor Gray -Context $null
+$result.Genres | ForEach-Object { Show-Message -Message "     - '$_'" -ForegroundColor White -Context $null }
 
 # Check results
 $hasSoul = $result.Genres -contains 'Soul'
@@ -58,18 +64,18 @@ $hasNoB = $result.Genres -notcontains 'B'
 $hasNoRampAmp = $result.Genres -notcontains 'R&Amp'
 
 if ($hasSoul -and $hasFunk -and $hasRnB -and $hasNoB -and $hasNoRampAmp) {
-    Write-Host "   ✓ SUCCESS: Correctly split and decoded!" -ForegroundColor Green
-    Write-Host "     - Has 'Soul': $hasSoul" -ForegroundColor Green
-    Write-Host "     - Has 'Funk': $hasFunk" -ForegroundColor Green
-    Write-Host "     - Has 'R&B': $hasRnB" -ForegroundColor Green
-    Write-Host "     - No 'B' artifact: $hasNoB" -ForegroundColor Green
-    Write-Host "     - No 'R&Amp' artifact: $hasNoRampAmp" -ForegroundColor Green
+    Show-Message -Message "   ✓ SUCCESS: Correctly split and decoded!" -ForegroundColor Green -Context $null
+    Show-Message -Message "     - Has 'Soul': $hasSoul" -ForegroundColor Green -Context $null
+    Show-Message -Message "     - Has 'Funk': $hasFunk" -ForegroundColor Green -Context $null
+    Show-Message -Message "     - Has 'R&B': $hasRnB" -ForegroundColor Green -Context $null
+    Show-Message -Message "     - No 'B' artifact: $hasNoB" -ForegroundColor Green -Context $null
+    Show-Message -Message "     - No 'R&Amp' artifact: $hasNoRampAmp" -ForegroundColor Green -Context $null
 } else {
-    Write-Host "   ✗ FAILED:" -ForegroundColor Red
-    Write-Host "     - Has 'Soul': $hasSoul" -ForegroundColor $(if ($hasSoul) {'Green'} else {'Red'})
-    Write-Host "     - Has 'Funk': $hasFunk" -ForegroundColor $(if ($hasFunk) {'Green'} else {'Red'})
-    Write-Host "     - Has 'R&B': $hasRnB" -ForegroundColor $(if ($hasRnB) {'Green'} else {'Red'})
-    Write-Host "     - No 'B': $hasNoB" -ForegroundColor $(if ($hasNoB) {'Green'} else {'Red'})
-    Write-Host "     - No 'R&Amp': $hasNoRampAmp" -ForegroundColor $(if ($hasNoRampAmp) {'Green'} else {'Red'})
+    Show-Message -Message "   ✗ FAILED:" -ForegroundColor Red -Context $null
+    Show-Message -Message "     - Has 'Soul': $hasSoul" -ForegroundColor $(if ($hasSoul) {'Green'} else {'Red'}) -Context $null
+    Show-Message -Message "     - Has 'Funk': $hasFunk" -ForegroundColor $(if ($hasFunk) {'Green'} else {'Red'}) -Context $null
+    Show-Message -Message "     - Has 'R&B': $hasRnB" -ForegroundColor $(if ($hasRnB) {'Green'} else {'Red'}) -Context $null
+    Show-Message -Message "     - No 'B': $hasNoB" -ForegroundColor $(if ($hasNoB) {'Green'} else {'Red'}) -Context $null
+    Show-Message -Message "     - No 'R&Amp': $hasNoRampAmp" -ForegroundColor $(if ($hasNoRampAmp) {'Green'} else {'Red'}) -Context $null
 }
 

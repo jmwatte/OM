@@ -3,7 +3,13 @@
 
 Import-Module "$PSScriptRoot\OM.psd1" -Force
 
-Write-Host "`n=== Testing Genre Display for All Providers ===" -ForegroundColor Cyan
+# Ensure Show-Message helper available when running standalone
+if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+    $p = Join-Path $PSScriptRoot 'Private\Utils\Show-Message.ps1'
+    if (Test-Path $p) { . $p }
+}
+
+Show-Message -Message "`n=== Testing Genre Display for All Providers ===" -ForegroundColor Cyan -Context $null
 
 # Mock data for different provider scenarios
 $testCases = @(
@@ -110,8 +116,8 @@ $passed = 0
 $failed = 0
 
 foreach ($test in $testCases) {
-    Write-Host "`nTest: $($test.Name)" -ForegroundColor Yellow
-    Write-Host "Expected genres from $($test.Source): $($test.ExpectedGenres)" -ForegroundColor Gray
+    Show-Message -Message "`nTest: $($test.Name)" -ForegroundColor Yellow -Context $null
+    Show-Message -Message "Expected genres from $($test.Source): $($test.ExpectedGenres)" -ForegroundColor Gray -Context $null
     
     # Create a mock paired track
     $pairedTrack = [PSCustomObject]@{
@@ -139,24 +145,24 @@ foreach ($test in $testCases) {
     }
     
     if ($foundGenres -eq $test.ExpectedGenres) {
-        Write-Host "✅ PASS: Found genres '$foundGenres' from $source" -ForegroundColor Green
+        Show-Message -Message "✅ PASS: Found genres '$foundGenres' from $source" -ForegroundColor Green -Context $null
         $passed++
     }
     else {
-        Write-Host "❌ FAIL: Expected '$($test.ExpectedGenres)' but got '$foundGenres'" -ForegroundColor Red
+        Show-Message -Message "❌ FAIL: Expected '$($test.ExpectedGenres)' but got '$foundGenres'" -ForegroundColor Red -Context $null
         $failed++
     }
 }
 
-Write-Host "`n=== Test Summary ===" -ForegroundColor Cyan
-Write-Host "Passed: $passed" -ForegroundColor Green
-Write-Host "Failed: $failed" -ForegroundColor $(if ($failed -gt 0) { 'Red' } else { 'Green' })
+Show-Message -Message "`n=== Test Summary ===" -ForegroundColor Cyan -Context $null
+Show-Message -Message "Passed: $passed" -ForegroundColor Green -Context $null
+Show-Message -Message "Failed: $failed" -ForegroundColor $(if ($failed -gt 0) { 'Red' } else { 'Green' }) -Context $null
 
 if ($failed -eq 0) {
-    Write-Host "`n✅ All tests passed! Genre display logic is working correctly." -ForegroundColor Green
-    Write-Host "Genres will now display from album metadata for Discogs, Qobuz, and MusicBrainz." -ForegroundColor Cyan
+    Show-Message -Message "`n✅ All tests passed! Genre display logic is working correctly." -ForegroundColor Green -Context $null
+    Show-Message -Message "Genres will now display from album metadata for Discogs, Qobuz, and MusicBrainz." -ForegroundColor Cyan -Context $null
 }
 else {
-    Write-Host "`n❌ Some tests failed. Please review the genre display logic." -ForegroundColor Red
+    Show-Message -Message "`n❌ Some tests failed. Please review the genre display logic." -ForegroundColor Red -Context $null
 }
 

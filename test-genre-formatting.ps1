@@ -1,6 +1,12 @@
 ﻿# Test to verify genre display formatting (tabs should be properly rendered)
 
-Write-Host "`n=== Testing Genre Display Formatting ===" -ForegroundColor Cyan
+# Ensure Show-Message helper available when running standalone
+if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+    $p = Join-Path $PSScriptRoot 'Private\Utils\Show-Message.ps1'
+    if (Test-Path $p) { . $p }
+}
+
+Show-Message -Message "`n=== Testing Genre Display Formatting ===" -ForegroundColor Cyan -Context $null
 
 # Test data with genres
 $testAlbum = [PSCustomObject]@{
@@ -21,9 +27,9 @@ $testTrack = [PSCustomObject]@{
     artists = @([PSCustomObject]@{ name = "The Beatles" })
 }
 
-Write-Host "`nTest 1: Album-level genres (Qobuz/Discogs)"
-Write-Host "↓       01.08: Act Naturally (Remastered) (02:30)"
-Write-Host "                artist: The Beatles"
+Show-Message -Message "`nTest 1: Album-level genres (Qobub/Discogs)" -Context $null
+Show-Message -Message "↓       01.08: Act Naturally (Remastered) (02:30)" -Context $null
+Show-Message -Message "                artist: The Beatles" -Context $null
 
 # Test the actual code from Show-Tracks
 $value = $testAlbum.genres
@@ -32,9 +38,9 @@ if ($value) {
     Write-Host ("`t`tgenres: {0}" -f $providerGenres)
 }
 
-Write-Host "`nTest 2: Artist-level genres (MusicBrainz)"
-Write-Host "↓       01.10: You Like Me Too Much (02:38)"
-Write-Host "                artist: The Beatles"
+Show-Message -Message "`nTest 2: Artist-level genres (MusicBrainz)" -Context $null
+Show-Message -Message "↓       01.10: You Like Me Too Much (02:38)" -Context $null
+Show-Message -Message "                artist: The Beatles" -Context $null
 
 $value = $testArtist.genres
 if ($value) {
@@ -42,6 +48,6 @@ if ($value) {
     Write-Host ("`t`tgenres: {0}" -f $providerGenres)
 }
 
-Write-Host "`n✅ If tabs are properly rendered above (not showing \\t\\t), the fix is working!" -ForegroundColor Green
-Write-Host "Expected output should show proper indentation, not literal backslash-t characters." -ForegroundColor Gray
+Show-Message -Message "`n✅ If tabs are properly rendered above (not showing \\t\\t), the fix is working!" -ForegroundColor Green -Context $null
+Show-Message -Message "Expected output should show proper indentation, not literal backslash-t characters." -ForegroundColor Gray -Context $null
 

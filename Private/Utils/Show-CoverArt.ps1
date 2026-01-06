@@ -54,7 +54,13 @@ function Show-CoverArt {
         [string]$Size = 'large',
 
         [Parameter(Mandatory = $false)]
-        [bool]$Grid = $true
+        [bool]$Grid = $true,
+
+        [Parameter(Mandatory = $false)]
+        [scriptblock]$ChafaProbe,
+
+        [Parameter(Mandatory = $false)]
+        [scriptblock]$ChafaExecutor
     )
 
     # Handle backward compatibility: if Album is provided, treat it as a single album
@@ -94,17 +100,44 @@ function Show-CoverArt {
         return
     }
 
-    # Check if chafa is available
+    function Write-Display {
+        param(
+            [Parameter(Mandatory=$true)][AllowEmptyString()][string]$Message,
+            [Parameter(Mandatory=$false)][string]$ForegroundColor,
+            [Parameter(Mandatory=$false)][switch]$NoNewline,
+            [Parameter(Mandatory=$false)][object]$Context
+        )
+
+        if (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) {
+            Show-Message -Message $Message -ForegroundColor $ForegroundColor -NoNewline:$NoNewline -Context $Context
+        }
+        else {
+            if ($NoNewline) {
+                if ($ForegroundColor) { Write-Host -NoNewline -ForegroundColor $ForegroundColor $Message } else { Write-Host -NoNewline $Message }
+            }
+            else {
+                if ($ForegroundColor) { Write-Host -ForegroundColor $ForegroundColor $Message } else { Write-Host $Message }
+            }
+        }
+    }
+
+    # Check if chafa is available (allow override via -ChafaProbe)
     $chafaAvailable = $null
     try {
-        $chafaAvailable = Get-Command chafa -ErrorAction Stop
+        if ($ChafaProbe) {
+            $probeResult = & $ChafaProbe
+            if ($probeResult) { $chafaAvailable = $true }
+        }
+        else {
+            $chafaAvailable = Get-Command chafa -ErrorAction Stop
+        }
     } catch {
         $chafaAvailable = $null
     }
 
     if (-not $chafaAvailable) {
         # Fallback to browser for all selected albums
-        Write-Host "Opening $($selectedIndices.Count) cover image(s) in browser (chafa not available)..." -ForegroundColor Green
+        Write-Display -Message "Opening $($selectedIndices.Count) cover image(s) in browser (chafa not available)..." -ForegroundColor Green -Context $Context
 
         foreach ($index in $selectedIndices) {
             $albumIndex = $index - 1  # Convert to 0-based
@@ -113,7 +146,7 @@ function Show-CoverArt {
 
             if ($coverUrl) {
                 try {
-                    Write-Host "Opening cover for album $index ($($selectedAlbum.name))" -ForegroundColor Cyan
+                    Write-Display -Message "Opening cover for album $index ($($selectedAlbum.name))" -ForegroundColor Cyan -Context $Context
                     Start-Process $coverUrl
                 } catch {
                     Write-Warning "Failed to open cover art URL for album $index`: $($_.Exception.Message)"
@@ -129,6 +162,8 @@ function Show-CoverArt {
     $tempFiles = @()
 
     Write-Verbose "Preparing cover art display..."
+
+        # Local helper for display fallback (avoids depending on Show-Message existing in test runspace)
 
     foreach ($index in $selectedIndices) {
         $albumIndex = $index - 1  # Convert to 0-based
@@ -198,7 +233,12 @@ function Show-CoverArt {
         # Try to use sixels format for better image quality if supported
         $useChafa = $true
         try {
-            $chafaHelp = (& chafa --help 2>&1) -join "`n"
+            if ($ChafaProbe) {
+                $chafaHelp = & $ChafaProbe
+            } else {
+                $chafaHelp = (& chafa --help 2>&1) -join "`n"
+            }
+
             if ($chafaHelp -match 'sixel' -or $chafaHelp -match 'sixels') {
                 $chafaArgs += @('--format=sixels')
                 Write-Verbose "chafa supports sixel; using --format=sixels"
@@ -218,7 +258,7 @@ function Show-CoverArt {
 
         if (-not $useChafa) {
             # Fallback to browser
-            Write-Host "Opening $($selectedIndices.Count) cover image(s) in browser (terminal does not support images)..." -ForegroundColor Green
+            Write-Display -Message "Opening $($selectedIndices.Count) cover image(s) in browser (terminal does not support images)..." -ForegroundColor Green -Context $Context
 
             foreach ($index in $selectedIndices) {
                 $albumIndex = $index - 1
@@ -227,7 +267,7 @@ function Show-CoverArt {
 
                 if ($coverUrl) {
                     try {
-                        Write-Host "Opening cover for album $index ($($selectedAlbum.name))" -ForegroundColor Cyan
+                        Write-Display -Message "Opening cover for album $index ($($selectedAlbum.name))" -ForegroundColor Cyan
                         Start-Process $coverUrl
                     } catch {
                         Write-Warning "Failed to open cover art URL for album $index`: $($_.Exception.Message)"
@@ -246,27 +286,31 @@ function Show-CoverArt {
         Write-Verbose "Running chafa with args: $($chafaArgs -join ' ')"
         Write-Verbose "Executing: chafa $($chafaArgs -join ' ')"
         
-        # Call chafa using Start-Process to avoid PowerShell output capturing
-        # or use direct invocation without capturing
+        # Call chafa using injected executor if provided, otherwise start process
         try {
-            # Build command string
-            $chafaCmd = "chafa"
-            $argString = $chafaArgs -join ' '
-            
-            # Direct call without output capture - let chafa write directly to console
-            $processInfo = New-Object System.Diagnostics.ProcessStartInfo
-            $processInfo.FileName = "chafa"
-            $processInfo.Arguments = $argString
-            $processInfo.UseShellExecute = $false
-            $processInfo.RedirectStandardOutput = $false
-            $processInfo.RedirectStandardError = $false
-            
-            $process = New-Object System.Diagnostics.Process
-            $process.StartInfo = $processInfo
-            [void]$process.Start()
-            $process.WaitForExit()
-            
-            Write-Verbose "`nChafa execution completed (exit code: $($process.ExitCode))."
+            if ($ChafaExecutor) {
+                & $ChafaExecutor -Args $chafaArgs -Files $tempFiles
+            }
+            else {
+                # Build command string
+                $chafaCmd = "chafa"
+                $argString = $chafaArgs -join ' '
+                
+                # Direct call without output capture - let chafa write directly to console
+                $processInfo = New-Object System.Diagnostics.ProcessStartInfo
+                $processInfo.FileName = "chafa"
+                $processInfo.Arguments = $argString
+                $processInfo.UseShellExecute = $false
+                $processInfo.RedirectStandardOutput = $false
+                $processInfo.RedirectStandardError = $false
+                
+                $process = New-Object System.Diagnostics.Process
+                $process.StartInfo = $processInfo
+                [void]$process.Start()
+                $process.WaitForExit()
+                
+                Write-Verbose "`nChafa execution completed (exit code: $($process.ExitCode))."
+            }
         }
         catch {
             Write-Warning "Failed to run chafa: $_"

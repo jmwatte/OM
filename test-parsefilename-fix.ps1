@@ -1,6 +1,6 @@
 ﻿# Test ParseFilename fix for {disc}-{track} pattern
 
-Write-Host "`n=== Testing ParseFilename Pattern Fix ===" -ForegroundColor Cyan
+Show-Message -Message "`n=== Testing ParseFilename Pattern Fix ===" -ForegroundColor Cyan -Context $null
 
 # Test the Parse-FilenamePattern function directly
 $testCases = @(
@@ -50,8 +50,8 @@ $passed = 0
 $failed = 0
 
 foreach ($test in $testCases) {
-    Write-Host "`nTest: $($test.FileName)" -ForegroundColor Yellow
-    Write-Host "Pattern: $($test.Pattern)" -ForegroundColor Gray
+    Show-Message -Message "`nTest: $($test.FileName)" -ForegroundColor Yellow -Context $null
+    Show-Message -Message "Pattern: $($test.Pattern)" -ForegroundColor Gray -Context $null
     
     # Build regex pattern (simulate Parse-FilenamePattern logic)
     $regexPattern = $test.Pattern
@@ -84,13 +84,13 @@ foreach ($test in $testCases) {
     $regexPattern = $escapedParts -join ''
     $regexPattern = "^$regexPattern$"
     
-    Write-Host "Regex: $regexPattern" -ForegroundColor DarkGray
+    Show-Message -Message "Regex: $regexPattern" -ForegroundColor DarkGray -Context $null
     
     # Try to match
     $matchResult = [regex]::Match($test.FileName, $regexPattern)
     
     if ($matchResult.Success) {
-        Write-Host "✓ Match successful" -ForegroundColor Green
+        Show-Message -Message "✓ Match successful" -ForegroundColor Green -Context $null
         
         $allCorrect = $true
         foreach ($key in $test.Expected.Keys) {
@@ -103,9 +103,9 @@ foreach ($test in $testCases) {
             }
             
             if ($actualValue -eq $expectedValue) {
-                Write-Host "  ✓ $key = '$actualValue'" -ForegroundColor Green
+                Show-Message -Message "  ✓ $key = '$actualValue'" -ForegroundColor Green -Context $null
             } else {
-                Write-Host "  ✗ $key = '$actualValue' (expected '$expectedValue')" -ForegroundColor Red
+                Show-Message -Message "  ✗ $key = '$actualValue' (expected '$expectedValue')" -ForegroundColor Red -Context $null
                 $allCorrect = $false
             }
         }
@@ -116,20 +116,20 @@ foreach ($test in $testCases) {
             $failed++
         }
     } else {
-        Write-Host "✗ Match failed" -ForegroundColor Red
+        Show-Message -Message "✗ Match failed" -ForegroundColor Red -Context $null
         $failed++
     }
 }
 
-Write-Host "`n=== Test Summary ===" -ForegroundColor Cyan
-Write-Host "Passed: $passed / $($testCases.Count)" -ForegroundColor $(if ($failed -eq 0) { 'Green' } else { 'Yellow' })
+Show-Message -Message "`n=== Test Summary ===" -ForegroundColor Cyan -Context $null
+Show-Message -Message "Passed: $passed / $($testCases.Count)" -ForegroundColor $(if ($failed -eq 0) { 'Green' } else { 'Yellow' }) -Context $null
 
 if ($failed -eq 0) {
-    Write-Host "`n✅ ParseFilename fix is working correctly!" -ForegroundColor Green
-    Write-Host "The pattern {disc}-{track} now correctly parses disc and track separately." -ForegroundColor Cyan
-    Write-Host "`nYou can now use:" -ForegroundColor Yellow
-    Write-Host '  got $dest -Details | sot -ParseFilename "{AlbumArtists} - {Album} - {disc}-{track} {title}" -PassThru' -ForegroundColor Gray
+    Show-Message -Message "`n✅ ParseFilename fix is working correctly!" -ForegroundColor Green -Context $null
+    Show-Message -Message "The pattern {disc}-{track} now correctly parses disc and track separately." -ForegroundColor Cyan -Context $null
+    Show-Message -Message "`nYou can now use:" -ForegroundColor Yellow -Context $null
+    Show-Message -Message '  got $dest -Details | sot -ParseFilename "{AlbumArtists} - {Album} - {disc}-{track} {title}" -PassThru' -ForegroundColor Gray -Context $null
 } else {
-    Write-Host "`n❌ Some tests failed." -ForegroundColor Red
+    Show-Message -Message "`n❌ Some tests failed." -ForegroundColor Red -Context $null
 }
 

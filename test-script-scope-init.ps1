@@ -4,7 +4,13 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-Write-Host "`n=== Test: Script Scope Variable Initialization ===" -ForegroundColor Cyan
+# Ensure Show-Message helper available when running standalone
+if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+    $p = Join-Path $PSScriptRoot 'Private\Utils\Show-Message.ps1'
+    if (Test-Path $p) { . $p }
+}
+
+Show-Message -Message "`n=== Test: Script Scope Variable Initialization ===" -ForegroundColor Cyan -Context $null
 
 function Test-InitializationFix {
     [CmdletBinding()]
@@ -12,49 +18,49 @@ function Test-InitializationFix {
     
     Set-StrictMode -Version Latest
     
-    Write-Host "Simulating Start-OM album loop initialization..." -ForegroundColor Gray
+    Show-Message -Message "Simulating Start-OM album loop initialization..." -ForegroundColor Gray -Context $null
     
     # FIX: Initialize script-scope variables BEFORE scriptblock definition
     $script:audioFiles = $null
     $script:pairedTracks = $null
     $script:refreshTracks = $false
     
-    Write-Host "✓ Script scope variables initialized" -ForegroundColor Green
+    Show-Message -Message "✓ Script scope variables initialized" -ForegroundColor Green -Context $null
     
     # Now define scriptblock that will access these variables
     $handleMoveSuccess = {
         param($moveResult)
         
-        Write-Host "`n--- Scriptblock: handleMoveSuccess ---" -ForegroundColor Yellow
+        Show-Message -Message "`n--- Scriptblock: handleMoveSuccess ---" -ForegroundColor Yellow -Context $null
         
         # This should NOT fail now that variables are initialized
         try {
             # Check audioFiles
             if ($script:audioFiles -and $script:audioFiles.Count -gt 0) {
-                Write-Host "✓ script:audioFiles is accessible (has items)" -ForegroundColor Green
+                Show-Message -Message "✓ script:audioFiles is accessible (has items)" -ForegroundColor Green -Context $null
             } else {
-                Write-Host "✓ script:audioFiles is accessible (null/empty)" -ForegroundColor Green
+                Show-Message -Message "✓ script:audioFiles is accessible (null/empty)" -ForegroundColor Green -Context $null
             }
             
             # Check pairedTracks  
             if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
-                Write-Host "✓ script:pairedTracks is accessible (has items)" -ForegroundColor Green
+                Show-Message -Message "✓ script:pairedTracks is accessible (has items)" -ForegroundColor Green -Context $null
                 # Update pairedTracks
                 for ($i = 0; $i -lt $script:pairedTracks.Count; $i++) {
                     if ($script:pairedTracks[$i].AudioFile) {
-                        Write-Host "  Updating pairedTrack[$i]..." -ForegroundColor Gray
+                        Show-Message -Message "  Updating pairedTrack[$i]..." -ForegroundColor Gray -Context $null
                     }
                 }
             } else {
-                Write-Host "✓ script:pairedTracks is accessible (null/empty)" -ForegroundColor Green
+                Show-Message -Message "✓ script:pairedTracks is accessible (null/empty)" -ForegroundColor Green -Context $null
             }
             
             # Check refreshTracks
-            Write-Host "✓ script:refreshTracks is accessible: $script:refreshTracks" -ForegroundColor Green
+            Show-Message -Message "✓ script:refreshTracks is accessible: $script:refreshTracks" -ForegroundColor Green -Context $null
             
             # Set refreshTracks to true
             $script:refreshTracks = $true
-            Write-Host "✓ Set script:refreshTracks = true" -ForegroundColor Green
+            Show-Message -Message "✓ Set script:refreshTracks = true" -ForegroundColor Green -Context $null
             
             return $true
         }
@@ -65,25 +71,25 @@ function Test-InitializationFix {
     }
     
     # Test Case 1: With null/empty variables (just initialized)
-    Write-Host "`nTest 1: Empty script variables (just initialized)" -ForegroundColor Cyan
+    Show-Message -Message "`nTest 1: Empty script variables (just initialized)" -ForegroundColor Cyan -Context $null
     $mockMoveResult = [PSCustomObject]@{ Success = $true; NewAlbumPath = "C:\test" }
     $result1 = & $handleMoveSuccess -moveResult $mockMoveResult
     
     if (-not $result1) {
-        Write-Host "❌ Test 1 FAILED" -ForegroundColor Red
+        Show-Message -Message "❌ Test 1 FAILED" -ForegroundColor Red -Context $null
         return $false
     }
     
     # Verify refreshTracks was updated
     if ($script:refreshTracks -eq $true) {
-        Write-Host "✓ Verified: script:refreshTracks was updated to true" -ForegroundColor Green
+        Show-Message -Message "✓ Verified: script:refreshTracks was updated to true" -ForegroundColor Green -Context $null
     } else {
-        Write-Host "❌ script:refreshTracks was not updated" -ForegroundColor Red
+        Show-Message -Message "❌ script:refreshTracks was not updated" -ForegroundColor Red -Context $null
         return $false
     }
     
     # Test Case 2: With populated variables
-    Write-Host "`nTest 2: Populated script variables" -ForegroundColor Cyan
+    Show-Message -Message "`nTest 2: Populated script variables" -ForegroundColor Cyan -Context $null
     $script:audioFiles = @(
         [PSCustomObject]@{ FilePath = "C:\test1.mp3"; TagFile = $null },
         [PSCustomObject]@{ FilePath = "C:\test2.mp3"; TagFile = $null }
@@ -107,13 +113,13 @@ function Test-InitializationFix {
 # Run test
 $testPassed = Test-InitializationFix
 
-Write-Host "`n========================================" -ForegroundColor Cyan
+Show-Message -Message "`n========================================" -ForegroundColor Cyan -Context $null
 if ($testPassed) {
-    Write-Host "✅ TEST PASSED: Script scope variables are properly initialized and accessible" -ForegroundColor Green
-    Write-Host "   No 'cannot be retrieved because it has not been set' errors" -ForegroundColor Green
+    Show-Message -Message "✅ TEST PASSED: Script scope variables are properly initialized and accessible" -ForegroundColor Green -Context $null
+    Show-Message -Message "   No 'cannot be retrieved because it has not been set' errors" -ForegroundColor Green -Context $null
     exit 0
 } else {
-    Write-Host "❌ TEST FAILED" -ForegroundColor Red
+    Show-Message -Message "❌ TEST FAILED" -ForegroundColor Red -Context $null
     exit 1
 }
 
