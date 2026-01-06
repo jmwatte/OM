@@ -10,7 +10,7 @@ Describe 'Set-OMConfig Context propagation' {
         $script:messages = @()
         Mock -CommandName Show-Message -MockWith { param($Message,$ForegroundColor,$NoNewline,$DisplayWriter,$Context) $script:messages += $Message }
 
-        Set-OMConfig -SpotifyClientId 'cid' -SpotifyClientSecret 'secret' -ConfigPath $tmpFile -Context [PSCustomObject]@{}
+        Set-OMConfig -SpotifyClientId 'cid' -SpotifyClientSecret 'secret' -ConfigPath $tmpFile -Context [PSCustomObject]@{} -Confirm:$false
 
         $script:messages | Should -Not -BeNullOrEmpty
         ($script:messages -join "`n") | Should -Match 'Configuration saved to'
