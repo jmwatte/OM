@@ -7,6 +7,12 @@ param(
 
 Import-Module "$PSScriptRoot\OM.psm1" -Force
 
+# Ensure Show-Message helper available when running standalone
+if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+    $p = Join-Path $PSScriptRoot 'Private\Utils\Show-Message.ps1'
+    if (Test-Path $p) { . $p }
+}
+
 if ($ApeFilePath) {
     $apeFile = Get-Item $ApeFilePath
 }
@@ -15,80 +21,79 @@ else {
     $apeFile = Get-ChildItem -Path "$PSScriptRoot\testfiles" -Filter "*.ape" -Recurse | Select-Object -First 1
 }
 
-if (-not $apeFile) {
-    Write-Host "❌ No APE file specified or found" -ForegroundColor Red
-    Write-Host "Usage: test-ape-duration.ps1 <path-to-ape-file>" -ForegroundColor Gray
+nif (-not $apeFile) {
+    Show-Message -Message "❌ No APE file specified or found" -ForegroundColor Red -Context $null
+    Show-Message -Message "Usage: test-ape-duration.ps1 <path-to-ape-file>" -ForegroundColor Gray -Context $null
     exit
 }
 
-Write-Host "Testing APE file: $($apeFile.Name)" -ForegroundColor Cyan
-Write-Host "Path: $($apeFile.FullName)" -ForegroundColor Gray
-Write-Host ""
+Show-Message -Message "Testing APE file: $($apeFile.Name)" -ForegroundColor Cyan -Context $null
+Show-Message -Message "Path: $($apeFile.FullName)" -ForegroundColor Gray -Context $null
+Show-Message -Message "" -Context $null
 
 try {
     $tagFile = [TagLib.File]::Create($apeFile.FullName)
     
-    Write-Host "TagLib File Type:" -ForegroundColor Yellow
-    Write-Host "  MimeType: $($tagFile.MimeType)"
-    Write-Host "  Type: $($tagFile.GetType().FullName)"
-    Write-Host ""
+    Show-Message -Message "TagLib File Type:" -ForegroundColor Yellow -Context $null
+    Show-Message -Message "  MimeType: $($tagFile.MimeType)" -Context $null
+    Show-Message -Message "  Type: $($tagFile.GetType().FullName)" -Context $null
+    Show-Message -Message "" -Context $null
     
-    Write-Host "Properties Object:" -ForegroundColor Yellow
-    Write-Host "  Type: $($tagFile.Properties.GetType().FullName)"
-    Write-Host "  Duration: $($tagFile.Properties.Duration)"
-    Write-Host "  Duration.TotalMilliseconds: $($tagFile.Properties.Duration.TotalMilliseconds)"
-    Write-Host "  Duration.TotalSeconds: $($tagFile.Properties.Duration.TotalSeconds)"
-    Write-Host ""
+    Show-Message -Message "Properties Object:" -ForegroundColor Yellow -Context $null
+    Show-Message -Message "  Type: $($tagFile.Properties.GetType().FullName)" -Context $null
+    Show-Message -Message "  Duration: $($tagFile.Properties.Duration)" -Context $null
+    Show-Message -Message "  Duration.TotalMilliseconds: $($tagFile.Properties.Duration.TotalMilliseconds)" -Context $null
+    Show-Message -Message "  Duration.TotalSeconds: $($tagFile.Properties.Duration.TotalSeconds)" -Context $null
+    Show-Message -Message "" -Context $null
     
-    Write-Host "Audio Properties:" -ForegroundColor Yellow
-    Write-Host "  AudioBitrate: $($tagFile.Properties.AudioBitrate)"
-    Write-Host "  AudioSampleRate: $($tagFile.Properties.AudioSampleRate)"
-    Write-Host "  AudioChannels: $($tagFile.Properties.AudioChannels)"
-    Write-Host "  BitsPerSample: $($tagFile.Properties.BitsPerSample)"
+    Show-Message -Message "Audio Properties:" -ForegroundColor Yellow -Context $null
+    Show-Message -Message "  AudioBitrate: $($tagFile.Properties.AudioBitrate)" -Context $null
+    Show-Message -Message "  AudioSampleRate: $($tagFile.Properties.AudioSampleRate)" -Context $null
+    Show-Message -Message "  AudioChannels: $($tagFile.Properties.AudioChannels)" -Context $null
+    Show-Message -Message "  BitsPerSample: $($tagFile.Properties.BitsPerSample)" -Context $null
     
     # Check if APE-specific properties exist
     if ($tagFile -is [TagLib.Ape.File]) {
-        Write-Host "`nAPE-Specific Properties:" -ForegroundColor Yellow
-        Write-Host "  File Type: APE (Monkey's Audio)"
+        Show-Message -Message "`nAPE-Specific Properties:" -ForegroundColor Yellow -Context $null
+        Show-Message -Message "  File Type: APE (Monkey's Audio)" -Context $null
         
         # Try to get header information
         if ($tagFile.PSObject.Properties['Header']) {
-            Write-Host "  Header: $($tagFile.Header.GetType().FullName)"
+            Show-Message -Message "  Header: $($tagFile.Header.GetType().FullName)" -Context $null
             $tagFile.Header | Get-Member -MemberType Property | ForEach-Object {
-                Write-Host "    $($_.Name): $($tagFile.Header.$($_.Name))"
+                Show-Message -Message "    $($_.Name): $($tagFile.Header.$($_.Name))" -Context $null
             }
         }
     }
-    Write-Host ""
+    Show-Message -Message "" -Context $null
     
-    Write-Host "File Size Information:" -ForegroundColor Yellow
+    Show-Message -Message "File Size Information:" -ForegroundColor Yellow -Context $null
     $fileInfo = Get-Item $apeFile.FullName
-    Write-Host "  File Size: $($fileInfo.Length) bytes ($([Math]::Round($fileInfo.Length / 1MB, 2)) MB)"
-    Write-Host ""
-    
+    Show-Message -Message "  File Size: $($fileInfo.Length) bytes ($([Math]::Round($fileInfo.Length / 1MB, 2)) MB)" -Context $null
+    Show-Message -Message "" -Context $null    
     # Calculate expected duration from file size and bitrate
     if ($tagFile.Properties.AudioBitrate -gt 0) {
         $bitrateKbps = $tagFile.Properties.AudioBitrate
         $fileSizeBits = $fileInfo.Length * 8
         $expectedDurationSeconds = $fileSizeBits / ($bitrateKbps * 1000)
         $expectedDuration = [TimeSpan]::FromSeconds($expectedDurationSeconds)
-        Write-Host "Calculated Duration (from file size / bitrate):" -ForegroundColor Yellow
-        Write-Host "  Expected: $($expectedDuration.ToString('mm\:ss'))"
-        Write-Host "  TagLib reports: $($tagFile.Properties.Duration.ToString('mm\:ss'))"
-        Write-Host "  Difference: $([Math]::Abs($expectedDurationSeconds - $tagFile.Properties.Duration.TotalSeconds)) seconds"
+        Show-Message -Message "Calculated Duration (from file size / bitrate):" -ForegroundColor Yellow -Context $null
+        Show-Message -Message "  Expected: $($expectedDuration.ToString('mm\:ss'))" -Context $null
+        Show-Message -Message "  TagLib reports: $($tagFile.Properties.Duration.ToString('mm\:ss'))" -Context $null
+        Show-Message -Message "  Difference: $([Math]::Abs($expectedDurationSeconds - $tagFile.Properties.Duration.TotalSeconds)) seconds" -Context $null
     }
-    Write-Host ""
+    Show-Message -Message "" -Context $null
     
-    Write-Host "All Properties Members:" -ForegroundColor Yellow
+    Show-Message -Message "All Properties Members:" -ForegroundColor Yellow -Context $null
     $tagFile.Properties | Get-Member -MemberType Property | ForEach-Object {
-        Write-Host "  $($_.Name): $($tagFile.Properties.$($_.Name))"
+        Show-Message -Message "  $($_.Name): $($tagFile.Properties.$($_.Name))" -Context $null
     }
     
     $tagFile.Dispose()
 }
 catch {
-    Write-Host "❌ Error reading APE file: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host $_.Exception.GetType().FullName -ForegroundColor Gray
-    Write-Host $_.ScriptStackTrace -ForegroundColor Gray
+    Show-Message -Message "❌ Error reading APE file: $($_.Exception.Message)" -ForegroundColor Red -Context $null
+    Show-Message -Message $_.Exception.GetType().FullName -ForegroundColor Gray -Context $null
+    Show-Message -Message $_.ScriptStackTrace -ForegroundColor Gray -Context $null
 }
 

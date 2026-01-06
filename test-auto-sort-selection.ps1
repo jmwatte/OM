@@ -1,7 +1,13 @@
 ﻿# Test automatic sort method selection
 
-Write-Host "Testing automatic sort method selection..." -ForegroundColor Cyan
-Write-Host ""
+# Ensure Show-Message helper available when running standalone
+if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+    $p = Join-Path $PSScriptRoot 'Private\Utils\Show-Message.ps1'
+    if (Test-Path $p) { . $p }
+}
+
+Show-Message -Message "Testing automatic sort method selection..." -ForegroundColor Cyan -Context $null
+Show-Message -Message "" -Context $null
 
 # Setup test album path
 $testPath = "C:\Users\jmw\Documents\PowerShell\Modules\OM\testfiles\The Beatles\1965 - Help!"

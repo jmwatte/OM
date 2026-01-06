@@ -1,19 +1,25 @@
 ﻿# Test script for Auto Mode functionality
 # This script tests the new Auto mode parameters and functions
 
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  Testing Auto Mode Implementation" -ForegroundColor Cyan
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host ""
+# Ensure Show-Message helper available when running standalone
+if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+    $p = Join-Path $PSScriptRoot 'Private\Utils\Show-Message.ps1'
+    if (Test-Path $p) { . $p }
+}
+
+Show-Message -Message "========================================" -ForegroundColor Cyan -Context $null
+Show-Message -Message "  Testing Auto Mode Implementation" -ForegroundColor Cyan -Context $null
+Show-Message -Message "========================================" -ForegroundColor Cyan -Context $null
+Show-Message -Message "" -Context $null
 
 # Import the module
 Import-Module "$PSScriptRoot\OM.psd1" -Force -Verbose
 
-Write-Host "✓ Module imported successfully" -ForegroundColor Green
-Write-Host ""
+Show-Message -Message "✓ Module imported successfully" -ForegroundColor Green -Context $null
+Show-Message -Message "" -Context $null
 
 # Test 1: Check if parameters are recognized
-Write-Host "Test 1: Verifying Auto mode parameters..." -ForegroundColor Yellow
+Show-Message -Message "Test 1: Verifying Auto mode parameters..." -ForegroundColor Yellow -Context $null
 try {
     $cmd = Get-Command Start-OM
     $autoParam = $cmd.Parameters['Auto']
@@ -22,11 +28,11 @@ try {
     $saveCoverParam = $cmd.Parameters['AutoSaveCover']
     
     if ($autoParam -and $thresholdParam -and $fallbackParam -and $saveCoverParam) {
-        Write-Host "✓ All Auto mode parameters are present" -ForegroundColor Green
-        Write-Host "  - Auto: $($autoParam.ParameterType.Name)" -ForegroundColor Gray
-        Write-Host "  - AutoConfidenceThreshold: $($thresholdParam.ParameterType.Name) (default: $(if ($thresholdParam.Attributes.DefaultValue) { $thresholdParam.Attributes.DefaultValue } else { '0.80' }))" -ForegroundColor Gray
-        Write-Host "  - AutoFallback: $($fallbackParam.ParameterType.Name)" -ForegroundColor Gray
-        Write-Host "  - AutoSaveCover: $($saveCoverParam.ParameterType.Name)" -ForegroundColor Gray
+        Show-Message -Message "✓ All Auto mode parameters are present" -ForegroundColor Green -Context $null
+        Show-Message -Message "  - Auto: $($autoParam.ParameterType.Name)" -ForegroundColor Gray -Context $null
+        Show-Message -Message "  - AutoConfidenceThreshold: $($thresholdParam.ParameterType.Name) (default: $(if ($thresholdParam.Attributes.DefaultValue) { $thresholdParam.Attributes.DefaultValue } else { '0.80' }))" -ForegroundColor Gray -Context $null
+        Show-Message -Message "  - AutoFallback: $($fallbackParam.ParameterType.Name)" -ForegroundColor Gray -Context $null
+        Show-Message -Message "  - AutoSaveCover: $($saveCoverParam.ParameterType.Name)" -ForegroundColor Gray -Context $null
     }
     else {
         Write-Warning "Some Auto mode parameters are missing!"
@@ -52,22 +58,22 @@ try {
     # Test invalid confidence threshold (should fail)
     $testPath = "C:\temp\test"
     
-    Write-Host "  Testing invalid threshold (1.5)..." -ForegroundColor Gray
+    Show-Message -Message "  Testing invalid threshold (1.5)..." -ForegroundColor Gray -Context $null
     try {
         Start-OM -Path $testPath -Auto -AutoConfidenceThreshold 1.5 -WhatIf -ErrorAction Stop
         Write-Warning "  Validation did not catch invalid threshold!"
     }
     catch {
-        Write-Host "  ✓ Correctly rejected invalid threshold: $($_.Exception.Message)" -ForegroundColor Green
+        Show-Message -Message "  ✓ Correctly rejected invalid threshold: $($_.Exception.Message)" -ForegroundColor Green -Context $null
     }
     
-    Write-Host "  Testing invalid threshold (0.3)..." -ForegroundColor Gray
+    Show-Message -Message "  Testing invalid threshold (0.3)..." -ForegroundColor Gray -Context $null
     try {
         Start-OM -Path $testPath -Auto -AutoConfidenceThreshold 0.3 -WhatIf -ErrorAction Stop
         Write-Warning "  Validation did not catch invalid threshold!"
     }
     catch {
-        Write-Host "  ✓ Correctly rejected invalid threshold: $($_.Exception.Message)" -ForegroundColor Green
+        Show-Message -Message "  ✓ Correctly rejected invalid threshold: $($_.Exception.Message)" -ForegroundColor Green -Context $null
     }
 }
 catch {

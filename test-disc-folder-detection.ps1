@@ -3,9 +3,15 @@
 
 #Requires -Modules OM
 
-Write-Host "`n=== Testing Disc Folder Detection ===" -ForegroundColor Cyan
-Write-Host "This test verifies that albums with disc subfolders are treated as single albums" -ForegroundColor Gray
-Write-Host ""
+# Ensure Show-Message helper available when running standalone
+if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+    $p = Join-Path $PSScriptRoot 'Private\Utils\Show-Message.ps1'
+    if (Test-Path $p) { . $p }
+}
+
+Show-Message -Message "`n=== Testing Disc Folder Detection ===" -ForegroundColor Cyan -Context $null
+Show-Message -Message "This test verifies that albums with disc subfolders are treated as single albums" -ForegroundColor Gray -Context $null
+Show-Message -Message "" -Context $null
 
 # Test directory setup
 $testRoot = Join-Path $PSScriptRoot "test_disc_detection"
@@ -16,7 +22,7 @@ if (Test-Path $testRoot) {
 }
 
 # Create test scenarios
-Write-Host "Creating test directory structures..." -ForegroundColor Yellow
+Show-Message -Message "Creating test directory structures..." -ForegroundColor Yellow -Context $null
 
 # Scenario 1: Album with Disc1 and Disc2 subfolders
 $scenario1 = Join-Path $testRoot "Artist1\Album1"
@@ -24,7 +30,7 @@ New-Item -Path "$scenario1\Disc1" -ItemType Directory -Force | Out-Null
 New-Item -Path "$scenario1\Disc2" -ItemType Directory -Force | Out-Null
 "test" | Out-File "$scenario1\Disc1\track1.mp3"
 "test" | Out-File "$scenario1\Disc2\track2.mp3"
-Write-Host "  ✓ Created: Artist1\Album1\Disc1, Disc2" -ForegroundColor Green
+Show-Message -Message "  ✓ Created: Artist1\Album1\Disc1, Disc2" -ForegroundColor Green -Context $null
 
 # Scenario 2: Album with CD1 and CD2 subfolders
 $scenario2 = Join-Path $testRoot "Artist2\Album2"
@@ -32,7 +38,7 @@ New-Item -Path "$scenario2\CD1" -ItemType Directory -Force | Out-Null
 New-Item -Path "$scenario2\CD2" -ItemType Directory -Force | Out-Null
 "test" | Out-File "$scenario2\CD1\track1.mp3"
 "test" | Out-File "$scenario2\CD2\track2.mp3"
-Write-Host "  ✓ Created: Artist2\Album2\CD1, CD2" -ForegroundColor Green
+Show-Message -Message "  ✓ Created: Artist2\Album2\CD1, CD2" -ForegroundColor Green -Context $null
 
 # Scenario 3: Album with Disk 1 and Disk 2 subfolders (space in name)
 $scenario3 = Join-Path $testRoot "Artist3\Album3"
@@ -40,14 +46,14 @@ New-Item -Path "$scenario3\Disk 1" -ItemType Directory -Force | Out-Null
 New-Item -Path "$scenario3\Disk 2" -ItemType Directory -Force | Out-Null
 "test" | Out-File "$scenario3\Disk 1\track1.mp3"
 "test" | Out-File "$scenario3\Disk 2\track2.mp3"
-Write-Host "  ✓ Created: Artist3\Album3\Disk 1, Disk 2" -ForegroundColor Green
+Show-Message -Message "  ✓ Created: Artist3\Album3\Disk 1, Disk 2" -ForegroundColor Green -Context $null
 
 # Scenario 4: Flat single album (no disc folders)
 $scenario4 = Join-Path $testRoot "Artist4\Album4"
 New-Item -Path $scenario4 -ItemType Directory -Force | Out-Null
 "test" | Out-File "$scenario4\track1.mp3"
 "test" | Out-File "$scenario4\track2.mp3"
-Write-Host "  ✓ Created: Artist4\Album4 (flat structure)" -ForegroundColor Green
+Show-Message -Message "  ✓ Created: Artist4\Album4 (flat structure)" -ForegroundColor Green -Context $null
 
 # Scenario 5: Artist folder with multiple album subfolders (NOT disc folders)
 $scenario5 = Join-Path $testRoot "Artist5"
@@ -55,7 +61,7 @@ New-Item -Path "$scenario5\Album A" -ItemType Directory -Force | Out-Null
 New-Item -Path "$scenario5\Album B" -ItemType Directory -Force | Out-Null
 "test" | Out-File "$scenario5\Album A\track1.mp3"
 "test" | Out-File "$scenario5\Album B\track2.mp3"
-Write-Host "  ✓ Created: Artist5\Album A, Album B (artist folder)" -ForegroundColor Green
+Show-Message -Message "  ✓ Created: Artist5\Album A, Album B (artist folder)" -ForegroundColor Green -Context $null
 
 # Scenario 6: Album with mixed disc and non-disc subfolders (edge case - should be artist folder)
 $scenario6 = Join-Path $testRoot "Artist6\Album6"
@@ -63,9 +69,9 @@ New-Item -Path "$scenario6\Disc1" -ItemType Directory -Force | Out-Null
 New-Item -Path "$scenario6\Bonus" -ItemType Directory -Force | Out-Null
 "test" | Out-File "$scenario6\Disc1\track1.mp3"
 "test" | Out-File "$scenario6\Bonus\track2.mp3"
-Write-Host "  ✓ Created: Artist6\Album6\Disc1, Bonus (mixed - should be artist folder)" -ForegroundColor Green
+Show-Message -Message "  ✓ Created: Artist6\Album6\Disc1, Bonus (mixed - should be artist folder)" -ForegroundColor Green -Context $null
 
-Write-Host ""
+Show-Message -Message "" -Context $null
 
 # Function to test path detection
 function Test-PathDetection {
@@ -75,8 +81,8 @@ function Test-PathDetection {
         [string]$Description
     )
     
-    Write-Host "Testing: $Description" -ForegroundColor Yellow
-    Write-Host "  Path: $TestPath" -ForegroundColor Gray
+    Show-Message -Message "Testing: $Description" -ForegroundColor Yellow -Context $null
+    Show-Message -Message "  Path: $TestPath" -ForegroundColor Gray -Context $null
     
     # Import module fresh to ensure clean state
     Import-Module (Join-Path $PSScriptRoot "OM.psd1") -Force -ErrorAction Stop
@@ -97,13 +103,13 @@ function Test-PathDetection {
     }
     
     if ($detected) {
-        Write-Host "  ✓ PASS: Correctly detected as $ExpectedMode" -ForegroundColor Green
+        Show-Message -Message "  ✓ PASS: Correctly detected as $ExpectedMode" -ForegroundColor Green -Context $null
     }
     else {
-        Write-Host "  ✗ FAIL: Expected $ExpectedMode, but detection failed" -ForegroundColor Red
-        Write-Host "  Output: $($output -split "`n" | Where-Object { $_ -match "Detected" } | Select-Object -First 3)" -ForegroundColor Gray
+        Show-Message -Message "  ✗ FAIL: Expected $ExpectedMode, but detection failed" -ForegroundColor Red -Context $null
+        Show-Message -Message "  Output: $($output -split "`n" | Where-Object { $_ -match "Detected" } | Select-Object -First 3)" -ForegroundColor Gray -Context $null
     }
-    Write-Host ""
+    Show-Message -Message "" -Context $null
 }
 
 # Run tests

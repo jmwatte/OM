@@ -8,33 +8,39 @@ $script:pairedTracks = @(
     [PSCustomObject]@{ AudioFile = @{ FilePath = "track3.mp3" }; SpotifyTrack = @{ name = "Track 3" }; Confidence = 75 }
 )
 
-Write-Host "Initial script:pairedTracks.Count: $($script:pairedTracks.Count)" -ForegroundColor Green
+# Ensure Show-Message helper available when running standalone
+if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+    $p = Join-Path $PSScriptRoot 'Private\Utils\Show-Message.ps1'
+    if (Test-Path $p) { . $p }
+}
+
+Show-Message -Message "Initial script:pairedTracks.Count: $($script:pairedTracks.Count)" -ForegroundColor Green -Context $null
 
 # Simulate the doTracks loop with confidence sorting (lines 1719-1721)
 try {
-    Write-Host "`nTesting mixed scope reference (line 1719 pattern)..." -ForegroundColor Cyan
+    Show-Message -Message "`nTesting mixed scope reference (line 1719 pattern)..." -ForegroundColor Cyan -Context $null
     
     # This is what line 1719 does - mixed scopes
     if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0 -and $pairedTracks[0].PSObject.Properties['Confidence']) {
-        Write-Host "ERROR: This should have failed but didn't!" -ForegroundColor Red
+        Show-Message -Message "ERROR: This should have failed but didn't!" -ForegroundColor Red -Context $null
     }
 }
 catch {
-    Write-Host "✓ Caught expected error: $($_.Exception.Message)" -ForegroundColor Yellow
-}
+    Show-Message -Message "✓ Caught expected error: $($_.Exception.Message)" -ForegroundColor Yellow -Context $null
+} 
 
 # Test the fix
 try {
-    Write-Host "`nTesting fixed version (all script: prefix)..." -ForegroundColor Cyan
+    Show-Message -Message "`nTesting fixed version (all script: prefix)..." -ForegroundColor Cyan -Context $null
     
     if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0 -and $script:pairedTracks[0].PSObject.Properties['Confidence']) {
         $script:pairedTracks = $script:pairedTracks | Sort-Object Confidence -Descending
-        Write-Host "✓ Sorted $($script:pairedTracks.Count) tracks by confidence" -ForegroundColor Green
+        Show-Message -Message "✓ Sorted $($script:pairedTracks.Count) tracks by confidence" -ForegroundColor Green -Context $null
     }
 }
 catch {
-    Write-Host "ERROR: Fixed version failed: $($_.Exception.Message)" -ForegroundColor Red
-}
+    Show-Message -Message "ERROR: Fixed version failed: $($_.Exception.Message)" -ForegroundColor Red -Context $null
+} 
 
 # Test Show-Tracks parameter (line 1773)
 try {
