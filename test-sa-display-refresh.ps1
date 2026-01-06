@@ -4,15 +4,21 @@
 $ErrorActionPreference = 'Stop'
 $testPath = "c:\Users\jmw\Documents\PowerShell\Modules\OM\testfiles\goldberg variations"
 
-Write-Host "`n=== Test: Display Refresh After 'sa' Command ===" -ForegroundColor Cyan
-Write-Host "Test Path: $testPath" -ForegroundColor Gray
+# Ensure Show-Message helper available when running standalone
+if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+    $p = Join-Path $PSScriptRoot 'Private\Utils\Show-Message.ps1'
+    if (Test-Path $p) { . $p }
+}
+
+Show-Message -Message "`n=== Test: Display Refresh After 'sa' Command ===" -ForegroundColor Cyan -Context $null
+Show-Message -Message "Test Path: $testPath" -ForegroundColor Gray -Context $null
 
 # Import module
 Import-Module "c:\Users\jmw\Documents\PowerShell\Modules\OM\OM.psd1" -Force
-Write-Host "✓ Module imported" -ForegroundColor Green
+Show-Message -Message "✓ Module imported" -ForegroundColor Green -Context $null
 
 # Step 1: Get initial state of first 3 files before any changes
-Write-Host "`n--- Step 1: Reading initial file state ---" -ForegroundColor Yellow
+Show-Message -Message "`n--- Step 1: Reading initial file state ---" -ForegroundColor Yellow -Context $null
 $files = Get-ChildItem -Path $testPath -Filter "*.flac" | Sort-Object Name | Select-Object -First 3
 $initialState = @()
 foreach ($file in $files) {
@@ -26,11 +32,11 @@ foreach ($file in $files) {
     $tag.Dispose()
 }
 
-Write-Host "Initial state of first 3 files:"
+Show-Message -Message "Initial state of first 3 files:" -Context $null
 $initialState | Format-Table -AutoSize
 
 # Step 2: Modify tags to test state (Disc=99, Track=99)
-Write-Host "`n--- Step 2: Setting test values (Disc=99, Track=99) ---" -ForegroundColor Yellow
+Show-Message -Message "`n--- Step 2: Setting test values (Disc=99, Track=99) ---" -ForegroundColor Yellow -Context $null
 foreach ($file in $files) {
     $tag = [TagLib.File]::Create($file.FullName)
     $tag.Tag.Disc = 99
@@ -38,10 +44,10 @@ foreach ($file in $files) {
     $tag.Save()
     $tag.Dispose()
 }
-Write-Host "✓ Test values set" -ForegroundColor Green
+Show-Message -Message "✓ Test values set" -ForegroundColor Green -Context $null
 
 # Step 3: Simulate Start-OM workflow (load audioFiles like Start-OM does)
-Write-Host "`n--- Step 3: Simulating Start-OM audioFiles load ---" -ForegroundColor Yellow
+Show-Message -Message "`n--- Step 3: Simulating Start-OM audioFiles load ---" -ForegroundColor Yellow -Context $null
 $audioFiles = @()
 foreach ($file in $files) {
     $tagFile = [TagLib.File]::Create($file.FullName)
@@ -56,33 +62,33 @@ foreach ($file in $files) {
     }
 }
 
-Write-Host "audioFiles loaded (should show Disc=99, Track=99):"
+Show-Message -Message "audioFiles loaded (should show Disc=99, Track=99):" -Context $null
 $audioFiles | Select-Object FileName, Disc, Track, Title | Format-Table -AutoSize
 
 # Verify we're seeing test values
 if ($audioFiles[0].Disc -ne 99 -or $audioFiles[0].Track -ne 99) {
-    Write-Host "❌ FAILED: audioFiles not showing test values!" -ForegroundColor Red
+    Show-Message -Message "❌ FAILED: audioFiles not showing test values!" -ForegroundColor Red -Context $null
     exit 1
 }
-Write-Host "✓ Confirmed audioFiles showing test values" -ForegroundColor Green
+Show-Message -Message "✓ Confirmed audioFiles showing test values" -ForegroundColor Green -Context $null
 
 # Step 4: Simulate 'sa' command - save new values
-Write-Host "`n--- Step 4: Simulating 'sa' command (save to Disc=1, Track=1/2/3) ---" -ForegroundColor Yellow
+Show-Message -Message "`n--- Step 4: Simulating 'sa' command (save to Disc=1, Track=1/2/3) ---" -ForegroundColor Yellow -Context $null
 $trackNum = 1
 foreach ($audioFile in $audioFiles) {
     if ($audioFile.TagFile) {
         $audioFile.TagFile.Tag.Disc = 1
         $audioFile.TagFile.Tag.Track = $trackNum
         $audioFile.TagFile.Save()
-        Write-Host "  Saved: $($audioFile.FileName) -> Disc=1, Track=$trackNum" -ForegroundColor Gray
+        Show-Message -Message "  Saved: $($audioFile.FileName) -> Disc=1, Track=$trackNum" -ForegroundColor Gray -Context $null
         $trackNum++
     }
 }
-Write-Host "✓ Tags saved to disk" -ForegroundColor Green
+Show-Message -Message "✓ Tags saved to disk" -ForegroundColor Green -Context $null
 
 # Step 5: Simulate handleMoveSuccess scriptblock - dispose old handles and reload
-Write-Host "`n--- Step 5: Simulating handleMoveSuccess reload (CRITICAL TEST) ---" -ForegroundColor Yellow
-Write-Host "  Disposing old TagFile handles..." -ForegroundColor Gray
+Show-Message -Message "`n--- Step 5: Simulating handleMoveSuccess reload (CRITICAL TEST) ---" -ForegroundColor Yellow -Context $null
+Show-Message -Message "  Disposing old TagFile handles..." -ForegroundColor Gray -Context $null
 foreach ($audioFile in $audioFiles) {
     if ($audioFile.TagFile) {
         $audioFile.TagFile.Dispose()
@@ -90,7 +96,7 @@ foreach ($audioFile in $audioFiles) {
     }
 }
 
-Write-Host "  Reloading audioFiles with fresh TagLib handles..." -ForegroundColor Gray
+Show-Message -Message "  Reloading audioFiles with fresh TagLib handles..." -ForegroundColor Gray -Context $null
 $script:audioFiles = @()
 foreach ($file in $files) {
     $tagFile = [TagLib.File]::Create($file.FullName)
@@ -105,11 +111,11 @@ foreach ($file in $files) {
     }
 }
 
-Write-Host "`n  Reloaded audioFiles (should NOW show Disc=1, Track=1/2/3):" -ForegroundColor Cyan
+Show-Message -Message "`n  Reloaded audioFiles (should NOW show Disc=1, Track=1/2/3):" -ForegroundColor Cyan -Context $null
 $script:audioFiles | Select-Object FileName, Disc, Track, Title | Format-Table -AutoSize
 
 # Step 6: Verify the fix worked
-Write-Host "`n--- Step 6: Verifying scope fix worked ---" -ForegroundColor Yellow
+Show-Message -Message "`n--- Step 6: Verifying scope fix worked ---" -ForegroundColor Yellow -Context $null
 $allCorrect = $true
 $expectedTrack = 1
 foreach ($audioFile in $script:audioFiles) {
@@ -117,11 +123,11 @@ foreach ($audioFile in $script:audioFiles) {
     $expected = "01.{0:D2}" -f $expectedTrack
     
     if ($discTrack -ne $expected) {
-        Write-Host "  ❌ File: $($audioFile.FileName)" -ForegroundColor Red
-        Write-Host "     Expected: $expected, Got: $discTrack" -ForegroundColor Red
+        Show-Message -Message "  ❌ File: $($audioFile.FileName)" -ForegroundColor Red -Context $null
+        Show-Message -Message "     Expected: $expected, Got: $discTrack" -ForegroundColor Red -Context $null
         $allCorrect = $false
     } else {
-        Write-Host "  ✓ File: $($audioFile.FileName) -> $discTrack" -ForegroundColor Green
+        Show-Message -Message "  ✓ File: $($audioFile.FileName) -> $discTrack" -ForegroundColor Green -Context $null
     }
     $expectedTrack++
 }
@@ -134,14 +140,14 @@ foreach ($audioFile in $script:audioFiles) {
 }
 
 # Final result
-Write-Host "`n========================================" -ForegroundColor Cyan
+Show-Message -Message "`n========================================" -ForegroundColor Cyan -Context $null
 if ($allCorrect) {
-    Write-Host "✅ SUCCESS: Display refresh works correctly!" -ForegroundColor Green
-    Write-Host "   The scope fix allows audioFiles to update after 'sa' command" -ForegroundColor Green
+    Show-Message -Message "✅ SUCCESS: Display refresh works correctly!" -ForegroundColor Green -Context $null
+    Show-Message -Message "   The scope fix allows audioFiles to update after 'sa' command" -ForegroundColor Green -Context $null
     exit 0
 } else {
-    Write-Host "❌ FAILED: Display not showing updated values" -ForegroundColor Red
-    Write-Host "   The scope bug still exists" -ForegroundColor Red
+    Show-Message -Message "❌ FAILED: Display not showing updated values" -ForegroundColor Red -Context $null
+    Show-Message -Message "   The scope bug still exists" -ForegroundColor Red -Context $null
     exit 1
-}
+} 
 
