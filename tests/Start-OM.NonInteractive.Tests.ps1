@@ -11,7 +11,7 @@ Describe 'Start-OM non-interactive smoke test' {
 
         # Prevent TagLib checks or interactive prompts from failing
         Mock -CommandName Assert-TagLibLoaded -MockWith { }
-        Mock -CommandName Show-Message -MockWith { }
+        Mock -CommandName Show-Message -ModuleName OM -MockWith { }
 
         # Run Start-OM in non-interactive auto preview mode
         $res = Start-OM -Path $testDir -Auto -AutoFallback -NonInteractive -WhatIf -Confirm:$false -Context [PSCustomObject]@{}
