@@ -111,11 +111,10 @@ Describe 'Show-CoverArt' {
         # Simulate chafa present
         Mock -CommandName Get-Command -MockWith { param($Name,$ErrorAction) if ($Name -eq 'chafa') { return [PSCustomObject]@{ Name = 'chafa' } } else { return $null } }
 
-        # Make chafa --help report sixel support
-        function global:chafa { param($args) return "chafa help: supports sixel" }
-
-        # No process mocking to avoid interfering with helper types; rely on function chafa for --help probing
+        # Use injected ChafaProbe & ChafaExecutor to simulate chafa support/execution
         $script:chafaStarted = $false
+        $chafaProbe = { return "chafa help: supports sixel" }
+        $chafaExecutor = { param($Args,$Files) $script:chafaStarted = $true; return $true }
 
         # Mock network download
         Mock -CommandName Invoke-WebRequest -MockWith { param($Uri) return [PSCustomObject]@{ Content = [System.Text.Encoding]::UTF8.GetBytes('img') } }
@@ -123,28 +122,20 @@ Describe 'Show-CoverArt' {
         # Ensure no browser fallback attempted
         Mock -CommandName Start-Process -MockWith { param($FilePath) return $FilePath }
 
-        # Create a helper chafa.bat in Private/ and add to PATH so '& chafa --help' returns expected help text
-        $chafaDir = (Join-Path (Get-Location).Path 'Private')
-        $chafaFile = Join-Path $chafaDir 'chafa.bat'
-        $origPath = $env:PATH
-        $bat = '@echo off
-if "%1"=="--help" ( echo chafa help: supports sixel ) else ( exit /b 0 )'
-        Set-Content -LiteralPath $chafaFile -Value $bat -Encoding ASCII
-        $env:PATH = "$chafaDir;$env:PATH"
-
-        $verboseOut = & { $VerbosePreference = 'Continue'; Show-CoverArt -RangeText '1-2' -AlbumList $albums } 4>&1
-
-        # Restore PATH and remove helper
-        $env:PATH = $origPath
-        if (Test-Path $chafaFile) { Remove-Item -LiteralPath $chafaFile -Force -ErrorAction SilentlyContinue }
+        $verboseOut = & { $VerbosePreference = 'Continue'; Show-CoverArt -RangeText '1-2' -AlbumList $albums -ChafaProbe $chafaProbe -ChafaExecutor $chafaExecutor } 4>&1
 
         # Downloads should have been attempted
         Assert-MockCalled -CommandName Invoke-WebRequest -Times 2
 
-        # No browser fallback
-        Assert-MockNotCalled -CommandName Start-Process
+        # Executor should have been invoked
+        $script:chafaStarted | Should -BeTrue
 
-        # Cleanup
+        # No browser fallback (assert zero Start-Process calls)
+        Assert-MockCalled -CommandName Start-Process -Times 0
+
+        # Cleanup temp files if any
+        $t1 = Join-Path $env:TEMP 'cover1.jpg'
+        $t2 = Join-Path $env:TEMP 'cover2.jpg'
         if (Test-Path $t1) { Remove-Item -LiteralPath $t1 -Force -ErrorAction SilentlyContinue }
         if (Test-Path $t2) { Remove-Item -LiteralPath $t2 -Force -ErrorAction SilentlyContinue }
     }
