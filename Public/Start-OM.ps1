@@ -1007,17 +1007,17 @@ function Start-OM {
                             $possibleAlbumOnly = $matches[2].Trim()
                             
                             if ($possibleArtist -match [regex]::Escape($detectedArtist)) {
-                                Write-Host "📁 Auto-detected from folder: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Gray
-                                Write-Host "🎵 Using artist from album name: '$possibleArtist'" -ForegroundColor Green
+                                Show-Message -Message "📁 Auto-detected from folder: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Gray -Context $Context
+                                Show-Message -Message "🎵 Using artist from album name: '$possibleArtist'" -ForegroundColor Green -Context $Context
                                 $detectedArtist = $possibleArtist
                                 $detectedAlbum = $possibleAlbumOnly
                             }
                             else {
-                                Write-Host "📁 Auto-detected from folder structure: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Green
+                                Show-Message -Message "📁 Auto-detected from folder structure: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Green -Context $Context
                             }
                         }
                         else {
-                            Write-Host "📁 Auto-detected from folder structure: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Green
+                            Show-Message -Message "📁 Auto-detected from folder structure: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Green -Context $Context
                         }
                         
                         $currentArtist = $detectedArtist
@@ -1035,9 +1035,9 @@ function Start-OM {
                         if ($userInput) { $currentArtist = $userInput }
                         $quickArtist = $currentArtist
                         if (-not $quickArtist) {
-                            Write-Host "Artist is required. Switching to artist-first mode." -ForegroundColor Yellow
+                            Show-Message -Message "Artist is required. Switching to artist-first mode." -ForegroundColor Yellow -Context $Context
                             $script:findMode = 'artist-first'
-                            $stage = 'A'
+                            $stage = 'A' 
                             continue stageLoop
                         }
                         
@@ -1045,7 +1045,7 @@ function Start-OM {
                         if ($userInput) { $currentAlbum = $userInput }
                         $quickAlbum = $currentAlbum
                         if (-not $quickAlbum) {
-                            Write-Host "Album is required. Switching to artist-first mode." -ForegroundColor Yellow
+                            Show-Message -Message "Album is required. Switching to artist-first mode." -ForegroundColor Yellow -Context $Context
                             $script:findMode = 'artist-first'
                             $stage = 'A'
                             continue stageLoop
@@ -1090,17 +1090,17 @@ function Start-OM {
                                 }
                                 elseif ($retryChoice -eq 'pq') {
                                     $Provider = 'Qobuz'
-                                    Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                                    Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
                                     continue quickSearchLoop
                                 }
                                 elseif ($retryChoice -eq 'pd') {
                                     $Provider = 'Discogs'
-                                    Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                                    Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
                                     continue quickSearchLoop
                                 }
                                 elseif ($retryChoice -eq 'pm') {
                                     $Provider = 'MusicBrainz'
-                                    Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                                    Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
                                     continue quickSearchLoop
                                 }
                                 elseif ($retryChoice -eq 'a') {
@@ -1671,22 +1671,22 @@ function Start-OM {
                         }
                         if ($inputF -eq 'ps') {
                             $Provider = 'Spotify'
-                            Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                            Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
                             continue stageLoop
                         }
                         if ($inputF -eq 'pq') {
                             $Provider = 'Qobuz'
-                            Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                            Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
                             continue stageLoop
                         }
                         if ($inputF -eq 'pd') {
                             $Provider = 'Discogs'
-                            Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                            Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
                             continue stageLoop
                         }
                         if ($inputF -eq 'pm') {
                             $Provider = 'MusicBrainz'
-                            Write-Host "Switched to provider: $Provider" -ForegroundColor Green
+                            Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
                             continue stageLoop
                         }
                         if ($inputF -eq 'f' -or $inputF -eq 'fm') {
@@ -1793,12 +1793,12 @@ function Start-OM {
                         & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
                         
                         if ($script:findMode -eq 'quick') {
-                            Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
+                            Show-Message -Message "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta -Context $Context
                         }
                         else {
-                            Write-Host "🔍 Find Mode: Artist-First" -ForegroundColor Magenta
+                            Show-Message -Message "🔍 Find Mode: Artist-First" -ForegroundColor Magenta -Context $Context
                         }
-                        Write-Host ""
+                        Show-Message -Message "" -Context $Context
                         
                         if ($useWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
                         
@@ -1810,7 +1810,7 @@ function Start-OM {
                             foreach ($albumName in $ProviderAlbum._albumNames) {
                                 Show-Message -Message "    - $albumName" -ForegroundColor Gray -Context $Context
                             }
-                            Write-Host ""
+                            Show-Message -Message "" -Context $Context
                         }
                         else {
                             Show-Message -Message "Searching tracks for album: $($ProviderAlbum.name) (id: $($ProviderAlbum.id))" -Context $Context
@@ -2010,8 +2010,8 @@ function Start-OM {
                                         if ($canRetryReleases) {
                                             # Show releases again for this master
                                             if ($VerbosePreference -ne 'Continue') { Clear-Host }
-                                            Write-Host "📀 Discogs MASTER: $($ProviderAlbum._masterName)" -ForegroundColor Yellow
-                                            Write-Host "Found $($ProviderAlbum._masterReleases.Count) releases:`n" -ForegroundColor Cyan
+                                            Show-Message -Message "📀 Discogs MASTER: $($ProviderAlbum._masterName)" -ForegroundColor Yellow -Context $Context
+                                            Show-Message -Message "Found $($ProviderAlbum._masterReleases.Count) releases:`n" -ForegroundColor Cyan -Context $Context
                                             
                                             $releases = $ProviderAlbum._masterReleases
                                             for ($i = 0; $i -lt [Math]::Min(20, $releases.Count); $i++) {
@@ -2019,11 +2019,11 @@ function Start-OM {
                                                 $country = if (Get-IfExists $rel 'country') { " [$($rel.country)]" } else { "" }
                                                 $format = if (Get-IfExists $rel 'format') { " - $($rel.format)" } else { "" }
                                                 $label = if (Get-IfExists $rel 'label') { " ($($rel.label))" } else { "" }
-                                                Write-Host "[$($i+1)] $($rel.title)$country$format$label" -ForegroundColor Gray
+                                                Show-Message -Message "[$($i+1)] $($rel.title)$country$format$label" -ForegroundColor Gray -Context $Context
                                             }
                                             
                                             if ($releases.Count -gt 20) {
-                                                Write-Host "... and $($releases.Count - 20) more" -ForegroundColor DarkGray
+                                                Show-Message -Message "... and $($releases.Count - 20) more" -ForegroundColor DarkGray -Context $Context
                                             }
                                             
                                             $relInput = Show-OMPrompt -Prompt "Select release [1-$($releases.Count)], [0] for main_release, 'b' for album list, or Enter for #1" -Context $Context
@@ -2042,7 +2042,7 @@ function Start-OM {
                                                     $masterDetails = Invoke-DiscogsRequest -Uri "/masters/$($ProviderAlbum._resolvedFromMaster)"
                                                     if ($masterDetails -and (Get-IfExists $masterDetails 'main_release')) {
                                                         $mainReleaseId = [string]$masterDetails.main_release
-                                                        Write-Host "Using main_release: $mainReleaseId" -ForegroundColor Green
+                                                        Show-Message -Message "Using main_release: $mainReleaseId" -ForegroundColor Green -Context $Context
                                                         $selectedRelease = @{ id = $mainReleaseId; title = $ProviderAlbum._masterName }
                                                     }
                                                     else {
@@ -2071,7 +2071,7 @@ function Start-OM {
                                             }
                                             
                                             # Update the album object with new release selection
-                                            Write-Host "✓ Selected release: $($selectedRelease.id) - $($selectedRelease.title)" -ForegroundColor Green
+                                            Show-Message -Message "✓ Selected release: $($selectedRelease.id) - $($selectedRelease.title)" -ForegroundColor Green -Context $Context
                                             $ProviderAlbum = @{
                                                 id                  = [string]$selectedRelease.id
                                                 name                = $selectedRelease.title
@@ -2093,8 +2093,8 @@ function Start-OM {
                                         # Show current provider and available shortcuts
                                         $config = Get-OMConfig
                                         $defaultProvider = $config.DefaultProvider
-                                        Write-Host "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan
-                                        Write-Host "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray
+                                        Show-Message -Message "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan -Context $Context
+                                        Show-Message -Message "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray -Context $Context
                                         continue stageLoop
                                     }
                                     else {
@@ -2112,22 +2112,22 @@ function Start-OM {
                                 $backPrompt = if ($canRetryReleases) { "'b' to try different release" } else { "'b' for album selection" }
                                 
                                 if ($Auto -and $script:autoModeActive) {
-                                    Write-Host "⚠️  AUTO: Track fetch failed, skipping album..." -ForegroundColor Yellow
+                                    Show-Message -Message "⚠️  AUTO: Track fetch failed, skipping album..." -ForegroundColor Yellow -Context $Context
                                     $albumDone = $true
                                     break stageLoop
                                 }
                                 
                                 $skipChoice = Show-OMPrompt -Prompt "Press Enter to skip, 'r' to retry, $backPrompt, 'p' to change provider" -Context $Context
                                 if ($skipChoice -eq 'r') {
-                                    Write-Host "Retrying..." -ForegroundColor Cyan
+                                    Show-Message -Message "Retrying..." -ForegroundColor Cyan -Context $Context
                                     continue stageLoop
                                 }
                                 elseif ($skipChoice -eq 'b') {
                                     if ($canRetryReleases) {
                                         # Show releases again (same code as above)
                                         if ($VerbosePreference -ne 'Continue') { Clear-Host }
-                                        Write-Host "📀 Discogs MASTER: $($ProviderAlbum._masterName)" -ForegroundColor Yellow
-                                        Write-Host "Found $($ProviderAlbum._masterReleases.Count) releases:`n" -ForegroundColor Cyan
+                                        Show-Message -Message "📀 Discogs MASTER: $($ProviderAlbum._masterName)" -ForegroundColor Yellow -Context $Context
+                                        Show-Message -Message "Found $($ProviderAlbum._masterReleases.Count) releases:`n" -ForegroundColor Cyan -Context $Context
                                         
                                         $releases = $ProviderAlbum._masterReleases
                                         for ($i = 0; $i -lt [Math]::Min(20, $releases.Count); $i++) {
@@ -2135,11 +2135,11 @@ function Start-OM {
                                             $country = if (Get-IfExists $rel 'country') { " [$($rel.country)]" } else { "" }
                                             $format = if (Get-IfExists $rel 'format') { " - $($rel.format)" } else { "" }
                                             $label = if (Get-IfExists $rel 'label') { " ($($rel.label))" } else { "" }
-                                            Write-Host "[$($i+1)] $($rel.title)$country$format$label" -ForegroundColor Gray
+                                            Show-Message -Message "[$($i+1)] $($rel.title)$country$format$label" -ForegroundColor Gray -Context $Context
                                         }
                                         
                                         if ($releases.Count -gt 20) {
-                                            Write-Host "... and $($releases.Count - 20) more" -ForegroundColor DarkGray
+                                            Show-Message -Message "... and $($releases.Count - 20) more" -ForegroundColor DarkGray -Context $Context
                                         }
                                         
                                         $relInput = Show-OMPrompt -Prompt "Select release [1-$($releases.Count)], [0] for main_release, 'b' for album list, or Enter for #1" -Context $Context
@@ -2158,7 +2158,7 @@ function Start-OM {
                                                 $masterDetails = Invoke-DiscogsRequest -Uri "/masters/$($ProviderAlbum._resolvedFromMaster)"
                                                 if ($masterDetails -and (Get-IfExists $masterDetails 'main_release')) {
                                                     $mainReleaseId = [string]$masterDetails.main_release
-                                                    Write-Host "Using main_release: $mainReleaseId" -ForegroundColor Green
+                                                    Show-Message -Message "Using main_release: $mainReleaseId" -ForegroundColor Green -Context $Context
                                                     $selectedRelease = @{ id = $mainReleaseId; title = $ProviderAlbum._masterName }
                                                 }
                                                 else {
@@ -2187,8 +2187,8 @@ function Start-OM {
                                         }
                                         
                                         # Update the album object with new release selection
-                                        Write-Host "✓ Selected release: $($selectedRelease.id) - $($selectedRelease.title)" -ForegroundColor Green
-                                        $ProviderAlbum = @{
+                                        Show-Message -Message "✓ Selected release: $($selectedRelease.id) - $($selectedRelease.title)" -ForegroundColor Green -Context $Context
+                                        $ProviderAlbum = @{ 
                                             id                  = [string]$selectedRelease.id
                                             name                = $selectedRelease.title
                                             type                = 'release'
@@ -2208,8 +2208,8 @@ function Start-OM {
                                     # Show current provider and available shortcuts
                                     $config = Get-OMConfig
                                     $defaultProvider = $config.DefaultProvider
-                                    Write-Host "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan
-                                    Write-Host "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray
+                                    Show-Message -Message "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan -Context $Context
+                                    Show-Message -Message "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray -Context $Context
                                     continue stageLoop
                                 }
                                 else {
@@ -2222,7 +2222,7 @@ function Start-OM {
                         if (-not $NonInteractive -and -not $Auto -and $tracksForAlbum -and $tracksForAlbum.Count -gt 0) {
                             $isAmbiguous = Assert-AlbumArtistAmbiguity -Artist $ProviderArtist -Album $ProviderAlbum -Tracks $tracksForAlbum
                             if ($isAmbiguous) {
-                                Write-Host "`n⚠️  This classical album has ambiguous album artist assignment." -ForegroundColor Yellow
+                                Show-Message -Message "`n⚠️  This classical album has ambiguous album artist assignment." -ForegroundColor Yellow -Context $Context
                                 # Try different property names for album artist across providers
                                 $currentAlbumArtist = Get-IfExists $ProviderAlbum 'album_artist'
                                 if (-not $currentAlbumArtist) { $currentAlbumArtist = Get-IfExists $ProviderAlbum 'artist' }
@@ -2232,20 +2232,20 @@ function Start-OM {
                                     if (-not $currentAlbumArtist) { $currentAlbumArtist = Get-IfExists $ProviderArtist 'name' }  # Fallback
                                 }     
                                 if ($currentAlbumArtist) {
-                                    Write-Host "   Album artist from API: $currentAlbumArtist" -ForegroundColor Gray
+                                    Show-Message -Message "   Album artist from API: $currentAlbumArtist" -ForegroundColor Gray -Context $Context
                                 }
-                                Write-Host "   Multiple artists found in tracks" -ForegroundColor Gray
-                                Write-Host ""
+                                Show-Message -Message "   Multiple artists found in tracks" -ForegroundColor Gray -Context $Context
+                                Show-Message -Message "" -Context $Context
                                 $response = Show-OMPrompt -Prompt "Press 'a' to build custom album artist, or Enter to use automatic detection" -Context $Context
                                 if ($response -eq 'a') {
                                     $script:ManualAlbumArtist = Invoke-AlbumArtistBuilder -AlbumName $ProviderAlbum.name -Tracks $tracksForAlbum -CurrentAlbumArtist $ProviderArtist.name
                                     if ($script:ManualAlbumArtist) {
-                                        Write-Host "✓ Album artist set to: $script:ManualAlbumArtist" -ForegroundColor Green
+                                        Show-Message -Message "✓ Album artist set to: $script:ManualAlbumArtist" -ForegroundColor Green -Context $Context
                                     }
                                     else {
-                                        Write-Host "Skipped - will use automatic detection" -ForegroundColor Gray
+                                        Show-Message -Message "Skipped - will use automatic detection" -ForegroundColor Gray -Context $Context
                                     }
-                                    Write-Host ""
+                                    Show-Message -Message "" -Context $Context
                                 }
                             }
                         }
@@ -2473,14 +2473,14 @@ function Start-OM {
                                         $reviewAll = $true
                                         $markedTracks = @($script:pairedTracks | Where-Object { $_.AudioFile })
                                         if ($markedTracks.Count -eq 0) {
-                                            Write-Host "`nNo audio files to review." -ForegroundColor Yellow
+                                            Show-Message -Message "`nNo audio files to review." -ForegroundColor Yellow -Context $Context
                                             Start-Sleep -Seconds 2
                                             continue
                                         }
-                                        Write-Host "`n📋 No marks set - reviewing ALL $($markedTracks.Count) track(s)..." -ForegroundColor Cyan
+                                        Show-Message -Message "`n📋 No marks set - reviewing ALL $($markedTracks.Count) track(s)..." -ForegroundColor Cyan -Context $Context
                                     }
                                     else {
-                                        Write-Host "`n🔖 Reviewing $($markedTracks.Count) marked track(s)..." -ForegroundColor Cyan
+                                        Show-Message -Message "`n🔖 Reviewing $($markedTracks.Count) marked track(s)..." -ForegroundColor Cyan -Context $Context
                                     }
                                     Start-Sleep -Seconds 1
                                     
@@ -2504,12 +2504,12 @@ function Start-OM {
                                     foreach ($markedTrack in $markedTracks) {
                                         if (-not $markedTrack.AudioFile) { continue }
                                         if ($providerTrackPool.Count -eq 0) {
-                                            Write-Host "No more provider tracks in pool." -ForegroundColor Yellow
+                                            Show-Message -Message "No more provider tracks in pool." -ForegroundColor Yellow -Context $Context
                                             break
                                         }
                                         
                                         if ($VerbosePreference -ne 'Continue') { Clear-Host }
-                                        Write-Host "🔖 Select correct match for:" -ForegroundColor Cyan
+                                        Show-Message -Message "🔖 Select correct match for:" -ForegroundColor Cyan -Context $Context
                                         
                                         # Format audio file duration
                                         $audioDurationStr = if ($markedTrack.AudioFile.Duration) {
@@ -2519,8 +2519,8 @@ function Start-OM {
                                             "00:00"
                                         }
                                         
-                                        Write-Host "   $(Split-Path -Leaf $markedTrack.AudioFile.FilePath) ($audioDurationStr)" -ForegroundColor Yellow
-                                        Write-Host ""
+                                        Show-Message -Message "   $(Split-Path -Leaf $markedTrack.AudioFile.FilePath) ($audioDurationStr)" -ForegroundColor Yellow -Context $Context
+                                        Show-Message -Message "" -Context $Context
                                         
                                         # Sort pool by match confidence for current audio file (best match first)
                                         $scoredPool = @()
@@ -2555,10 +2555,10 @@ function Start-OM {
                                             }
                                             $confidenceIndicator = " ($($scored.Score)%)"
                                             
-                                            Write-Host ("[$num] {0:D2}.{1:D2}: {2} ({3}){4}" -f $disc, $trackNum, $track.name, $durationStr, $confidenceIndicator) -ForegroundColor $color
+                                            Show-Message -Message (("[$num] {0:D2}.{1:D2}: {2} ({3}){4}" -f $disc, $trackNum, $track.name, $durationStr, $confidenceIndicator)) -ForegroundColor $color -Context $Context
                                         }
                                         
-                                        Write-Host ""
+                                        Show-Message -Message "" -Context $Context
                                         $selection = Show-OMPrompt -Prompt "Enter track number or press Enter for [1] (or 's' to skip)" -Default '1' -Context $Context
                                         
                                         # Default to first option if Enter pressed
@@ -2567,7 +2567,7 @@ function Start-OM {
                                         }
                                         
                                         if ($selection -eq 's') {
-                                            Write-Host "Skipped" -ForegroundColor Gray
+                                            Show-Message -Message "Skipped" -ForegroundColor Gray -Context $Context
                                             continue
                                         }
                                         
@@ -2585,7 +2585,7 @@ function Start-OM {
                                                         if ($script:pairedTracks[$i].PSObject.Properties['Marked']) {
                                                             $script:pairedTracks[$i].Marked = $false
                                                         }
-                                                        Write-Host "✓ Updated" -ForegroundColor Green
+                                                        Show-Message -Message "✓ Updated" -ForegroundColor Green -Context $Context
                                                         
                                                         # Remove selected track from pool
                                                         $providerTrackPool = @($providerTrackPool | Where-Object { 
@@ -2600,18 +2600,18 @@ function Start-OM {
                                                 }
                                             }
                                             else {
-                                                Write-Host "Invalid selection" -ForegroundColor Red
+                                                Show-Message -Message "Invalid selection" -ForegroundColor Red -Context $Context
                                                 Start-Sleep -Seconds 1
                                             }
                                         }
                                         else {
-                                            Write-Host "Invalid input" -ForegroundColor Red
+                                            Show-Message -Message "Invalid input" -ForegroundColor Red -Context $Context
                                             Start-Sleep -Seconds 1
                                         }
                                     }
                                     
                                     $finishMsg = if ($reviewAll) { "Finished reviewing all tracks" } else { "Finished reviewing marked tracks" }
-                                    Write-Host "`n✓ $finishMsg" -ForegroundColor Green
+                                    Show-Message -Message "`n✓ $finishMsg" -ForegroundColor Green -Context $Context
                                     Start-Sleep -Seconds 1
                                     $script:refreshTracks = $true
                                     continue
@@ -2620,11 +2620,11 @@ function Start-OM {
                                     # Toggle genre mode between Replace and Merge
                                     $script:genreMode = if ($script:genreMode -eq 'Replace') { 'Merge' } else { 'Replace' }
                                     $modeColor = if ($script:genreMode -eq 'Merge') { 'Cyan' } else { 'Green' }
-                                    Write-Host "`n✓ Genre Mode: $($script:genreMode)" -ForegroundColor $modeColor
+                                    Show-Message -Message "`n✓ Genre Mode: $($script:genreMode)" -ForegroundColor $modeColor -Context $Context
                                     if ($script:genreMode -eq 'Merge') {
-                                        Write-Host "   Genres will be merged with existing tags (deduplicated)" -ForegroundColor Gray
+                                        Show-Message -Message "   Genres will be merged with existing tags (deduplicated)" -ForegroundColor Gray -Context $Context
                                     } else {
-                                        Write-Host "   Genres will replace existing tags" -ForegroundColor Gray
+                                        Show-Message -Message "   Genres will replace existing tags" -ForegroundColor Gray -Context $Context
                                     }
                                     Start-Sleep -Seconds 2
                                     $script:refreshTracks = $true
@@ -2636,11 +2636,11 @@ function Start-OM {
                                     if ($tracksForAlbum -and $tracksForAlbum.Count -gt 0) {
                                         $script:ManualAlbumArtist = Invoke-AlbumArtistBuilder -AlbumName $ProviderAlbum.name -Tracks $tracksForAlbum -CurrentAlbumArtist $ProviderArtist.name
                                         if ($script:ManualAlbumArtist) {
-                                            Write-Host "`n✓ Album artist set to: $script:ManualAlbumArtist" -ForegroundColor Green
+                                            Show-Message -Message "`n✓ Album artist set to: $script:ManualAlbumArtist" -ForegroundColor Green -Context $Context
                                             $script:refreshTracks = $true
                                         }
                                         else {
-                                            Write-Host "`nSkipped - album artist unchanged" -ForegroundColor Gray
+                                            Show-Message -Message "`nSkipped - album artist unchanged" -ForegroundColor Gray -Context $Context
                                         }
                                     }
                                     else {
@@ -2685,15 +2685,15 @@ function Start-OM {
                                     # Show current provider and available shortcuts
                                     $config = Get-OMConfig
                                     $defaultProvider = $config.DefaultProvider
-                                    Write-Host "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan
-                                    Write-Host "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray
+                                    Show-Message -Message "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan -Context $Context
+                                    Show-Message -Message "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray -Context $Context
                                     continue
                                 }
                                 '^f$' {
                                     # Toggle find mode between quick and artist-first
                                     if ($script:findMode -eq 'quick') {
                                         $script:findMode = 'artist-first'
-                                        Write-Host "✓ Switched to Artist-First Search mode" -ForegroundColor Green
+                                        Show-Message -Message "✓ Switched to Artist-First Search mode" -ForegroundColor Green -Context $Context
                                         # Reset search state when switching to artist-first mode
                                         $cachedAlbums = $null
                                         $cachedArtistId = $null
@@ -2704,7 +2704,7 @@ function Start-OM {
                                     else {
                                         $script:findMode = 'quick'
                                         $skipQuickPrompts = $false  # Show prompts when switching to quick mode
-                                        Write-Host "✓ Switched to Quick Album Search mode" -ForegroundColor Green
+                                        Show-Message -Message "✓ Switched to Quick Album Search mode" -ForegroundColor Green -Context $Context
                                     }
                                     $stage = 'A'
                                     $exitdo = $true
@@ -2918,7 +2918,7 @@ function Start-OM {
                                                 $genreMerge = ($script:genreMode -eq 'Merge')
                                                 $res = Save-TagsForFile -FilePath $filePath -TagValues $tags -WhatIf:$useWhatIf -GenreMergeMode:$genreMerge
                                                 if ($res.Success) { 
-                                                    Write-Host ("Saved tags: {0} -> {1:D2}.{2:D2}: {3}" -f (Split-Path -Leaf $filePath), $tags.Disc, $tags.Track, $tags.Title) -ForegroundColor Green 
+                                                    Show-Message -Message (("Saved tags: {0} -> {1:D2}.{2:D2}: {3}" -f (Split-Path -Leaf $filePath), $tags.Disc, $tags.Track, $tags.Title)) -ForegroundColor Green -Context $Context 
                                                 }
                                                 else { 
                                                     Write-Warning ("Skipped/Failed: {0} ({1})" -f $filePath, ($res.Reason -or 'unknown')) 
@@ -3017,7 +3017,7 @@ function Start-OM {
                                             $genreMerge = ($script:genreMode -eq 'Merge')
                                             $res = Save-TagsForFile -FilePath $filePath -TagValues $tags -WhatIf:$useWhatIf -GenreMergeMode:$genreMerge
                                             if ($res.Success) { 
-                                                Write-Host ("Saved tags: {0} -> {1:D2}.{2:D2}: {3}" -f (Split-Path -Leaf $filePath), $tags.Disc, $tags.Track, $tags.Title) -ForegroundColor Green 
+                                                Show-Message -Message (("Saved tags: {0} -> {1:D2}.{2:D2}: {3}" -f (Split-Path -Leaf $filePath), $tags.Disc, $tags.Track, $tags.Title)) -ForegroundColor Green -Context $Context 
                                             }
                                             else { 
                                                 Write-Warning ("Skipped/Failed: {0} ({1})" -f $filePath, ($res.Reason -or 'unknown')) 
@@ -3357,7 +3357,7 @@ function Start-OM {
                                 }
                                 '^pd$' {
                                     $Provider = 'Discogs'
-                                    Write-Host "Switched to provider: Discogs" -ForegroundColor Green
+                                    Show-Message -Message "Switched to provider: Discogs" -ForegroundColor Green -Context $Context
                                     $cachedAlbums = $null
                                     $cachedArtistId = $null
                                     $stage = 'A'
@@ -3366,7 +3366,7 @@ function Start-OM {
                                 }
                                 '^pm$' {
                                     $Provider = 'MusicBrainz'
-                                    Write-Host "Switched to provider: MusicBrainz" -ForegroundColor Green
+                                    Show-Message -Message "Switched to provider: MusicBrainz" -ForegroundColor Green -Context $Context
                                     $cachedAlbums = $null
                                     $cachedArtistId = $null
                                     $stage = 'A'
