@@ -291,8 +291,7 @@ function Start-OM {
         }
 
         # Sync path detection results to State object
-        $State.IsSingleAlbumPath = $script:isSingleAlbumPath
-        $State.OriginalPath = $script:originalPath
+        Sync-OMScriptToState -State $State
 
         # Ensure required external module Spotishell is present in the session
         if (-not (Get-Module -Name Spotishell)) {
@@ -548,6 +547,7 @@ function Start-OM {
         # Initialize WhatIf mode early
         $useWhatIf = $isWhatIf
         $script:findMode = 'artist-first'  # Default to artist-first mode
+        $script:autoModeActive = $false    # Will be set to $true if Auto mode finds a match
         $currentAlbumPage = 1
         
         foreach ($albumOriginal in @($albums)) {
@@ -559,12 +559,7 @@ function Start-OM {
             $script:pairedTracks = $null
             $script:refreshTracks = $false
             
-            # Sync album to State object
-            $State.Album = $script:album
-            $State.ManualAlbumArtist = $null
-            $State.AudioFiles = @()
-            $State.PairedTracks = @()
-            $State.RefreshTracks = $false
+            # Sync album to State object (will be synced again after album name parsing)
             
             # derive album name and year
             # Try to extract year from the start of the folder name (e.g., "2023 - Album Name")
@@ -603,14 +598,7 @@ function Start-OM {
             $skipQuickPrompts = $false  # Flag to skip prompts when re-entering quick find after provider change
 
             # Sync remaining album state to State object
-            $State.AlbumName = $script:albumName
-            $State.Artist = $script:artist
-            $State.TrackCount = $script:trackCount
-            $State.FindMode = $script:findMode
-            $State.QuickAlbumCandidates = $null
-            $State.QuickCurrentPage = 1
-            $State.BackNavigationMode = $false
-            $State.AutoModeActive = $script:autoModeActive
+            Sync-OMScriptToState -State $State
 
             :stageLoop while ($true) {
                 # NEW: Handle quick find mode (only when not in track selection stage)
@@ -740,6 +728,9 @@ function Start-OM {
                         $quickAlbum = $currentAlbum
                     }
 
+                    # Initialize album candidates before search logic
+                    $albumCandidates = @()
+                    
                     # Check if we have cached albums from back navigation
                     if ($script:backNavigationMode -and $script:quickAlbumCandidates) {
                         $albumCandidates = $script:quickAlbumCandidates
