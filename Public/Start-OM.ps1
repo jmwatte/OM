@@ -1909,8 +1909,8 @@ function Start-OM {
                                                     Album        = $ProviderAlbum
                                                     SpotifyTrack = $pair.SpotifyTrack
                                                 }
-                                                if ($script:ManualAlbumArtist) {
-                                                    $tagsParams['ManualAlbumArtist'] = ConvertTo-AlbumArtistString -Value $script:ManualAlbumArtist
+                                                if ($State.ManualAlbumArtist) {
+                                                    $tagsParams['ManualAlbumArtist'] = ConvertTo-AlbumArtistString -Value $State.ManualAlbumArtist
                                                 }
                                                 $tags = Get-Tags @tagsParams
                                                 Write-Verbose ("Saving tags to: {0}" -f $filePath)
@@ -1972,8 +1972,8 @@ function Start-OM {
                                                 Album        = $ProviderAlbum
                                                 SpotifyTrack = $pair.SpotifyTrack
                                             }
-                                            if ($script:ManualAlbumArtist) {
-                                                $tagsParams['ManualAlbumArtist'] = ConvertTo-AlbumArtistString -Value $script:ManualAlbumArtist
+                                            if ($State.ManualAlbumArtist) {
+                                                $tagsParams['ManualAlbumArtist'] = ConvertTo-AlbumArtistString -Value $State.ManualAlbumArtist
                                             }
                                             $tags = Get-Tags @tagsParams
                                             Write-Verbose ("Saving tags to: {0}" -f $filePath)
