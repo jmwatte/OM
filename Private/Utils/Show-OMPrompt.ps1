@@ -17,20 +17,21 @@ function Show-OMPrompt {
         [Parameter(Mandatory = $false)][object]$Context
     )
 
-    # Define the standard, universal actions
-    $universalActions = @(
-        "(p)rovider <name>",
-        "(b)ack",
-        "(s)kip album",
-        "e(x)it"
-    )
+    # Define the standard, universal actions (removed - redundant and some not implemented)
+    # Each prompt should explicitly list its own available actions
+    # $universalActions = @(
+    #     "(p)rovider <name>",
+    #     "(b)ack",
+    #     "(s)kip album",
+    #     "e(x)it"
+    # )
 
-    # Combine the stage-specific actions with the universal ones
+    # Combine the stage-specific actions (no universal actions added)
     $allActions = @()
     if ($ContextualActions) {
         $allActions += $ContextualActions
     }
-    $allActions += $universalActions
+    # No longer appending universal actions - they were redundant and confusing
 
     # Build the action string
     $actionString = $allActions -join ', '
