@@ -1634,7 +1634,7 @@ function Start-OM {
                                     if ($_.Key -eq $sortMethod) { "[*$($_.Value)*]" } else { $_.Value }
                                 }) -join ', '
                                 
-                                $genreModeStatus = $script:genreMode
+                                $genreModeStatus = $State.GenreMode
                                 $optionsLine = "`nOptions: SortBy $sortMethodDisplay, (r)everse | (S)ave {[A]ll, [T]ags, [F]olderNames} | {C}over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags} | (aa)AlbumArtist, (gm)GenreMode:$genreModeStatus, (rm)ReviewMarked, (b)ack/(pr)evious, (P)rovider, (F)indmode, (w)hatIf:$whatIfStatus, (v)erbose:$verboseStatus, (X)ip"
                                 $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'rm', 'sa', 'st', 'sf', 'cv', 'cvo', 'cs', 'ct', 'aa', 'gm', 'b', 'pr', 'p', 'pq', 'ps', 'pd', 'pm', 'f', 'w', 'whatif', 'v', 'x')
                                 $paramshow = @{
@@ -1915,7 +1915,7 @@ function Start-OM {
                                                 $tags = Get-Tags @tagsParams
                                                 Write-Verbose ("Saving tags to: {0}" -f $filePath)
                                                 Write-Verbose ("Tag values:\n{0}" -f ($tags | Out-String))
-                                                $genreMerge = ($script:genreMode -eq 'Merge')
+                                                $genreMerge = ($State.GenreMode -eq 'Merge')
                                                 $res = Save-TagsForFile -FilePath $filePath -TagValues $tags -WhatIf:$useWhatIf -GenreMergeMode:$genreMerge
                                                 if ($res.Success) { 
                                                     Show-Message -Message (("Saved tags: {0} -> {1:D2}.{2:D2}: {3}" -f (Split-Path -Leaf $filePath), $tags.Disc, $tags.Track, $tags.Title)) -ForegroundColor Green -Context $Context 
@@ -1978,7 +1978,7 @@ function Start-OM {
                                             $tags = Get-Tags @tagsParams
                                             Write-Verbose ("Saving tags to: {0}" -f $filePath)
                                             Write-Verbose ("Tag values:\n{0}" -f ($tags | Out-String))
-                                            $genreMerge = ($script:genreMode -eq 'Merge')
+                                            $genreMerge = ($State.GenreMode -eq 'Merge')
                                             $res = Save-TagsForFile -FilePath $filePath -TagValues $tags -WhatIf:$useWhatIf -GenreMergeMode:$genreMerge
                                             if ($res.Success) { 
                                                 Show-Message -Message (("Saved tags: {0} -> {1:D2}.{2:D2}: {3}" -f (Split-Path -Leaf $filePath), $tags.Disc, $tags.Track, $tags.Title)) -ForegroundColor Green -Context $Context 
