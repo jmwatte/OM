@@ -463,15 +463,15 @@ function Start-OM {
                             $ProviderArtist = $quickFindResult.ProviderArtist
                             $ProviderAlbum = $quickFindResult.ProviderAlbum
                             $Provider = $quickFindResult.Provider
-                            $script:autoModeActive = $quickFindResult.AutoModeActive
-                            $script:quickAlbumCandidates = $quickFindResult.AlbumCandidates
-                            $script:backNavigationMode = $quickFindResult.BackNavigationMode
+                            $State.AutoModeActive = $quickFindResult.AutoModeActive
+                            $State.QuickAlbumCandidates = $quickFindResult.AlbumCandidates
+                            $State.BackNavigationMode = $quickFindResult.BackNavigationMode
                             $stage = $quickFindResult.NextStage
                             continue stageLoop
                         }
                         'SwitchMode' {
-                            $script:findMode = $quickFindResult.FindMode
-                            $script:backNavigationMode = $quickFindResult.BackNavigationMode
+                            $State.FindMode = $quickFindResult.FindMode
+                            $State.BackNavigationMode = $quickFindResult.BackNavigationMode
                             $stage = $quickFindResult.NextStage
                             continue stageLoop
                         }
@@ -482,14 +482,14 @@ function Start-OM {
                         'ProviderSwitch' {
                             $Provider = $quickFindResult.Provider
                             $skipQuickPrompts = $quickFindResult.SkipQuickPrompts
-                            $script:backNavigationMode = $quickFindResult.BackNavigationMode
+                            $State.BackNavigationMode = $quickFindResult.BackNavigationMode
                             continue stageLoop
                         }
                         'Continue' {
                             $currentArtist = $quickFindResult.CurrentArtist
                             $currentAlbum = $quickFindResult.CurrentAlbum
                             $skipQuickPrompts = $quickFindResult.SkipQuickPrompts
-                            $script:backNavigationMode = $quickFindResult.BackNavigationMode
+                            $State.BackNavigationMode = $quickFindResult.BackNavigationMode
                             continue stageLoop
                         }
                     }
@@ -549,7 +549,7 @@ function Start-OM {
                         
                         # Handle find mode changes
                         if ($stageAResult.UpdatedFindMode) {
-                            $script:findMode = $stageAResult.UpdatedFindMode
+                            $State.FindMode = $stageAResult.UpdatedFindMode
                             if ($stageAResult.ContainsKey('SkipQuickPrompts')) {
                                 $skipQuickPrompts = $stageAResult.SkipQuickPrompts
                             }
@@ -627,7 +627,7 @@ function Start-OM {
                         # Handle new album name from Stage B (if provided)
                         if ($stageBResult.ContainsKey('NewAlbumName') -and $stageBResult.NewAlbumName) {
                             $albumName = $stageBResult.NewAlbumName
-                            $script:albumName = $stageBResult.NewAlbumName
+                            $State.AlbumName = $stageBResult.NewAlbumName
                             Write-Verbose "Updated albumName to: '$albumName' (from Stage B ni command)"
                             # Force re-fetch of albums with new search term
                             $loadStageBResults = $true
@@ -691,11 +691,11 @@ function Start-OM {
                         # collect audio files and tags
                         Write-Verbose "sortMethod = '$sortMethod'"
                         $skipSort = $sortMethod -eq 'byFilesystem'
-                        $script:audioFiles = Reload-OMAudioFiles -AlbumPath $State.Album.FullName -SkipSort:$skipSort
-                        Write-Verbose "Loaded $($script:audioFiles.Count) audio files (SkipSort: $skipSort)"
+                        $State.AudioFiles = Reload-OMAudioFiles -AlbumPath $State.Album.FullName -SkipSort:$skipSort
+                        Write-Verbose "Loaded $($State.AudioFiles.Count) audio files (SkipSort: $skipSort)"
                         
                         # Check if any valid audio files were loaded
-                        $validAudioFiles = @($script:audioFiles | Where-Object { $_ -ne $null })
+                        $validAudioFiles = @($State.AudioFiles | Where-Object { $_ -ne $null })
                         if ($validAudioFiles.Count -eq 0) {
                             Show-Message -Message "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Red -Context $Context
                             Show-Message -Message "⚠️  ERROR: No valid audio files found!" -ForegroundColor Red -Context $Context
@@ -708,8 +708,8 @@ function Start-OM {
                             break stageLoop  # Exit stage loop to continue to next album
                         }
                         
-                        # Update script:audioFiles to only contain valid files
-                        $script:audioFiles = $validAudioFiles
+                        # Update State.AudioFiles to only contain valid files
+                        $State.AudioFiles = $validAudioFiles
     
                         # Check if this is a combined album (tracks already fetched) or single album (need to fetch)
                         if (Get-IfExists $ProviderAlbum '_isCombined') {
