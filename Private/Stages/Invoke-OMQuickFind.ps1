@@ -144,25 +144,18 @@ function Invoke-OMQuickFind {
         # Try to load AlbumArtist tag from first audio file for better detection
         $tagArtist = $null
         try {
-            $firstAudioFile = Get-ChildItem -LiteralPath $State.Album.FullName -File -Recurse -ErrorAction Stop | 
-                Where-Object { $_.Extension -in '.flac', '.mp3', '.m4a', '.ogg', '.opus', '.wma', '.ape' } |
+            $firstAudioFile = Get-OMAudioFile -Path $State.Album.FullName -ErrorAction Stop | 
                 Select-Object -First 1
             
-            if ($firstAudioFile -and $firstAudioFile.FullName) {
-                Write-Verbose "DEBUG: Loading tag from $($firstAudioFile.Name)"
+            if ($firstAudioFile) {
+                Write-Verbose "DEBUG: Using tag from first audio file"
                 
-                # Load TagLib if not already loaded
-                if (-not ([System.Management.Automation.PSTypeName]'TagLib.File').Type) {
-                    $tagLibPath = Join-Path $PSScriptRoot '..' '..' 'lib' 'taglib-sharp.dll'
-                    if (Test-Path $tagLibPath) {
-                        Add-Type -Path $tagLibPath -ErrorAction Stop
-                    }
+                # Get-OMAudioFile already loads TagLib, use it directly
+                $tagFile = $firstAudioFile.TagFile
+                if ($tagFile) {
+                    $tagArtist = if ($tagFile.Tag.FirstAlbumArtist) { $tagFile.Tag.FirstAlbumArtist } else { $null }
+                    Write-Verbose "DEBUG: AlbumArtist tag='$tagArtist'"
                 }
-                
-                $tagFile = [TagLib.File]::Create($firstAudioFile.FullName)
-                $tagArtist = if ($tagFile.Tag.FirstAlbumArtist) { $tagFile.Tag.FirstAlbumArtist } else { $null }
-                $tagFile.Dispose()
-                Write-Verbose "DEBUG: AlbumArtist tag='$tagArtist'"
             }
         }
         catch {

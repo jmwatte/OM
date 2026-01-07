@@ -1499,19 +1499,8 @@ Show-Message -Message "Original Artist: $Artist" -ForegroundColor Cyan -Context 
                     if ($coverUrl) {
                         $config = Get-OMConfig
                         $maxSize = $config.CoverArt.TagImageSize
-                        # Get audio files for embedding
-                        $audioFiles = Get-ChildItem -LiteralPath $Artist.FullName -File -Recurse | Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } | ForEach-Object {
-                            try {
-                                $tagFile = [TagLib.File]::Create($_.FullName)
-                                [PSCustomObject]@{
-                                    FilePath = $_.FullName
-                                    TagFile = $tagFile
-                                }
-                            } catch {
-                                Write-Warning "Skipping invalid audio file: $($_.FullName)"
-                                $null
-                            }
-                        } | Where-Object { $_ -ne $null }
+                        # Get audio files for embedding using helper
+                        $audioFiles = Get-OMAudioFile -Path $Artist.FullName
 
                         if ($audioFiles.Count -gt 0) {
                             $result = Save-CoverArt -CoverUrl $coverUrl -AudioFiles $audioFiles -Action EmbedInTags -MaxSize $maxSize -WhatIf:$NonInteractive

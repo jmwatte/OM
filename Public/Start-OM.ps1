@@ -244,9 +244,7 @@ function Start-OM {
 
         # Detect path type: single album folder (has audio files) vs artist folder (has album subfolders)
         Write-Verbose "Start-OM: enumerating files in $Path"
-        $audioFilesInPath = @(Get-ChildItem -LiteralPath $Path -File -Recurse -ErrorAction SilentlyContinue |
-            Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
-            Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) })
+        $audioFilesInPath = @(Get-OMAudioFile -Path $Path -ReturnPathsOnly -SortMethod alphabetical -ErrorAction SilentlyContinue)
         $subFoldersInPath = @(Get-ChildItem -LiteralPath $Path -Directory -ErrorAction SilentlyContinue)
         Write-Verbose "Start-OM: enumerated $($audioFilesInPath.Count) audio files and $($subFoldersInPath.Count) subfolders"
         
@@ -257,9 +255,7 @@ function Start-OM {
         if ($audioFilesInPath.Count -gt 0) {
             # Check if subfolders contain audio files
             $subFoldersWithAudio = @($subFoldersInPath | Where-Object {
-                $subAudioFiles = @(Get-ChildItem -LiteralPath $_.FullName -File -Recurse -ErrorAction SilentlyContinue | 
-                    Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
-                    Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) })
+                $subAudioFiles = @(Get-OMAudioFile -Path $_.FullName -ReturnPathsOnly -SortMethod alphabetical -ErrorAction SilentlyContinue)
                 $subAudioFiles.Count -gt 0
             })
             
@@ -409,9 +405,7 @@ function Start-OM {
                 $albumName = $State.Album.Name.Trim()
 
             }
-            $audioFilesCheck = @(Get-ChildItem -LiteralPath $State.Album.FullName -File -Recurse | 
-                Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
-                Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) })
+            $audioFilesCheck = @(Get-OMAudioFile -Path $State.Album.FullName -ReturnPathsOnly -SortMethod alphabetical)
             if (-not $audioFilesCheck -or $audioFilesCheck.Count -eq 0) {
                 Write-Warning "No supported audio files found in album folder: $($State.Album.FullName). Skipping album."
                 continue
@@ -1131,7 +1125,7 @@ function Start-OM {
                                 
                                 $genreModeStatus = $State.GenreMode
                                 $optionsLine = "`nOptions: SortBy $sortMethodDisplay, (r)everse | (S)ave {[A]ll, [T]ags, [F]olderNames} | {C}over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags} | (aa)AlbumArtist, (gm)GenreMode:$genreModeStatus, (rm)ReviewMarked, (b)ack/(pr)evious, (P)rovider, (F)indmode, (w)hatIf:$whatIfStatus, (v)erbose:$verboseStatus, (X)ip"
-                                $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'rm', 'sa', 'st', 'sf', 'cv', 'cvo', 'cs', 'ct', 'aa', 'gm', 'b', 'pr', 'p', 'pq', 'ps', 'pd', 'pm', 'f', 'w', 'whatif', 'v', 'x')
+                                $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'f', 'r', 'rm', 'sa', 'st', 'sf', 'cv', 'cvo', 'cs', 'ct', 'aa', 'gm', 'b', 'pr', 'p', 'pq', 'ps', 'pd', 'pm', 'F', 'w', 'whatif', 'v', 'x')
                                 $paramshow = @{
                                     PairedTracks  = $State.PairedTracks
                                     AlbumName     = $ProviderAlbum.name
@@ -1274,7 +1268,7 @@ function Start-OM {
                                     Show-Message -Message "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray -Context $Context
                                     continue
                                 }
-                                '^f$' {
+                                '^F$' {
                                     # Toggle find mode between quick and artist-first
                                     if ($State.FindMode -eq 'quick') {
                                         $State.FindMode = 'artist-first'
