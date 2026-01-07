@@ -38,6 +38,17 @@
         }
     }
 
+    # Ensure Invoke-SafeScriptBlock helper is available when this file is dot-sourced in tests
+    if (-not (Get-Command -Name Invoke-SafeScriptBlock -ErrorAction SilentlyContinue)) {
+        $candidates = @()
+        if ($PSScriptRoot) { $candidates += Join-Path $PSScriptRoot 'Invoke-SafeScriptBlock.ps1' }
+        if ($MyInvocation.MyCommand.Path) { $candidates += Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'Invoke-SafeScriptBlock.ps1' }
+        $candidates += Join-Path (Get-Location) 'Private\Utils\Invoke-SafeScriptBlock.ps1'
+        foreach ($p in $candidates) {
+            if (Test-Path $p) { . $p; break }
+        }
+    }
+
     $pageSize = 10
     $page = 0
     $totalPages = if ($PairedTracks.Count -gt 0) { [math]::Ceiling($PairedTracks.Count / $pageSize) } else { 1 }
@@ -179,7 +190,8 @@
                         "00:00"
                     }
                     
-                    Show-Message -Message ("$arrow`t{0:D2}.{1:D2}: {2} ({3})" -f $audio.DiscNumber, $audio.TrackNumber, $audio.Title, $audioDurationStr) -Context $Context
+                    # Display audio track info with color based on match confidence
+                    Show-Message -Message ("$arrow`t{0:D2}.{1:D2}: {2} ({3})" -f $audio.DiscNumber, $audio.TrackNumber, $audio.Title, $audioDurationStr) -ForegroundColor $audioColor -Context $Context
 
                     if ($Verbose) {
                         $audioArtist = if ($value = Get-IfExists $audio 'Artist') { $value } else { 'Unknown' }
@@ -253,7 +265,11 @@
         }
 
         $promptMessage = if ($supportsCommands) { "Enter command (Enter=next, p=previous, q=tag tracks, m=mark tracks)" } else { "Press Enter for next page, 'p' for previous, 'q' to quit viewing" }
-        $inputRaw = & $reader $promptMessage
+
+        # Invoke the input reader defensively: collect diagnostics for ParameterBindingException and try fallbacks
+        # Invoke the input reader defensively using Invoke-SafeScriptBlock for robust fallbacks and diagnostics
+        $inputRaw = Invoke-SafeScriptBlock -Block $reader -Args @($promptMessage) -ContextMsg 'Show-Tracks reader'
+
         $inputText = if ($null -ne $inputRaw) { $inputRaw.Trim() } else { '' }
         $inputLower = $inputText.ToLowerInvariant()
 
@@ -284,7 +300,7 @@
             }
 
             $markPrompt = "Enter track numbers to mark (e.g., 12,19 or 21-26): "
-            $markInput = & $reader $markPrompt
+            $markInput = Invoke-SafeScriptBlock -Block $reader -Args @($markPrompt) -ContextMsg 'Show-Tracks markPrompt'
 
             if ($markInput) {
                 try {
