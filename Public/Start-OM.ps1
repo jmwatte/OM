@@ -1277,6 +1277,7 @@ function Start-OM {
                                     # Toggle find mode between quick and artist-first
                                     if ($State.FindMode -eq 'quick') {
                                         $State.FindMode = 'artist-first'
+                                        $script:findMode = 'artist-first'  # Sync to script scope to prevent override
                                         Show-Message -Message "✓ Switched to Artist-First Search mode" -ForegroundColor Green -Context $Context
                                         # Reset search state when switching to artist-first mode
                                         $cachedAlbums = $null
@@ -1287,6 +1288,7 @@ function Start-OM {
                                     }
                                     else {
                                         $State.FindMode = 'quick'
+                                        $script:findMode = 'quick'  # Sync to script scope to prevent override
                                         $skipQuickPrompts = $false  # Show prompts when switching to quick mode
                                         Show-Message -Message "✓ Switched to Quick Album Search mode" -ForegroundColor Green -Context $Context
                                     }
