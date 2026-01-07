@@ -775,24 +775,11 @@ function Start-OM {
                             if ($null -eq $albumCandidates -or $albumCandidates.Count -eq 0) {
                                 Show-Message -Message "No albums found for '$quickAlbum' by '$quickArtist' with $Provider." -ForegroundColor Red -Context $Context
                                 $retryChoice = Show-OMPrompt -Prompt "Press Enter to retry, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(a)' artist-first mode, (ni) New Item (enter new artist+album), (x) skip album, or enter new album name" -Context $Context
-                                if ($retryChoice -eq 'ps') {
-                                    $Provider = 'Spotify'
-                                    Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
-                                    continue quickSearchLoop
-                                }
-                                elseif ($retryChoice -eq 'pq') {
-                                    $Provider = 'Qobuz'
-                                    Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
-                                    continue quickSearchLoop
-                                }
-                                elseif ($retryChoice -eq 'pd') {
-                                    $Provider = 'Discogs'
-                                    Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
-                                    continue quickSearchLoop
-                                }
-                                elseif ($retryChoice -eq 'pm') {
-                                    $Provider = 'MusicBrainz'
-                                    Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
+                                
+                                # Check for provider switch
+                                $newProvider = Switch-OMProvider -Input $retryChoice -Context $Context
+                                if ($newProvider) {
+                                    $Provider = $newProvider
                                     continue quickSearchLoop
                                 }
                                 elseif ($retryChoice -eq 'a') {
@@ -1007,30 +994,10 @@ function Start-OM {
                             Show-Message -Message "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray -Context $Context
                             continue albumSelectionLoop
                         }
-                        elseif ($albumChoice -eq 'ps') {
-                            $Provider = 'Spotify'
-                            Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
-                            $skipQuickPrompts = $true
-                            $script:backNavigationMode = $false
-                            continue stageLoop
-                        }
-                        elseif ($albumChoice -eq 'pq') {
-                            $Provider = 'Qobuz'
-                            Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
-                            $skipQuickPrompts = $true
-                            $script:backNavigationMode = $false
-                            continue stageLoop
-                        }
-                        elseif ($albumChoice -eq 'pd') {
-                            $Provider = 'Discogs'
-                            Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
-                            $skipQuickPrompts = $true
-                            $script:backNavigationMode = $false
-                            continue stageLoop
-                        }
-                        elseif ($albumChoice -eq 'pm') {
-                            $Provider = 'MusicBrainz'
-                            Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
+                        # Check for provider switch (ps, pq, pd, pm)
+                        $newProvider = Switch-OMProvider -Input $albumChoice -Context $Context
+                        if ($newProvider) {
+                            $Provider = $newProvider
                             $skipQuickPrompts = $true
                             $script:backNavigationMode = $false
                             continue stageLoop
@@ -2758,41 +2725,18 @@ function Start-OM {
                                     $albumDone = $true
                                     break 
                                 }
-                                '^pq$' {
-                                    $Provider = 'Qobuz'
-                                    Show-Message -Message "Switched to provider: Qobuz" -ForegroundColor Green -Context $Context
-                                    $cachedAlbums = $null
-                                    $cachedArtistId = $null
-                                    $stage = 'A'
-                                    $exitdo = $true
-                                    break
-                                }
-                                '^ps$' {
-                                    $Provider = 'Spotify'
-                                    Show-Message -Message "Switched to provider: Spotify" -ForegroundColor Green -Context $Context
-                                    $cachedAlbums = $null
-                                    $cachedArtistId = $null
-                                    $stage = 'A'
-                                    $exitdo = $true
-                                    break
-                                }
-                                '^pd$' {
-                                    $Provider = 'Discogs'
-                                    Show-Message -Message "Switched to provider: Discogs" -ForegroundColor Green -Context $Context
-                                    $cachedAlbums = $null
-                                    $cachedArtistId = $null
-                                    $stage = 'A'
-                                    $exitdo = $true
-                                    break
-                                }
-                                '^pm$' {
-                                    $Provider = 'MusicBrainz'
-                                    Show-Message -Message "Switched to provider: MusicBrainz" -ForegroundColor Green -Context $Context
-                                    $cachedAlbums = $null
-                                    $cachedArtistId = $null
-                                    $stage = 'A'
-                                    $exitdo = $true
-                                    break
+                                '^p([qsdm])$' {
+                                    # Provider switch: pq=Qobuz, ps=Spotify, pd=Discogs, pm=MusicBrainz
+                                    $newProvider = Switch-OMProvider -Input $matches[0] -Context $Context
+                                    if ($newProvider) {
+                                        $Provider = $newProvider
+                                        $cachedAlbums = $null
+                                        $cachedArtistId = $null
+                                        $stage = 'A'
+                                        $exitdo = $true
+                                        break
+                                    }
+                                    continue
                                 }
                                 '^cvo(\d*)$' {
                                     # View Cover art original
