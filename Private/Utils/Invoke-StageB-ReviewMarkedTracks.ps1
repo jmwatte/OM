@@ -9,6 +9,15 @@
 
     $reader = if ($InputReader) { $InputReader } else { { param($prompt) Read-Host -Prompt $prompt } }
 
+    # Ensure safe-invoke helper is available
+    if (-not (Get-Command -Name Invoke-SafeScriptBlock -ErrorAction SilentlyContinue)) {
+        $candidates = @()
+        if ($PSScriptRoot) { $candidates += Join-Path $PSScriptRoot 'Invoke-SafeScriptBlock.ps1' }
+        if ($MyInvocation.MyCommand.Path) { $candidates += Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'Invoke-SafeScriptBlock.ps1' }
+        $candidates += Join-Path (Get-Location) 'Private\Utils\Invoke-SafeScriptBlock.ps1'
+        foreach ($p in $candidates) { if (Test-Path $p) { . $p; break } }
+    }
+
     # Determine writer: prefer explicit DisplayWriter, then Show-Message if available, else use Write-Verbose
     $display = if ($DisplayWriter) {
         $DisplayWriter
@@ -27,15 +36,15 @@
         $reviewAll = $true
         $markedTracks = @($PairedTracks | Where-Object { $_.AudioFile })
         if ($markedTracks.Count -eq 0) {
-            & $display "`nNo audio files to review." "Yellow"
+            Invoke-SafeScriptBlock -Block $display -Args @("`nNo audio files to review.", "Yellow") -ContextMsg "ReviewMarkedTracks display no audio"
             Start-Sleep -Seconds 2
             $result.NoProviderTracks = $true
             return $result
         }
-        & $display "`n📋 No marks set - reviewing ALL $($markedTracks.Count) track(s)..." "Cyan"
+        Invoke-SafeScriptBlock -Block $display -Args @("`n📋 No marks set - reviewing ALL $($markedTracks.Count) track(s)...", "Cyan") -ContextMsg "ReviewMarkedTracks display no marks"
     }
     else {
-        & $display "`n🔖 Reviewing $($markedTracks.Count) marked track(s)..." "Cyan"
+        Invoke-SafeScriptBlock -Block $display -Args @("`n🔖 Reviewing $($markedTracks.Count) marked track(s)...", "Cyan") -ContextMsg "ReviewMarkedTracks display marks"
     }
     Start-Sleep -Seconds 1
 
@@ -47,7 +56,7 @@
     }
 
     if ($providerTrackPool.Count -eq 0) {
-        & $display "No provider tracks available to choose from." "Yellow"
+        Invoke-SafeScriptBlock -Block $display -Args @("No provider tracks available to choose from.", "Yellow") -ContextMsg "ReviewMarkedTracks no provider tracks"
         Start-Sleep -Seconds 2
         $result.NoProviderTracks = $true
         return $result
@@ -56,12 +65,12 @@
     foreach ($markedTrack in $markedTracks) {
         if (-not $markedTrack.AudioFile) { continue }
         if ($providerTrackPool.Count -eq 0) {
-            & $display "No more provider tracks in pool." "Yellow"
+            Invoke-SafeScriptBlock -Block $display -Args @("No more provider tracks in pool.", "Yellow") -ContextMsg "ReviewMarkedTracks no more pool"
             break
         }
 
         if ($VerbosePreference -ne 'Continue') { Clear-Host }
-        & $display "🔖 Select correct match for:" "Cyan"
+        Invoke-SafeScriptBlock -Block $display -Args @("🔖 Select correct match for:", "Cyan") -ContextMsg "ReviewMarkedTracks select prompt"
 
         $audioDurationStr = if ($markedTrack.AudioFile.Duration) {
             $audioDurationSpan = [TimeSpan]::FromMilliseconds($markedTrack.AudioFile.Duration)
@@ -70,8 +79,8 @@
             "00:00"
         }
 
-        & $display "   $(Split-Path -Leaf $markedTrack.AudioFile.FilePath) ($audioDurationStr)" "Yellow"
-        & $display "" ""
+        Invoke-SafeScriptBlock -Block $display -Args @("   $(Split-Path -Leaf $markedTrack.AudioFile.FilePath) ($audioDurationStr)", "Yellow") -ContextMsg "ReviewMarkedTracks file line"
+        Invoke-SafeScriptBlock -Block $display -Args @("", "") -ContextMsg "ReviewMarkedTracks spacer"
 
         # Score and sort pool
         $scoredPool = @()
@@ -92,15 +101,15 @@
             $durationStr = "{0:mm\:ss}" -f $durationSpan
             $color = switch ($scored.Level) { 'High' { 'Green' } 'Medium' { 'Yellow' } 'Low' { 'Red' } default { 'Gray' } }
             $confidenceIndicator = " ($($scored.Score)%)"
-            & $display (("[$num] {0:D2}.{1:D2}: {2} ({3}){4}" -f $disc, $trackNum, $track.name, $durationStr, $confidenceIndicator)) $color
+            Invoke-SafeScriptBlock -Block $display -Args @(("[$num] {0:D2}.{1:D2}: {2} ({3}){4}" -f $disc, $trackNum, $track.name, $durationStr, $confidenceIndicator), $color) -ContextMsg "ReviewMarkedTracks pool line"
         }
 
-        & $display "" ""
-        $selection = & $reader "Enter track number or press Enter for [1] (or 's' to skip)"
+        Invoke-SafeScriptBlock -Block $display -Args @("", "") -ContextMsg "ReviewMarkedTracks spacer after list"
+        $selection = Invoke-SafeScriptBlock -Block $reader -Args @("Enter track number or press Enter for [1] (or 's' to skip)") -ContextMsg "ReviewMarkedTracks reader"
         if ([string]::IsNullOrWhiteSpace($selection)) { $selection = '1' }
 
         if ($selection -eq 's') {
-            & $display "Skipped" "Gray"
+            Invoke-SafeScriptBlock -Block $display -Args @("Skipped", "Gray") -ContextMsg "ReviewMarkedTracks skipped"
             $result.Skipped++
             continue
         }
@@ -113,7 +122,7 @@
                     if ($PairedTracks[$i].AudioFile -and $PairedTracks[$i].AudioFile.FilePath -eq $markedTrack.AudioFile.FilePath) {
                         $PairedTracks[$i].SpotifyTrack = $selectedTrack
                         if ($PairedTracks[$i].PSObject.Properties['Marked']) { $PairedTracks[$i].Marked = $false }
-                        & $display "✓ Updated" "Green"
+                        Invoke-SafeScriptBlock -Block $display -Args @("✓ Updated", "Green") -ContextMsg "ReviewMarkedTracks updated"
                         $result.Updated++
                         break
                     }

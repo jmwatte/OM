@@ -38,6 +38,15 @@ function Save-OMTrackSelection {
         }
     }
 
+    # Ensure safe-invoke helper is available
+    if (-not (Get-Command -Name Invoke-SafeScriptBlock -ErrorAction SilentlyContinue)) {
+        $candidates = @()
+        if ($PSScriptRoot) { $candidates += Join-Path $PSScriptRoot 'Invoke-SafeScriptBlock.ps1' }
+        if ($MyInvocation.MyCommand.Path) { $candidates += Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'Invoke-SafeScriptBlock.ps1' }
+        $candidates += Join-Path (Get-Location) 'Private\Utils\Invoke-SafeScriptBlock.ps1'
+        foreach ($p in $candidates) { if (Test-Path $p) { . $p; break } }
+    }
+
     $TagFactory = if ($TagFactory) { $TagFactory } else { { param($artist, $album, $spotifyTrack) get-Tags -Artist $artist -Album $album -SpotifyTrack $spotifyTrack } }
     $TagSaver = if ($TagSaver) { $TagSaver } else { { param($filePath, $tags, $useWhatIf) Save-TagsForFile -FilePath $filePath -TagValues $tags -WhatIf:$useWhatIf } }
 
@@ -63,9 +72,8 @@ function Save-OMTrackSelection {
         }
 
         try {
-            $tags = & $TagFactory $ProviderArtist $ProviderAlbum $spotify
-            $result = & $TagSaver $audio.FilePath $tags $UseWhatIf
-
+            $tags = Invoke-SafeScriptBlock -Block $TagFactory -Args @($ProviderArtist, $ProviderAlbum, $spotify) -ContextMsg "Save-OMTrackSelection TagFactory"
+            $result = Invoke-SafeScriptBlock -Block $TagSaver -Args @($audio.FilePath, $tags, $UseWhatIf) -ContextMsg "Save-OMTrackSelection TagSaver"
             $success = $true
             $reason = $null
             if ($null -ne $result -and $result.PSObject.Properties.Match('Success')) {

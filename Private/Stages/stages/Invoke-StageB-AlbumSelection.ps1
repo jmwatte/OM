@@ -141,7 +141,7 @@
     
     if ($VerbosePreference -ne 'Continue') { Clear-Host }
     if ($ShowHeader) {
-        & $ShowHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -trackCount $script:trackCount
+        Invoke-SafeScriptBlock -Block { & $ShowHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -trackCount $script:trackCount } -ContextMsg 'ShowHeader invocation'
     }
     
     # Initialize pagination
@@ -393,7 +393,7 @@ Show-Message -Message "Original Artist: $Artist" -ForegroundColor Cyan -Context 
                 }
                 '^id:.*' {
                     $id = $inputF.Substring(3)
-                    if ($Provider -eq 'Discogs') { $id = & $NormalizeDiscogsId $id }
+                    if ($Provider -eq 'Discogs') { $id = Invoke-SafeScriptBlock -Block $NormalizeDiscogsId -Args @($id) -ContextMsg 'NormalizeDiscogsId' }
                     return @{
                         NextStage             = 'C'
                         SelectedAlbum         = @{ id = $id; name = $id }
@@ -446,7 +446,7 @@ Show-Message -Message "Original Artist: $Artist" -ForegroundColor Cyan -Context 
     while ($true) {
         if ($VerbosePreference -ne 'Continue') { Clear-Host }
         if ($ShowHeader) {
-            & $ShowHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -trackCount $script:trackCount
+            Invoke-SafeScriptBlock -Block { & $ShowHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -trackCount $script:trackCount } -ContextMsg 'ShowHeader invocation'
         }
         
         # Show find mode indicator
@@ -1019,7 +1019,7 @@ Show-Message -Message "Original Artist: $Artist" -ForegroundColor Cyan -Context 
             }
             '^id:(.+)$' {
                 $id = $matches[1].Trim()
-                if ($Provider -eq 'Discogs') { $id = & $NormalizeDiscogsId $id }
+                if ($Provider -eq 'Discogs') { $id = Invoke-SafeScriptBlock -Block $NormalizeDiscogsId -Args @($id) -ContextMsg 'NormalizeDiscogsId' }
                 if ($Provider -eq 'MusicBrainz') {
                     Write-Host "Fetching MusicBrainz release information..." -ForegroundColor Cyan
                     try {
