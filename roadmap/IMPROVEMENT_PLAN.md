@@ -46,24 +46,25 @@ This phase focuses on immediate, user-facing improvements that address the most 
 This phase focuses on organizing the code, reducing complexity within `Start-OM.ps1`, and adhering to PowerShell best practices.
 
 ### 2.1. Relocate Helper Functions to `Private`
--   **Status:** `Pending`
+-   **Status:** `Complete`
 -   **Objective:** Move all general-purpose helper functions currently defined inside the `Start-OM` `process` block into their own `.ps1` files in the `Private` folder.
--   **Functions to Move:**
-    -   `Get-StringSimilarity` -> `Private/Utils/Get-StringSimilarity.ps1`
-    -   `Get-AlbumMatchConfidence` -> `Private/Utils/Get-AlbumMatchConfidence.ps1`
-    -   `Invoke-ProviderWithFallback` -> `Private/Providers/Common/Invoke-ProviderWithFallback.ps1`
-    -   `Get-BestAutoMatch` -> `Private/Utils/Get-BestAutoMatch.ps1`
-    -   `showHeader` -> `Private/Utils/Show-OMHeader.ps1`
-    -   `Invoke-MoveAlbumWithRetry` -> `Private/Workflow/Invoke-MoveAlbumWithRetry.ps1`
+-   **Functions Moved:**
+    -   `Get-StringSimilarity` -> `Private/Utils/Get-StringSimilarity.ps1` ✓
+    -   `Get-AlbumMatchConfidence` -> `Private/Utils/Get-AlbumMatchConfidence.ps1` ✓
+    -   `Invoke-ProviderWithFallback` -> `Private/Utils/Invoke-ProviderWithFallback.ps1` ✓
+    -   `Get-BestAutoMatch` -> `Private/Utils/Get-BestAutoMatch.ps1` ✓
+    -   `Show-OMHeader` -> `Private/Utils/Show-OMHeader.ps1` ✓
+    -   `Invoke-MoveAlbumWithRetry` -> `Private/Utils/Invoke-MoveAlbumWithRetry.ps1` ✓
 -   **Impact:** Significantly declutters `Start-OM.ps1`, promotes reusability, and allows for independent testing of these helpers.
 
 ### 2.2. Centralize Audio File Loading
--   **Status:** `Pending`
+-   **Status:** `Partial` - Helpers exist (`Get-OMAudioFile`, `Reload-OMAudioFiles`) but not fully utilized
 -   **Objective:** Create a single, reusable function for loading and processing audio files from a given path.
 -   **Implementation Details:**
-    -   Create a new function: `Get-OMAudioFile.ps1` in `Private/`.
-    -   This function will accept a `-Path` and perform the `Get-ChildItem`, filtering, sorting, and `TagLib.File::Create` logic currently duplicated in `Start-OM`.
-    -   Replace all instances of this duplicated logic in `Start-OM` with a call to the new function.
+    -   Helpers created: `Get-OMAudioFile.ps1` and `Reload-OMAudioFiles.ps1` in `Private/Utils/`
+    -   `Reload-OMAudioFiles` is used in 5 places in Start-OM.ps1
+    -   Still ~6 places with inline `Get-ChildItem` audio file loading that could use these helpers
+    -   TODO: Replace inline audio loading with helper calls
 
 ## Phase 3: Long-Term Architectural Refactoring
 
