@@ -418,7 +418,11 @@ function Start-OM {
             $loadStageBResults = $true 
             # Pagination fields (unused right now) removed to avoid analyzer warnings
             $albumDone = $false
-            $State.FindMode = 'quick'  # Always start in quick find mode
+            # Only initialize FindMode to 'quick' if not already set (e.g., first album or user hasn't changed it)
+            # This allows user to toggle FindMode with 'F' command and have it persist
+            if (-not $State.FindMode) {
+                $State.FindMode = 'quick'  # Default to quick find mode for single album
+            }
             $State.QuickAlbumCandidates = $null
             $State.QuickCurrentPage = 1
             $State.BackNavigationMode = $false
