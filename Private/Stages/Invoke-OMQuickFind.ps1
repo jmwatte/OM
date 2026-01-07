@@ -440,8 +440,8 @@ function Invoke-OMQuickFind {
             Show-Message -Message "[$($i+1)] $($album.name) - $artistDisplay (id: $($album.id)) (year: $year)$trackInfo" -Context $Context
         }
 
-        $modeIndicator = if ($State.BackNavigationMode) { " (Back Navigation - use 'f' to search again)" } else { "" }
-        $albumChoice = Show-OMPrompt -Prompt "Select album [number] (Enter=first), (P)rovider, {F}indMode, (ni) New Item (enter new artist+album), (x)ip, (C)over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags}, or new search term$modeIndicator" -Context $Context
+        $modeIndicator = if ($State.BackNavigationMode) { " (Back Navigation - use Shift+F to switch modes)" } else { "" }
+        $albumChoice = Show-OMPrompt -Prompt "Select album [number] (Enter=first), (P)rovider, Shift+{F}indMode, (ni) New Item (enter new artist+album), (x)ip, (C)over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags}, or new search term$modeIndicator" -Context $Context
         if ($albumChoice -eq '') { $albumChoice = '1' }
         
         if ($albumChoice -eq 'p') {
@@ -461,7 +461,8 @@ function Invoke-OMQuickFind {
             $result.Action = 'ProviderSwitch'
             return $result
         }
-        elseif ($albumChoice.ToLower() -eq 'f') {
+        elseif ($albumChoice -eq 'F') {
+            # Shift+F: Switch to artist-first mode
             $result.Action = 'SwitchMode'
             $result.NextStage = 'A'
             $result.FindMode = 'artist-first'

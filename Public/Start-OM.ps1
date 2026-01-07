@@ -469,6 +469,7 @@ function Start-OM {
                         }
                         'SwitchMode' {
                             $State.FindMode = $quickFindResult.FindMode
+                            $script:findMode = $quickFindResult.FindMode  # Sync to script scope to prevent override
                             $State.BackNavigationMode = $quickFindResult.BackNavigationMode
                             $stage = $quickFindResult.NextStage
                             continue stageLoop
