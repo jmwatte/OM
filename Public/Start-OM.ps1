@@ -1992,6 +1992,7 @@ function Start-OM {
                                     }
                                     Write-Verbose ("TRACE: handleMoveSuccess args: moveResult=($($folderMoveResult.MoveResult -as [string])); useWhatIf=$useWhatIf; oldpath=$($folderMoveResult.OldPath)")
                                     Invoke-SafeScriptBlock -Block { & $handleMoveSuccess -moveResult $folderMoveResult.MoveResult -useWhatIf $useWhatIf -oldpath $folderMoveResult.OldPath } -ContextMsg 'handleMoveSuccess invocation'
+                                    Sync-OMScriptToState -State $State  # Sync state after folder move
                                     continue doTracks
                                 }
                                 '^st\s+(?<range>.+)$' {
@@ -2193,6 +2194,7 @@ function Start-OM {
                                     
                                     Write-Verbose ("TRACE: handleMoveSuccess args: moveResult=($($folderMoveResult.MoveResult -as [string])); useWhatIf=$useWhatIf; oldpath=$($folderMoveResult.OldPath)")
                                     Invoke-SafeScriptBlock -Block { & $handleMoveSuccess -moveResult $folderMoveResult.MoveResult -useWhatIf $useWhatIf -oldpath $folderMoveResult.OldPath } -ContextMsg 'handleMoveSuccess invocation'
+                                    Sync-OMScriptToState -State $State  # Sync state after folder move
                                     
                                     # Reload audio files with updated tags if not in WhatIf mode and folder wasn't moved
                                     # (handleMoveSuccess reloads if folder was moved, but we need to reload even if it wasn't)
