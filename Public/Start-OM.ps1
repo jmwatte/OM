@@ -2271,23 +2271,7 @@ function Start-OM {
                                         -AlbumName $script:albumName `
                                         -ReloadTags:(-not $useWhatIf)
                                     
-                                    # Debug logging to file
-                                    $debugLog = "C:\temp\om_debug.log"
-                                    "=== ARTIST NAME DEBUG ===" | Out-File $debugLog -Append
-                                    "Timestamp: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" | Out-File $debugLog -Append
-                                    "Album Path: $($script:album.FullName)" | Out-File $debugLog -Append
-                                    "artistNameForFolder: [$artistNameForFolder]" | Out-File $debugLog -Append
-                                    "ManualAlbumArtist: [$script:ManualAlbumArtist]" | Out-File $debugLog -Append
-                                    "ProviderAlbum.album_artist: [$(Get-IfExists $ProviderAlbum 'album_artist')]" | Out-File $debugLog -Append
-                                    "ProviderArtist.name: [$(Get-IfExists $ProviderArtist 'name')]" | Out-File $debugLog -Append
-                                    "" | Out-File $debugLog -Append
-                                    
                                     $safeArtistName = Approve-PathSegment -Segment $artistNameForFolder -Replacement '_' -CollapseRepeating -Transliterate
-                                    
-                                    # More debug logging
-                                    "safeArtistName after Approve-PathSegment: [$safeArtistName]" | Out-File $debugLog -Append
-                                    "=========================" | Out-File $debugLog -Append
-                                    "" | Out-File $debugLog -Append
     
                                     $mvArgs = @{
                                         AlbumPath    = $oldpath
