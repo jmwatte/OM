@@ -1993,28 +1993,25 @@ function Start-OM {
                                     break
                                 }
                                 '^sf$' {
-                                    # Save folder only (no tags) - use helper for folder move
-                                    $moveParams = @{
-                                        ProviderAlbum     = $ProviderAlbum
-                                        ProviderArtist    = $ProviderArtist
-                                        AlbumPath         = $script:album.FullName
-                                        AudioFiles        = $audioFiles
-                                        ManualAlbumArtist = $script:ManualAlbumArtist
-                                        AlbumName         = $script:albumName
-                                        UseWhatIf         = $useWhatIf
-                                        ForceGC           = $true  # sf always runs GC
-                                    }
-                                    $folderMoveResult = Invoke-OMFolderMove @moveParams
+                                    # Save folder only - use helper for folder move
+                                    $folderMoveResult = Invoke-OMFolderMove `
+                                        -ProviderAlbum $ProviderAlbum `
+                                        -ProviderArtist $ProviderArtist `
+                                        -AlbumPath $script:album.FullName `
+                                        -AudioFiles $audioFiles `
+                                        -ManualAlbumArtist $script:ManualAlbumArtist `
+                                        -AlbumName $script:albumName `
+                                        -UseWhatIf:$useWhatIf `
+                                        -ForceGC  # sf always runs GC
                                     
                                     # Handle move success
-                                    if (-not ($handleMoveSuccess -is [scriptblock])) { 
-                                        Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("handleMoveSuccess is not a scriptblock (value: '$handleMoveSuccess')")), 'InvalidTarget', 'InvalidOperation', $handleMoveSuccess) 
-                                        throw "handleMoveSuccess invalid" 
+                                    if (-not ($handleMoveSuccess -is [scriptblock])) {
+                                        Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("handleMoveSuccess is not a scriptblock (value: '$handleMoveSuccess')")), 'InvalidTarget', 'InvalidOperation', $handleMoveSuccess)
+                                        throw "handleMoveSuccess invalid"
                                     }
                                     Write-Verbose ("TRACE: handleMoveSuccess args: moveResult=($($folderMoveResult.MoveResult -as [string])); useWhatIf=$useWhatIf; oldpath=$($folderMoveResult.OldPath)")
                                     Invoke-SafeScriptBlock -Block { & $handleMoveSuccess -moveResult $folderMoveResult.MoveResult -useWhatIf $useWhatIf -oldpath $folderMoveResult.OldPath } -ContextMsg 'handleMoveSuccess invocation'
-                                    continue doTracks                         
-                                    
+                                    continue doTracks
                                 }
                                 '^st\s+(?<range>.+)$' {
                                     if (-not $script:pairedTracks -or $script:pairedTracks.Count -eq 0) {
@@ -2229,23 +2226,20 @@ function Start-OM {
                                         # In preview mode keep TagFile open so UI can continue to inspect tags.
                                         Write-Verbose "Preview: keeping TagFile handles open so interactive UI can display tags."
                                     }
+                                    
                                     # Use helper for folder move - use ReloadTags since we just saved tags
-                                    $moveParams = @{
-                                        ProviderAlbum     = $ProviderAlbum
-                                        ProviderArtist    = $ProviderArtist
-                                        AlbumPath         = $script:album.FullName
-                                        AudioFiles        = $audioFiles
-                                        ManualAlbumArtist = $script:ManualAlbumArtist
-                                        AlbumName         = $script:albumName
-                                        UseWhatIf         = $useWhatIf
-                                        ReloadTags        = (-not $useWhatIf)  # Reload tags since we just saved and disposed handles
-                                    }
-                                    $folderMoveResult = Invoke-OMFolderMove @moveParams
-    
-                                    $moveResult = $folderMoveResult.MoveResult
-                                    $oldpath = $folderMoveResult.OldPath
-                                    Write-Verbose ("TRACE: handleMoveSuccess args: moveResult=($($moveResult -as [string])); useWhatIf=$useWhatIf; oldpath=$oldpath")
-                                    Invoke-SafeScriptBlock -Block { & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath } -ContextMsg 'handleMoveSuccess invocation'
+                                    $folderMoveResult = Invoke-OMFolderMove `
+                                        -ProviderAlbum $ProviderAlbum `
+                                        -ProviderArtist $ProviderArtist `
+                                        -AlbumPath $script:album.FullName `
+                                        -AudioFiles $audioFiles `
+                                        -ManualAlbumArtist $script:ManualAlbumArtist `
+                                        -AlbumName $script:albumName `
+                                        -UseWhatIf:$useWhatIf `
+                                        -ReloadTags:(-not $useWhatIf)
+                                    
+                                    Write-Verbose ("TRACE: handleMoveSuccess args: moveResult=($($folderMoveResult.MoveResult -as [string])); useWhatIf=$useWhatIf; oldpath=$($folderMoveResult.OldPath)")
+                                    Invoke-SafeScriptBlock -Block { & $handleMoveSuccess -moveResult $folderMoveResult.MoveResult -useWhatIf $useWhatIf -oldpath $folderMoveResult.OldPath } -ContextMsg 'handleMoveSuccess invocation'
                                     
                                     # Reload audio files with updated tags if not in WhatIf mode and folder wasn't moved
                                     # (handleMoveSuccess reloads if folder was moved, but we need to reload even if it wasn't)
