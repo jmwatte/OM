@@ -513,6 +513,10 @@ function Start-OM {
                             $albumDone = $true
                             break
                         }
+                        'Exit' {
+                            $albumDone = $true
+                            break stageLoop  # Exit both loops to end processing
+                        }
                         'ProviderSwitch' {
                             $Provider = $quickFindResult.Provider
                             $skipQuickPrompts = $quickFindResult.SkipQuickPrompts
