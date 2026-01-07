@@ -2155,72 +2155,13 @@ function Start-OM {
                                     $oldpath = $script:album.FullName
                                     $safeAlbumName = Approve-PathSegment -Segment (Get-IfExists $ProviderAlbum 'name') -Replacement '_' -CollapseRepeating -Transliterate
                                     
-                                    # Determine artist for folder name:
-                                    # Priority: 1) ManualAlbumArtist if set
-                                    #          2) Read AlbumArtist from first saved audio file (ensures consistency with saved tags)
-                                    #          3) Fall back to ProviderArtist.name
-                                    $artistNameForFolder = $null
-                                    
-                                    if ($script:ManualAlbumArtist) {
-                                        Write-Verbose "Using ManualAlbumArtist for folder name: $script:ManualAlbumArtist"
-                                        $artistNameForFolder = $script:ManualAlbumArtist
-                                    }
-                                    elseif ($audioFiles -and $audioFiles.Count -gt 0) {
-                                        # Read AlbumArtist from first audio file's saved tags
-                                        try {
-                                            $firstFile = $audioFiles[0]
-                                            if ($firstFile.TagFile) {
-                                                # Dispose existing handle first
-                                                try { $firstFile.TagFile.Dispose() } catch { Write-Verbose "Dispose failed: $($_.Exception.Message)" }
-                                            }
-                                            # Reload file to read saved tags
-                                            $tempTag = [TagLib.File]::Create($firstFile.FilePath)
-                                            if ($tempTag.Tag.AlbumArtists -and $tempTag.Tag.AlbumArtists.Count -gt 0) {
-                                                $artistNameForFolder = $tempTag.Tag.AlbumArtists[0]
-                                                Write-Verbose "Read AlbumArtist from saved tags: $artistNameForFolder"
-                                            }
-                                            elseif ($tempTag.Tag.FirstAlbumArtist) {
-                                                $artistNameForFolder = $tempTag.Tag.FirstAlbumArtist
-                                                Write-Verbose "Read FirstAlbumArtist from saved tags: $artistNameForFolder"
-                                            }
-                                            $tempTag.Dispose()
-                                        }
-                                        catch {
-                                            Write-Verbose "Failed to read AlbumArtist from saved tags: $($_.Exception.Message)"
-                                        }
-                                    }
-                                    
-                                    # Priority order for artist name (same as 'sa' command):
-                                    # 1. ManualAlbumArtist (already checked above) - HIGHEST PRIORITY, never override
-                                    # 2. AlbumArtist from saved tags (already attempted above)
-                                    # 3. ProviderAlbum.album_artist (from track metadata - most reliable)
-                                    # 4. ProviderArtist.name (only if not a drive letter or folder name)
-                                    # 5. Album name as last resort
-                                    
-                                    # Only use ProviderAlbum.album_artist if ManualAlbumArtist is not set
-                                    if (-not $script:ManualAlbumArtist) {
-                                        $albumArtistFromMetadata = Get-IfExists $ProviderAlbum 'album_artist'
-                                        if ($albumArtistFromMetadata) {
-                                            $artistNameForFolder = $albumArtistFromMetadata
-                                            Write-Verbose "Using ProviderAlbum.album_artist from track metadata: $artistNameForFolder"
-                                        }
-                                    }
-                                    
-                                    # If still no artist name, check if we have a valid artistNameForFolder
-                                    if (-not $artistNameForFolder -or $artistNameForFolder -match '^[A-Z]:\\?$') {
-                                        # artistNameForFolder is empty or a drive letter, try ProviderArtist.name
-                                        $providerArtistName = Get-IfExists $ProviderArtist 'name'
-                                        if ($providerArtistName -and $providerArtistName -notmatch '^[A-Z]:\\?$') {
-                                            $artistNameForFolder = $providerArtistName
-                                            Write-Verbose "Using ProviderArtist.name as fallback: $artistNameForFolder"
-                                        }
-                                        else {
-                                            # Last resort: use album name as artist
-                                            $artistNameForFolder = $script:albumName
-                                            Write-Verbose "No valid artist found, using album name as fallback: $artistNameForFolder"
-                                        }
-                                    }
-                                    # else: keep existing artistNameForFolder from saved tags
+                                    # Determine artist for folder name using helper
+                                    $artistNameForFolder = Get-OMArtistNameForFolder `
+                                        -ManualAlbumArtist $script:ManualAlbumArtist `
+                                        -AudioFiles $audioFiles `
+                                        -ProviderAlbum $ProviderAlbum `
+                                        -ProviderArtist $ProviderArtist `
+                                        -AlbumName $script:albumName
                                     
                                     $safeArtistName = Approve-PathSegment -Segment $artistNameForFolder -Replacement '_' -CollapseRepeating -Transliterate
     
@@ -2464,68 +2405,15 @@ function Start-OM {
                                     $oldpath = $script:album.FullName
                                     $safeAlbumName = Approve-PathSegment -Segment (Get-IfExists $ProviderAlbum 'name') -Replacement '_' -CollapseRepeating -Transliterate
                                     
-                                    # Determine artist for folder name:
-                                    # Priority: 1) ManualAlbumArtist if set
-                                    #          2) Read AlbumArtist from first saved audio file (ensures consistency with saved tags)
-                                    #          3) Fall back to ProviderArtist.name
-                                    $artistNameForFolder = $null
-                                    
-                                    if ($script:ManualAlbumArtist) {
-                                        Write-Verbose "Using ManualAlbumArtist for folder name: $script:ManualAlbumArtist"
-                                        $artistNameForFolder = $script:ManualAlbumArtist
-                                    }
-                                    elseif ($audioFiles -and $audioFiles.Count -gt 0 -and -not $useWhatIf) {
-                                        # Read AlbumArtist from first audio file's saved tags (only in non-WhatIf mode)
-                                        try {
-                                            $firstFilePath = $audioFiles[0].FilePath
-                                            # Reload file to read saved tags (handles were just disposed above)
-                                            $tempTag = [TagLib.File]::Create($firstFilePath)
-                                            if ($tempTag.Tag.AlbumArtists -and $tempTag.Tag.AlbumArtists.Count -gt 0) {
-                                                $artistNameForFolder = $tempTag.Tag.AlbumArtists[0]
-                                                Write-Verbose "Read AlbumArtist from saved tags: $artistNameForFolder"
-                                            }
-                                            elseif ($tempTag.Tag.FirstAlbumArtist) {
-                                                $artistNameForFolder = $tempTag.Tag.FirstAlbumArtist
-                                                Write-Verbose "Read FirstAlbumArtist from saved tags: $artistNameForFolder"
-                                            }
-                                            $tempTag.Dispose()
-                                        }
-                                        catch {
-                                            Write-Verbose "Failed to read AlbumArtist from saved tags: $($_.Exception.Message)"
-                                        }
-                                    }
-                                    
-                                    # Priority order for artist name:
-                                    # 1. ManualAlbumArtist (already checked above) - HIGHEST PRIORITY, never override
-                                    # 2. AlbumArtist from saved tags (already attempted above)
-                                    # 3. ProviderAlbum.album_artist (from track metadata - most reliable)
-                                    # 4. ProviderArtist.name (only if not a drive letter or folder name)
-                                    # 5. Album name as last resort
-                                    
-                                    # Only use ProviderAlbum.album_artist if ManualAlbumArtist is not set
-                                    if (-not $script:ManualAlbumArtist) {
-                                        $albumArtistFromMetadata = Get-IfExists $ProviderAlbum 'album_artist'
-                                        if ($albumArtistFromMetadata) {
-                                            $artistNameForFolder = $albumArtistFromMetadata
-                                            Write-Verbose "Using ProviderAlbum.album_artist from track metadata: $artistNameForFolder"
-                                        }
-                                    }
-                                    
-                                    # If still no artist name, check if we have a valid artistNameForFolder
-                                    if (-not $artistNameForFolder -or $artistNameForFolder -match '^[A-Z]:\\?$') {
-                                        # artistNameForFolder is empty or a drive letter, try ProviderArtist.name
-                                        $providerArtistName = Get-IfExists $ProviderArtist 'name'
-                                        if ($providerArtistName -and $providerArtistName -notmatch '^[A-Z]:\\?$') {
-                                            $artistNameForFolder = $providerArtistName
-                                            Write-Verbose "Using ProviderArtist.name as fallback: $artistNameForFolder"
-                                        }
-                                        else {
-                                            # Last resort: use album name as artist
-                                            $artistNameForFolder = $script:albumName
-                                            Write-Verbose "No valid artist found, using album name as fallback: $artistNameForFolder"
-                                        }
-                                    }
-                                    # else: keep existing artistNameForFolder from saved tags
+                                    # Determine artist for folder name using helper
+                                    # Use -ReloadTags since we just saved tags and disposed handles
+                                    $artistNameForFolder = Get-OMArtistNameForFolder `
+                                        -ManualAlbumArtist $script:ManualAlbumArtist `
+                                        -AudioFiles $audioFiles `
+                                        -ProviderAlbum $ProviderAlbum `
+                                        -ProviderArtist $ProviderArtist `
+                                        -AlbumName $script:albumName `
+                                        -ReloadTags:(-not $useWhatIf)
                                     
                                     # Debug logging to file
                                     $debugLog = "C:\temp\om_debug.log"
