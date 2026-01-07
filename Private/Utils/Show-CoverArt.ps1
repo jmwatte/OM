@@ -109,7 +109,12 @@ function Show-CoverArt {
         )
 
         if (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) {
-            Show-Message -Message $Message -ForegroundColor $ForegroundColor -NoNewline:$NoNewline -Context $Context
+            if ($NoNewline) {
+                Show-Message -Message $Message -ForegroundColor $ForegroundColor -NoNewline -Context $Context
+            }
+            else {
+                Show-Message -Message $Message -ForegroundColor $ForegroundColor -Context $Context
+            }
         }
         else {
             if ($NoNewline) {
@@ -121,11 +126,20 @@ function Show-CoverArt {
         }
     }
 
+    # Ensure safe-invoke helper is available
+    if (-not (Get-Command -Name Invoke-SafeScriptBlock -ErrorAction SilentlyContinue)) {
+        $candidates = @()
+        if ($PSScriptRoot) { $candidates += Join-Path $PSScriptRoot 'Invoke-SafeScriptBlock.ps1' }
+        if ($MyInvocation.MyCommand.Path) { $candidates += Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'Invoke-SafeScriptBlock.ps1' }
+        $candidates += Join-Path (Get-Location) 'Private\Utils\Invoke-SafeScriptBlock.ps1'
+        foreach ($p in $candidates) { if (Test-Path $p) { . $p; break } }
+    }
+
     # Check if chafa is available (allow override via -ChafaProbe)
     $chafaAvailable = $null
     try {
         if ($ChafaProbe) {
-            $probeResult = & $ChafaProbe
+            $probeResult = Invoke-SafeScriptBlock -Block $ChafaProbe -ContextMsg "Show-CoverArt ChafaProbe"
             if ($probeResult) { $chafaAvailable = $true }
         }
         else {
@@ -233,10 +247,13 @@ function Show-CoverArt {
         # Try to use sixels format for better image quality if supported
         $useChafa = $true
         try {
+            # Get chafa help output to check for sixel/kitty support
             if ($ChafaProbe) {
-                $chafaHelp = & $ChafaProbe
-            } else {
-                $chafaHelp = (& chafa --help 2>&1) -join "`n"
+                $chafaHelp = Invoke-SafeScriptBlock -Block $ChafaProbe -ContextMsg "Show-CoverArt ChafaProbe help"
+            }
+            else {
+                # Normal path: get chafa help output directly
+                $chafaHelp = chafa --help 2>&1 | Out-String
             }
 
             if ($chafaHelp -match 'sixel' -or $chafaHelp -match 'sixels') {
@@ -248,8 +265,9 @@ function Show-CoverArt {
                 Write-Verbose "chafa supports kitty protocol; using --format=kitty"
             }
             else {
-                Write-Verbose "chafa available but terminal does not support sixel or kitty. Falling back to browser."
-                $useChafa = $false
+                # chafa is available but doesn't support sixel/kitty - use symbols mode
+                $chafaArgs += @('--format=symbols')
+                Write-Verbose "chafa available, using symbols mode (no sixel/kitty support)"
             }
         } catch {
             Write-Verbose "Failed to probe chafa features: $($_.Exception.Message)"
@@ -289,7 +307,7 @@ function Show-CoverArt {
         # Call chafa using injected executor if provided, otherwise start process
         try {
             if ($ChafaExecutor) {
-                & $ChafaExecutor -Args $chafaArgs -Files $tempFiles
+                Invoke-SafeScriptBlock -Block $ChafaExecutor -Args @($chafaArgs, $tempFiles) -ContextMsg "Show-CoverArt ChafaExecutor"
             }
             else {
                 # Build command string
