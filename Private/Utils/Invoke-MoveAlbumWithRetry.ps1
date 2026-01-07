@@ -1,4 +1,4 @@
-function Invoke-MoveAlbumWithRetryCore {
+function Invoke-MoveAlbumWithRetry {
     param(
         [hashtable]$mvArgs,
         [switch]$UseWhatIf,
@@ -16,7 +16,7 @@ function Invoke-MoveAlbumWithRetryCore {
         }
         catch {
             $attempts++
-            Write-Verbose "Invoke-MoveAlbumWithRetryCore: Move-AlbumFolder failed (attempt $attempts): $($_.Exception.Message)"
+            Write-Verbose "Invoke-MoveAlbumWithRetry: Move-AlbumFolder failed (attempt $attempts): $($_.Exception.Message)"
 
             if ($AutoSkip) {
                 Write-Verbose "AutoSkip enabled: skipping move"
