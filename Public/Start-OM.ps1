@@ -631,7 +631,7 @@ function Start-OM {
                             }
                         }
 
-                        if ($script:findMode -ne 'quick') {
+                        if ($State.FindMode -ne 'quick') {
                             continue stageLoop
                         }
 
@@ -1741,7 +1741,7 @@ function Start-OM {
                                 '^b$' { 
                                     $script:ManualAlbumArtist = $null
                                     # $AlbumId = $ProviderAlbum.id
-                                    if ($script:findMode -eq 'quick') {
+                                    if ($State.FindMode -eq 'quick') {
                                         $loadStageBResults = $false    # Use cache
                                         $script:backNavigationMode = $true  # Enable back navigation mode
                                         $stage = 'B'
@@ -1758,7 +1758,7 @@ function Start-OM {
                                 '^pr$' { 
                                     $script:ManualAlbumArtist = $null
                                     # $AlbumId = $ProviderAlbum.id
-                                    if ($script:findMode -eq 'quick') {
+                                    if ($State.FindMode -eq 'quick') {
                                         $loadStageBResults = $false    # Use cache
                                         $stage = 'B'
                                         $exitdo = $true
@@ -1781,7 +1781,7 @@ function Start-OM {
                                 }
                                 '^f$' {
                                     # Toggle find mode between quick and artist-first
-                                    if ($script:findMode -eq 'quick') {
+                                    if ($State.FindMode -eq 'quick') {
                                         $script:findMode = 'artist-first'
                                         Show-Message -Message "✓ Switched to Artist-First Search mode" -ForegroundColor Green -Context $Context
                                         # Reset search state when switching to artist-first mode
