@@ -197,17 +197,6 @@ function Start-OM {
         # detect whether the user passed -WhatIf to this function (comes from CmdletBinding)
         $isWhatIf = $PSBoundParameters.ContainsKey('WhatIf')
 
-        # Safe Join-Path wrapper to avoid prompting when child path is empty
-        function Join-PathSafe {
-            param(
-                [Parameter(Mandatory = $true)][string]$Parent,
-                [Parameter(Mandatory = $true)][string]$Child
-            )
-            if ([string]::IsNullOrWhiteSpace($Parent)) { throw "Join-PathSafe: Parent path is empty" }
-            if ([string]::IsNullOrWhiteSpace($Child)) { throw "Join-PathSafe: Child path is empty" }
-            return Join-Path -Path $Parent -ChildPath $Child
-        }
-
         # Debug trap: capture ParameterBindingExceptions and dump call stack + bound params
         trap [System.Management.Automation.ParameterBindingException] {
             Write-Error "Start-OM: ParameterBindingException caught: $($_.Exception.Message)"
