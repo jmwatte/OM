@@ -148,10 +148,10 @@ function Add-OMDiscNumbers {
                          # Extract numeric portion from folder name (e.g., "CD 10" -> 10, "Disc 2" -> 2)
                          if ($_.Name -match '\d+') { [int]$matches[0] } else { 0 }
                      }
-    $discFolders = @($allSubFolders | Where-Object { & $isDiscFolder $_.FullName })
+    $discFolders = @($allSubFolders | Where-Object { Invoke-SafeScriptBlock -Block $isDiscFolder -Args @($_.FullName) -ContextMsg 'isDiscFolder invocation' })
     
     # Check if base folder itself has audio files
-    $baseFolderHasAudio = & $isDiscFolder $baseFolder
+    $baseFolderHasAudio = Invoke-SafeScriptBlock -Block $isDiscFolder -Args @($baseFolder) -ContextMsg 'isDiscFolder invocation'
     
     # Determine disc structure:
     # - If base folder has audio AND no disc subfolders: single-disc album (flat structure)
