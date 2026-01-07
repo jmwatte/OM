@@ -113,13 +113,7 @@ function Invoke-OMQuickFind {
     }
 
     # Display header
-    if ($VerbosePreference -ne 'Continue') { 
-        Clear-Host
-        # Reset header dedupe after Clear-Host so header displays again
-        if (Get-Variable -Name __lastShownOMHeader -Scope Script -ErrorAction SilentlyContinue) {
-            $script:__lastShownOMHeader.Key = ''
-        }
-    }
+    if ($VerbosePreference -ne 'Continue') { Clear-Host }
     if ($ShowHeader -and $ShowHeader -is [scriptblock]) {
         try {
             & $ShowHeader -Provider $Provider -Artist $State.Artist -AlbumName $State.AlbumName -TrackCount $State.TrackCount
@@ -427,13 +421,7 @@ function Invoke-OMQuickFind {
     $result.ProviderArtist = @{ name = $quickArtist; id = $quickArtist }
 
     :albumSelectionLoop while ($true) {
-        if ($VerbosePreference -ne 'Continue') { 
-            Clear-Host
-            # Reset header dedupe after Clear-Host so header displays again
-            if (Get-Variable -Name __lastShownOMHeader -Scope Script -ErrorAction SilentlyContinue) {
-                $script:__lastShownOMHeader.Key = ''
-            }
-        }
+        if ($VerbosePreference -ne 'Continue') { Clear-Host }
         if ($ShowHeader -and $ShowHeader -is [scriptblock]) {
             try {
                 Write-Verbose ("TRACE: showHeader args: Provider=$Provider; Artist=$($State.Artist); AlbumName=$($State.AlbumName); TrackCount=$($State.TrackCount)")

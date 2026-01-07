@@ -1,48 +1,33 @@
-Describe 'Show-OMHeader dedupe and Invoke-SafeScriptBlock empty-arg fallback' {
+Describe 'Show-OMHeader and Invoke-SafeScriptBlock behavior' {
 
     BeforeAll {
+        . (Join-Path $PSScriptRoot '..\Private\Utils\Show-Message.ps1')
         . (Join-Path $PSScriptRoot '..\Private\Utils\Show-OMHeader.ps1')
         . (Join-Path $PSScriptRoot '..\Private\Utils\Invoke-SafeScriptBlock.ps1')
     }
 
-    Context 'Show-OMHeader dedupe behavior' {
-        It 'prints Provider line only once when called twice quickly with same args' {
-            # Ensure clean state
-            Remove-Variable -Name __lastShownOMHeader -Scope Script -ErrorAction SilentlyContinue
+    Context 'Show-OMHeader display behavior' {
+        It 'prints header every time when called (no dedupe)' {
             $script:msgs = @()
-            Mock -CommandName Show-Message -ModuleName OM -MockWith { param($msg,$color,$no,$ctx) $script:msgs += $msg }
+            # Use InModuleScope alternative - override Show-Message in local scope
+            function Show-Message { param($Message,$ForegroundColor,[switch]$NoNewline,$Context) $script:msgs += $Message }
 
             Show-OMHeader -Provider 'ProvX' -Artist 'ArtistY' -AlbumName 'AlbumZ' -TrackCount 3 -Context $null
             Show-OMHeader -Provider 'ProvX' -Artist 'ArtistY' -AlbumName 'AlbumZ' -TrackCount 3 -Context $null
 
-            $providerLines = $script:msgs | Where-Object { $_ -like '*Provider:*' }
-            $providerLines.Count | Should -Be 1
-        }
-
-        It 'prints again when album name changes' {
-            Remove-Variable -Name __lastShownOMHeader -Scope Script -ErrorAction SilentlyContinue
-            $script:msgs = @()
-            Mock -CommandName Show-Message -ModuleName OM -MockWith { param($msg,$color,$no,$ctx) $script:msgs += $msg }
-
-            Show-OMHeader -Provider 'ProvX' -Artist 'ArtistY' -AlbumName 'AlbumA' -TrackCount 1 -Context $null
-            Show-OMHeader -Provider 'ProvX' -Artist 'ArtistY' -AlbumName 'AlbumB' -TrackCount 1 -Context $null
-
-            $providerLines = $script:msgs | Where-Object { $_ -like '*Provider:*' }
+            $providerLines = $script:msgs | Where-Object { $_ -like '*Provider*' }
             $providerLines.Count | Should -Be 2
         }
 
-        It 'prints again if last shown time is old' {
-            Remove-Variable -Name __lastShownOMHeader -Scope Script -ErrorAction SilentlyContinue
+        It 'skips header when all args are empty' {
             $script:msgs = @()
-            Mock -CommandName Show-Message -ModuleName OM -MockWith { param($msg,$color,$no,$ctx) $script:msgs += $msg }
+            function Show-Message { param($Message,$ForegroundColor,[switch]$NoNewline,$Context) $script:msgs += $Message }
 
-            Show-OMHeader -Provider 'P' -Artist 'A' -AlbumName 'AL' -TrackCount 5 -Context $null
-            # Simulate old time
-            $script:__lastShownOMHeader.Time = (Get-Date).AddSeconds(-10)
-            Show-OMHeader -Provider 'P' -Artist 'A' -AlbumName 'AL' -TrackCount 5 -Context $null
+            # Use whitespace instead of empty to avoid mandatory param validation
+            Show-OMHeader -Provider ' ' -Artist ' ' -AlbumName ' ' -TrackCount 0 -Context $null
 
-            $providerLines = $script:msgs | Where-Object { $_ -like '*Provider:*' }
-            $providerLines.Count | Should -Be 2
+            $providerLines = $script:msgs | Where-Object { $_ -like '*Provider*' }
+            $providerLines.Count | Should -Be 0
         }
     }
 

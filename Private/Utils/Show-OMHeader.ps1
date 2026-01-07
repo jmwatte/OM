@@ -28,19 +28,6 @@
         return
     }
 
-    # Dedupe: avoid printing the same header multiple times in quick succession (covers multiple callers)
-    if (-not (Get-Variable -Name __lastShownOMHeader -Scope Script -ErrorAction SilentlyContinue)) { $script:__lastShownOMHeader = @{ Key = ''; Time = (Get-Date).AddSeconds(-10) } }
-    $headerKey = "${Provider}|${Artist}|${AlbumName}|${TrackCount}"
-    try {
-        $elapsed = (Get-Date) - $script:__lastShownOMHeader.Time
-        if ($script:__lastShownOMHeader.Key -eq $headerKey -and $elapsed.TotalSeconds -lt 2) {
-            Write-Verbose "Show-OMHeader: duplicate header shown recently; skipping"
-            return
-        }
-    } catch { }
-    $script:__lastShownOMHeader.Key = $headerKey
-    $script:__lastShownOMHeader.Time = Get-Date
-
     # Use Show-Message everywhere so output is consistent and testable (honors Context.DisplayWriter)
     Show-Message -Message "" -Context $Context
     Show-Message -Message "🎵 ═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan -Context $Context
