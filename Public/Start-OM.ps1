@@ -346,171 +346,7 @@ function Start-OM {
                     Write-Verbose "showHeader: Show-OMHeader invocation failed: $($_.Exception.Message)"
                 }
         }
-        # Helper scriptblock for handling move success (shared between sf and sa)
-        $handleMoveSuccess = {
-            param($moveResult, $useWhatIf, $oldpath)
-    
-            if ($moveResult -and $moveResult.Success) {
-                if ($useWhatIf) {
-                    Show-Message -Message "WhatIf: album would be moved:" -ForegroundColor Yellow -Context $Context
-                    Show-Message -Message "Old: " -ForegroundColor Green -NoNewline -Context $Context
-                    Show-Message -Message $oldpath -Context $Context
-                    Show-Message -Message "New: " -ForegroundColor Green -NoNewline -Context $Context
-                    Show-Message -Message $moveResult.NewAlbumPath -Context $Context
-                    if ($moveResult.NewAlbumPath -ne $oldpath -and -not ($NonInteractive -or $goC) -and -not $useWhatIf) {
-                        Prompt-PressEnter -Context $Context
-                    }
-                    else {
-                        Write-Verbose "NonInteractive/goC/WhatIf or no-path-change: skipping pause after move."
-                    }
-                    Show-Message -Message "Album saved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow -Context $Context
-                    # continue doTracks
-                }
-                else {
-                    if ($moveResult.NewAlbumPath -eq $oldpath) {
-                        Write-Verbose "Move result indicates no change to album path; continuing."
-                        Show-Message -Message "Album saved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow -Context $Context
-                        #  continue doTracks
-                    }
-                    # Folder was moved - update $album and reload audio files from new location
-                    $script:album = Get-Item -LiteralPath $moveResult.NewAlbumPath
-            
-                    # Reload audio files with fresh TagLib handles from the NEW album path
-                    $script:audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName
-
-                    # Update paired tracks with reloaded audio files to reflect updated tags
-                    if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
-                        for ($i = 0; $i -lt [Math]::Min($script:pairedTracks.Count, $script:audioFiles.Count); $i++) {
-                            if ($script:pairedTracks[$i].AudioFile.TagFile) {
-                                try { $script:pairedTracks[$i].AudioFile.TagFile.Dispose() } catch { Write-Verbose "Dispose failed: $($_.Exception.Message)" }
-                            }
-                            $script:pairedTracks[$i].AudioFile = $script:audioFiles[$i]
-                        }
-                    }
-                    $script:refreshTracks = $true  # Trigger display refresh to show updated tags
-                    
-                    # Handle TargetFolder move if specified
-                    if ($TargetFolder) {
-                        Write-Verbose "TargetFolder specified: $TargetFolder"
-                        $currentPath = $script:album.FullName
-                        $folderName = Split-Path $currentPath -Leaf
-                        $originalParentFolder = Split-Path $currentPath -Parent
-                        Write-Verbose "Current album path: $currentPath"
-                        Write-Verbose "Folder name: $folderName"
-                        
-                        # Get AlbumArtist from the first audio file's tags (they should all be the same)
-                        $albumArtistName = 'Unknown Artist'
-                        if ($audioFiles -and $audioFiles.Count -gt 0 -and $audioFiles[0].PSObject.Properties['FilePath']) {
-                            Write-Verbose "Found $($audioFiles.Count) audio files for AlbumArtist extraction"
-                            try {
-                                $firstFilePath = $audioFiles[0].FilePath
-                                Write-Verbose "Reading AlbumArtist from: $firstFilePath"
-                                # Dispose old handle if exists
-                                if ($audioFiles[0].PSObject.Properties['TagFile'] -and $audioFiles[0].TagFile) {
-                                    try { $audioFiles[0].TagFile.Dispose() } catch { Write-Verbose "Dispose failed: $($_.Exception.Message)" }
-                                    Write-Verbose "Disposed existing TagFile handle"
-                                }
-                                # Reload file to read current saved tags
-                                $tempTag = [TagLib.File]::Create($firstFilePath)
-                                Write-Verbose "Reloaded TagFile for AlbumArtist check"
-                                if ($tempTag.Tag.AlbumArtists -and $tempTag.Tag.AlbumArtists.Count -gt 0) {
-                                    $albumArtistName = $tempTag.Tag.AlbumArtists[0]
-                                    Write-Verbose "Read AlbumArtist from saved tags for TargetFolder: $albumArtistName"
-                                }
-                                elseif ($tempTag.Tag.FirstAlbumArtist) {
-                                    $albumArtistName = $tempTag.Tag.FirstAlbumArtist
-                                    Write-Verbose "Read FirstAlbumArtist from saved tags for TargetFolder: $albumArtistName"
-                                }
-                                else {
-                                    Write-Verbose "No AlbumArtist found in tags, using default: $albumArtistName"
-                                }
-                                $tempTag.Dispose()
-                            }
-                            catch {
-                                Write-Warning "Could not extract AlbumArtist from tags: $($_.Exception.Message)"
-                            }
-                        }
-                        
-                        # Sanitize album artist name for folder creation
-                        $albumArtistName = Approve-PathSegment -Segment $albumArtistName
-                        
-                        # Ensure target directory exists
-                        if (-not (Test-Path -LiteralPath $TargetFolder)) {
-                            Write-Verbose "Creating target directory: $TargetFolder"
-                            New-Item -Path $TargetFolder -ItemType Directory -Force | Out-Null
-                        }
-                        
-                        # Create artist subdirectory in target folder
-                        $artistFolder = Join-PathSafe $TargetFolder $albumArtistName
-                        if (-not (Test-Path -LiteralPath $artistFolder)) {
-                            Write-Verbose "Creating artist directory: $artistFolder"
-                            New-Item -Path $artistFolder -ItemType Directory -Force | Out-Null
-                        }
-                        
-                        # Calculate target path with duplicate handling
-                        $targetPath = Join-PathSafe $artistFolder $folderName
-                        if (Test-Path -LiteralPath $targetPath) {
-                            $n = 2
-                            while (Test-Path -LiteralPath (Join-PathSafe $artistFolder "$folderName ($n)")) {
-                                $n++
-                            }
-                            $targetPath = Join-PathSafe $artistFolder "$folderName ($n)"
-                            Write-Verbose "Duplicate folder detected. Using: $targetPath"
-                        }
-                        
-                        # Move album to target folder
-                        if ([string]::IsNullOrWhiteSpace($currentPath)) { throw "Start-OM: currentPath is empty" }
-                        if ([string]::IsNullOrWhiteSpace($targetPath)) { throw "Start-OM: targetPath is empty" }
-                        Send-Message -Message "Moving album to target folder: $targetPath" -Color Cyan
-                        Move-Item -LiteralPath $currentPath -Destination $targetPath -Force
-                        
-                        # Clean up empty parent folder if it's now empty
-                        # SAFEGUARD: Only remove parent if we were processing from an artist folder (not single album mode)
-                        # This prevents removing user's music library folder when they point directly to Artist/Album6
-                        $shouldCleanupParent = $originalParentFolder -and 
-                                               (Test-Path -LiteralPath $originalParentFolder) -and
-                                               (-not $script:isSingleAlbumPath)
-                        
-                        if ($shouldCleanupParent) {
-                            $remainingItems = @(Get-ChildItem -LiteralPath $originalParentFolder -Force)
-                            if ($remainingItems.Count -eq 0) {
-                                Write-Verbose "Removing empty parent folder: $originalParentFolder"
-                                Remove-Item -LiteralPath $originalParentFolder -Force
-                                Show-Message -Message "Cleaned up empty folder: $originalParentFolder" -ForegroundColor Gray -Context $Context
-                            }
-                            else {
-                                Write-Verbose "Parent folder not empty ($(($remainingItems.Count)) items remaining), keeping it"
-                            }
-                        }
-                        elseif ($script:isSingleAlbumPath) {
-                            Write-Verbose "Single album mode: Skipping parent folder cleanup to preserve original folder structure"
-                        }
-                        
-                        # Update $script:album and reload audio files from new location
-                        $script:album = Get-Item -LiteralPath $targetPath
-                        
-                        # Reload audio files with fresh TagLib handles from the target path
-                        $audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName
-
-                        # Update paired tracks with reloaded audio files
-                        if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
-                            for ($i = 0; $i -lt [Math]::Min($script:pairedTracks.Count, $audioFiles.Count); $i++) {
-                                if ($script:pairedTracks[$i].AudioFile.TagFile) {
-                                    try { $script:pairedTracks[$i].AudioFile.TagFile.Dispose() } catch { Write-Verbose "Dispose failed: $($_.Exception.Message)" }
-                                }
-                                $script:pairedTracks[$i].AudioFile = $audioFiles[$i]
-                            }
-                        }
-                    }
-                    
-                    Show-Message -Message "Album saved and folder moved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow -Context $Context
-                    #  continue doTracks
-                }
-            }
-            else {
-                Write-Warning "Move failed or was skipped. Move result: $moveResult"
-            }
-        }
+        # handleMoveSuccess is now Invoke-OMHandleMoveSuccess function in Private/Utils
         
         $script:album = $null
         
@@ -554,12 +390,10 @@ function Start-OM {
             $script:album = $albumOriginal
             Write-Verbose "TRACE: Start processing album: $($script:album.FullName)"
             $script:ManualAlbumArtist = $null
-            # Initialize script-scope variables used by handleMoveSuccess scriptblock
+            # Initialize script-scope variables
             $script:audioFiles = $null
             $script:pairedTracks = $null
             $script:refreshTracks = $false
-            
-            # Sync album to State object (will be synced again after album name parsing)
             
             # derive album name and year
             # Try to extract year from the start of the folder name (e.g., "2023 - Album Name")
@@ -1985,14 +1819,11 @@ function Start-OM {
                                         -UseWhatIf:$useWhatIf `
                                         -ForceGC  # sf always runs GC
                                     
-                                    # Handle move success
-                                    if (-not ($handleMoveSuccess -is [scriptblock])) {
-                                        Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("handleMoveSuccess is not a scriptblock (value: '$handleMoveSuccess')")), 'InvalidTarget', 'InvalidOperation', $handleMoveSuccess)
-                                        throw "handleMoveSuccess invalid"
-                                    }
-                                    Write-Verbose ("TRACE: handleMoveSuccess args: moveResult=($($folderMoveResult.MoveResult -as [string])); useWhatIf=$useWhatIf; oldpath=$($folderMoveResult.OldPath)")
-                                    Invoke-SafeScriptBlock -Block { & $handleMoveSuccess -moveResult $folderMoveResult.MoveResult -useWhatIf $useWhatIf -oldpath $folderMoveResult.OldPath } -ContextMsg 'handleMoveSuccess invocation'
-                                    Sync-OMScriptToState -State $State  # Sync state after folder move
+                                    # Handle move success using new function
+                                    Write-Verbose ("TRACE: Invoke-OMHandleMoveSuccess args: moveResult=($($folderMoveResult.MoveResult -as [string])); useWhatIf=$useWhatIf; oldpath=$($folderMoveResult.OldPath)")
+                                    Invoke-OMHandleMoveSuccess -MoveResult $folderMoveResult.MoveResult -UseWhatIf $useWhatIf -OldPath $folderMoveResult.OldPath `
+                                        -State $State -TargetFolder $TargetFolder -Context $Context -NonInteractive:$NonInteractive -GoC:$goC -AudioFiles $script:audioFiles
+                                    Sync-OMStateToScript -State $State  # Sync State back to script variables
                                     continue doTracks
                                 }
                                 '^st\s+(?<range>.+)$' {
@@ -2192,12 +2023,13 @@ function Start-OM {
                                         -UseWhatIf:$useWhatIf `
                                         -ReloadTags:(-not $useWhatIf)
                                     
-                                    Write-Verbose ("TRACE: handleMoveSuccess args: moveResult=($($folderMoveResult.MoveResult -as [string])); useWhatIf=$useWhatIf; oldpath=$($folderMoveResult.OldPath)")
-                                    Invoke-SafeScriptBlock -Block { & $handleMoveSuccess -moveResult $folderMoveResult.MoveResult -useWhatIf $useWhatIf -oldpath $folderMoveResult.OldPath } -ContextMsg 'handleMoveSuccess invocation'
-                                    Sync-OMScriptToState -State $State  # Sync state after folder move
+                                    Write-Verbose ("TRACE: Invoke-OMHandleMoveSuccess args: moveResult=($($folderMoveResult.MoveResult -as [string])); useWhatIf=$useWhatIf; oldpath=$($folderMoveResult.OldPath)")
+                                    Invoke-OMHandleMoveSuccess -MoveResult $folderMoveResult.MoveResult -UseWhatIf $useWhatIf -OldPath $folderMoveResult.OldPath `
+                                        -State $State -TargetFolder $TargetFolder -Context $Context -NonInteractive:$NonInteractive -GoC:$goC -AudioFiles $audioFiles
+                                    Sync-OMStateToScript -State $State  # Sync State back to script variables
                                     
                                     # Reload audio files with updated tags if not in WhatIf mode and folder wasn't moved
-                                    # (handleMoveSuccess reloads if folder was moved, but we need to reload even if it wasn't)
+                                    # (Invoke-OMHandleMoveSuccess reloads if folder was moved, but we need to reload even if it wasn't)
                                     if (-not $useWhatIf -and $moveResult -and $moveResult.NewAlbumPath -eq $oldpath) {
                                         Write-Verbose "Reloading audio files to reflect saved tags (folder not moved)"
                                         # Reload audio files with fresh TagLib handles
