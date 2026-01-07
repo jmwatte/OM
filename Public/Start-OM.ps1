@@ -238,31 +238,6 @@ function Start-OM {
             }
         }
 
-        # Diagnostic helper: dump exception details, InvocationInfo, PSBoundParameters and call stack
-        function Dump-ExceptionDiagnostics {
-            param(
-                [Parameter(Mandatory=$true)][object]$ErrorRecord,
-                [string]$ContextMsg = ''
-            )
-            try {
-                Write-Verbose "DUMP-EX: $ContextMsg - $($ErrorRecord.Exception.GetType().FullName): $($ErrorRecord.Exception.Message)"
-                Write-Output "--- DUMP-EX: $ContextMsg ---"
-                Write-Output ("ExceptionType: {0}" -f $ErrorRecord.Exception.GetType().FullName)
-                Write-Output ("Message: {0}" -f $ErrorRecord.Exception.Message)
-                if ($ErrorRecord.InvocationInfo) {
-                    Write-Output "InvocationInfo:"
-                    $ErrorRecord.InvocationInfo | Format-List * | ForEach-Object { Write-Output $_ }
-                }
-                Write-Output ("PSBoundParameters (at this scope): {0}" -f ($PSBoundParameters.Keys -join ','))
-                Write-Output "Get-PSCallStack:"
-                Get-PSCallStack | ForEach-Object { Write-Output "  $_" }
-                Write-Output "--- end DUMP-EX ---"
-            }
-            catch {
-                Write-Verbose "Dump-ExceptionDiagnostics failed: $_"
-            }
-        }
-
         # Initialize verbose display toggle if it doesn't exist
         if (-not (Get-Variable -Name showVerbose -Scope Script -ErrorAction SilentlyContinue)) {
             $script:showVerbose = $false
