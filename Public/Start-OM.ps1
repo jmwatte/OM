@@ -3034,6 +3034,7 @@ function Start-OM {
             Write-Verbose "Failed to write state snapshot: $($_.Exception.Message)"
         }
     }
+    }
     end {
         return [PSCustomObject]@{
             Path      = $Path
@@ -3042,6 +3043,4 @@ function Start-OM {
         }
     }
 }
-}
-
 
