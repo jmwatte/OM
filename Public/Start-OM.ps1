@@ -1093,22 +1093,8 @@ function Start-OM {
                             }
                             $config = Get-OMConfig
                             $maxSize = $config.CoverArt.TagImageSize
-                            # Get audio files for embedding
-                            $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
-                                Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
-                                Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) } | ForEach-Object {
-                                try {
-                                    $tagFile = [TagLib.File]::Create($_.FullName)
-                                    [PSCustomObject]@{
-                                        FilePath = $_.FullName
-                                        TagFile  = $tagFile
-                                    }
-                                }
-                                catch {
-                                    Write-Warning "Skipping invalid audio file: $($_.FullName)"
-                                    $null
-                                }
-                            } | Where-Object { $_ -ne $null }
+                            # Get audio files for embedding using helper
+                            $audioFiles = Get-OMAudioFile -Path $script:album.FullName
 
                             if ($audioFiles.Count -gt 0) {
                                 foreach ($index in @($selectedIndices)) {
@@ -2508,22 +2494,8 @@ function Start-OM {
                                     if ($coverUrl) {
                                         $config = Get-OMConfig
                                         $maxSize = $config.CoverArt.TagImageSize
-                                        # Get audio files for embedding
-                                        $audioFilesForCover = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
-                                            Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
-                                            Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) } | ForEach-Object {
-                                            try {
-                                                $tagFile = [TagLib.File]::Create($_.FullName)
-                                                [PSCustomObject]@{
-                                                    FilePath = $_.FullName
-                                                    TagFile  = $tagFile
-                                                }
-                                            }
-                                            catch {
-                                                Write-Warning "Skipping invalid audio file: $($_.FullName)"
-                                                $null
-                                            }
-                                        } | Where-Object { $_ -ne $null }
+                                        # Get audio files for embedding using helper
+                                        $audioFilesForCover = Get-OMAudioFile -Path $script:album.FullName
 
                                         if ($audioFilesForCover.Count -gt 0) {
                                             $result = Save-CoverArt -CoverUrl $coverUrl -AudioFiles $audioFilesForCover -Action EmbedInTags -MaxSize $maxSize -WhatIf:$useWhatIf
