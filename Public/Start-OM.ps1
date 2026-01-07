@@ -2093,21 +2093,7 @@ function Start-OM {
                                                     SpotifyTrack = $pair.SpotifyTrack
                                                 }
                                                 if ($script:ManualAlbumArtist) {
-                                                    # Debug: Show type and value
-                                                    Write-Verbose "ManualAlbumArtist type: $($script:ManualAlbumArtist.GetType().FullName)"
-                                                    Write-Verbose "ManualAlbumArtist value: $($script:ManualAlbumArtist | Out-String)"
-                                                    
-                                                    # Ensure it's a string
-                                                    $albumArtistString = if ($script:ManualAlbumArtist -is [string]) {
-                                                        $script:ManualAlbumArtist
-                                                    }
-                                                    elseif ($script:ManualAlbumArtist -is [array]) {
-                                                        $script:ManualAlbumArtist -join '; '
-                                                    }
-                                                    else {
-                                                        $script:ManualAlbumArtist.ToString()
-                                                    }
-                                                    $tagsParams['ManualAlbumArtist'] = $albumArtistString
+                                                    $tagsParams['ManualAlbumArtist'] = ConvertTo-AlbumArtistString -Value $script:ManualAlbumArtist
                                                 }
                                                 $tags = Get-Tags @tagsParams
                                                 Write-Verbose ("Saving tags to: {0}" -f $filePath)
@@ -2170,21 +2156,7 @@ function Start-OM {
                                                 SpotifyTrack = $pair.SpotifyTrack
                                             }
                                             if ($script:ManualAlbumArtist) {
-                                                # Debug: Show type and value
-                                                Write-Verbose "ManualAlbumArtist type: $($script:ManualAlbumArtist.GetType().FullName)"
-                                                Write-Verbose "ManualAlbumArtist value: $($script:ManualAlbumArtist | Out-String)"
-                                                
-                                                # Ensure it's a string
-                                                $albumArtistString = if ($script:ManualAlbumArtist -is [string]) {
-                                                    $script:ManualAlbumArtist
-                                                }
-                                                elseif ($script:ManualAlbumArtist -is [array]) {
-                                                    $script:ManualAlbumArtist -join '; '
-                                                }
-                                                else {
-                                                    $script:ManualAlbumArtist.ToString()
-                                                }
-                                                $tagsParams['ManualAlbumArtist'] = $albumArtistString
+                                                $tagsParams['ManualAlbumArtist'] = ConvertTo-AlbumArtistString -Value $script:ManualAlbumArtist
                                             }
                                             $tags = Get-Tags @tagsParams
                                             Write-Verbose ("Saving tags to: {0}" -f $filePath)
