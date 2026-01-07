@@ -228,17 +228,18 @@ function Start-OM {
         }
 
         # Initialize verbose display toggle if it doesn't exist
+        # Note: These are synced to $State after creation via Sync-OMScriptToState
         if (-not (Get-Variable -Name showVerbose -Scope Script -ErrorAction SilentlyContinue)) {
-            $script:showVerbose = $false
-            $script:genreMode = 'Replace'  # 'Replace' or 'Merge'
+            $showVerbose = $false
+            $genreMode = 'Replace'  # 'Replace' or 'Merge'
         }
 
         if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
             throw "Path not found or not a directory: $Path"
         }
 
-        # Initialize central state object (Phase 3.1 refactoring)
-        # This will gradually replace all $script: scoped variables
+        # Initialize central state object (Phase 3.1 - complete)
+        # Replaced all $script: scoped variables with explicit $State properties
         $State = New-OMState -Path $Path -Provider $Provider -Context $Context
 
         # Detect path type: single album folder (has audio files) vs artist folder (has album subfolders)
@@ -250,8 +251,8 @@ function Start-OM {
         Write-Verbose "Start-OM: enumerated $($audioFilesInPath.Count) audio files and $($subFoldersInPath.Count) subfolders"
         
         # Single album mode: Path has audio files and either no subfolders or all subfolders are disc folders
-        $script:isSingleAlbumPath = $false
-        $script:originalPath = $Path
+        $State.IsSingleAlbumPath = $false
+        # Note: State.OriginalPath is already set by New-OMState
         
         if ($audioFilesInPath.Count -gt 0) {
             # Check if subfolders contain audio files
@@ -264,7 +265,7 @@ function Start-OM {
             
             if ($subFoldersWithAudio.Count -eq 0) {
                 # No subfolders with audio → single album (flat structure)
-                $script:isSingleAlbumPath = $true
+                $State.IsSingleAlbumPath = $true
                 Write-Verbose "Detected single album path: $Path (contains $($audioFilesInPath.Count) audio files)"
             }
             else {
@@ -274,7 +275,7 @@ function Start-OM {
                 
                 if ($nonDiscFolders.Count -eq 0) {
                     # ALL subfolders with audio are disc folders → single multi-disc album
-                    $script:isSingleAlbumPath = $true
+                    $State.IsSingleAlbumPath = $true
                     Write-Verbose "Detected single album with disc subfolders: $Path (contains $($audioFilesInPath.Count) audio files across $($subFoldersWithAudio.Count) disc folders)"
                 }
                 else {
@@ -341,30 +342,30 @@ function Start-OM {
 
                 # Delegate to the centralized Show-OMHeader helper (one canonical header)
                 try {
-                    Show-OMHeader -Provider $Provider -Artist $Artist -AlbumName $AlbumName -TrackCount $TrackCount -QobuzUrlLocale $qobuzUrlLocale -ScriptAlbum $script:album -Context $Context
+                    Show-OMHeader -Provider $Provider -Artist $Artist -AlbumName $AlbumName -TrackCount $TrackCount -QobuzUrlLocale $qobuzUrlLocale -ScriptAlbum $State.Album -Context $Context
                 } catch {
                     Write-Verbose "showHeader: Show-OMHeader invocation failed: $($_.Exception.Message)"
                 }
         }
         # handleMoveSuccess is now Invoke-OMHandleMoveSuccess function in Private/Utils
         
-        $script:album = $null
+        $State.Album = $null
         
         # Handle single album path: extract artist from parent folder
-        if ($script:isSingleAlbumPath) {
+        if ($State.IsSingleAlbumPath) {
             $parentPath = Split-Path -Parent $Path
             if ($parentPath -and $parentPath -notmatch '^[A-Z]:\\?$') {
                 # Normal case: parent is a valid artist folder name
-                $script:artist = Split-Path -Leaf $parentPath
-                $artist = $script:artist
+                $State.Artist = Split-Path -Leaf $parentPath
+                $artist = $State.Artist
                 Write-Verbose "Single album mode: Extracted artist '$artist' from parent folder"
             }
             else {
                 # Root-level album folder - use album folder name as placeholder artist
                 # This will be overridden by ProviderAlbum.album_artist during "sa" command
                 $albumFolderName = Split-Path -Leaf $Path
-                $script:artist = $albumFolderName
-                $artist = $script:artist
+                $State.Artist = $albumFolderName
+                $artist = $State.Artist
                 Write-Verbose "Single album mode: Root-level album detected at drive root, using album folder name '$artist' as temporary artist (will be updated from metadata)"
             }
             
@@ -374,7 +375,7 @@ function Start-OM {
         }
         else {
             # Original behavior: Path is artist folder containing album subfolders
-            $script:artist = Split-Path -Leaf $Path
+            $State.Artist = Split-Path -Leaf $Path
             $artist = Split-Path -Leaf $Path
             $albums = @(Get-ChildItem -LiteralPath $Path -Directory)
             Write-Verbose "Artist folder mode: Processing $($albums.Count) album folders under artist '$artist'"
@@ -1769,8 +1770,8 @@ function Start-OM {
             $snap += "Context: Top-level process ParameterBindingException"
             $snap += "Provider: $Provider"
             $snap += "Auto: $Auto, AutoFallback: $AutoFallback, NonInteractive: $NonInteractive"
-            $snap += "script:albumName: $script:albumName"
-            $snap += "script:artist: $script:artist"
+            $snap += "State.AlbumName: $($State.AlbumName)"
+            $snap += "State.Artist: $($State.Artist)"
             $snap += "albumCandidates.Count: $($albumCandidates -as [array] | Measure-Object | Select-Object -ExpandProperty Count)"
             $snap += "albumChoice: $albumChoice"
             $snap += "Recent PSCallStack: $((Get-PSCallStack) | Out-String)"
