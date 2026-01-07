@@ -1102,7 +1102,7 @@ function Start-OM {
                             ProviderArtist     = $ProviderArtist
                             AlbumName          = $albumName
                             Year               = $year
-                            CachedAlbums       = if ($script:findMode -eq 'quick' -and $script:quickAlbumCandidates) { $script:quickAlbumCandidates } else { $cachedAlbums }
+                            CachedAlbums       = if ($State.FindMode -eq 'quick' -and $State.QuickAlbumCandidates) { $State.QuickAlbumCandidates } else { $cachedAlbums }
                             CachedArtistId     = $cachedArtistId
                             NormalizeDiscogsId = $normalizeDiscogsId
                             Artist             = $artist
