@@ -9,23 +9,54 @@
         [string]$AlbumName,
         [int]$TrackCount = 0,
         [string]$QobuzUrlLocale = $null, # Added as parameter
-        [object]$ScriptAlbum = $null     # Added as parameter
+        [object]$ScriptAlbum = $null,    # Added as parameter
+        [object]$Context = $null         # Optional context for Show-Message
     )
-    Write-Host ""
-    Write-Host "🎵 ═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
-    Write-Host "🔍 Provider: " -NoNewline -ForegroundColor Magenta
-    
-    # Add locale for Qobuz provider (use cached value from parent scope)
-    if ($Provider -eq 'Qobuz' -and $QobuzUrlLocale) {
-        Write-Host "$Provider ($QobuzUrlLocale)" -ForegroundColor Cyan
-    } else {
-        Write-Host $Provider -ForegroundColor Cyan
+
+    # Ensure Show-Message helper available when dot-sourced in tests
+    if (-not (Get-Command -Name Show-Message -ErrorAction SilentlyContinue)) {
+        $candidates = @()
+        if ($PSScriptRoot) { $candidates += Join-Path $PSScriptRoot 'Show-Message.ps1' }
+        if ($MyInvocation.MyCommand.Path) { $candidates += Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'Show-Message.ps1' }
+        $candidates += Join-Path (Get-Location) 'Private\Utils\Show-Message.ps1'
+        foreach ($p in $candidates) { if (Test-Path $p) { . $p; break } }
     }
-    
-    Write-Host "👤 Original Artist: " -NoNewline -ForegroundColor Yellow
-    Write-Host $Artist -ForegroundColor White
-    Write-Host "💿 Original Album: " -NoNewline -ForegroundColor Green
-    
+
+    # Avoid printing an entirely empty header (occurs in some flows) — treat as no-op
+    if ([string]::IsNullOrWhiteSpace($Provider) -and [string]::IsNullOrWhiteSpace($Artist) -and [string]::IsNullOrWhiteSpace($AlbumName)) {
+        Write-Verbose "Show-OMHeader: empty Provider/Artist/AlbumName — skipping"
+        return
+    }
+
+    # Dedupe: avoid printing the same header multiple times in quick succession (covers multiple callers)
+    if (-not (Get-Variable -Name __lastShownOMHeader -Scope Script -ErrorAction SilentlyContinue)) { $script:__lastShownOMHeader = @{ Key = ''; Time = (Get-Date).AddSeconds(-10) } }
+    $headerKey = "${Provider}|${Artist}|${AlbumName}|${TrackCount}"
+    try {
+        $elapsed = (Get-Date) - $script:__lastShownOMHeader.Time
+        if ($script:__lastShownOMHeader.Key -eq $headerKey -and $elapsed.TotalSeconds -lt 2) {
+            Write-Verbose "Show-OMHeader: duplicate header shown recently; skipping"
+            return
+        }
+    } catch { }
+    $script:__lastShownOMHeader.Key = $headerKey
+    $script:__lastShownOMHeader.Time = Get-Date
+
+    # Use Show-Message everywhere so output is consistent and testable (honors Context.DisplayWriter)
+    Show-Message -Message "" -Context $Context
+    Show-Message -Message "🎵 ═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan -Context $Context
+    Show-Message -Message "🔍 Provider: " -ForegroundColor Magenta -NoNewline -Context $Context
+
+    # Add locale for Qobuz provider (use provided value)
+    if ($Provider -eq 'Qobuz' -and $QobuzUrlLocale) {
+        Show-Message -Message "$Provider ($QobuzUrlLocale)" -ForegroundColor Cyan -Context $Context
+    } else {
+        Show-Message -Message $Provider -ForegroundColor Cyan -Context $Context
+    }
+
+    Show-Message -Message "👤 Original Artist: " -ForegroundColor Yellow -NoNewline -Context $Context
+    Show-Message -Message $Artist -ForegroundColor White -Context $Context
+    Show-Message -Message "💿 Original Album: " -ForegroundColor Green -NoNewline -Context $Context
+
     # Try to extract year from folder name (e.g., "2011 - Bach Cello Suites")
     $folderYear = ""
     if ($ScriptAlbum -and $ScriptAlbum.Name) {
@@ -33,22 +64,22 @@
             $folderYear = "$($matches[1]) - "
         }
     }
-    
-    Write-Host "$folderYear$AlbumName" -NoNewline -ForegroundColor White
+
+    Show-Message -Message "$folderYear$AlbumName" -ForegroundColor White -NoNewline -Context $Context
     if ($TrackCount -gt 0) {
-        Write-Host " ($TrackCount tracks)" -ForegroundColor White
+        Show-Message -Message " ($TrackCount tracks)" -ForegroundColor White -Context $Context
     }
     else {
-        Write-Host ""  # Ensure newline
+        Show-Message -Message "" -Context $Context  # Ensure newline
     }
-    
+
     # Display original path (folder only)
     if ($ScriptAlbum -and $ScriptAlbum.FullName) {
-        Write-Host "📁 Original Path: " -NoNewline -ForegroundColor Cyan
-        Write-Host $ScriptAlbum.FullName -ForegroundColor White
+        Show-Message -Message "📁 Original Path: " -NoNewline -ForegroundColor Cyan -Context $Context
+        Show-Message -Message $ScriptAlbum.FullName -ForegroundColor White -Context $Context
     }
-    
-    Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
-    Write-Host ""
+
+    Show-Message -Message "═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan -Context $Context
+    Show-Message -Message "" -Context $Context
 }
 
