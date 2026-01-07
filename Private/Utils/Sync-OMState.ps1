@@ -70,10 +70,8 @@ function Sync-OMScriptToState {
     if ($pairedTracksVar -and $null -ne $pairedTracksVar.Value) {
         $State.PairedTracks = $script:pairedTracks
     }
-    $refreshTracksVar = Get-Variable -Name 'refreshTracks' -Scope Script -ErrorAction SilentlyContinue
-    if ($refreshTracksVar -and $null -ne $refreshTracksVar.Value) {
-        $State.RefreshTracks = $script:refreshTracks
-    }
+    # NOTE: RefreshTracks is NOT synced from script scope - it's only used via $State.RefreshTracks
+    # The script-scope variable is legacy and should not overwrite the State value
     
     # For other variables, keep original logic (these can be null)
     if ($null -ne (Get-Variable -Name 'album' -Scope Script -ErrorAction SilentlyContinue)) {
