@@ -1462,7 +1462,7 @@ Show-Message -Message "Original Artist: $Artist" -ForegroundColor Cyan -Context 
                     # View Cover art: cv (first album), cv<number>, or cv1-4,6,7 (multiple albums with chafa grid)
                     $rangeText = if ($matches[1]) { $matches[1].Trim() } else { '1' }
                     Show-CoverArt -AlbumList $albumsForArtist -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
-                    Prompt-PressEnter -InputReader $inputReader
+                    Prompt-PressEnter -Context $Context
                     continue
                 }
             '^cs(\d*)$' {
