@@ -1289,179 +1289,75 @@ function Start-OM {
                 switch ($stage) {
                     
                     "A" {
+                        # Stage A: Artist selection
                         $loadStageBResults = $true
-                        if ($VerbosePreference -ne 'Continue') { Clear-Host }
-                        if (-not ($showHeader -is [scriptblock])) { Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("showHeader is not a scriptblock (value: '$showHeader')")), 'InvalidTarget', 'InvalidOperation', $showHeader) ; throw "showHeader invalid" }
-                        Write-Verbose ("TRACE: showHeader args: Provider=$Provider; Artist=$script:artist; AlbumName=$script:albumName; TrackCount=$script:trackCount")
-                        Invoke-SafeScriptBlock -Block { & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount } -ContextMsg 'showHeader invocation'
-                        if ($script:findMode -eq 'quick') {
-                            Show-Message -Message "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta -Context $Context
-                        }
-                        else {
-                            Show-Message -Message "🔍 Find Mode: Artist-First" -ForegroundColor Magenta -Context $Context
-                        }
-                        Show-Message -Message "" -Context $Context
                         
-                        # Always clear candidates and perform fresh search
-                        $candidates = $null
+                        $stageAParams = @{
+                            Provider       = $Provider
+                            ArtistQuery    = $artistQuery
+                            ArtistId       = $ArtistId
+                            FindMode       = $script:findMode
+                            ShowHeader     = $showHeader
+                            Artist         = $script:artist
+                            AlbumName      = $script:albumName
+                            TrackCount     = $script:trackCount
+                            NonInteractive = $NonInteractive
+                            AutoSelect     = $AutoSelect
+                            GoA            = $goA
+                            Context        = $Context
+                        }
                         
-                        Write-Verbose "Searching for artist: '$artistQuery' with provider: $Provider"
-                        try { $r = Invoke-ProviderSearch -Provider $Provider -query $artistQuery -Type artist } catch { Write-Warning "Search failed: $_"; Dump-ExceptionDiagnostics -ErrorRecord $_ -ContextMsg "Invoke-ProviderSearch artist $Provider"; $r = $null }
-                        $candidates = @()
-                        if ($value = Get-IfExists $r.artists "items") { $candidates = $value }
-                        #if ($r -and $r.artists -and $r.artists.items) { $candidates = $r.artists.items }
-                        # Normalize to array and filter out null/empty values
-                        $candidates = @($candidates | Where-Object { $_ -ne $null })
-                        Write-Verbose "Search returned $($candidates.Count) candidates"
-    
-                        if (-not $candidates -or $candidates.Count -eq 0) {
-                            Show-Message -Message "No artist candidates found for '$artistQuery'." -Context $Context
-                            if ($NonInteractive) {
-                                Write-Warning "NonInteractive: skipping album because no artist candidates were found for '$artistQuery'."
-                                break
-                            }
-                            $inputF = Show-OMPrompt -Prompt "Enter new search, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(x)ip' to skip album, or 'id:<id>' to select by id" -Context $Context
-                            switch -Regex ($inputF) {
-                                '^x(ip)?$' { 
-                                    $albumDone = $true
-                                    break stageLoop
-                                    #break 
-                                }
-                                '^ps$' {
-                                    $Provider = 'Spotify'
-                                    Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
-                                    continue stageLoop
-                                }
-                                '^pq$' {
-                                    $Provider = 'Qobuz'
-                                    Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
-                                    continue stageLoop
-                                }
-                                '^pd$' {
-                                    $Provider = 'Discogs'
-                                    Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
-                                    continue stageLoop
-                                }
-                                '^pm$' {
-                                    $Provider = 'MusicBrainz'
-                                    Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
-                                    continue stageLoop
-                                }
-                                '^id:(.+)$' { 
-                                    $id = $matches[1].Trim()
-                                    if ($Provider -eq 'Discogs') { $id = ConvertTo-DiscogsId -InputId $id }
-                                    $ProviderArtist = @{ id = $id; name = $id }
-                                    $stage = 'B'
-                                    continue 
-                                }
-                                default {
-                                    if ($inputF) { 
-                                        $artistQuery = $inputF
-                                        Write-Verbose "Updated artistQuery to: '$artistQuery' (from no-candidates prompt)"
-                                        continue stageLoop
-                                    }
-                                    else { 
-                                        continue stageLoop
-                                    }
-                                }
-                            }
-                        }
-    
-                        Show-Message -Message "$Provider Artist candidates for '$artistQuery':" -ForegroundColor Green -Context $Context
-                        if ($candidates.Count -eq 0) {
-                            Write-Warning "No candidates returned from search (this should not happen - should have been caught above)"
-                        }
-                        for ($i = 0; $i -lt $candidates.Count; $i++) {
-                            $nameToDisplay = Get-IfExists $candidates[$i] 'displayName'
-                            if ($null -eq $nameToDisplay) {
-                                $nameToDisplay = $candidates[$i].name
-                            }
-                            Show-Message -Message "[$($i+1)] $nameToDisplay - $($candidates[$i].genres -join ', ') (id: $($candidates[$i].id))" -Context $Context
-                        }
-    
-                        # Non-interactive selection: prefer explicit ArtistId, then goA, then AutoSelect/NonInteractive
-                        if ($ArtistId) {
-                            $ProviderArtist = @{ id = $ArtistId; name = $ArtistId }
-                            $stage = 'B'; continue
-                        }
-                        if ($goA) {
-                            $ProviderArtist = $candidates[0]
-                            $stage = 'B'; continue
-                        }
-                        if ($AutoSelect -or $NonInteractive) {
-                            $ProviderArtist = $candidates[0]
-                            $stage = 'B'; continue
-                        }
-
-                        $inputF = Show-OMPrompt -Prompt "Select artist [number] (Enter=first), number, '(x)ip' album, 'id:<id>', (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, 'al:<albumName>', '(F)indmode or new search term" -Context $Context
-                        if ($inputF -eq '') { $ProviderArtist = $candidates[0]; $stage = 'B'; continue }
-                        if ($inputF -like 'id:*') { 
-                            $id = $inputF.Substring(3)
-                            if ($Provider -eq 'Discogs') { if (-not ($normalizeDiscogsId -is [scriptblock])) { Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("normalizeDiscogsId is not a scriptblock (value: '$normalizeDiscogsId')")), 'InvalidTarget', 'InvalidOperation', $normalizeDiscogsId) ; throw "normalizeDiscogsId invalid" } ; $id = Invoke-SafeScriptBlock -Block $normalizeDiscogsId -Args @($id) -ContextMsg 'normalizeDiscogsId' }
-                            $ProviderArtist = @{ id = $id; name = $id }; $stage = 'B'; continue 
-                        }
-                        if ($inputF -like 'al:*') {
-                            $newAlbumName = $inputF.Substring(3).Trim()
-                            if ($newAlbumName) {
-                                $albumName = $newAlbumName
-                                #$script:albumName = $newAlbumName
-                                Write-Verbose "Updated albumName to: '$albumName' (from al: prompt)"
-                            }
+                        $stageAResult = Invoke-StageA-ArtistSelection @stageAParams
+                        
+                        # Validate result object
+                        if (-not $stageAResult -or $stageAResult -isnot [hashtable]) {
+                            Write-Error "Stage A did not return a valid result object. Result type: $($stageAResult.GetType().FullName)"
                             continue stageLoop
                         }
-                        if ($inputF -match '^\d+$') { $idx = [int]$inputF; if ($idx -ge 1 -and $idx -le $candidates.Count) { $ProviderArtist = $candidates[$idx - 1]; $stage = 'B'; continue } else { Write-Warning "Invalid"; continue stageLoop } }
-                        if ($inputF -eq 'x' -or $inputF -eq 'xip') { 
-                            # Skip this album folder entirely
-                            $albumDone = $true
-                            break stageLoop
-                            #   break 
+                        
+                        # Handle results
+                        $stage = $stageAResult.NextStage
+                        $ProviderArtist = $stageAResult.SelectedArtist
+                        
+                        # Handle provider changes
+                        if ($stageAResult.UpdatedProvider -and $stageAResult.UpdatedProvider -ne $Provider) {
+                            $Provider = $stageAResult.UpdatedProvider
                         }
-                        if ($inputF -eq 'ps') {
-                            $Provider = 'Spotify'
-                            Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
-                            continue stageLoop
+                        
+                        # Handle artist query changes
+                        if ($stageAResult.UpdatedArtistQuery) {
+                            $artistQuery = $stageAResult.UpdatedArtistQuery
+                            Write-Verbose "Updated artistQuery to: '$artistQuery' (from Stage A)"
                         }
-                        if ($inputF -eq 'pq') {
-                            $Provider = 'Qobuz'
-                            Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
-                            continue stageLoop
+                        
+                        # Handle album name changes (al: command)
+                        if ($stageAResult.UpdatedAlbumName) {
+                            $albumName = $stageAResult.UpdatedAlbumName
+                            Write-Verbose "Updated albumName to: '$albumName' (from Stage A al: command)"
                         }
-                        if ($inputF -eq 'pd') {
-                            $Provider = 'Discogs'
-                            Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
-                            continue stageLoop
-                        }
-                        if ($inputF -eq 'pm') {
-                            $Provider = 'MusicBrainz'
-                            Show-Message -Message "Switched to provider: $Provider" -ForegroundColor Green -Context $Context
-                            continue stageLoop
-                        }
-                        if ($inputF -eq 'f' -or $inputF -eq 'fm') {
-                            Show-Message -Message "`nCurrent find mode: $($script:findMode)" -ForegroundColor Cyan -Context $Context
-                            Show-Message -Message "Available modes: (q)uick album search, (a)rtist-first search" -ForegroundColor Gray -Context $Context
-                            $newMode = Show-OMPrompt -Prompt "Select mode [q/a]" -Context $Context
-                            if ($newMode -eq 'q' -or $newMode -eq 'quick') {
-                                $script:findMode = 'quick'
-                                $skipQuickPrompts = $false  # Show prompts when switching to quick mode
-                                Show-Message -Message "✓ Switched to Quick Album Search mode" -ForegroundColor Green -Context $Context
+                        
+                        # Handle find mode changes
+                        if ($stageAResult.UpdatedFindMode) {
+                            $script:findMode = $stageAResult.UpdatedFindMode
+                            if ($stageAResult.ContainsKey('SkipQuickPrompts')) {
+                                $skipQuickPrompts = $stageAResult.SkipQuickPrompts
                             }
-                            elseif ($newMode -eq 'a' -or $newMode -eq 'artist-first') {
-                                $script:findMode = 'artist-first'
-                                Show-Message -Message "✓ Switched to Artist-First Search mode" -ForegroundColor Green -Context $Context
-                                # Reset search state when switching to artist-first mode
+                            # Reset search state when switching to artist-first mode
+                            if ($stageAResult.UpdatedFindMode -eq 'artist-first') {
                                 $cachedAlbums = $null
                                 $cachedArtistId = $null
                                 $artistQuery = $artist
                                 $ProviderArtist = $null
                                 $ProviderAlbum = $null
                             }
-                            else {
-                                Write-Warning "Invalid mode: $newMode. Staying with $($script:findMode)."
-                            }
-                            continue stageLoop
                         }
-                        $artistQuery = $inputF
-                        Write-Verbose "Updated artistQuery to: '$artistQuery' (from selection prompt)"
+                        
+                        # Handle skip action (break out of stage loop)
+                        if ($stage -eq 'Skip') {
+                            $albumDone = $true
+                            break stageLoop
+                        }
+                        
                         continue stageLoop
                     }
     
