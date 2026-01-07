@@ -650,7 +650,7 @@ function Start-OM {
                             Show-Message -Message "🤖 AUTO: Calculating confidence scores..." -ForegroundColor Cyan -Context $Context
                             $index = 1
                             foreach ($candidate in @($albumCandidates)) {
-                                $scoreVal = Get-AlbumMatchConfidence -Candidate $candidate -LocalArtist $quickArtist -LocalAlbum $quickAlbum -LocalTrackCount $script:trackCount
+                                $scoreVal = Get-AlbumMatchConfidence -Candidate $candidate -LocalArtist $quickArtist -LocalAlbum $quickAlbum -LocalTrackCount $State.TrackCount
                                 $scorePercent = $scoreVal * 100
                                 $displayName = if ($candidate.name) { $candidate.name } else { $candidate.title }
                                 # Diagnostic: record this confidence invocation
@@ -663,7 +663,7 @@ function Start-OM {
                             try { "$(Get-Date -Format o) | INVOKE: Get-BestAutoMatch CandidatesCount=$($albumCandidates.Count) LocalArtist=$quickArtist LocalAlbum=$quickAlbum Threshold=$AutoConfidenceThreshold" | Out-File -FilePath (Join-Path $env:TEMP 'start_om_invocation_log.txt') -Append -Encoding utf8 -Force } catch { }
                             $bestMatch = Get-BestAutoMatch -Candidates $albumCandidates `
                                 -LocalArtist $quickArtist -LocalAlbum $quickAlbum `
-                                -LocalTrackCount $script:trackCount -Threshold $AutoConfidenceThreshold
+                                -LocalTrackCount $State.TrackCount -Threshold $AutoConfidenceThreshold
                             
                             if ($bestMatch) {
                                 Show-Message -Message "✓ AUTO: Found high-confidence match on $Provider ($($bestMatch.Confidence)%)" -ForegroundColor Green -Context $Context
@@ -710,7 +710,7 @@ function Start-OM {
                                 if ($fallbackCandidates.Count -gt 0) {
                                     $fallbackMatch = Get-BestAutoMatch -Candidates $fallbackCandidates `
                                         -LocalArtist $quickArtist -LocalAlbum $quickAlbum `
-                                        -LocalTrackCount $script:trackCount -Threshold $AutoConfidenceThreshold
+                                        -LocalTrackCount $State.TrackCount -Threshold $AutoConfidenceThreshold
                                     
                                     if ($fallbackMatch) {
                                         Show-Message -Message "   ✓ Found high-confidence match on $fallbackProvider ($($fallbackMatch.Confidence)%)" -ForegroundColor Green -Context $Context
