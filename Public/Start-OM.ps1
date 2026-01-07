@@ -960,8 +960,8 @@ function Start-OM {
                             Write-Warning "Exception in Format-Table: $($_ | Out-String)"
                         }
                         $exitdo = $false
-                        $script:pairedTracks = $null
-                        $script:refreshTracks = $true
+                        $State.PairedTracks = $null
+                        $State.RefreshTracks = $true
                         $goCDisplayShown = $false
                         Write-Verbose "DEBUG: Starting doTracks loop, script:pairedTracks is null: $($null -eq $script:pairedTracks)"
                         :doTracks do {
@@ -976,17 +976,17 @@ function Start-OM {
                                     SpotifyTracks = $tracksForAlbum
                                 }
                                 if ($reverseSource) { $param.Reverse = $true }
-                                $script:pairedTracks = Set-Tracks @param
+                                $State.PairedTracks = Set-Tracks @param
                                 
                                 # Sort paired tracks by confidence (High → Medium → Low)
                                 # This makes it easy to spot problematic matches at the bottom
-                                Write-Verbose "DEBUG: About to check confidence sorting... script:pairedTracks type: $($script:pairedTracks.GetType().Name), Count: $($script:pairedTracks.Count)"
-                                if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0 -and $script:pairedTracks[0].PSObject.Properties['Confidence']) {
-                                    $script:pairedTracks = $script:pairedTracks | Sort-Object Confidence -Descending
-                                    Write-Verbose "Sorted $($script:pairedTracks.Count) tracks by confidence"
+                                Write-Verbose "DEBUG: About to check confidence sorting... State.PairedTracks type: $($State.PairedTracks.GetType().Name), Count: $($State.PairedTracks.Count)"
+                                if ($State.PairedTracks -and $State.PairedTracks.Count -gt 0 -and $State.PairedTracks[0].PSObject.Properties['Confidence']) {
+                                    $State.PairedTracks = $State.PairedTracks | Sort-Object Confidence -Descending
+                                    Write-Verbose "Sorted $($State.PairedTracks.Count) tracks by confidence"
                                 }
                                 
-                                $script:refreshTracks = $false
+                                $State.RefreshTracks = $false
                                 if ($sortMethod -eq 'Manual') {
                                     # Reset sort method to 'byOrder' after manual selection to prevent re-prompting on refreshes
                                     $sortMethod = 'byOrder'
@@ -1139,15 +1139,15 @@ function Start-OM {
                             }
 
                             switch -Regex ($inputF) {
-                                '^o$' { $sortMethod = 'byOrder'; $script:refreshTracks = $true; continue }
-                                '^d$' { $sortMethod = 'byDuration'; $script:refreshTracks = $true; continue }
-                                '^t$' { $sortMethod = 'byTrackNumber'; $script:refreshTracks = $true; continue }
-                                '^n$' { $sortMethod = 'byName'; $script:refreshTracks = $true; continue }
-                                '^l$' { $sortMethod = 'byTitle'; $script:refreshTracks = $true; continue }
-                                '^h$' { $sortMethod = 'Hybrid'; $script:refreshTracks = $true; continue }
-                                '^m$' { $sortMethod = 'Manual'; $script:refreshTracks = $true; continue }
-                                '^f$' { $sortMethod = 'byFilesystem'; $script:refreshTracks = $true; continue }
-                                '^r$' { $ReverseSource = -not $ReverseSource; $script:refreshTracks = $true; continue }
+                                '^o$' { $sortMethod = 'byOrder'; $State.RefreshTracks = $true; continue }
+                                '^d$' { $sortMethod = 'byDuration'; $State.RefreshTracks = $true; continue }
+                                '^t$' { $sortMethod = 'byTrackNumber'; $State.RefreshTracks = $true; continue }
+                                '^n$' { $sortMethod = 'byName'; $State.RefreshTracks = $true; continue }
+                                '^l$' { $sortMethod = 'byTitle'; $State.RefreshTracks = $true; continue }
+                                '^h$' { $sortMethod = 'Hybrid'; $State.RefreshTracks = $true; continue }
+                                '^m$' { $sortMethod = 'Manual'; $State.RefreshTracks = $true; continue }
+                                '^f$' { $sortMethod = 'byFilesystem'; $State.RefreshTracks = $true; continue }
+                                '^r$' { $ReverseSource = -not $ReverseSource; $State.RefreshTracks = $true; continue }
                                 '^rm$' {
                                     # Review marked tracks using helper function
                                     $reviewResult = Invoke-StageB-ReviewMarkedTracks `
@@ -1181,31 +1181,31 @@ function Start-OM {
                                         Start-Sleep -Seconds 1
                                     }
                                     
-                                    $script:refreshTracks = $true
+                                    $State.RefreshTracks = $true
                                     continue
                                 }
                                 '^gm$' {
                                     # Toggle genre mode between Replace and Merge
-                                    $script:genreMode = if ($script:genreMode -eq 'Replace') { 'Merge' } else { 'Replace' }
-                                    $modeColor = if ($script:genreMode -eq 'Merge') { 'Cyan' } else { 'Green' }
-                                    Show-Message -Message "`n✓ Genre Mode: $($script:genreMode)" -ForegroundColor $modeColor -Context $Context
-                                    if ($script:genreMode -eq 'Merge') {
+                                    $State.GenreMode = if ($State.GenreMode -eq 'Replace') { 'Merge' } else { 'Replace' }
+                                    $modeColor = if ($State.GenreMode -eq 'Merge') { 'Cyan' } else { 'Green' }
+                                    Show-Message -Message "`n✓ Genre Mode: $($State.GenreMode)" -ForegroundColor $modeColor -Context $Context
+                                    if ($State.GenreMode -eq 'Merge') {
                                         Show-Message -Message "   Genres will be merged with existing tags (deduplicated)" -ForegroundColor Gray -Context $Context
                                     } else {
                                         Show-Message -Message "   Genres will replace existing tags" -ForegroundColor Gray -Context $Context
                                     }
                                     Start-Sleep -Seconds 2
-                                    $script:refreshTracks = $true
+                                    $State.RefreshTracks = $true
                                     continue
                                 }
-                                '^v$' { $script:showVerbose = -not $script:showVerbose; $script:refreshTracks = $true; continue }
+                                '^v$' { $State.ShowVerbose = -not $State.ShowVerbose; $State.RefreshTracks = $true; continue }
                                 '^aa$' {
                                     # Manual album artist builder
                                     if ($tracksForAlbum -and $tracksForAlbum.Count -gt 0) {
-                                        $script:ManualAlbumArtist = Invoke-AlbumArtistBuilder -AlbumName $ProviderAlbum.name -Tracks $tracksForAlbum -CurrentAlbumArtist $ProviderArtist.name
-                                        if ($script:ManualAlbumArtist) {
-                                            Show-Message -Message "`n✓ Album artist set to: $script:ManualAlbumArtist" -ForegroundColor Green -Context $Context
-                                            $script:refreshTracks = $true
+                                        $State.ManualAlbumArtist = Invoke-AlbumArtistBuilder -AlbumName $ProviderAlbum.name -Tracks $tracksForAlbum -CurrentAlbumArtist $ProviderArtist.name
+                                        if ($State.ManualAlbumArtist) {
+                                            Show-Message -Message "`n✓ Album artist set to: $($State.ManualAlbumArtist)" -ForegroundColor Green -Context $Context
+                                            $State.RefreshTracks = $true
                                         }
                                         else {
                                             Show-Message -Message "`nSkipped - album artist unchanged" -ForegroundColor Gray -Context $Context
@@ -1217,11 +1217,11 @@ function Start-OM {
                                     continue
                                 }
                                 '^b$' { 
-                                    $script:ManualAlbumArtist = $null
+                                    $State.ManualAlbumArtist = $null
                                     # $AlbumId = $ProviderAlbum.id
                                     if ($State.FindMode -eq 'quick') {
                                         $loadStageBResults = $false    # Use cache
-                                        $script:backNavigationMode = $true  # Enable back navigation mode
+                                        $State.BackNavigationMode = $true  # Enable back navigation mode
                                         $stage = 'B'
                                         $exitdo = $true
                                         break
@@ -1234,7 +1234,7 @@ function Start-OM {
                                     }
                                 }
                                 '^pr$' { 
-                                    $script:ManualAlbumArtist = $null
+                                    $State.ManualAlbumArtist = $null
                                     # $AlbumId = $ProviderAlbum.id
                                     if ($State.FindMode -eq 'quick') {
                                         $loadStageBResults = $false    # Use cache
@@ -1280,7 +1280,7 @@ function Start-OM {
                                 }
                                 '^whatif$|^w$' {
                                     $useWhatIf = -not $useWhatIf
-                                    $script:refreshTracks = $true
+                                    $State.RefreshTracks = $true
                                     continue
                                 }
                                 '^x(ip)?$' { 
@@ -1419,7 +1419,7 @@ function Start-OM {
                                             }
                                             # Reload audio files with fresh TagLib handles
                                             $audioFiles = Reload-OMAudioFiles -AlbumPath $State.Album.FullName
-                                            $script:refreshTracks = $true
+                                            $State.RefreshTracks = $true
                                         }
                                         # Don't exit the doTracks loop - just refresh and continue
                                         # This avoids re-entering Stage C which would re-fetch tracks from provider
@@ -1518,12 +1518,12 @@ function Start-OM {
                                         $script:audioFiles = Reload-OMAudioFiles -AlbumPath $State.Album.FullName
                                         
                                         # Update paired tracks with reloaded audio files to preserve pairing
-                                        if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
-                                            for ($i = 0; $i -lt [Math]::Min($script:pairedTracks.Count, $script:audioFiles.Count); $i++) {
-                                                $script:pairedTracks[$i].AudioFile = $script:audioFiles[$i]
+                                        if ($State.PairedTracks -and $State.PairedTracks.Count -gt 0) {
+                                            for ($i = 0; $i -lt [Math]::Min($State.PairedTracks.Count, $State.AudioFiles.Count); $i++) {
+                                                $State.PairedTracks[$i].AudioFile = $State.AudioFiles[$i]
                                             }
                                         }
-                                        $script:refreshTracks = $true
+                                        $State.RefreshTracks = $true
                                     }
                                     
                                     # AUTO MODE: Skip to next album after successful save
