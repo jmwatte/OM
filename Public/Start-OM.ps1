@@ -1940,7 +1940,7 @@ function Start-OM {
                                                 }
                                             }
                                             # Reload audio files with fresh TagLib handles
-                                            $audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName
+                                            $audioFiles = Reload-OMAudioFiles -AlbumPath $State.Album.FullName
                                             $script:refreshTracks = $true
                                         }
                                         # Don't exit the doTracks loop - just refresh and continue
@@ -2020,10 +2020,10 @@ function Start-OM {
                                     $folderMoveResult = Invoke-OMFolderMove `
                                         -ProviderAlbum $ProviderAlbum `
                                         -ProviderArtist $ProviderArtist `
-                                        -AlbumPath $script:album.FullName `
+                                        -AlbumPath $State.Album.FullName `
                                         -AudioFiles $audioFiles `
                                         -ManualAlbumArtist $script:ManualAlbumArtist `
-                                        -AlbumName $script:albumName `
+                                        -AlbumName $State.AlbumName `
                                         -UseWhatIf:$useWhatIf `
                                         -ReloadTags:(-not $useWhatIf)
                                     
@@ -2037,7 +2037,7 @@ function Start-OM {
                                     if (-not $useWhatIf -and $moveResult -and $moveResult.NewAlbumPath -eq $oldpath) {
                                         Write-Verbose "Reloading audio files to reflect saved tags (folder not moved)"
                                         # Reload audio files with fresh TagLib handles
-                                        $script:audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName
+                                        $script:audioFiles = Reload-OMAudioFiles -AlbumPath $State.Album.FullName
                                         
                                         # Update paired tracks with reloaded audio files to preserve pairing
                                         if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
@@ -2229,7 +2229,7 @@ function Start-OM {
                                     if ($coverUrl) {
                                         $config = Get-OMConfig
                                         $maxSize = $config.CoverArt.FolderImageSize
-                                        $result = Save-CoverArt -CoverUrl $coverUrl -AlbumPath $script:album.FullName -Action SaveToFolder -MaxSize $maxSize -WhatIf:$useWhatIf
+                                        $result = Save-CoverArt -CoverUrl $coverUrl -AlbumPath $State.Album.FullName -Action SaveToFolder -MaxSize $maxSize -WhatIf:$useWhatIf
                                         if (-not $result.Success) {
                                             Write-Warning "Failed to save cover art: $($result.Error)"
                                         }
@@ -2247,7 +2247,7 @@ function Start-OM {
                                         $config = Get-OMConfig
                                         $maxSize = $config.CoverArt.TagImageSize
                                         # Get audio files for embedding using helper
-                                        $audioFilesForCover = Get-OMAudioFile -Path $script:album.FullName
+                                        $audioFilesForCover = Get-OMAudioFile -Path $State.Album.FullName
 
                                         if ($audioFilesForCover.Count -gt 0) {
                                             $result = Save-CoverArt -CoverUrl $coverUrl -AudioFiles $audioFilesForCover -Action EmbedInTags -MaxSize $maxSize -WhatIf:$useWhatIf
