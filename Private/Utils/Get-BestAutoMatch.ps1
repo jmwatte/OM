@@ -7,6 +7,7 @@ function Get-BestAutoMatch {
         [double]$Threshold
     )
     
+    Write-Verbose ("Get-BestAutoMatch: Candidates.Count={0}, LocalArtist={1}, LocalAlbum={2}, LocalTrackCount={3}, Threshold={4}" -f ($Candidates.Count), $LocalArtist, $LocalAlbum, $LocalTrackCount, $Threshold)
     $bestMatch = $null
     $bestScore = 0.0
     $bestIndex = -1

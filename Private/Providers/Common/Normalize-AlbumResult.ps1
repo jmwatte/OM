@@ -90,11 +90,11 @@ function Normalize-AlbumResult {
     if (-not $releaseVal) { $releaseVal = Get-IfExists -target $Raw -path 'date' }
 
     # Clean up textual fields (decode HTML entities like &amp;)
-    $nameVal = & $decodeString $nameVal
-    $releaseVal = & $decodeString $releaseVal
+    $nameVal = Invoke-SafeScriptBlock -Block $decodeString -Args @($nameVal) -ContextMsg 'decodeString nameVal'
+    $releaseVal = Invoke-SafeScriptBlock -Block $decodeString -Args @($releaseVal) -ContextMsg 'decodeString releaseVal'
 
     foreach ($a in $artists) {
-        if ($a -and $a.name) { $a.name = & $decodeString $a.name }
+        if ($a -and $a.name) { $a.name = Invoke-SafeScriptBlock -Block $decodeString -Args @($a.name) -ContextMsg 'decodeString artist name' }
     }
 
     # Normalize genres: split comma-separated strings, decode and dedupe
@@ -104,12 +104,12 @@ function Normalize-AlbumResult {
         if ($g -is [string]) {
             $parts = $g -split ','
             foreach ($p in $parts) {
-                $val = & $decodeString $p
+                $val = Invoke-SafeScriptBlock -Block $decodeString -Args @($p) -ContextMsg 'decodeString genre part'
                 if ($val -and -not ($cleanGenres -contains $val)) { $cleanGenres += $val }
             }
         }
         else {
-            $val = & $decodeString $g.ToString()
+            $val = Invoke-SafeScriptBlock -Block $decodeString -Args @($g.ToString()) -ContextMsg 'decodeString genre'
             if ($val -and -not ($cleanGenres -contains $val)) { $cleanGenres += $val }
         }
     }
@@ -122,7 +122,7 @@ function Normalize-AlbumResult {
         if ($rawComposers -is [array]) {
             foreach ($c in $rawComposers) {
                 if ($c) {
-                    $text = & $decodeString $c
+                    $text = Invoke-SafeScriptBlock -Block $decodeString -Args @($c) -ContextMsg 'decodeString composer'
                     $text = ($text -split '(?m)---\s*Production Credits\s*---',2)[0].Trim()
                     if ($text -and -not ($composers -contains $text)) { $composers += $text }
                 }
@@ -135,7 +135,7 @@ function Normalize-AlbumResult {
         }
     }
     elseif ($rawComposer) {
-        $text = & $decodeString $rawComposer
+        $text = Invoke-SafeScriptBlock -Block $decodeString -Args @($rawComposers) -ContextMsg 'decodeString composers'
         $text = ($text -split '(?m)---\s*Production Credits\s*---',2)[0].Trim()
         if ($text) { $composers += $text }
     }

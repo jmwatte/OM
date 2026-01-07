@@ -19,6 +19,11 @@ function Invoke-ProviderSearch {
         [string]$Type
     )
 
+    Write-Verbose ("Invoke-ProviderSearch: Provider={0}, Type={1}, Album={2}, Artist={3}, Query={4}" -f $Provider, $Type, $Album, $Artist, $Query)
+
+    if ([string]::IsNullOrWhiteSpace($Provider)) { throw "Invoke-ProviderSearch: Provider argument is empty" }
+    if ([string]::IsNullOrWhiteSpace($Type)) { throw "Invoke-ProviderSearch: Type argument is empty" }
+
     switch ($Provider) {
         'Spotify' {
             $searchQuery = if ($Album -and $Artist) { "$Artist $Album" } elseif ($Query) { $Query } else { throw "Query or Album/Artist required for Spotify search" }

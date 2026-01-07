@@ -10,7 +10,10 @@
     
     # Try primary provider
     Write-Host "🔍 AUTO: Searching $PrimaryProvider for '$Album' by '$Artist'..." -ForegroundColor Cyan
-    
+    Write-Verbose ("Invoke-ProviderWithFallback: PrimaryProvider={0}, Album={1}, Artist={2}, TrackCount={3}, Threshold={4}, EnableFallback={5}" -f $PrimaryProvider, $Album, $Artist, $TrackCount, $Threshold, $EnableFallback)
+
+    if ([string]::IsNullOrWhiteSpace($PrimaryProvider)) { Write-Verbose "Invoke-ProviderWithFallback: PrimaryProvider is empty"; return $null }
+
     try {
         $results = Invoke-ProviderSearch -Provider $PrimaryProvider -Album $Album -Artist $Artist -Type album
         $candidates = if ($results -and $results.albums -and $results.albums.PSObject.Properties.Name -contains 'items' -and $results.albums.items) { @($results.albums.items | Where-Object { $_ -ne $null }) } else { @() }
