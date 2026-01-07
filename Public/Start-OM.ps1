@@ -237,6 +237,10 @@ function Start-OM {
             throw "Path not found or not a directory: $Path"
         }
 
+        # Initialize central state object (Phase 3.1 refactoring)
+        # This will gradually replace all $script: scoped variables
+        $State = New-OMState -Path $Path -Provider $Provider -Context $Context
+
         # Detect path type: single album folder (has audio files) vs artist folder (has album subfolders)
         Write-Verbose "Start-OM: enumerating files in $Path"
         $audioFilesInPath = @(Get-ChildItem -LiteralPath $Path -File -Recurse -ErrorAction SilentlyContinue |
@@ -285,6 +289,10 @@ function Start-OM {
         else {
             Write-Warning "Path contains no audio files and no subfolders: $Path"
         }
+
+        # Sync path detection results to State object
+        $State.IsSingleAlbumPath = $script:isSingleAlbumPath
+        $State.OriginalPath = $script:originalPath
 
         # Ensure required external module Spotishell is present in the session
         if (-not (Get-Module -Name Spotishell)) {
@@ -550,6 +558,14 @@ function Start-OM {
             $script:audioFiles = $null
             $script:pairedTracks = $null
             $script:refreshTracks = $false
+            
+            # Sync album to State object
+            $State.Album = $script:album
+            $State.ManualAlbumArtist = $null
+            $State.AudioFiles = @()
+            $State.PairedTracks = @()
+            $State.RefreshTracks = $false
+            
             # derive album name and year
             # Try to extract year from the start of the folder name (e.g., "2023 - Album Name")
             if ($script:album.Name -match '^(\d{4})\s*[-]?\s*(.+)') {
@@ -585,6 +601,16 @@ function Start-OM {
             $currentArtist = $script:artist  # Persistent current artist for quick find mode
             $currentAlbum = $script:albumName  # Persistent current album for quick find mode
             $skipQuickPrompts = $false  # Flag to skip prompts when re-entering quick find after provider change
+
+            # Sync remaining album state to State object
+            $State.AlbumName = $script:albumName
+            $State.Artist = $script:artist
+            $State.TrackCount = $script:trackCount
+            $State.FindMode = $script:findMode
+            $State.QuickAlbumCandidates = $null
+            $State.QuickCurrentPage = 1
+            $State.BackNavigationMode = $false
+            $State.AutoModeActive = $script:autoModeActive
 
             :stageLoop while ($true) {
                 # NEW: Handle quick find mode (only when not in track selection stage)
