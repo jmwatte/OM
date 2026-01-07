@@ -693,7 +693,8 @@ function Start-OM {
                         Write-Verbose "sortMethod = '$sortMethod'"
                         $skipSort = $sortMethod -eq 'byFilesystem'
                         $State.AudioFiles = Reload-OMAudioFiles -AlbumPath $State.Album.FullName -SkipSort:$skipSort
-                        Write-Verbose "Loaded $($State.AudioFiles.Count) audio files (SkipSort: $skipSort)"
+                        $afCount = if ($null -eq $State.AudioFiles) { 0 } elseif ($State.AudioFiles -is [array]) { $State.AudioFiles.Count } else { 1 }
+                        Write-Verbose "Loaded $afCount audio files (SkipSort: $skipSort)"
                         
                         # Check if any valid audio files were loaded
                         $validAudioFiles = @($State.AudioFiles | Where-Object { $_ -ne $null })
@@ -730,9 +731,12 @@ function Start-OM {
                                 Write-Verbose "TRACE: Before Invoke-ProviderGetTracks (Provider=$Provider, AlbumId=$albumIdToFetch)"
                                 Write-Verbose "Calling Invoke-ProviderGetTracks for provider $Provider with ID $albumIdToFetch"
                                 $rawTracks = Invoke-ProviderGetTracks -Provider $Provider -AlbumId $albumIdToFetch
-                                Write-Verbose "rawTracks type: $($rawTracks.GetType().FullName)"
-                                Write-Verbose "rawTracks is array: $($rawTracks -is [Array])"
-                                Write-Verbose "rawTracks count: $($rawTracks.Count)"
+                                $rawType = if ($null -eq $rawTracks) { 'null' } else { $rawTracks.GetType().FullName }
+                                $rawIsArray = $rawTracks -is [Array]
+                                $rawCount = if ($null -eq $rawTracks) { 0 } elseif ($rawTracks -is [array]) { $rawTracks.Count } else { 1 }
+                                Write-Verbose "rawTracks type: $rawType"
+                                Write-Verbose "rawTracks is array: $rawIsArray"
+                                Write-Verbose "rawTracks count: $rawCount"
                                 
                                 # Force unroll if needed
                                 if ($rawTracks -is [System.Management.Automation.PSObject] -and $rawTracks.PSObject.Properties['Count']) {
