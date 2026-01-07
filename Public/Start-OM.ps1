@@ -949,6 +949,12 @@ function Start-OM {
                         else {
                             Write-Warning "AUTO: No high-confidence match found. Falling back to interactive selection."
                             $script:autoModeActive = $false
+                            # In NonInteractive mode, skip to next album instead of entering interactive loop
+                            if ($NonInteractive) {
+                                Write-Warning "NonInteractive: Skipping album '$script:albumName' (no auto match)."
+                                $albumDone = $true
+                                break stageLoop
+                            }
                         }
                     }
 
@@ -1391,7 +1397,7 @@ function Start-OM {
                         if ($NonInteractive) {
                             Write-Warning "NonInteractive: skipping interactive track selection for album '$($ProviderAlbum.name)'."
                             # break out of the switch AND the enclosing stage while-loop to continue with next album
-                            break 2
+                            break stageLoop
                         }
                         # Initialize sort method (can be changed later by user)
                         # Default to 'byFilesystem' to preserve disk order (as shown in Windows Explorer #)
@@ -1414,8 +1420,9 @@ function Start-OM {
                             Show-Message -Message "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Red -Context $Context
                             Show-Message -Message "`nAlbum folder: $($script:album.FullName)" -ForegroundColor Yellow -Context $Context
                             Show-Message -Message "All audio files were corrupted or invalid. Skipping this album." -ForegroundColor Yellow -Context $Context
-                            Prompt-PressEnter -Context $Context
-                            Prompt-PressEnter -Context $Context
+                            if (-not $NonInteractive) {
+                                Prompt-PressEnter -Context $Context
+                            }
                             break stageLoop  # Exit stage loop to continue to next album
                         }
                         

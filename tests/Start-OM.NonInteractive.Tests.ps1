@@ -14,7 +14,8 @@ Describe 'Start-OM non-interactive smoke test' {
         Mock -CommandName Show-Message -ModuleName OM -MockWith { }
 
         # Run Start-OM in non-interactive auto preview mode
-        $res = Start-OM -Path $testDir -Auto -AutoFallback -NonInteractive -WhatIf -Confirm:$false -Context [PSCustomObject]@{}
+        $ctx = [PSCustomObject]@{}
+        $res = Start-OM -Path $testDir -Auto -AutoFallback -NonInteractive -WhatIf -Confirm:$false -Context $ctx
 
         # Expect a PSCustomObject with Completed = $true (function finishes gracefully)
         $res | Should -Not -BeNullOrEmpty
