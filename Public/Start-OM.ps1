@@ -1575,80 +1575,21 @@ function Start-OM {
                                     $skipChoice = Show-OMPrompt -Prompt "Press Enter to skip this album, $backPrompt, or 'p' to change provider" -Context $Context
                                     if ($skipChoice -eq 'b') {
                                         if ($canRetryReleases) {
-                                            # Show releases again for this master
-                                            if ($VerbosePreference -ne 'Continue') { Clear-Host }
-                                            Show-Message -Message "📀 Discogs MASTER: $($ProviderAlbum._masterName)" -ForegroundColor Yellow -Context $Context
-                                            Show-Message -Message "Found $($ProviderAlbum._masterReleases.Count) releases:`n" -ForegroundColor Cyan -Context $Context
+                                            # Use helper function to select release
+                                            $releaseResult = Select-DiscogsMasterRelease `
+                                                -MasterName $ProviderAlbum._masterName `
+                                                -MasterId $ProviderAlbum._resolvedFromMaster `
+                                                -Releases $ProviderAlbum._masterReleases `
+                                                -Context $Context
                                             
-                                            $releases = $ProviderAlbum._masterReleases
-                                            for ($i = 0; $i -lt [Math]::Min(20, $releases.Count); $i++) {
-                                                $rel = $releases[$i]
-                                                $country = if (Get-IfExists $rel 'country') { " [$($rel.country)]" } else { "" }
-                                                $format = if (Get-IfExists $rel 'format') { " - $($rel.format)" } else { "" }
-                                                $label = if (Get-IfExists $rel 'label') { " ($($rel.label))" } else { "" }
-                                                Show-Message -Message "[$($i+1)] $($rel.title)$country$format$label" -ForegroundColor Gray -Context $Context
-                                            }
-                                            
-                                            if ($releases.Count -gt 20) {
-                                                Show-Message -Message "... and $($releases.Count - 20) more" -ForegroundColor DarkGray -Context $Context
-                                            }
-                                            
-                                            $relInput = Show-OMPrompt -Prompt "Select release [1-$($releases.Count)], [0] for main_release, 'b' for album list, or Enter for #1" -Context $Context
-                                            
-                                            if ($relInput -eq 'b') {
+                                            if ($releaseResult.Action -eq 'Back') {
                                                 $stage = 'B'
                                                 continue stageLoop
                                             }
-                                            
-                                            $selectedRelease = $null
-                                            if ($relInput -eq '') {
-                                                $selectedRelease = $releases[0]
+                                            elseif ($releaseResult.Action -eq 'Selected') {
+                                                $ProviderAlbum = $releaseResult.ProviderAlbum
+                                                continue stageLoop
                                             }
-                                            elseif ($relInput -eq '0' -or $relInput -eq 'main') {
-                                                try {
-                                                    $masterDetails = Invoke-DiscogsRequest -Uri "/masters/$($ProviderAlbum._resolvedFromMaster)"
-                                                    if ($masterDetails -and (Get-IfExists $masterDetails 'main_release')) {
-                                                        $mainReleaseId = [string]$masterDetails.main_release
-                                                        Show-Message -Message "Using main_release: $mainReleaseId" -ForegroundColor Green -Context $Context
-                                                        $selectedRelease = @{ id = $mainReleaseId; title = $ProviderAlbum._masterName }
-                                                    }
-                                                    else {
-                                                        Write-Warning "Master has no main_release, using first release"
-                                                        $selectedRelease = $releases[0]
-                                                    }
-                                                }
-                                                catch {
-                                                    Write-Warning "Failed to fetch main_release: $_. Using first release."
-                                                    $selectedRelease = $releases[0]
-                                                }
-                                            }
-                                            elseif ($relInput -match '^\d+$') {
-                                                $idx = [int]$relInput
-                                                if ($idx -ge 1 -and $idx -le $releases.Count) {
-                                                    $selectedRelease = $releases[$idx - 1]
-                                                }
-                                                else {
-                                                    Write-Warning "Invalid selection, using first release"
-                                                    $selectedRelease = $releases[0]
-                                                }
-                                            }
-                                            else {
-                                                Write-Warning "Invalid input, using first release"
-                                                $selectedRelease = $releases[0]
-                                            }
-                                            
-                                            # Update the album object with new release selection
-                                            Show-Message -Message "✓ Selected release: $($selectedRelease.id) - $($selectedRelease.title)" -ForegroundColor Green -Context $Context
-                                            $ProviderAlbum = @{
-                                                id                  = [string]$selectedRelease.id
-                                                name                = $selectedRelease.title
-                                                type                = 'release'
-                                                _resolvedFromMaster = $ProviderAlbum._resolvedFromMaster
-                                                _masterReleases     = $releases
-                                                _masterName         = $ProviderAlbum._masterName
-                                            }
-                                            # Retry fetching tracks with new release
-                                            continue stageLoop
                                         }
                                         else {
                                             # No releases stored, go back to album selection
@@ -1691,80 +1632,21 @@ function Start-OM {
                                 }
                                 elseif ($skipChoice -eq 'b') {
                                     if ($canRetryReleases) {
-                                        # Show releases again (same code as above)
-                                        if ($VerbosePreference -ne 'Continue') { Clear-Host }
-                                        Show-Message -Message "📀 Discogs MASTER: $($ProviderAlbum._masterName)" -ForegroundColor Yellow -Context $Context
-                                        Show-Message -Message "Found $($ProviderAlbum._masterReleases.Count) releases:`n" -ForegroundColor Cyan -Context $Context
+                                        # Use helper function to select release
+                                        $releaseResult = Select-DiscogsMasterRelease `
+                                            -MasterName $ProviderAlbum._masterName `
+                                            -MasterId $ProviderAlbum._resolvedFromMaster `
+                                            -Releases $ProviderAlbum._masterReleases `
+                                            -Context $Context
                                         
-                                        $releases = $ProviderAlbum._masterReleases
-                                        for ($i = 0; $i -lt [Math]::Min(20, $releases.Count); $i++) {
-                                            $rel = $releases[$i]
-                                            $country = if (Get-IfExists $rel 'country') { " [$($rel.country)]" } else { "" }
-                                            $format = if (Get-IfExists $rel 'format') { " - $($rel.format)" } else { "" }
-                                            $label = if (Get-IfExists $rel 'label') { " ($($rel.label))" } else { "" }
-                                            Show-Message -Message "[$($i+1)] $($rel.title)$country$format$label" -ForegroundColor Gray -Context $Context
-                                        }
-                                        
-                                        if ($releases.Count -gt 20) {
-                                            Show-Message -Message "... and $($releases.Count - 20) more" -ForegroundColor DarkGray -Context $Context
-                                        }
-                                        
-                                        $relInput = Show-OMPrompt -Prompt "Select release [1-$($releases.Count)], [0] for main_release, 'b' for album list, or Enter for #1" -Context $Context
-                                        
-                                        if ($relInput -eq 'b') {
+                                        if ($releaseResult.Action -eq 'Back') {
                                             $stage = 'B'
                                             continue stageLoop
                                         }
-                                        
-                                        $selectedRelease = $null
-                                        if ($relInput -eq '') {
-                                            $selectedRelease = $releases[0]
+                                        elseif ($releaseResult.Action -eq 'Selected') {
+                                            $ProviderAlbum = $releaseResult.ProviderAlbum
+                                            continue stageLoop
                                         }
-                                        elseif ($relInput -eq '0' -or $relInput -eq 'main') {
-                                            try {
-                                                $masterDetails = Invoke-DiscogsRequest -Uri "/masters/$($ProviderAlbum._resolvedFromMaster)"
-                                                if ($masterDetails -and (Get-IfExists $masterDetails 'main_release')) {
-                                                    $mainReleaseId = [string]$masterDetails.main_release
-                                                    Show-Message -Message "Using main_release: $mainReleaseId" -ForegroundColor Green -Context $Context
-                                                    $selectedRelease = @{ id = $mainReleaseId; title = $ProviderAlbum._masterName }
-                                                }
-                                                else {
-                                                    Write-Warning "Master has no main_release, using first release"
-                                                    $selectedRelease = $releases[0]
-                                                }
-                                            }
-                                            catch {
-                                                Write-Warning "Failed to fetch main_release: $_. Using first release."
-                                                $selectedRelease = $releases[0]
-                                            }
-                                        }
-                                        elseif ($relInput -match '^\d+$') {
-                                            $idx = [int]$relInput
-                                            if ($idx -ge 1 -and $idx -le $releases.Count) {
-                                                $selectedRelease = $releases[$idx - 1]
-                                            }
-                                            else {
-                                                Write-Warning "Invalid selection, using first release"
-                                                $selectedRelease = $releases[0]
-                                            }
-                                        }
-                                        else {
-                                            Write-Warning "Invalid input, using first release"
-                                            $selectedRelease = $releases[0]
-                                        }
-                                        
-                                        # Update the album object with new release selection
-                                        Show-Message -Message "✓ Selected release: $($selectedRelease.id) - $($selectedRelease.title)" -ForegroundColor Green -Context $Context
-                                        $ProviderAlbum = @{ 
-                                            id                  = [string]$selectedRelease.id
-                                            name                = $selectedRelease.title
-                                            type                = 'release'
-                                            _resolvedFromMaster = $ProviderAlbum._resolvedFromMaster
-                                            _masterReleases     = $releases
-                                            _masterName         = $ProviderAlbum._masterName
-                                        }
-                                        # Retry fetching tracks with new release
-                                        continue stageLoop
                                     }
                                     else {
                                         $stage = 'B'
