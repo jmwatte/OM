@@ -55,6 +55,9 @@ This phase focuses on organizing the code, reducing complexity within `Start-OM.
     -   `Get-BestAutoMatch` -> `Private/Utils/Get-BestAutoMatch.ps1` ✓
     -   `Show-OMHeader` -> `Private/Utils/Show-OMHeader.ps1` ✓
     -   `Invoke-MoveAlbumWithRetry` -> `Private/Utils/Invoke-MoveAlbumWithRetry.ps1` ✓
+    -   `Invoke-OMFolderMove` -> `Private/Utils/Invoke-OMFolderMove.ps1` ✓ (consolidates sf/sa folder move logic)
+    -   `Get-OMArtistNameForFolder` -> `Private/Utils/Get-OMArtistNameForFolder.ps1` ✓
+    -   `Switch-OMProvider` -> `Private/Utils/Switch-OMProvider.ps1` ✓
 -   **Impact:** Significantly declutters `Start-OM.ps1`, promotes reusability, and allows for independent testing of these helpers.
 
 ### 2.2. Centralize Audio File Loading
