@@ -1029,11 +1029,11 @@ function Start-OM {
                             Provider       = $Provider
                             ArtistQuery    = $artistQuery
                             ArtistId       = $ArtistId
-                            FindMode       = $script:findMode
+                            FindMode       = $State.FindMode
                             ShowHeader     = $showHeader
-                            Artist         = $script:artist
-                            AlbumName      = $script:albumName
-                            TrackCount     = $script:trackCount
+                            Artist         = $State.Artist
+                            AlbumName      = $State.AlbumName
+                            TrackCount     = $State.TrackCount
                             NonInteractive = $NonInteractive
                             AutoSelect     = $AutoSelect
                             GoA            = $goA
