@@ -106,13 +106,19 @@ This phase involves a major restructuring of the workflow to establish a robust,
     -   All subsequent functions will receive this object via a `-State` parameter and modify it directly. This makes state management explicit and traceable.
 
 ### 3.2. Decompose `Start-OM.ps1` into Stage-Specific Functions
--   **Status:** `Pending`
+-   **Status:** `In Progress` (~30% complete)
 -   **Objective:** Break the monolithic logic of `Start-OM` into smaller, focused functions for each stage of the workflow.
+-   **Progress:**
+    -   ✅ `Invoke-StageA-ArtistSelection.ps1`: Artist-first mode artist selection (~316 lines)
+    -   ✅ `Invoke-StageB-AlbumSelection.ps1`: Album selection from artist's albums
+    -   ✅ `Invoke-OMQuickFind.ps1`: Quick Find mode - auto-detect, search, album selection (~580 lines)
+        -   Extracted ~523 lines of inline code from Start-OM.ps1
+        -   Handles: auto-detection from folder, search loop with retry, AUTO mode with fallback, album selection UI
+        -   Returns hashtable with Action, NextStage, ProviderArtist, ProviderAlbum, etc.
+    -   Start-OM.ps1 reduced: 2315 → 1792 lines (-22.6%)
+-   **Remaining:**
+    -   `Invoke-OMTrackMatching.ps1`: Stage C track matching UI (~300 lines of header/loading code)
+    -   `Invoke-OMTrackCommands.ps1`: doTracks loop command handlers (~700 lines)
 -   **Implementation Details:**
     -   The main `Start-OM.ps1` will become a controller/orchestrator. Its main loop will call the appropriate stage function based on the `$State.CurrentStage`.
-    -   Logic from the `switch ($stage)` block will be extracted into these new functions, which will reside in `Private/Stages/`:
-        -   `Invoke-OMQuickFind.ps1`: Handles the entire "Quick Find" mode UI and logic.
-        -   `Invoke-OMArtistSelection.ps1`: Handles the "Artist-First" search and selection.
-        -   `Invoke-OMAlbumSelection.ps1`: Handles displaying albums for a selected artist.
-        -   `Invoke-OMTrackMatching.ps1`: Handles the Stage C track matching UI and saving logic.
-    -   Each stage function will accept the `$State` object and return a status (e.g., 'Proceed', 'GoBack', 'Skip', 'Exit') that the main controller uses to decide the next action.
+    -   Each stage function accepts the `$State` object and returns a result hashtable that the main controller uses to decide the next action.
