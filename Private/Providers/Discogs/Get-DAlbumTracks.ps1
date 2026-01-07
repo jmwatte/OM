@@ -255,14 +255,14 @@ function Get-DAlbumTracks {
             }
 
             if ($subTracks.Count -gt 0) {
-                $basePosition = & $parsePosition $Track.position
+                $basePosition = Invoke-SafeScriptBlock -Block $parsePosition -Args @($Track.position) -ContextMsg 'parsePosition'
                 if (-not $basePosition) {
                     $basePosition = if ($ParentPosition) { $ParentPosition } else { [ordered]@{ Disc = 1; Track = 0 } }
                 }
 
                 foreach ($subTrack in $subTracks) {
                     if (-not $subTrack) { continue }
-                    $results += & $processTrack $subTrack $Track $basePosition
+                    $results += Invoke-SafeScriptBlock -Block $processTrack -Args @($subTrack,$Track,$basePosition) -ContextMsg 'processTrack sub'
                 }
 
                 return $results
@@ -275,7 +275,7 @@ function Get-DAlbumTracks {
             }
 
             $positionValue = $Track.position
-            $positionInfo = & $parsePosition $positionValue
+            $positionInfo = Invoke-SafeScriptBlock -Block $parsePosition -Args @($positionValue) -ContextMsg 'parsePosition'
 
             if (-not $positionInfo) {
                 $sequentialTrackNumber++
@@ -290,15 +290,15 @@ function Get-DAlbumTracks {
             }
 
             $parentDuration = if ($ParentTrack) { $ParentTrack.duration } else { $null }
-            $durationMs = & $getDurationMs $Track.duration $parentDuration
-            $contributors = & $extractContributors $Track $ParentTrack
+            $durationMs = Invoke-SafeScriptBlock -Block $getDurationMs -Args @($Track.duration,$parentDuration) -ContextMsg 'getDurationMs'
+            $contributors = Invoke-SafeScriptBlock -Block $extractContributors -Args @($Track,$ParentTrack) -ContextMsg 'extractContributors'
 
             $title = if ($Track.title) { $Track.title } elseif ($ParentTrack) { $ParentTrack.title } else { $null }
             if (-not $title) {
                 return $results
             }
 
-            $results += & $buildTrackObject $title $positionValue $positionInfo $durationMs $contributors
+            $results += Invoke-SafeScriptBlock -Block $buildTrackObject -Args @($title,$positionValue,$positionInfo,$durationMs,$contributors) -ContextMsg 'buildTrackObject'
             return $results
         }
 
@@ -307,7 +307,7 @@ function Get-DAlbumTracks {
 
         if ($release.tracklist) {
             foreach ($track in $release.tracklist) {
-                $tracks += & $processTrack $track $null $null
+                $tracks += Invoke-SafeScriptBlock -Block $processTrack -Args @($track,$null,$null) -ContextMsg 'processTrack top'
             }
         }
         

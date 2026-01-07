@@ -12,6 +12,15 @@ function Search-QItem {
         [Parameter(Mandatory=$false)][scriptblock]$DisplayWriter
     )
 
+    # Ensure safe-invoke helper is available
+    if (-not (Get-Command -Name Invoke-SafeScriptBlock -ErrorAction SilentlyContinue)) {
+        $candidates = @()
+        if ($PSScriptRoot) { $candidates += Join-Path $PSScriptRoot 'Invoke-SafeScriptBlock.ps1' }
+        if ($MyInvocation.MyCommand.Path) { $candidates += Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'Invoke-SafeScriptBlock.ps1' }
+        $candidates += Join-Path (Get-Location) 'Private\Utils\Invoke-SafeScriptBlock.ps1'
+        foreach ($p in $candidates) { if (Test-Path $p) { . $p; break } }
+    }
+
     # Decide writer: prefer explicit DisplayWriter, then Show-Message if available, else fallback to Write-Verbose
     $display = if ($DisplayWriter) {
         $DisplayWriter
@@ -111,7 +120,7 @@ function Search-QItem {
             if ([Console]::KeyAvailable) {
                 $key = [Console]::ReadKey($true)
                 if ($key.Key -eq 'Q' -or $key.Key -eq 'Escape') {
-                    & $display "Processing interrupted by user. Returning $($items.Count) artists processed so far." "Yellow"
+                    Invoke-SafeScriptBlock -Block $display -Args @("Processing interrupted by user. Returning $($items.Count) artists processed so far.", "Yellow") -ContextMsg "Qobuz search interrupted" 
                     $interrupted = $true
                     break cardLoop
                 }
@@ -144,7 +153,7 @@ function Search-QItem {
             $genres = @()
             $cacheKey = $fullUrl
             $processed++
-            & $display "Processing artist ${processed}/${totalCards}: $title - getting genres (Press Q to stop)" "DarkGray"
+            Invoke-SafeScriptBlock -Block $display -Args @("Processing artist ${processed}/${totalCards}: $title - getting genres (Press Q to stop)", "DarkGray") -ContextMsg "Qobuz processing artist"
             
             # Only call ContainsKey if the cache exists and is a hashtable
             if ($cacheKey -and ($script:QobuzArtistGenresCache -is [hashtable]) -and $script:QobuzArtistGenresCache.ContainsKey($cacheKey)) {
@@ -171,7 +180,7 @@ function Search-QItem {
                     if ([Console]::KeyAvailable) {
                         $key = [Console]::ReadKey($true)
                         if ($key.Key -eq 'Q' -or $key.Key -eq 'Escape') {
-                            & $display "Processing interrupted by user. Returning $($items.Count) artists processed so far." "Yellow"
+                            Invoke-SafeScriptBlock -Block $display -Args @("Processing interrupted by user. Returning $($items.Count) artists processed so far.", "Yellow") -ContextMsg "Qobuz search interrupted 2"
                             $interrupted = $true
                             break cardLoop
                         }
