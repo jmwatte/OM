@@ -7,8 +7,8 @@ Describe 'Set-OMConfig Context propagation' {
         New-Item -ItemType Directory -Path $tmpdir | Out-Null
         $tmpFile = Join-Path $tmpdir 'config.json'
 
-        $script:messages = New-Object System.Collections.Generic.List[System.String]
-        Mock -CommandName Show-Message -ModuleName OM -MockWith { param($Message,$ForegroundColor,$NoNewline,$DisplayWriter,$Context) $script:messages.Add($Message) }
+        $script:messages = New-Object System.Collections.Concurrent.ConcurrentBag[System.String]
+        Mock -CommandName Show-Message -ModuleName OM -MockWith { $script:messages.Add($args[0]) }
 
         Set-OMConfig -SpotifyClientId 'cid' -SpotifyClientSecret 'secret' -ConfigPath $tmpFile -Context [PSCustomObject]@{} -Confirm:$false
 

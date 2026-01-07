@@ -21,10 +21,10 @@ Describe 'Move-OMTags Context propagation' {
         Mock -CommandName Move-Item -MockWith { }
         Mock -CommandName Get-ChildItem -MockWith { param($LiteralPath,$Filter,$Recurse,$File) return [PSCustomObject]@{ FullName = Join-Path $LiteralPath $Filter } }
 
-        $script:messages = @()
-        Mock -CommandName Show-Message -MockWith { param($Message,$ForegroundColor,$NoNewline,$DisplayWriter,$Context) $script:messages += $Message }
+        $script:messages = New-Object System.Collections.Concurrent.ConcurrentBag[System.String]
+        Mock -CommandName Show-Message -ModuleName OM -MockWith { $script:messages.Add($args[0]) }
 
-        $ctx = [PSCustomObject]@{ DisplayWriter = { param($msg,$color,$no) $script:messages += "DW: $msg" } }
+        $ctx = [PSCustomObject]@{ DisplayWriter = { param($msg,$color,$no) $script:messages.Add("DW: $msg") } }
 
         $target = Join-Path $testDir 'Target'
         New-Item -ItemType Directory -Path $target | Out-Null

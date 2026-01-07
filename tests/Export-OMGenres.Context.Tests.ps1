@@ -7,10 +7,10 @@ Describe 'Export-OMGenres Context propagation' {
         # Stub config
         Mock -CommandName Get-OMConfig -MockWith { @{ Genres = [PSCustomObject]@{ AllowedGenreNames = @('Pop'); GenreMappings = @{ 'x' = 'y' } } } }
 
-        $script:messages = @()
-        Mock -CommandName Show-Message -MockWith { param($Message,$ForegroundColor,$NoNewline,$DisplayWriter,$Context) $script:messages += $Message }
+        $script:messages = New-Object System.Collections.Concurrent.ConcurrentBag[System.String]
+        Mock -CommandName Show-Message -ModuleName OM -MockWith { $script:messages.Add($args[0]) }
 
-        $ctx = [PSCustomObject]@{ DisplayWriter = { param($msg,$color,$no) $script:messages += "DW: $msg" } }
+        $ctx = [PSCustomObject]@{ DisplayWriter = { param($msg,$color,$no) $script:messages.Add("DW: $msg") } }
 
         Export-OMGenres -Path $tmp -Context $ctx -PassThru:$false
 

@@ -39,11 +39,11 @@ namespace TagLib {
         # Ensure Show-Message available
         . (Join-Path $PSScriptRoot '..\Private\Utils\Show-Message.ps1')
 
-        $script:messages = @()
-        Mock -CommandName Show-Message -MockWith { param($Message,$ForegroundColor,$NoNewline,$DisplayWriter,$Context) $script:messages += $Message }
+        $script:messages = New-Object System.Collections.Concurrent.ConcurrentBag[System.String]
+        Mock -CommandName Show-Message -ModuleName OM -MockWith { $script:messages.Add($args[0]) }
 
         # Create a fake context with DisplayWriter to assert it's passed through
-        $ctx = [PSCustomObject]@{ DisplayWriter = { param($msg,$color,$no) $script:messages += "DW: $msg" } }
+        $ctx = [PSCustomObject]@{ DisplayWriter = { param($msg,$color,$no) $script:messages.Add("DW: $msg") } }
 
         Add-OMDiscNumbers -baseFolder $testDir -discs -tracks -Context $ctx -Confirm:$false
 

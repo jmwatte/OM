@@ -19,8 +19,8 @@ Describe 'Start-OM AUTO provider fallback and autosave cover tests' {
             return @{ albums = @{ items = @() } }
         }
 
-        $script:msgs = New-Object System.Collections.Generic.List[System.String]
-        Mock -CommandName Show-Message -ModuleName OM -MockWith { param($Message,$ForegroundColor,$NoNewline,$DisplayWriter,$Context) $script:msgs.Add($Message) }
+        $script:msgs = New-Object System.Collections.Concurrent.ConcurrentBag[System.String]
+        Mock -CommandName Show-Message -ModuleName OM -MockWith { $script:msgs.Add($args[0]) }
 
         $res = Start-OM -Path $testDir -Auto -AutoFallback -NonInteractive -WhatIf -Confirm:$false -Context [PSCustomObject]@{}
 
@@ -40,17 +40,19 @@ Describe 'Start-OM AUTO provider fallback and autosave cover tests' {
         New-Item -ItemType Directory -Path $albumFolder -Force | Out-Null
         New-Item -ItemType File -Path (Join-Path $albumFolder '01 - track.mp3') | Out-Null
 
-        Mock -CommandName Assert-TagLibLoaded -MockWith { }
+        Mock -CommandName Assert-TagLibLoaded -ModuleName OM -MockWith { }
 
         # Provider should return an album with cover_url
-        Mock -CommandName Invoke-ProviderSearch -MockWith {
+        Mock -CommandName Invoke-ProviderSearch -ModuleName OM -MockWith {
             param($Provider,$Album,$Artist,$Type)
             return @{ albums = @{ items = @([PSCustomObject]@{ id='a1'; name='Album'; album_artist='Artist'; cover_url='http://example/cover.jpg' }) } }
         }
 
         $script:saveCalls = 0
         Mock -CommandName Save-CoverArt -ModuleName OM -MockWith { $script:saveCalls++; return @{ Success = $true } }
-        Mock -CommandName Show-Message -MockWith { }
+
+        $script:msgs = New-Object System.Collections.Concurrent.ConcurrentBag[System.String]
+        Mock -CommandName Show-Message -ModuleName OM -MockWith { $script:msgs.Add($args[0]) }
 
         $res = Start-OM -Path $testDir -Auto -AutoSaveCover -NonInteractive -WhatIf -Confirm:$false
 

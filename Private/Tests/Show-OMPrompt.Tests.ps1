@@ -37,6 +37,13 @@ Describe 'Show-OMPrompt' {
         $res | Should -Be 'DefaultAlbum'
     }
 
+    It 'handles readers that throw on empty prompt (regression test)' {
+        Mock -CommandName Read-Host -MockWith { param($prompt) if ($prompt -eq '') { throw 'Empty prompt' } else { return 'OK' } }
+        # Should NOT throw, and should call Read-Host with no args successfully (mock returns 'OK')
+        $res = Show-OMPrompt -Prompt 'Album' -Default 'DefaultAlbum' -NoNewline
+        $res | Should -Be 'OK'
+    }
+
     It 'uses Context.InputReader when provided' {
         $ctx = New-OMContext -InputReader { param($p) return 'CTX-Artist' }
         $res = Show-OMPrompt -Prompt 'Artist' -Context $ctx

@@ -10,8 +10,8 @@ Describe 'Import-OMGenres Context propagation' {
         # Stub current config
         Mock -CommandName Get-OMConfig -ModuleName OM -MockWith { @{ Genres = [PSCustomObject]@{ AllowedGenreNames = @('Pop'); GenreMappings = @{}; GarbageGenres = @() } } }
 
-        $script:messages = New-Object System.Collections.Generic.List[System.String]
-        Mock -CommandName Show-Message -ModuleName OM -MockWith { param($Message,$ForegroundColor,$NoNewline,$DisplayWriter,$Context) $script:messages.Add($Message) }
+        $script:messages = New-Object System.Collections.Concurrent.ConcurrentBag[System.String]
+        Mock -CommandName Show-Message -ModuleName OM -MockWith { $script:messages.Add($args[0]) }
 
         Import-OMGenres -Path $tmp -Force -Context [PSCustomObject]@{}
 

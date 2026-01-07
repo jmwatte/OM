@@ -11,8 +11,11 @@ Describe 'Set-OMTags Context propagation' {
         # Mock Save-TagsForFile to simulate success without touching disk
         Mock -CommandName Save-TagsForFile -ModuleName OM -MockWith { return @{ Success = $true } }
 
-        $script:messages = @()
-        Mock -CommandName Show-Message -MockWith { param($Message,$ForegroundColor,$NoNewline,$DisplayWriter,$Context) $script:messages += $Message }
+        $script:messages = New-Object System.Collections.Concurrent.ConcurrentBag[System.String]
+        Mock -CommandName Show-Message -ModuleName OM -MockWith { $script:messages.Add($args[0]) }
+
+        # Stub Assert-TagLibLoaded so Set-OMTags does not require TagLib
+        Mock -CommandName Assert-TagLibLoaded -ModuleName OM -MockWith { return }
 
         # Run Set-OMTags in simple mode on the temp file
         Set-OMTags -Path $file -Tags @{ Title = 'Test' } -Confirm:$false -PassThru:$false

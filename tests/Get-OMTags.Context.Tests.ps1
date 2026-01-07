@@ -6,14 +6,17 @@ Describe 'Get-OMTags TagLib failure uses Context' {
         # If TagLib is already present in the environment, skip this test because we can't force a missing Add-Type
         if ([System.AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $_.FullName -like '*TagLib*' }) { Skip 'TagLib present in environment; skipping TagLib failure path' }
 
-        # Mock Add-Type to throw to simulate TagLib load failure
-        Mock -CommandName Add-Type -MockWith { throw "Simulated Add-Type failure" }
+        # Mock Get-ChildItem to return a fake TagLib.dll so the function attempts Add-Type -Path
+        Mock -CommandName Get-ChildItem -ModuleName OM -MockWith { @([PSCustomObject]@{ FullName = 'C:\fake\TagLib.dll'; Name = 'TagLib.dll' }) }
 
-        $script:msgs = New-Object System.Collections.Generic.List[System.String]
-        Mock -CommandName Show-Message -ModuleName OM -MockWith { param($Message,$ForegroundColor,$NoNewline,$DisplayWriter,$Context) $script:msgs.Add($Message) }
+        # Mock Add-Type to throw to simulate TagLib load failure
+        Mock -CommandName Add-Type -ModuleName OM -MockWith { throw "Simulated Add-Type failure" }
+
+        $script:msgs = New-Object System.Collections.Concurrent.ConcurrentBag[System.String]
+        $ctx = [PSCustomObject]@{ DisplayWriter = { param($msg,$color,$no) $script:msgs.Add($msg) } }
 
         # Call Get-OMTags with a fake path (it will attempt to load TagLib and hit the mocked Add-Type)
-        $res = Get-OMTags -Path (Join-Path $env:TEMP 'nonexistent_folder') -Context [PSCustomObject]@{}
+        $res = Get-OMTags -Path (Join-Path $env:TEMP 'nonexistent_folder') -Context $ctx
 
         $script:msgs | Should -Not -BeNullOrEmpty
         ($script:msgs -join "`n") | Should -Match 'Please try reinstalling TagLib-Sharp'
