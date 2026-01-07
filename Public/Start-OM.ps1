@@ -1487,8 +1487,9 @@ function Start-OM {
                         $goCDisplayShown = $false
                         Write-Verbose "DEBUG: Starting doTracks loop, script:pairedTracks is null: $($null -eq $script:pairedTracks)"
                         :doTracks do {
+                            Sync-OMScriptToState -State $State  # Sync at start of track matching loop
                             Write-Verbose "DEBUG: Inside doTracks, checking if we need to refresh..."
-                            if ($script:refreshTracks -or -not $script:pairedTracks) {
+                            if ($State.RefreshTracks -or -not $State.PairedTracks) {
                                 Write-Verbose "DEBUG: Will call Set-Tracks"
                                 if ($useWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
                                 $param = @{
