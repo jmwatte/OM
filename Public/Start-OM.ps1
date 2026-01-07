@@ -981,9 +981,11 @@ function Start-OM {
                                 
                                 # Sort paired tracks by confidence (High → Medium → Low)
                                 # This makes it easy to spot problematic matches at the bottom
-                                Write-Verbose "DEBUG: About to check confidence sorting... State.PairedTracks type: $($State.PairedTracks.GetType().Name), Count: $($State.PairedTracks.Count)"
-                                if ($State.PairedTracks -and $State.PairedTracks.Count -gt 0 -and $State.PairedTracks[0].PSObject.Properties['Confidence']) {
-                                    $State.PairedTracks = $State.PairedTracks | Sort-Object Confidence -Descending
+                                $ptType = if ($null -eq $State.PairedTracks) { 'null' } else { $State.PairedTracks.GetType().Name }
+                                $ptCount = if ($null -eq $State.PairedTracks) { 0 } elseif ($State.PairedTracks -is [array]) { $State.PairedTracks.Count } else { 1 }
+                                Write-Verbose "DEBUG: About to check confidence sorting... State.PairedTracks type: $ptType, Count: $ptCount"
+                                if ($State.PairedTracks -and $ptCount -gt 0 -and $State.PairedTracks[0].PSObject.Properties['Confidence']) {
+                                    $State.PairedTracks = @($State.PairedTracks | Sort-Object Confidence -Descending)
                                     Write-Verbose "Sorted $($State.PairedTracks.Count) tracks by confidence"
                                 }
                                 
