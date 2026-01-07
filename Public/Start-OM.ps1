@@ -1518,7 +1518,7 @@ function Start-OM {
                                     if ($VerbosePreference -ne 'Continue') { Clear-Host }
                                     $autoReader = { param($prompt) 'q' }
                                     $autoShowParams = @{
-                                        PairedTracks  = $script:pairedTracks
+                                        PairedTracks  = $State.PairedTracks
                                         AlbumName     = $ProviderAlbum.name
                                         SpotifyArtist = $ProviderArtist
                                         ProviderAlbum = $ProviderAlbum
@@ -1571,7 +1571,7 @@ function Start-OM {
                                     }
                                     
                                     # Calculate confidence percentage
-                                    $totalTracks = $script:pairedTracks.Count
+                                    $totalTracks = $State.PairedTracks.Count
                                     $confidencePercent = if ($totalTracks -gt 0) { 
                                         [Math]::Round(($bestScore / $totalTracks) * 100, 0) 
                                     } else { 0 }
@@ -1638,7 +1638,7 @@ function Start-OM {
                                 $optionsLine = "`nOptions: SortBy $sortMethodDisplay, (r)everse | (S)ave {[A]ll, [T]ags, [F]olderNames} | {C}over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags} | (aa)AlbumArtist, (gm)GenreMode:$genreModeStatus, (rm)ReviewMarked, (b)ack/(pr)evious, (P)rovider, (F)indmode, (w)hatIf:$whatIfStatus, (v)erbose:$verboseStatus, (X)ip"
                                 $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'rm', 'sa', 'st', 'sf', 'cv', 'cvo', 'cs', 'ct', 'aa', 'gm', 'b', 'pr', 'p', 'pq', 'ps', 'pd', 'pm', 'f', 'w', 'whatif', 'v', 'x')
                                 $paramshow = @{
-                                    PairedTracks  = $script:pairedTracks
+                                    PairedTracks  = $State.PairedTracks
                                     AlbumName     = $ProviderAlbum.name
                                     SpotifyArtist = $ProviderArtist
                                     ProviderAlbum = $ProviderAlbum
@@ -1673,7 +1673,7 @@ function Start-OM {
                                 '^rm$' {
                                     # Review marked tracks using helper function
                                     $reviewResult = Invoke-StageB-ReviewMarkedTracks `
-                                        -PairedTracks $script:pairedTracks `
+                                        -PairedTracks $State.PairedTracks `
                                         -TracksForAlbum $tracksForAlbum `
                                         -Context $Context
                                     
@@ -1816,10 +1816,10 @@ function Start-OM {
                                     $folderMoveResult = Invoke-OMFolderMove `
                                         -ProviderAlbum $ProviderAlbum `
                                         -ProviderArtist $ProviderArtist `
-                                        -AlbumPath $script:album.FullName `
+                                        -AlbumPath $State.Album.FullName `
                                         -AudioFiles $audioFiles `
                                         -ManualAlbumArtist $script:ManualAlbumArtist `
-                                        -AlbumName $script:albumName `
+                                        -AlbumName $State.AlbumName `
                                         -UseWhatIf:$useWhatIf `
                                         -ForceGC  # sf always runs GC
                                     
@@ -1831,7 +1831,7 @@ function Start-OM {
                                     continue doTracks
                                 }
                                 '^st\s+(?<range>.+)$' {
-                                    if (-not $script:pairedTracks -or $script:pairedTracks.Count -eq 0) {
+                                    if (-not $State.PairedTracks -or $State.PairedTracks.Count -eq 0) {
                                         Write-Warning "No track matches available to save."
                                         continue doTracks
                                     }
@@ -1843,7 +1843,7 @@ function Start-OM {
                                     }
 
                                     try {
-                                        $selectedIndices = Expand-SelectionRange -RangeText $rangeText -MaxIndex $script:pairedTracks.Count
+                                        $selectedIndices = Expand-SelectionRange -RangeText $rangeText -MaxIndex $State.PairedTracks.Count
                                     }
                                     catch {
                                         Write-Warning "Invalid track selection: $($_.Exception.Message)"
@@ -1856,7 +1856,7 @@ function Start-OM {
                                     }
 
                                     try {
-                                        $saveResult = Save-OMTrackSelection -PairedTracks $script:pairedTracks -SelectedIndices $selectedIndices -ProviderArtist $ProviderArtist -ProviderAlbum $ProviderAlbum -UseWhatIf:$useWhatIf
+                                        $saveResult = Save-OMTrackSelection -PairedTracks $State.PairedTracks -SelectedIndices $selectedIndices -ProviderArtist $ProviderArtist -ProviderAlbum $ProviderAlbum -UseWhatIf:$useWhatIf
                                     }
                                     catch {
                                         Write-Warning "Failed to save selected tracks: $($_.Exception.Message)"
