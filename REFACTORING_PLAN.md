@@ -2,19 +2,31 @@
 
 **Created:** January 7, 2026  
 **Status:** In Progress  
-**Branch:** feat/extract-audio-and-prompts
+**Branch:** feat/extract-audio-and-prompts  
+**Last Updated:** January 7, 2026
 
 ---
 
 ## Executive Summary
 
-The `Start-OM` function is a **3,575-line monolithic function** that violates core software engineering principles. This document provides a step-by-step refactoring roadmap that any developer can follow to transform it into a clean, testable, maintainable codebase.
+The `Start-OM` function was a **3,575-line monolithic function**. Through systematic refactoring, it has been reduced to **3,047 lines** (528 lines removed, ~15% reduction).
+
+### Progress Summary
+| Phase | Description | Lines Removed | Commit |
+|-------|-------------|---------------|--------|
+| 1 | Fix TRACE messages | ~0 | `712e009` |
+| 2 | Remove 5 duplicate inline functions | 275 | `3f2eeba` |
+| 3.3 | Extract $isDiscFolder → Assert-DiscFolder | ~25 | `fb51106` |
+| 3.4 | Extract $normalizeDiscogsId → ConvertTo-DiscogsId | ~25 | `fb51106` |
+| 4.1 | Extract Stage A → Invoke-StageA-ArtistSelection | 105 | `5890946` |
+| N/A | Replace audio loading with Reload-OMAudioFiles | 101 | `c362ee3` |
+| **Total** | | **~531 lines** | |
 
 ---
 
-## Phase 1: Quick Fixes (Immediate)
+## Phase 1: Quick Fixes (Immediate) ✅ COMPLETE
 
-### 1.1 Fix Duplicate TRACE Output ✅ PRIORITY
+### 1.1 Fix Duplicate TRACE Output ✅ DONE
 **Time Estimate:** 30 minutes  
 **Problem:** `Show-Message` calls with TRACE diagnostics are visible to users, causing duplicate/garbled output.
 
@@ -38,46 +50,49 @@ Start-OM -Path "C:\Music\Artist\Album" -Verbose
 
 ---
 
-## Phase 2: Remove Duplicate Inline Functions
+## Phase 2: Remove Duplicate Inline Functions ✅ COMPLETE
 
 ### 2.1 Identify Inline Functions That Already Exist as Private Functions
-**Time Estimate:** 2 hours
+**Status:** ✅ DONE (Commit: `3f2eeba`)  
+**Lines Removed:** 275
 
-The following functions are defined INLINE in Start-OM.ps1 but ALREADY EXIST as separate private function files:
+The following inline functions were deleted from Start-OM.ps1:
 
-| Inline Definition (Lines) | Existing Private File | Action |
+| Inline Definition | Existing Private File | Status |
 |---------------------------|----------------------|--------|
-| `Get-StringSimilarity` (590-676) | `Private/Utils/Get-StringSimilarity.ps1` | DELETE inline, use existing |
-| `Get-AlbumMatchConfidence` (678-750) | `Private/Utils/Get-AlbumMatchConfidence.ps1` | DELETE inline, use existing |
-| `Get-BestAutoMatch` (752-780) | `Private/Utils/Get-BestAutoMatch.ps1` | DELETE inline, use existing |
-| `Invoke-ProviderWithFallback` (782-857) | `Private/Providers/Invoke-ProviderWithFallback.ps1` | DELETE inline, use existing |
-| `Invoke-MoveAlbumWithRetry` (426-442) | `Private/Workflow/Invoke-MoveAlbumWithRetry.ps1` | DELETE inline, use existing |
-
-**Steps:**
-- [ ] For each inline function, verify the private file version is identical or better
-- [ ] Delete the inline definition from Start-OM.ps1
-- [ ] Run tests to verify functionality unchanged
+| `Get-StringSimilarity` | `Private/Utils/Get-StringSimilarity.ps1` | ✅ Deleted |
+| `Get-AlbumMatchConfidence` | `Private/Utils/Get-AlbumMatchConfidence.ps1` | ✅ Deleted |
+| `Get-BestAutoMatch` | `Private/Utils/Get-BestAutoMatch.ps1` | ✅ Deleted |
+| `Invoke-ProviderWithFallback` | `Private/Providers/Invoke-ProviderWithFallback.ps1` | ✅ Deleted |
+| `Invoke-MoveAlbumWithRetry` | `Private/Workflow/Invoke-MoveAlbumWithRetry.ps1` | ✅ Deleted |
 
 ---
 
-## Phase 3: Extract Embedded Scriptblocks
+## Phase 3: Extract Embedded Scriptblocks (Partial)
 
 ### 3.1 Extract `$handleMoveSuccess` Scriptblock
-**Time Estimate:** 1 hour  
-**Lines:** 444-588 (144 lines)
+**Status:** ⏸️ DEFERRED (uses `$script:` scope heavily)  
+**Lines:** ~144
 
-**Current State:** Defined as a scriptblock variable inside Start-OM
-```powershell
-$handleMoveSuccess = {
-    param($moveResult, $useWhatIf, $oldpath)
-    # 144 lines of folder move result handling
-}
-```
+### 3.2 Extract `$showHeader` Scriptblock  
+**Status:** ⏸️ DEFERRED (uses `$script:` scope)
 
-**Target State:** New private function file
-```
-Private/Workflow/Invoke-HandleMoveSuccess.ps1
-```
+### 3.3 Extract `$isDiscFolder` Scriptblock ✅ DONE
+**Status:** ✅ DONE (Commit: `fb51106`)  
+**New File:** `Private/Utils/Assert-DiscFolder.ps1`
+
+### 3.4 Extract `$normalizeDiscogsId` Scriptblock ✅ DONE
+**Status:** ✅ DONE (Commit: `fb51106`)  
+**New File:** `Private/Utils/ConvertTo-DiscogsId.ps1`
+
+---
+
+## Phase 4: Extract Stage Handlers
+
+### 4.1 Create Stage A Handler ✅ DONE
+**Status:** ✅ DONE (Commit: `5890946`)  
+**New File:** `Private/Stages/Invoke-StageA-ArtistSelection.ps1` (316 lines)  
+**Lines Removed from Start-OM:** 105
 
 **Steps:**
 - [ ] Create `Private/Workflow/Invoke-HandleMoveSuccess.ps1`
