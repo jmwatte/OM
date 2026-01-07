@@ -1375,7 +1375,7 @@ function Start-OM {
                                 $canRetryReleases = (Get-IfExists $ProviderAlbum '_masterReleases') -and $ProviderAlbum._masterReleases.Count -gt 0
                                 $backPrompt = if ($canRetryReleases) { "'b' to try different release" } else { "'b' for album selection" }
                                 
-                                if ($Auto -and $script:autoModeActive) {
+                                if ($Auto -and $State.AutoModeActive) {
                                     Show-Message -Message "⚠️  AUTO: Track fetch failed, skipping album..." -ForegroundColor Yellow -Context $Context
                                     $albumDone = $true
                                     break stageLoop
@@ -1531,7 +1531,7 @@ function Start-OM {
                                 }
                                 
                                 # AUTO MODE: Smart matching with best sort strategy
-                                if ($Auto -and $script:autoModeActive -and -not $goC) {
+                                if ($Auto -and $State.AutoModeActive -and -not $goC) {
                                     Show-Message -Message "🤖 AUTO: Analyzing track matches..." -ForegroundColor Cyan -Context $Context
                                     
                                     # Try different sort strategies and pick the best
@@ -1611,7 +1611,7 @@ function Start-OM {
                                 Show-Message -Message "goC: auto-applying Save-All for album '$($ProviderAlbum.name)'." -ForegroundColor Yellow -Context $Context
                                 $inputF = 'sa'
                             }
-                            elseif ($Auto -and $script:autoModeActive -and $inputF -eq 'sa') {
+                            elseif ($Auto -and $State.AutoModeActive -and $inputF -eq 'sa') {
                                 # Auto mode already set inputF to 'sa' above, proceed
                             }
                             else {
@@ -2049,7 +2049,7 @@ function Start-OM {
                                     }
                                     
                                     # AUTO MODE: Skip to next album after successful save
-                                    if ($Auto -and $script:autoModeActive) {
+                                    if ($Auto -and $State.AutoModeActive) {
                                         Show-Message -Message "✓ AUTO: Album completed successfully, moving to next album..." -ForegroundColor Green -Context $Context
                                         $albumDone = $true
                                         $exitDo = $true
