@@ -1,10 +1,50 @@
 ﻿function Invoke-StageB-ReviewMarkedTracks {
+    <#
+    .SYNOPSIS
+        Interactively review and rematch marked (or all) tracks.
+    
+    .DESCRIPTION
+        Allows the user to review tracks marked for review and select different
+        provider track matches. If no tracks are marked, all tracks are reviewed.
+        
+        Supports additional commands during review:
+        - 's' to skip a track
+        - 'x' to exit review mode
+        - 'b' to go back to album selection
+        - 'p <provider>' to switch provider
+    
+    .PARAMETER PairedTracks
+        Array of paired track objects to review.
+    
+    .PARAMETER TracksForAlbum
+        Array of provider tracks available for matching.
+    
+    .PARAMETER InputReader
+        Optional scriptblock for reading user input. Defaults to Read-Host.
+    
+    .PARAMETER DisplayWriter
+        Optional scriptblock for displaying messages. Defaults to Show-Message.
+    
+    .PARAMETER Context
+        Optional context for Show-Message calls.
+    
+    .OUTPUTS
+        PSCustomObject with properties:
+        - Updated: Number of tracks that were rematched
+        - Skipped: Number of tracks skipped by user
+        - Reviewed: Total number of tracks reviewed
+        - NoProviderTracks: True if no provider tracks were available
+        - ExitRequested: True if user entered 'x' to exit
+        - BackRequested: True if user entered 'b' to go back
+        - ProviderSwitch: New provider name if user entered 'p <provider>', else null
+    #>
     [CmdletBinding()]
     param(
         [array]$PairedTracks,
         [array]$TracksForAlbum,
         [Parameter(Mandatory=$false)][scriptblock]$InputReader,
-        [Parameter(Mandatory=$false)][scriptblock]$DisplayWriter
+        [Parameter(Mandatory=$false)][scriptblock]$DisplayWriter,
+        $Context
     )
 
     $reader = if ($InputReader) { $InputReader } else { { param($prompt) Read-Host -Prompt $prompt } }
@@ -22,12 +62,20 @@
     $display = if ($DisplayWriter) {
         $DisplayWriter
     } elseif (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) {
-        { param($msg,$color) Show-Message -Message $msg -ForegroundColor $color }
+        { param($msg,$color) Show-Message -Message $msg -ForegroundColor $color -Context $Context }
     } else {
         { param($msg,$color) if ($color) { Write-Verbose ("[{0}] {1}" -f $color, $msg) } else { Write-Verbose $msg } }
     }
 
-    $result = [PSCustomObject]@{ Updated = 0; Skipped = 0; Reviewed = 0; NoProviderTracks = $false }
+    $result = [PSCustomObject]@{
+        Updated          = 0
+        Skipped          = 0
+        Reviewed         = 0
+        NoProviderTracks = $false
+        ExitRequested    = $false
+        BackRequested    = $false
+        ProviderSwitch   = $null
+    }
 
     $markedTracks = @($PairedTracks | Where-Object { $_.PSObject.Properties['Marked'] -and $_.Marked })
 
@@ -108,12 +156,48 @@
         $selection = Invoke-SafeScriptBlock -Block $reader -Args @("Enter track number or press Enter for [1] (or 's' to skip)") -ContextMsg "ReviewMarkedTracks reader"
         if ([string]::IsNullOrWhiteSpace($selection)) { $selection = '1' }
 
+        # Handle exit command
+        if ($selection -eq 'x') {
+            Invoke-SafeScriptBlock -Block $display -Args @("Exiting manual review...", "Yellow") -ContextMsg "ReviewMarkedTracks exit"
+            $result.ExitRequested = $true
+            break
+        }
+
+        # Handle back command
+        if ($selection -eq 'b') {
+            Invoke-SafeScriptBlock -Block $display -Args @("Going back to album selection...", "Yellow") -ContextMsg "ReviewMarkedTracks back"
+            $result.BackRequested = $true
+            break
+        }
+
+        # Handle provider switch command
+        if ($selection -match '^p\s*(.+)?$') {
+            $newProvider = $matches[1]
+            if ($newProvider) {
+                $providerMap = @{ 's' = 'Spotify'; 'q' = 'Qobuz'; 'd' = 'Discogs'; 'm' = 'MusicBrainz' }
+                if ($providerMap.ContainsKey($newProvider.ToLower())) {
+                    $result.ProviderSwitch = $providerMap[$newProvider.ToLower()]
+                }
+                else {
+                    $result.ProviderSwitch = $newProvider
+                }
+                Invoke-SafeScriptBlock -Block $display -Args @("Switched to provider: $($result.ProviderSwitch) (will apply on next search)", "Green") -ContextMsg "ReviewMarkedTracks provider"
+            }
+            else {
+                Invoke-SafeScriptBlock -Block $display -Args @("Usage: p <provider> (e.g., p spotify, p qobuz, p discogs, p musicbrainz)", "Yellow") -ContextMsg "ReviewMarkedTracks provider usage"
+            }
+            Start-Sleep -Seconds 1
+            continue
+        }
+
+        # Handle skip command
         if ($selection -eq 's') {
             Invoke-SafeScriptBlock -Block $display -Args @("Skipped", "Gray") -ContextMsg "ReviewMarkedTracks skipped"
             $result.Skipped++
             continue
         }
 
+        # Handle numeric selection
         if ($selection -match '^[0-9]+$') {
             $selectedIndex = [int]$selection - 1
             if ($selectedIndex -ge 0 -and $selectedIndex -lt $scoredPool.Count) {

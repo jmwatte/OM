@@ -1866,189 +1866,38 @@ function Start-OM {
                                 '^f$' { $sortMethod = 'byFilesystem'; $script:refreshTracks = $true; continue }
                                 '^r$' { $ReverseSource = -not $ReverseSource; $script:refreshTracks = $true; continue }
                                 '^rm$' {
-                                    # Review marked tracks in Manual mode, or all tracks if none marked
-                                    $markedTracks = @($script:pairedTracks | Where-Object { $_.PSObject.Properties['Marked'] -and $_.Marked })
+                                    # Review marked tracks using helper function
+                                    $reviewResult = Invoke-StageB-ReviewMarkedTracks `
+                                        -PairedTracks $script:pairedTracks `
+                                        -TracksForAlbum $tracksForAlbum `
+                                        -Context $Context
                                     
-                                    # If no marks, use all tracks with audio files
-                                    $reviewAll = $false
-                                    if ($markedTracks.Count -eq 0) {
-                                        $reviewAll = $true
-                                        $markedTracks = @($script:pairedTracks | Where-Object { $_.AudioFile })
-                                        if ($markedTracks.Count -eq 0) {
-                                            Show-Message -Message "`nNo audio files to review." -ForegroundColor Yellow -Context $Context
-                                            Start-Sleep -Seconds 2
-                                            continue
-                                        }
-                                        Show-Message -Message "`n📋 No marks set - reviewing ALL $($markedTracks.Count) track(s)..." -ForegroundColor Cyan -Context $Context
-                                    }
-                                    else {
-                                        Show-Message -Message "`n🔖 Reviewing $($markedTracks.Count) marked track(s)..." -ForegroundColor Cyan -Context $Context
-                                    }
-                                    Start-Sleep -Seconds 1
-                                    
-                                    # Build pool of provider tracks - from marked pairs if marks exist, otherwise from all provider tracks
-                                    if ($reviewAll) {
-                                        # Use all provider tracks for the album
-                                        $providerTrackPool = @($tracksForAlbum)
-                                    }
-                                    else {
-                                        # Use provider tracks from marked pairs only
-                                        $providerTrackPool = @($markedTracks | Where-Object { $_.SpotifyTrack } | ForEach-Object { $_.SpotifyTrack })
+                                    # Handle exit request
+                                    if ($reviewResult.ExitRequested) {
+                                        $exitDo = $true
+                                        $albumDone = $true
+                                        break
                                     }
                                     
-                                    if ($providerTrackPool.Count -eq 0) {
-                                        Show-Message -Message "No provider tracks available to choose from." -ForegroundColor Yellow -Context $Context
-                                        Start-Sleep -Seconds 2
-                                        continue
+                                    # Handle back request
+                                    if ($reviewResult.BackRequested) {
+                                        $stage = 'B'
+                                        $exitDo = $true
+                                        break
                                     }
                                     
-                                    # For each marked track, show audio file and let user pick from the pool
-                                    foreach ($markedTrack in @($markedTracks)) {
-                                        if (-not $markedTrack.AudioFile) { continue }
-                                        if ($providerTrackPool.Count -eq 0) {
-                                            Show-Message -Message "No more provider tracks in pool." -ForegroundColor Yellow -Context $Context
-                                            break
-                                        }
-                                        
-                                        if ($VerbosePreference -ne 'Continue') { Clear-Host }
-                                        Show-Message -Message "🔖 Select correct match for:" -ForegroundColor Cyan -Context $Context
-                                        
-                                        # Format audio file duration
-                                        $audioDurationStr = if ($markedTrack.AudioFile.Duration) {
-                                            $audioDurationSpan = [TimeSpan]::FromMilliseconds($markedTrack.AudioFile.Duration)
-                                            "{0:mm\:ss}" -f $audioDurationSpan
-                                        } else {
-                                            "00:00"
-                                        }
-                                        
-                                        Show-Message -Message "   $(Split-Path -Leaf $markedTrack.AudioFile.FilePath) ($audioDurationStr)" -ForegroundColor Yellow -Context $Context
-                                        Show-Message -Message "" -Context $Context
-                                        
-                                        # Sort pool by match confidence for current audio file (best match first)
-                                        $scoredPool = @()
-                                        foreach ($track in @($providerTrackPool)) {
-                                            $confidence = Get-MatchConfidence -ProviderTrack $track -AudioFile $markedTrack.AudioFile
-                                            $scoredPool += [PSCustomObject]@{
-                                                Track = $track
-                                                Score = $confidence.Score
-                                                Level = $confidence.Level
-                                            }
-                                        }
-                                        $scoredPool = $scoredPool | Sort-Object Score -Descending
-                                        
-                                        # Show provider tracks from pool with numbers (sorted by confidence)
-                                        for ($i = 0; $i -lt $scoredPool.Count; $i++) {
-                                            $scored = $scoredPool[$i]
-                                            $track = $scored.Track
-                                            $num = $i + 1
-                                            
-                                            $disc = if ($value = Get-IfExists $track 'disc_number') { $value } else { 1 }
-                                            $trackNum = if ($value = Get-IfExists $track 'track_number') { $value } else { 0 }
-                                            $durationMs = if ($value = Get-IfExists $track 'duration_ms') { $value } elseif ($value = Get-IfExists $track 'duration') { $value } else { 0 }
-                                            $durationSpan = [TimeSpan]::FromMilliseconds($durationMs)
-                                            $durationStr = "{0:mm\:ss}" -f $durationSpan
-                                            
-                                            # Color code by confidence
-                                            $color = switch ($scored.Level) {
-                                                'High' { 'Green' }
-                                                'Medium' { 'Yellow' }
-                                                'Low' { 'Red' }
-                                                default { 'Gray' }
-                                            }
-                                            $confidenceIndicator = " ($($scored.Score)%)"
-                                            
-                                            Show-Message -Message (("[$num] {0:D2}.{1:D2}: {2} ({3}){4}" -f $disc, $trackNum, $track.name, $durationStr, $confidenceIndicator)) -ForegroundColor $color -Context $Context
-                                        }
-                                        
-                                        Show-Message -Message "" -Context $Context
-                                        $selection = Show-OMPrompt -Prompt "Enter track number or press Enter for [1] (or 's' to skip)" -Default '1' -Context $Context
-                                        
-                                        # Default to first option if Enter pressed
-                                        if ([string]::IsNullOrWhiteSpace($selection)) {
-                                            $selection = "1"
-                                        }
-                                        
-                                        # Handle universal actions (b, x, s, p)
-                                        if ($selection -eq 'x') {
-                                            Show-Message -Message "Exiting manual review..." -ForegroundColor Yellow -Context $Context
-                                            $exitDo = $true
-                                            $albumDone = $true
-                                            break
-                                        }
-                                        
-                                        if ($selection -eq 'b') {
-                                            Show-Message -Message "Going back to album selection..." -ForegroundColor Yellow -Context $Context
-                                            $stage = 'B'
-                                            $exitDo = $true
-                                            break
-                                        }
-                                        
-                                        if ($selection -match '^p\s*(.+)?$') {
-                                            $newProvider = $matches[1]
-                                            if ($newProvider) {
-                                                $providerMap = @{ 's' = 'Spotify'; 'q' = 'Qobuz'; 'd' = 'Discogs'; 'm' = 'MusicBrainz' }
-                                                if ($providerMap.ContainsKey($newProvider.ToLower())) {
-                                                    $Provider = $providerMap[$newProvider.ToLower()]
-                                                }
-                                                else {
-                                                    $Provider = $newProvider
-                                                }
-                                                Show-Message -Message "Switched to provider: $Provider (will apply on next search)" -ForegroundColor Green -Context $Context
-                                            }
-                                            else {
-                                                Show-Message -Message "Usage: p <provider> (e.g., p spotify, p qobuz, p discogs, p musicbrainz)" -ForegroundColor Yellow -Context $Context
-                                            }
-                                            Start-Sleep -Seconds 1
-                                            continue
-                                        }
-                                        
-                                        if ($selection -eq 's') {
-                                            Show-Message -Message "Skipped" -ForegroundColor Gray -Context $Context
-                                            continue
-                                        }
-                                        
-                                        if ($selection -match '^\d+$') {
-                                            $selectedIndex = [int]$selection - 1
-                                            if ($selectedIndex -ge 0 -and $selectedIndex -lt $scoredPool.Count) {
-                                                $selectedTrack = $scoredPool[$selectedIndex].Track
-                                                
-                                                # Update the paired track in main array
-                                                for ($i = 0; $i -lt $script:pairedTracks.Count; $i++) {
-                                                    if ($script:pairedTracks[$i].AudioFile -and 
-                                                        $script:pairedTracks[$i].AudioFile.FilePath -eq $markedTrack.AudioFile.FilePath) {
-                                                        $script:pairedTracks[$i].SpotifyTrack = $selectedTrack
-                                                        # Only clear Marked property if it exists
-                                                        if ($script:pairedTracks[$i].PSObject.Properties['Marked']) {
-                                                            $script:pairedTracks[$i].Marked = $false
-                                                        }
-                                                        Show-Message -Message "✓ Updated" -ForegroundColor Green -Context $Context
-                                                        
-                                                        # Remove selected track from pool
-                                                        $providerTrackPool = @($providerTrackPool | Where-Object { 
-                                                            $trackId = if ($_.id) { $_.id } else { $_.name }
-                                                            $selectedId = if ($selectedTrack.id) { $selectedTrack.id } else { $selectedTrack.name }
-                                                            $trackId -ne $selectedId
-                                                        })
-                                                        
-                                                        Start-Sleep -Milliseconds 500
-                                                        break
-                                                    }
-                                                }
-                                            }
-                                            else {
-                                                Show-Message -Message "Invalid selection" -ForegroundColor Red -Context $Context
-                                                Start-Sleep -Seconds 1
-                                            }
-                                        }
-                                        else {
-                                            Show-Message -Message "Invalid input" -ForegroundColor Red -Context $Context
-                                            Start-Sleep -Seconds 1
-                                        }
+                                    # Handle provider switch
+                                    if ($reviewResult.ProviderSwitch) {
+                                        $Provider = $reviewResult.ProviderSwitch
                                     }
                                     
-                                    $finishMsg = if ($reviewAll) { "Finished reviewing all tracks" } else { "Finished reviewing marked tracks" }
-                                    Show-Message -Message "`n✓ $finishMsg" -ForegroundColor Green -Context $Context
-                                    Start-Sleep -Seconds 1
+                                    # Show completion message
+                                    if (-not $reviewResult.NoProviderTracks) {
+                                        $finishMsg = "Finished reviewing tracks (Updated: $($reviewResult.Updated), Skipped: $($reviewResult.Skipped))"
+                                        Show-Message -Message "`n✓ $finishMsg" -ForegroundColor Green -Context $Context
+                                        Start-Sleep -Seconds 1
+                                    }
+                                    
                                     $script:refreshTracks = $true
                                     continue
                                 }
