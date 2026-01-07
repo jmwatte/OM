@@ -74,8 +74,18 @@ This phase focuses on organizing the code, reducing complexity within `Start-OM.
 This phase involves a major restructuring of the workflow to establish a robust, scalable, and maintainable architecture.
 
 ### 3.1. Introduce a Central State Management Object
--   **Status:** `Pending`
+-   **Status:** `In Progress` (~35% complete)
 -   **Objective:** Replace the use of `$script:` scoped variables with a single, explicit state object.
+-   **Progress:**
+    -   Created `Private/Utils/New-OMState.ps1` - Factory for central state PSCustomObject
+    -   Created `Private/Utils/Sync-OMState.ps1` - Bidirectional sync functions
+    -   Extracted `Invoke-OMHandleMoveSuccess.ps1` from 160+ line inline scriptblock
+    -   Added sync points at: stageLoop start, doTracks loop start, after handleMoveSuccess calls
+    -   Converted 67+ reads from `$script:variableName` to `$State.PropertyName`:
+        -   ShowVerbose, FindMode, AutoModeActive, GenreMode, TrackCount
+        -   Album.FullName, AlbumName, PairedTracks, AudioFiles
+        -   BackNavigationMode, QuickAlbumCandidates, ManualAlbumArtist
+    -   $script: usages: 189 → 122 (35% reduction)
 -   **Implementation Details:**
     -   At the beginning of `Start-OM`, create a `$State` object (a `PSCustomObject`).
     -   This object will hold all data relevant to the workflow:
