@@ -1993,40 +1993,26 @@ function Start-OM {
                                     break
                                 }
                                 '^sf$' {
-                                    $year = Get-ReleaseYear -ReleaseDate (Get-IfExists $ProviderAlbum 'release_date')
-                                    $oldpath = $script:album.FullName
-                                    $safeAlbumName = Approve-PathSegment -Segment (Get-IfExists $ProviderAlbum 'name') -Replacement '_' -CollapseRepeating -Transliterate
-                                    
-                                    # Determine artist for folder name using helper
-                                    $artistNameForFolder = Get-OMArtistNameForFolder `
-                                        -ManualAlbumArtist $script:ManualAlbumArtist `
-                                        -AudioFiles $audioFiles `
-                                        -ProviderAlbum $ProviderAlbum `
-                                        -ProviderArtist $ProviderArtist `
-                                        -AlbumName $script:albumName
-                                    
-                                    $safeArtistName = Approve-PathSegment -Segment $artistNameForFolder -Replacement '_' -CollapseRepeating -Transliterate
-    
-                                    $mvArgs = @{
-                                        AlbumPath    = $oldpath
-                                        NewArtist    = $safeArtistName
-                                        NewYear      = $year
-                                        NewAlbumName = $safeAlbumName
+                                    # Save folder only (no tags) - use helper for folder move
+                                    $moveParams = @{
+                                        ProviderAlbum     = $ProviderAlbum
+                                        ProviderArtist    = $ProviderArtist
+                                        AlbumPath         = $script:album.FullName
+                                        AudioFiles        = $audioFiles
+                                        ManualAlbumArtist = $script:ManualAlbumArtist
+                                        AlbumName         = $script:albumName
+                                        UseWhatIf         = $useWhatIf
+                                        ForceGC           = $true  # sf always runs GC
                                     }
+                                    $folderMoveResult = Invoke-OMFolderMove @moveParams
                                     
-                                    # Force garbage collection to release any lingering file handles before folder rename
-                                    Write-Verbose "Forcing garbage collection before folder move to release file handles"
-                                    [System.GC]::Collect()
-                                    [System.GC]::WaitForPendingFinalizers()
-                                    [System.GC]::Collect()
-                                    Start-Sleep -Milliseconds 100  # Brief pause to ensure OS releases locks
-                                    
-                                    # call Move-AlbumFolder and pass -WhatIf from the caller (if requested)
-                                    $moveResult = Invoke-MoveAlbumWithRetry -mvArgs $mvArgs -useWhatIf $useWhatIf
-                                    if (-not ($handleMoveSuccess -is [scriptblock])) { Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("handleMoveSuccess is not a scriptblock (value: '$handleMoveSuccess')")), 'InvalidTarget', 'InvalidOperation', $handleMoveSuccess) ; throw "handleMoveSuccess invalid" }
-                                    Write-Verbose ("TRACE: handleMoveSuccess args: moveResult=($($moveResult -as [string])); useWhatIf=$useWhatIf; oldpath=$oldpath")
-                                    Invoke-SafeScriptBlock -Block { & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath } -ContextMsg 'handleMoveSuccess invocation'
-                                    #Invoke-SafeScriptBlock -Block { & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath -album $album -audioFiles $audioFiles -refreshTracks $refreshTracks } -ContextMsg 'handleMoveSuccess extended'
+                                    # Handle move success
+                                    if (-not ($handleMoveSuccess -is [scriptblock])) { 
+                                        Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("handleMoveSuccess is not a scriptblock (value: '$handleMoveSuccess')")), 'InvalidTarget', 'InvalidOperation', $handleMoveSuccess) 
+                                        throw "handleMoveSuccess invalid" 
+                                    }
+                                    Write-Verbose ("TRACE: handleMoveSuccess args: moveResult=($($folderMoveResult.MoveResult -as [string])); useWhatIf=$useWhatIf; oldpath=$($folderMoveResult.OldPath)")
+                                    Invoke-SafeScriptBlock -Block { & $handleMoveSuccess -moveResult $folderMoveResult.MoveResult -useWhatIf $useWhatIf -oldpath $folderMoveResult.OldPath } -ContextMsg 'handleMoveSuccess invocation'
                                     continue doTracks                         
                                     
                                 }
@@ -2243,40 +2229,21 @@ function Start-OM {
                                         # In preview mode keep TagFile open so UI can continue to inspect tags.
                                         Write-Verbose "Preview: keeping TagFile handles open so interactive UI can display tags."
                                     }
-                                    $year = Get-ReleaseYear -ReleaseDate (Get-IfExists $ProviderAlbum 'release_date')
-                                    $oldpath = $script:album.FullName
-                                    $safeAlbumName = Approve-PathSegment -Segment (Get-IfExists $ProviderAlbum 'name') -Replacement '_' -CollapseRepeating -Transliterate
-                                    
-                                    # Determine artist for folder name using helper
-                                    # Use -ReloadTags since we just saved tags and disposed handles
-                                    $artistNameForFolder = Get-OMArtistNameForFolder `
-                                        -ManualAlbumArtist $script:ManualAlbumArtist `
-                                        -AudioFiles $audioFiles `
-                                        -ProviderAlbum $ProviderAlbum `
-                                        -ProviderArtist $ProviderArtist `
-                                        -AlbumName $script:albumName `
-                                        -ReloadTags:(-not $useWhatIf)
-                                    
-                                    $safeArtistName = Approve-PathSegment -Segment $artistNameForFolder -Replacement '_' -CollapseRepeating -Transliterate
-    
-                                    $mvArgs = @{
-                                        AlbumPath    = $oldpath
-                                        NewArtist    = $safeArtistName
-                                        NewYear      = $year
-                                        NewAlbumName = $safeAlbumName
+                                    # Use helper for folder move - use ReloadTags since we just saved tags
+                                    $moveParams = @{
+                                        ProviderAlbum     = $ProviderAlbum
+                                        ProviderArtist    = $ProviderArtist
+                                        AlbumPath         = $script:album.FullName
+                                        AudioFiles        = $audioFiles
+                                        ManualAlbumArtist = $script:ManualAlbumArtist
+                                        AlbumName         = $script:albumName
+                                        UseWhatIf         = $useWhatIf
+                                        ReloadTags        = (-not $useWhatIf)  # Reload tags since we just saved and disposed handles
                                     }
+                                    $folderMoveResult = Invoke-OMFolderMove @moveParams
     
-                                    # Force garbage collection to release any lingering file handles before folder rename
-                                    if (-not $useWhatIf) {
-                                        Write-Verbose "Forcing garbage collection before folder move to release file handles"
-                                        [System.GC]::Collect()
-                                        [System.GC]::WaitForPendingFinalizers()
-                                        [System.GC]::Collect()
-                                        Start-Sleep -Milliseconds 100  # Brief pause to ensure OS releases locks
-                                    }
-    
-                                    $moveResult = Invoke-MoveAlbumWithRetry -mvArgs $mvArgs -useWhatIf $useWhatIf
-                                    #   & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath -album $album -audioFiles $audioFiles -refreshTracks $refreshTracks
+                                    $moveResult = $folderMoveResult.MoveResult
+                                    $oldpath = $folderMoveResult.OldPath
                                     Write-Verbose ("TRACE: handleMoveSuccess args: moveResult=($($moveResult -as [string])); useWhatIf=$useWhatIf; oldpath=$oldpath")
                                     Invoke-SafeScriptBlock -Block { & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath } -ContextMsg 'handleMoveSuccess invocation'
                                     
