@@ -441,7 +441,7 @@ function Invoke-OMQuickFind {
         }
 
         $modeIndicator = if ($State.BackNavigationMode) { " (Back Navigation - use Shift+F to switch modes)" } else { "" }
-        $albumChoice = Show-OMPrompt -Prompt "Select album [number] (Enter=first), (P)rovider, Shift+{F}indMode, (ni) New Item (enter new artist+album), (x)ip, (C)over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags}, or new search term$modeIndicator" -Context $Context
+        $albumChoice = Show-OMPrompt -Prompt "Select album [number] (Enter=first), (P)rovider, Shift+{F}indMode, (ni) New Item (enter new artist+album), (s)kip/(x)ip, (C)over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags}, or new search term$modeIndicator" -Context $Context
         if ($albumChoice -eq '') { $albumChoice = '1' }
         
         if ($albumChoice -eq 'p') {
@@ -624,7 +624,7 @@ function Invoke-OMQuickFind {
                 continue albumSelectionLoop
             }
         }
-        elseif ($albumChoice -eq 'x' -or $albumChoice -eq 'xip') {
+        elseif ($albumChoice -eq 'x' -or $albumChoice -eq 'xip' -or $albumChoice -eq 's') {
             $result.Action = 'Skip'
             return $result
         }
