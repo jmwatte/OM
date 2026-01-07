@@ -435,8 +435,11 @@ function Start-OM {
             Sync-OMScriptToState -State $State
 
             :stageLoop while ($true) {
+                # Sync State at start of each stage loop iteration
+                Sync-OMScriptToState -State $State
+                
                 # NEW: Handle quick find mode (only when not in track selection stage)
-                if ($script:findMode -eq 'quick' -and $stage -ne 'C') {
+                if ($State.FindMode -eq 'quick' -and $stage -ne 'C') {
                     if ($VerbosePreference -ne 'Continue') { Clear-Host }
                     if (-not ($showHeader -is [scriptblock])) { Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("showHeader is not a scriptblock (value: '$showHeader')")), 'InvalidTarget', 'InvalidOperation', $showHeader) ; throw "showHeader invalid" }
                     Show-Message -Message "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta -Context $Context
@@ -445,8 +448,8 @@ function Start-OM {
                     # Auto-detect artist and album from folder structure
                     if (-not $skipQuickPrompts) {
                         Write-Verbose "DEBUG: Running auto-detection (skipQuickPrompts=$skipQuickPrompts)"
-                        $folderName = $script:album.Name
-                        $artistFolderName = $script:album.Parent.Name
+                        $folderName = $State.Album.Name
+                        $artistFolderName = $State.Album.Parent.Name
                         
                         # Extract album name (strip year if present)
                         if ($folderName -match '^\d{4}\s*-\s*(.+)$') {
@@ -462,7 +465,7 @@ function Start-OM {
                         # Try to load AlbumArtist tag from first audio file for better detection
                         $tagArtist = $null
                         try {
-                            $firstAudioFile = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse -ErrorAction Stop | 
+                            $firstAudioFile = Get-ChildItem -LiteralPath $State.Album.FullName -File -Recurse -ErrorAction Stop | 
                                 Where-Object { $_.Extension -in '.flac', '.mp3', '.m4a', '.ogg', '.opus', '.wma', '.ape' } |
                                 Select-Object -First 1
                             
@@ -780,8 +783,8 @@ function Start-OM {
                     :albumSelectionLoop while ($true) {
                         if ($VerbosePreference -ne 'Continue') { Clear-Host }
                         if (-not ($showHeader -is [scriptblock])) { Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("showHeader is not a scriptblock (value: '$showHeader')")), 'InvalidTarget', 'InvalidOperation', $showHeader) ; throw "showHeader invalid" }
-                        Write-Verbose ("TRACE: showHeader args: Provider=$Provider; Artist=$script:artist; AlbumName=$script:albumName; TrackCount=$script:trackCount")
-                        Invoke-SafeScriptBlock -Block { & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount } -ContextMsg 'showHeader invocation'
+                        Write-Verbose ("TRACE: showHeader args: Provider=$Provider; Artist=$($State.Artist); AlbumName=$($State.AlbumName); TrackCount=$($State.TrackCount)")
+                        Invoke-SafeScriptBlock -Block { & $showHeader -Provider $Provider -Artist $State.Artist -AlbumName $State.AlbumName -TrackCount $State.TrackCount } -ContextMsg 'showHeader invocation'
                         Show-Message -Message "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta -Context $Context
                         Show-Message -Message "" -Context $Context
                         
@@ -802,7 +805,7 @@ function Start-OM {
                         $originalColor = [Console]::ForegroundColor
                         [Console]::ForegroundColor = [ConsoleColor]::Yellow
                         $modeIndicator = if (
-                        $script:backNavigationMode) { " (Back Navigation - use 'f' to search again)" } else { "" }
+                        $State.BackNavigationMode) { " (Back Navigation - use 'f' to search again)" } else { "" }
                         $albumChoice = Show-OMPrompt -Prompt "Select album [number] (Enter=first), (P)rovider, {F}indMode, (ni) New Item (enter new artist+album), (x)ip, (C)over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags}, or new search term$modeIndicator" -Context $Context
                         [Console]::ForegroundColor = $originalColor
                         if ($albumChoice -eq '') { $albumChoice = '1' }
@@ -1164,10 +1167,10 @@ function Start-OM {
                     "C" {
                         if ($VerbosePreference -ne 'Continue') { Clear-Host }
                         if (-not ($showHeader -is [scriptblock])) { Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("showHeader is not a scriptblock (value: '$showHeader')")), 'InvalidTarget', 'InvalidOperation', $showHeader) ; throw "showHeader invalid" }
-                        Write-Verbose ("TRACE: showHeader args: Provider=$Provider; Artist=$script:artist; AlbumName=$script:albumName; TrackCount=$script:trackCount")
-                        Invoke-SafeScriptBlock -Block { & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount } -ContextMsg 'showHeader invocation'
+                        Write-Verbose ("TRACE: showHeader args: Provider=$Provider; Artist=$($State.Artist); AlbumName=$($State.AlbumName); TrackCount=$($State.TrackCount)")
+                        Invoke-SafeScriptBlock -Block { & $showHeader -Provider $Provider -Artist $State.Artist -AlbumName $State.AlbumName -TrackCount $State.TrackCount } -ContextMsg 'showHeader invocation'
                         
-                        if ($script:findMode -eq 'quick') {
+                        if ($State.FindMode -eq 'quick') {
                             Show-Message -Message "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta -Context $Context
                         }
                         else {
