@@ -175,7 +175,9 @@ function Start-OM {
         [Parameter(Mandatory = $false)]
         [switch]$AutoFallback,
         [Parameter(Mandatory = $false)]
-        [switch]$AutoSaveCover
+        [switch]$AutoSaveCover,
+
+        [Parameter(Mandatory = $false)][object]$Context
 
     )
 
@@ -188,8 +190,78 @@ function Start-OM {
         Set-StrictMode -Version Latest
         $ErrorActionPreference = 'Stop'
 
+        Write-Verbose "Start-OM: begin (diagnostics)"
+        Write-Verbose ("PSBoundParameters: {0}" -f ($PSBoundParameters.Keys -join ','))
+        Write-Verbose ("Path value: '{0}' (Length: {1})" -f $Path, ($Path -ne $null ? $Path.Length : '<null>'))
+
         # detect whether the user passed -WhatIf to this function (comes from CmdletBinding)
         $isWhatIf = $PSBoundParameters.ContainsKey('WhatIf')
+
+        # Safe Join-Path wrapper to avoid prompting when child path is empty
+        function Join-PathSafe {
+            param(
+                [Parameter(Mandatory = $true)][string]$Parent,
+                [Parameter(Mandatory = $true)][string]$Child
+            )
+            if ([string]::IsNullOrWhiteSpace($Parent)) { throw "Join-PathSafe: Parent path is empty" }
+            if ([string]::IsNullOrWhiteSpace($Child)) { throw "Join-PathSafe: Child path is empty" }
+            return Join-Path -Path $Parent -ChildPath $Child
+        }
+
+        # Debug trap: capture ParameterBindingExceptions and dump call stack + bound params
+        trap [System.Management.Automation.ParameterBindingException] {
+            Write-Error "Start-OM: ParameterBindingException caught: $($_.Exception.Message)"
+            Dump-ExceptionDiagnostics -ErrorRecord $_ -ContextMsg "ParameterBindingException trap"
+            Write-Output "Path: $Path"
+            throw
+        }
+
+        # Debug trap: capture InvalidOperationException (e.g., collection modified during enumeration)
+        trap [System.InvalidOperationException] {
+            Write-Error "Start-OM: InvalidOperationException caught: $($_.Exception.Message)"
+            Dump-ExceptionDiagnostics -ErrorRecord $_ -ContextMsg "InvalidOperationException trap"
+            Write-Output "Path: $Path"
+            throw
+        }
+
+        # Send-Message: robust wrapper around Show-Message to avoid missing-function errors in nested scopes
+        function Send-Message {
+            param(
+                [Parameter(Mandatory=$true)][string]$Message,
+                [string]$Color = 'Cyan'
+            )
+            if (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) {
+                Show-Message -Message $Message -ForegroundColor $Color -Context $Context
+            } else {
+                Write-Verbose "Send-Message fallback: $Message"
+                Write-Output $Message
+            }
+        }
+
+        # Diagnostic helper: dump exception details, InvocationInfo, PSBoundParameters and call stack
+        function Dump-ExceptionDiagnostics {
+            param(
+                [Parameter(Mandatory=$true)][object]$ErrorRecord,
+                [string]$ContextMsg = ''
+            )
+            try {
+                Write-Verbose "DUMP-EX: $ContextMsg - $($ErrorRecord.Exception.GetType().FullName): $($ErrorRecord.Exception.Message)"
+                Write-Output "--- DUMP-EX: $ContextMsg ---"
+                Write-Output ("ExceptionType: {0}" -f $ErrorRecord.Exception.GetType().FullName)
+                Write-Output ("Message: {0}" -f $ErrorRecord.Exception.Message)
+                if ($ErrorRecord.InvocationInfo) {
+                    Write-Output "InvocationInfo:"
+                    $ErrorRecord.InvocationInfo | Format-List * | ForEach-Object { Write-Output $_ }
+                }
+                Write-Output ("PSBoundParameters (at this scope): {0}" -f ($PSBoundParameters.Keys -join ','))
+                Write-Output "Get-PSCallStack:"
+                Get-PSCallStack | ForEach-Object { Write-Output "  $_" }
+                Write-Output "--- end DUMP-EX ---"
+            }
+            catch {
+                Write-Verbose "Dump-ExceptionDiagnostics failed: $_"
+            }
+        }
 
         # Initialize verbose display toggle if it doesn't exist
         if (-not (Get-Variable -Name showVerbose -Scope Script -ErrorAction SilentlyContinue)) {
@@ -202,10 +274,12 @@ function Start-OM {
         }
 
         # Detect path type: single album folder (has audio files) vs artist folder (has album subfolders)
-        $audioFilesInPath = @(Get-ChildItem -LiteralPath $Path -File -Recurse -ErrorAction SilentlyContinue | 
+        Write-Verbose "Start-OM: enumerating files in $Path"
+        $audioFilesInPath = @(Get-ChildItem -LiteralPath $Path -File -Recurse -ErrorAction SilentlyContinue |
             Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
             Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) })
         $subFoldersInPath = @(Get-ChildItem -LiteralPath $Path -Directory -ErrorAction SilentlyContinue)
+        Write-Verbose "Start-OM: enumerated $($audioFilesInPath.Count) audio files and $($subFoldersInPath.Count) subfolders"
         
         # Helper function to detect if a folder name is a disc folder
         $isDiscFolder = {
@@ -234,7 +308,9 @@ function Start-OM {
             }
             else {
                 # Subfolders with audio exist - check if they're ALL disc folders
-                $nonDiscFolders = @($subFoldersWithAudio | Where-Object { -not (& $isDiscFolder $_.Name) })
+                if (-not ($isDiscFolder -is [scriptblock])) { Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("isDiscFolder is not a scriptblock (value: '$isDiscFolder')")), 'InvalidTarget', 'InvalidOperation', $isDiscFolder) ; throw "isDiscFolder invalid" }
+                Write-Verbose ("TRACE: Building nonDiscFolders: subFoldersWithAudio.Count=$($subFoldersWithAudio.Count); isDiscFolder isScriptBlock=$($isDiscFolder -is [scriptblock])")
+                $nonDiscFolders = @($subFoldersWithAudio | Where-Object { -not (Invoke-SafeScriptBlock -Block { & $isDiscFolder $_.Name } -ContextMsg 'isDiscFolder invocation') })
                 
                 if ($nonDiscFolders.Count -eq 0) {
                     # ALL subfolders with audio are disc folders → single multi-disc album
@@ -265,7 +341,10 @@ function Start-OM {
 
     # ... (begin block unchanged)
     
-    process {
+    process { try {
+        # Diagnostic: record Start-OM invocation top-level parameters
+        try { "$(Get-Date -Format o) | Start-OM invoked Path=$Path Auto=$Auto AutoFallback=$AutoFallback NonInteractive=$NonInteractive Provider=$Provider" | Out-File -FilePath (Join-Path $env:TEMP 'start_om_invocation_log.txt') -Append -Encoding utf8 -Force } catch { }
+
         # If Provider was not explicitly specified, use DefaultProvider from config
         if (-not $PSBoundParameters.ContainsKey('Provider')) {
             $config = Get-OMConfig
@@ -335,38 +414,13 @@ function Start-OM {
                 [string]$AlbumName,
                 [int]$TrackCount = 0
             )
-            Show-Message -Message "" -Context $Context
-            Show-Message -Message "🎵 ═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan -Context $Context
-            Show-Message -Message "🔍 Provider: " -ForegroundColor Magenta -NoNewline -Context $Context
-            
-            # Add locale for Qobuz provider (use cached value from parent scope)
-            if ($Provider -eq 'Qobuz' -and $qobuzUrlLocale) {
-                Show-Message -Message "$Provider ($qobuzUrlLocale)" -ForegroundColor Cyan -Context $Context
-            } else {
-                Show-Message -Message $Provider -ForegroundColor Cyan -Context $Context
-            }
-            
-            Show-Message -Message "👤 Original Artist: " -ForegroundColor Yellow -NoNewline -Context $Context
-            Show-Message -Message $Artist -ForegroundColor White -Context $Context
-            Show-Message -Message "💿 Original Album: " -ForegroundColor Green -NoNewline -Context $Context
-            
-            # Try to extract year from folder name (e.g., "2011 - Bach Cello Suites")
-            $folderYear = ""
-            if ($script:album -and $script:album.Name) {
-                if ($script:album.Name -match '^(\d{4})\s*-\s*') {
-                    $folderYear = "$($matches[1]) - "
+
+                # Delegate to the centralized Show-OMHeader helper (one canonical header)
+                try {
+                    Show-OMHeader -Provider $Provider -Artist $Artist -AlbumName $AlbumName -TrackCount $TrackCount -QobuzUrlLocale $qobuzUrlLocale -ScriptAlbum $script:album -Context $Context
+                } catch {
+                    Write-Verbose "showHeader: Show-OMHeader invocation failed: $($_.Exception.Message)"
                 }
-            }
-            
-            Show-Message -Message "$folderYear$AlbumName" -ForegroundColor White -NoNewline -Context $Context
-            if ($TrackCount -gt 0) {
-                Show-Message -Message " ($TrackCount tracks)" -ForegroundColor White -Context $Context
-            }
-            else {
-                Show-Message -Message "" -Context $Context  # Ensure newline
-            }
-            Show-Message -Message "═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan -Context $Context
-            Show-Message -Message "" -Context $Context
         }
         # Helper function for album folder move with retry on access errors
         function Invoke-MoveAlbumWithRetry {
@@ -507,25 +561,27 @@ function Start-OM {
                         }
                         
                         # Create artist subdirectory in target folder
-                        $artistFolder = Join-Path $TargetFolder $albumArtistName
+                        $artistFolder = Join-PathSafe $TargetFolder $albumArtistName
                         if (-not (Test-Path -LiteralPath $artistFolder)) {
                             Write-Verbose "Creating artist directory: $artistFolder"
                             New-Item -Path $artistFolder -ItemType Directory -Force | Out-Null
                         }
                         
                         # Calculate target path with duplicate handling
-                        $targetPath = Join-Path $artistFolder $folderName
+                        $targetPath = Join-PathSafe $artistFolder $folderName
                         if (Test-Path -LiteralPath $targetPath) {
                             $n = 2
-                            while (Test-Path -LiteralPath (Join-Path $artistFolder "$folderName ($n)")) {
+                            while (Test-Path -LiteralPath (Join-PathSafe $artistFolder "$folderName ($n)")) {
                                 $n++
                             }
-                            $targetPath = Join-Path $artistFolder "$folderName ($n)"
+                            $targetPath = Join-PathSafe $artistFolder "$folderName ($n)"
                             Write-Verbose "Duplicate folder detected. Using: $targetPath"
                         }
                         
                         # Move album to target folder
-                        Show-Message -Message "Moving album to target folder: $targetPath" -ForegroundColor Cyan -Context $Context
+                        if ([string]::IsNullOrWhiteSpace($currentPath)) { throw "Start-OM: currentPath is empty" }
+                        if ([string]::IsNullOrWhiteSpace($targetPath)) { throw "Start-OM: targetPath is empty" }
+                        Send-Message -Message "Moving album to target folder: $targetPath" -Color Cyan
                         Move-Item -LiteralPath $currentPath -Destination $targetPath -Force
                         
                         # Clean up empty parent folder if it's now empty
@@ -784,6 +840,7 @@ function Start-OM {
             }
             catch {
                 Write-Verbose "Primary provider search failed: $_"
+                Dump-ExceptionDiagnostics -ErrorRecord $_ -ContextMsg "Invoke-ProviderSearch primary $PrimaryProvider"
                 $candidates = @()
             }
             
@@ -817,7 +874,7 @@ function Start-OM {
                 'MusicBrainz' { @('Qobuz', 'Spotify', 'Discogs') }
             }
             
-            foreach ($fallbackProvider in $fallbackChain) {
+            foreach ($fallbackProvider in @($fallbackChain)) {
                 Show-Message -Message "⚠️  AUTO: No good match on $PrimaryProvider, trying $fallbackProvider..." -ForegroundColor Yellow -Context $Context
                 
                 try {
@@ -826,6 +883,7 @@ function Start-OM {
                 }
                 catch {
                     Write-Verbose "Fallback provider $fallbackProvider search failed: $_"
+                    Dump-ExceptionDiagnostics -ErrorRecord $_ -ContextMsg "Invoke-ProviderSearch fallback $fallbackProvider"
                     continue
                 }
                 
@@ -886,8 +944,9 @@ function Start-OM {
         $script:findMode = 'artist-first'  # Default to artist-first mode
         $currentAlbumPage = 1
         
-        foreach ($albumOriginal in $albums) {
+        foreach ($albumOriginal in @($albums)) {
             $script:album = $albumOriginal
+            Write-Verbose "TRACE: Start processing album: $($script:album.FullName)"
             $script:ManualAlbumArtist = $null
             # Initialize script-scope variables used by handleMoveSuccess scriptblock
             $script:audioFiles = $null
@@ -933,7 +992,7 @@ function Start-OM {
                 # NEW: Handle quick find mode (only when not in track selection stage)
                 if ($script:findMode -eq 'quick' -and $stage -ne 'C') {
                     if ($VerbosePreference -ne 'Continue') { Clear-Host }
-                    & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
+                    if (-not ($showHeader -is [scriptblock])) { Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("showHeader is not a scriptblock (value: '$showHeader')")), 'InvalidTarget', 'InvalidOperation', $showHeader) ; throw "showHeader invalid" }
                     Show-Message -Message "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta -Context $Context
                     Show-Message -Message "" -Context $Context
 
@@ -1064,7 +1123,7 @@ function Start-OM {
                     }
                     else {
                         Show-Message -Message "Searching for '$quickAlbum' by '$quickArtist'..." -ForegroundColor Cyan -Context $Context
-                        
+                        Write-Verbose "TRACE: Before quickSearchLoop: quickAlbum='$quickAlbum' quickArtist='$quickArtist' Provider='$Provider'"
                         :quickSearchLoop while ($true) {
                             $quickAlbum = $currentAlbum
                             $quickArtist = $currentArtist
@@ -1074,6 +1133,7 @@ function Start-OM {
                             }
                             catch {
                                 Write-Warning "Quick search failed: $_"
+                                Dump-ExceptionDiagnostics -ErrorRecord $_ -ContextMsg "Invoke-ProviderSearch quick $Provider"
                                 $albumCandidates = @()
                             }
                             
@@ -1150,14 +1210,18 @@ function Start-OM {
                             # Debug: Show confidence scores for all candidates
                             Show-Message -Message "🤖 AUTO: Calculating confidence scores..." -ForegroundColor Cyan -Context $Context
                             $index = 1
-                            foreach ($candidate in $albumCandidates) {
+                            foreach ($candidate in @($albumCandidates)) {
                                 $scoreVal = Get-AlbumMatchConfidence -Candidate $candidate -LocalArtist $quickArtist -LocalAlbum $quickAlbum -LocalTrackCount $script:trackCount
                                 $scorePercent = $scoreVal * 100
                                 $displayName = if ($candidate.name) { $candidate.name } else { $candidate.title }
+                                # Diagnostic: record this confidence invocation
+                                try { "$(Get-Date -Format o) | INVOKE: Get-AlbumMatchConfidence Index=$index DisplayName=$displayName LocalArtist=$quickArtist LocalAlbum=$quickAlbum" | Out-File -FilePath (Join-Path $env:TEMP 'start_om_invocation_log.txt') -Append -Encoding utf8 -Force } catch { }
                                 Show-Message -Message "   [$index] $displayName : $([math]::Round($scorePercent, 1))%" -ForegroundColor $(if ($scorePercent -ge ($AutoConfidenceThreshold * 100)) { 'Green' } else { 'Yellow' }) -Context $Context
                                 $index++
                             }
                             
+                            # Diagnostic: record best-match invocation
+                            try { "$(Get-Date -Format o) | INVOKE: Get-BestAutoMatch CandidatesCount=$($albumCandidates.Count) LocalArtist=$quickArtist LocalAlbum=$quickAlbum Threshold=$AutoConfidenceThreshold" | Out-File -FilePath (Join-Path $env:TEMP 'start_om_invocation_log.txt') -Append -Encoding utf8 -Force } catch { }
                             $bestMatch = Get-BestAutoMatch -Candidates $albumCandidates `
                                 -LocalArtist $quickArtist -LocalAlbum $quickAlbum `
                                 -LocalTrackCount $script:trackCount -Threshold $AutoConfidenceThreshold
@@ -1189,15 +1253,18 @@ function Start-OM {
                                 'MusicBrainz' { @('Qobuz', 'Spotify', 'Discogs') }
                             }
                             
-                            foreach ($fallbackProvider in $fallbackChain) {
+                            foreach ($fallbackProvider in @($fallbackChain)) {
                                 Show-Message -Message "   Trying $fallbackProvider..." -ForegroundColor Cyan -Context $Context
                                 
                                 try {
+                                    # Diagnostic: log provider search invocation
+                                    try { "$(Get-Date -Format o) | INVOKE: Invoke-ProviderSearch Provider=$fallbackProvider Album=$quickAlbum Artist=$quickArtist" | Out-File -FilePath (Join-Path $env:TEMP 'start_om_invocation_log.txt') -Append -Encoding utf8 -Force } catch { }
                                     $fallbackResults = Invoke-ProviderSearch -Provider $fallbackProvider -Album $quickAlbum -Artist $quickArtist -Type album
                                     $fallbackCandidates = if ($fallbackResults -and $fallbackResults.albums -and $fallbackResults.albums.items) { @($fallbackResults.albums.items | Where-Object { $_ -ne $null }) } else { @() }
                                 }
                                 catch {
                                     Write-Verbose "Fallback provider $fallbackProvider search failed: $_"
+                                    Dump-ExceptionDiagnostics -ErrorRecord $_ -ContextMsg "Invoke-ProviderSearch fallback $fallbackProvider (auto)"
                                     continue
                                 }
                                 
@@ -1270,7 +1337,9 @@ function Start-OM {
                     # Album selection loop
                     :albumSelectionLoop while ($true) {
                         if ($VerbosePreference -ne 'Continue') { Clear-Host }
-                        & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
+                        if (-not ($showHeader -is [scriptblock])) { Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("showHeader is not a scriptblock (value: '$showHeader')")), 'InvalidTarget', 'InvalidOperation', $showHeader) ; throw "showHeader invalid" }
+                        Write-Verbose ("TRACE: showHeader args: Provider=$Provider; Artist=$script:artist; AlbumName=$script:albumName; TrackCount=$script:trackCount")
+                        Invoke-SafeScriptBlock -Block { & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount } -ContextMsg 'showHeader invocation'
                         Show-Message -Message "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta -Context $Context
                         Show-Message -Message "" -Context $Context
                         
@@ -1383,7 +1452,7 @@ function Start-OM {
                             }
                             $config = Get-OMConfig
                             $maxSize = $config.CoverArt.FolderImageSize
-                            foreach ($index in $selectedIndices) {
+                            foreach ($index in @($selectedIndices)) {
                                 $albumIndex = $index - 1
                                 $selectedAlbum = $albumCandidates[$albumIndex]
                                 if ($selectedAlbum.cover_url) {
@@ -1435,7 +1504,7 @@ function Start-OM {
                             } | Where-Object { $_ -ne $null }
 
                             if ($audioFiles.Count -gt 0) {
-                                foreach ($index in $selectedIndices) {
+                                foreach ($index in @($selectedIndices)) {
                                     $albumIndex = $index - 1
                                     $selectedAlbum = $albumCandidates[$albumIndex]
                                     if ($selectedAlbum.cover_url) {
@@ -1449,7 +1518,7 @@ function Start-OM {
                                     }
                                 }
                                 # Clean up tag files
-                                foreach ($af in $audioFiles) {
+                                foreach ($af in @($audioFiles)) {
                                     if ($af.TagFile) {
                                         try { $af.TagFile.Dispose() } catch { Write-Verbose "Dispose failed: $($_.Exception.Message)" }
                                     }
@@ -1544,7 +1613,9 @@ function Start-OM {
                     "A" {
                         $loadStageBResults = $true
                         if ($VerbosePreference -ne 'Continue') { Clear-Host }
-                        & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
+                        if (-not ($showHeader -is [scriptblock])) { Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("showHeader is not a scriptblock (value: '$showHeader')")), 'InvalidTarget', 'InvalidOperation', $showHeader) ; throw "showHeader invalid" }
+                        Write-Verbose ("TRACE: showHeader args: Provider=$Provider; Artist=$script:artist; AlbumName=$script:albumName; TrackCount=$script:trackCount")
+                        Invoke-SafeScriptBlock -Block { & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount } -ContextMsg 'showHeader invocation'
                         if ($script:findMode -eq 'quick') {
                             Show-Message -Message "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta -Context $Context
                         }
@@ -1557,7 +1628,7 @@ function Start-OM {
                         $candidates = $null
                         
                         Write-Verbose "Searching for artist: '$artistQuery' with provider: $Provider"
-                        try { $r = Invoke-ProviderSearch -Provider $Provider -query $artistQuery -Type artist } catch { Write-Warning "Search failed: $_"; $r = $null }
+                        try { $r = Invoke-ProviderSearch -Provider $Provider -query $artistQuery -Type artist } catch { Write-Warning "Search failed: $_"; Dump-ExceptionDiagnostics -ErrorRecord $_ -ContextMsg "Invoke-ProviderSearch artist $Provider"; $r = $null }
                         $candidates = @()
                         if ($value = Get-IfExists $r.artists "items") { $candidates = $value }
                         #if ($r -and $r.artists -and $r.artists.items) { $candidates = $r.artists.items }
@@ -1600,7 +1671,7 @@ function Start-OM {
                                 }
                                 '^id:(.+)$' { 
                                     $id = $matches[1].Trim()
-                                    if ($Provider -eq 'Discogs') { $id = & $normalizeDiscogsId $id }
+                                    if ($Provider -eq 'Discogs') { if (-not ($normalizeDiscogsId -is [scriptblock])) { Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("normalizeDiscogsId is not a scriptblock (value: '$normalizeDiscogsId')")), 'InvalidTarget', 'InvalidOperation', $normalizeDiscogsId) ; throw "normalizeDiscogsId invalid" } ; $id = Invoke-SafeScriptBlock -Block $normalizeDiscogsId -Args @($id) -ContextMsg 'normalizeDiscogsId' }
                                     $ProviderArtist = @{ id = $id; name = $id }
                                     $stage = 'B'
                                     continue 
@@ -1648,7 +1719,7 @@ function Start-OM {
                         if ($inputF -eq '') { $ProviderArtist = $candidates[0]; $stage = 'B'; continue }
                         if ($inputF -like 'id:*') { 
                             $id = $inputF.Substring(3)
-                            if ($Provider -eq 'Discogs') { $id = & $normalizeDiscogsId $id }
+                            if ($Provider -eq 'Discogs') { if (-not ($normalizeDiscogsId -is [scriptblock])) { Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("normalizeDiscogsId is not a scriptblock (value: '$normalizeDiscogsId')")), 'InvalidTarget', 'InvalidOperation', $normalizeDiscogsId) ; throw "normalizeDiscogsId invalid" } ; $id = Invoke-SafeScriptBlock -Block $normalizeDiscogsId -Args @($id) -ContextMsg 'normalizeDiscogsId' }
                             $ProviderArtist = @{ id = $id; name = $id }; $stage = 'B'; continue 
                         }
                         if ($inputF -like 'al:*') {
@@ -1788,7 +1859,9 @@ function Start-OM {
                     }
                     "C" {
                         if ($VerbosePreference -ne 'Continue') { Clear-Host }
-                        & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
+                        if (-not ($showHeader -is [scriptblock])) { Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("showHeader is not a scriptblock (value: '$showHeader')")), 'InvalidTarget', 'InvalidOperation', $showHeader) ; throw "showHeader invalid" }
+                        Write-Verbose ("TRACE: showHeader args: Provider=$Provider; Artist=$script:artist; AlbumName=$script:albumName; TrackCount=$script:trackCount")
+                        Invoke-SafeScriptBlock -Block { & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount } -ContextMsg 'showHeader invocation'
                         
                         if ($script:findMode -eq 'quick') {
                             Show-Message -Message "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta -Context $Context
@@ -1805,7 +1878,7 @@ function Start-OM {
                             Show-Message -Message "Processing COMBINED album set:" -ForegroundColor Yellow -Context $Context
                             Show-Message -Message "  Albums: $($ProviderAlbum._albumCount)" -ForegroundColor Cyan -Context $Context
                             Show-Message -Message "  Tracks: $($ProviderAlbum._tracks.Count)" -ForegroundColor Cyan -Context $Context
-                            foreach ($albumName in $ProviderAlbum._albumNames) {
+                            foreach ($albumName in @($ProviderAlbum._albumNames)) {
                                 Show-Message -Message "    - $albumName" -ForegroundColor Gray -Context $Context
                             }
                             Show-Message -Message "" -Context $Context
@@ -1924,6 +1997,7 @@ function Start-OM {
                             }
                             
                             try { 
+                                Write-Verbose "TRACE: Before Invoke-ProviderGetTracks (Provider=$Provider, AlbumId=$albumIdToFetch)"
                                 Write-Verbose "Calling Invoke-ProviderGetTracks for provider $Provider with ID $albumIdToFetch"
                                 $rawTracks = Invoke-ProviderGetTracks -Provider $Provider -AlbumId $albumIdToFetch
                                 Write-Verbose "rawTracks type: $($rawTracks.GetType().FullName)"
@@ -2317,6 +2391,7 @@ function Start-OM {
                                     }
                                     if ($reverseSource) { $autoShowParams.Reverse = $true }
                                     if ($script:showVerbose) { $autoShowParams.Verbose = $true }
+                                    Write-Verbose "TRACE: Before Show-Tracks (auto path) - InputReader present: $([bool]$autoReader)"
                                     Show-Tracks @autoShowParams -InputReader $autoReader | Out-Null
                                     $goCDisplayShown = $true
                                 }
@@ -2331,7 +2406,7 @@ function Start-OM {
                                     $bestScore = 0
                                     $bestPairing = $null
                                     
-                                    foreach ($strategy in $strategies) {
+                                    foreach ($strategy in @($strategies)) {
                                         # Create temporary pairing with this strategy
                                         $tempParam = @{
                                             SortMethod    = $strategy
@@ -2499,7 +2574,7 @@ function Start-OM {
                                     }
                                     
                                     # For each marked track, show audio file and let user pick from the pool
-                                    foreach ($markedTrack in $markedTracks) {
+                                    foreach ($markedTrack in @($markedTracks)) {
                                         if (-not $markedTrack.AudioFile) { continue }
                                         if ($providerTrackPool.Count -eq 0) {
                                             Show-Message -Message "No more provider tracks in pool." -ForegroundColor Yellow -Context $Context
@@ -2522,7 +2597,7 @@ function Start-OM {
                                         
                                         # Sort pool by match confidence for current audio file (best match first)
                                         $scoredPool = @()
-                                        foreach ($track in $providerTrackPool) {
+                                        foreach ($track in @($providerTrackPool)) {
                                             $confidence = Get-MatchConfidence -ProviderTrack $track -AudioFile $markedTrack.AudioFile
                                             $scoredPool += [PSCustomObject]@{
                                                 Track = $track
@@ -2809,8 +2884,10 @@ function Start-OM {
                                     
                                     # call Move-AlbumFolder and pass -WhatIf from the caller (if requested)
                                     $moveResult = Invoke-MoveAlbumWithRetry -mvArgs $mvArgs -useWhatIf $useWhatIf
-                                    & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath
-                                    #& $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath -album $album -audioFiles $audioFiles -refreshTracks $refreshTracks
+                                    if (-not ($handleMoveSuccess -is [scriptblock])) { Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("handleMoveSuccess is not a scriptblock (value: '$handleMoveSuccess')")), 'InvalidTarget', 'InvalidOperation', $handleMoveSuccess) ; throw "handleMoveSuccess invalid" }
+                                    Write-Verbose ("TRACE: handleMoveSuccess args: moveResult=($($moveResult -as [string])); useWhatIf=$useWhatIf; oldpath=$oldpath")
+                                    Invoke-SafeScriptBlock -Block { & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath } -ContextMsg 'handleMoveSuccess invocation'
+                                    #Invoke-SafeScriptBlock -Block { & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath -album $album -audioFiles $audioFiles -refreshTracks $refreshTracks } -ContextMsg 'handleMoveSuccess extended'
                                     continue doTracks                         
                                     
                                 }
@@ -2931,7 +3008,7 @@ function Start-OM {
                                         
                                         # Dispose old TagFile handles and reload to show updated tags
                                         if (-not $useWhatIf) {
-                                            foreach ($af in $audioFiles) {
+                                            foreach ($af in @($audioFiles)) {
                                                 if ($af.TagFile) {
                                                     try { $af.TagFile.Dispose() } catch { Write-Verbose "Failed disposing TagFile: $_" }
                                                     $af.TagFile = $null
@@ -3152,7 +3229,8 @@ function Start-OM {
     
                                     $moveResult = Invoke-MoveAlbumWithRetry -mvArgs $mvArgs -useWhatIf $useWhatIf
                                     #   & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath -album $album -audioFiles $audioFiles -refreshTracks $refreshTracks
-                                    & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath
+                                    Write-Verbose ("TRACE: handleMoveSuccess args: moveResult=($($moveResult -as [string])); useWhatIf=$useWhatIf; oldpath=$oldpath")
+                                    Invoke-SafeScriptBlock -Block { & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath } -ContextMsg 'handleMoveSuccess invocation'
                                     
                                     # Reload audio files with updated tags if not in WhatIf mode and folder wasn't moved
                                     # (handleMoveSuccess reloads if folder was moved, but we need to reload even if it wasn't)
@@ -3461,6 +3539,27 @@ function Start-OM {
                 if ($albumDone) { break } else { continue }
             } # end foreach albums
         }
+    } catch [System.Management.Automation.ParameterBindingException] {
+        Dump-ExceptionDiagnostics -ErrorRecord $_ -ContextMsg "Top-level process ParameterBindingException"
+        Write-Verbose "Top-level ParameterBindingException recovered"
+
+        try {
+            $snapFile = Join-Path $env:TEMP 'start_om_state_snapshot.txt'
+            $snap = @()
+            $snap += "Timestamp: $(Get-Date -Format o)"
+            $snap += "Context: Top-level process ParameterBindingException"
+            $snap += "Provider: $Provider"
+            $snap += "Auto: $Auto, AutoFallback: $AutoFallback, NonInteractive: $NonInteractive"
+            $snap += "script:albumName: $script:albumName"
+            $snap += "script:artist: $script:artist"
+            $snap += "albumCandidates.Count: $($albumCandidates -as [array] | Measure-Object | Select-Object -ExpandProperty Count)"
+            $snap += "albumChoice: $albumChoice"
+            $snap += "Recent PSCallStack: $((Get-PSCallStack) | Out-String)"
+            $snap += "Loaded functions: $((Get-Command -CommandType Function | Select-Object -First 50 | ForEach-Object { $_.Name }) -join ', ')"
+            $snap | Out-File -FilePath $snapFile -Append -Encoding utf8 -Force
+        } catch {
+            Write-Verbose "Failed to write state snapshot: $($_.Exception.Message)"
+        }
     }
     end {
         return [PSCustomObject]@{
@@ -3470,6 +3569,6 @@ function Start-OM {
         }
     }
 }
-
+}
 
 
