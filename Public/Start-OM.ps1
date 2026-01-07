@@ -569,8 +569,8 @@ function Start-OM {
                     $albumCandidates = @()
                     
                     # Check if we have cached albums from back navigation
-                    if ($script:backNavigationMode -and $script:quickAlbumCandidates) {
-                        $albumCandidates = $script:quickAlbumCandidates
+                    if ($State.BackNavigationMode -and $State.QuickAlbumCandidates) {
+                        $albumCandidates = $State.QuickAlbumCandidates
                         Show-Message -Message "Using cached album results for back navigation..." -ForegroundColor Cyan -Context $Context
                     }
                     else {
@@ -1004,7 +1004,7 @@ function Start-OM {
                         }
                         else {
                             # New search term - update album name and restart search
-                            if ($script:backNavigationMode) {
+                            if ($State.BackNavigationMode) {
                                 Show-Message -Message "Back navigation mode: Enter album number to select, or use commands. To search again, use 'f' to change find mode first." -ForegroundColor Yellow -Context $Context
                                 continue albumSelectionLoop
                             }
