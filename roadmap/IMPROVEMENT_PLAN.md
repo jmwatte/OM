@@ -7,12 +7,15 @@ This document outlines a strategic roadmap for refactoring the main `Start-OM.ps
 This phase focuses on immediate, user-facing improvements that address the most significant inconsistencies in the interactive workflow.
 
 ### 1.1. Standardize and Unify User Commands
--   **Status:** `Pending`
+-   **Status:** `Complete` ✅
 -   **Objective:** Define a universal set of commands available at every interactive prompt. This eliminates user guesswork and makes the interface predictable.
 -   **Implementation Details:**
-    -   Create a private helper function, e.g., `Show-OMPrompt`, that takes a prompt message and a context (e.g., 'ArtistSelection', 'AlbumSelection') as input.
-    -   This function will display the prompt and a dynamically generated list of available commands based on the context.
-    -   The main loop in `Start-OM` will call this function instead of `Read-Host` directly.
+    -   `Show-OMPrompt` helper function exists in `Private/Utils/Show-OMPrompt.ps1`
+    -   Used in 30+ locations across Start-OM, stage functions, and utility functions
+    -   Supports contextual actions, default values, InputReader customization
+    -   Universal actions: provider, back, skip, exit
+    -   Already integrated throughout the codebase
+-   **Note:** Further enhancement could standardize the contextual actions text across all callers
 -   **Proposed Universal Commands:**
     -   `p <provider_name>`: Switch **P**rovider (e.g., `p spotify`, `p qobuz`).
     -   `b`: Go **B**ack to the previous logical step.
