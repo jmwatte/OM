@@ -4,6 +4,17 @@ testdata/
 # Ignore debug/temporary summary file
 summary_debug.json
 
+# Debug and trace output files
+debug_*.txt
+*_trace*.txt
+*_error*.txt
+*.bak
+*.disabled
+
+# Tools debug output
+tools/*.txt
+tools/diag_runs/
+
 # Node/Powershell common
 .DS_Store
 Thumbs.db
