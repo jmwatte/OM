@@ -921,9 +921,9 @@ function Start-OM {
                                 Show-Message -Message "" -Context $Context
                                 $response = Show-OMPrompt -Prompt "Press 'a' to build custom album artist, or Enter to use automatic detection" -Context $Context
                                 if ($response -eq 'a') {
-                                    $script:ManualAlbumArtist = Invoke-AlbumArtistBuilder -AlbumName $ProviderAlbum.name -Tracks $tracksForAlbum -CurrentAlbumArtist $ProviderArtist.name
-                                    if ($script:ManualAlbumArtist) {
-                                        Show-Message -Message "✓ Album artist set to: $script:ManualAlbumArtist" -ForegroundColor Green -Context $Context
+                                    $State.ManualAlbumArtist = Invoke-AlbumArtistBuilder -AlbumName $ProviderAlbum.name -Tracks $tracksForAlbum -CurrentAlbumArtist $ProviderArtist.name
+                                    if ($State.ManualAlbumArtist) {
+                                        Show-Message -Message "✓ Album artist set to: $($State.ManualAlbumArtist)" -ForegroundColor Green -Context $Context
                                     }
                                     else {
                                         Show-Message -Message "Skipped - will use automatic detection" -ForegroundColor Gray -Context $Context
@@ -963,7 +963,7 @@ function Start-OM {
                         $State.PairedTracks = $null
                         $State.RefreshTracks = $true
                         $goCDisplayShown = $false
-                        Write-Verbose "DEBUG: Starting doTracks loop, script:pairedTracks is null: $($null -eq $script:pairedTracks)"
+                        Write-Verbose "DEBUG: Starting doTracks loop, State.PairedTracks is null: $($null -eq $State.PairedTracks)"
                         :doTracks do {
                             Sync-OMScriptToState -State $State  # Sync at start of track matching loop
                             Write-Verbose "DEBUG: Inside doTracks, checking if we need to refresh..."
@@ -1044,7 +1044,7 @@ function Start-OM {
                                     
                                     # Use the best pairing
                                     if ($bestPairing) {
-                                        $script:pairedTracks = $bestPairing
+                                        $State.PairedTracks = $bestPairing
                                         $sortMethod = $bestStrategy
                                     }
                                     
@@ -1071,7 +1071,7 @@ function Start-OM {
                                                 Show-Message -Message "🖼️  AUTO: Saving cover art..." -ForegroundColor Cyan -Context $Context
                                                 $config = Get-OMConfig
                                                 $maxSize = $config.CoverArt.FolderImageSize
-                                                $result = Save-CoverArt -CoverUrl $coverUrl -AlbumPath $script:album.FullName `\n                                                    -Action SaveToFolder -MaxSize $maxSize -WhatIf:$useWhatIf
+                                                $result = Save-CoverArt -CoverUrl $coverUrl -AlbumPath $State.Album.FullName `\n                                                    -Action SaveToFolder -MaxSize $maxSize -WhatIf:$useWhatIf
                                                 if ($result.Success) {
                                                     Show-Message -Message "✓ AUTO: Cover art saved" -ForegroundColor Green -Context $Context
                                                 }
@@ -1080,7 +1080,7 @@ function Start-OM {
                                     }
                                     else {
                                         Write-Warning "AUTO: Confidence too low ($confidencePercent%), falling back to interactive mode"
-                                        $script:autoModeActive = $false
+                                        $State.AutoModeActive = $false
                                     }
                                 }
                             }
@@ -1260,7 +1260,7 @@ function Start-OM {
                                 '^f$' {
                                     # Toggle find mode between quick and artist-first
                                     if ($State.FindMode -eq 'quick') {
-                                        $script:findMode = 'artist-first'
+                                        $State.FindMode = 'artist-first'
                                         Show-Message -Message "✓ Switched to Artist-First Search mode" -ForegroundColor Green -Context $Context
                                         # Reset search state when switching to artist-first mode
                                         $cachedAlbums = $null
@@ -1270,7 +1270,7 @@ function Start-OM {
                                         $ProviderAlbum = $null
                                     }
                                     else {
-                                        $script:findMode = 'quick'
+                                        $State.FindMode = 'quick'
                                         $skipQuickPrompts = $false  # Show prompts when switching to quick mode
                                         Show-Message -Message "✓ Switched to Quick Album Search mode" -ForegroundColor Green -Context $Context
                                     }
@@ -1296,7 +1296,7 @@ function Start-OM {
                                         -ProviderArtist $ProviderArtist `
                                         -AlbumPath $State.Album.FullName `
                                         -AudioFiles $audioFiles `
-                                        -ManualAlbumArtist $script:ManualAlbumArtist `
+                                        -ManualAlbumArtist $State.ManualAlbumArtist `
                                         -AlbumName $State.AlbumName `
                                         -UseWhatIf:$useWhatIf `
                                         -ForceGC  # sf always runs GC
@@ -1304,7 +1304,7 @@ function Start-OM {
                                     # Handle move success using new function
                                     Write-Verbose ("TRACE: Invoke-OMHandleMoveSuccess args: moveResult=($($folderMoveResult.MoveResult -as [string])); useWhatIf=$useWhatIf; oldpath=$($folderMoveResult.OldPath)")
                                     Invoke-OMHandleMoveSuccess -MoveResult $folderMoveResult.MoveResult -UseWhatIf $useWhatIf -OldPath $folderMoveResult.OldPath `
-                                        -State $State -TargetFolder $TargetFolder -Context $Context -NonInteractive:$NonInteractive -GoC:$goC -AudioFiles $script:audioFiles
+                                        -State $State -TargetFolder $TargetFolder -Context $Context -NonInteractive:$NonInteractive -GoC:$goC -AudioFiles $State.AudioFiles
                                     Sync-OMStateToScript -State $State  # Sync State back to script variables
                                     continue doTracks
                                 }
@@ -1366,20 +1366,20 @@ function Start-OM {
                                     $tracksForAlbum = $saveResult.UpdatedSpotifyTracks
 
                                     if ($saveResult.SavedDetails.Count -gt 0) {
-                                        Show-Message -Message (("✓ Processed {0} track(s). Remaining: {1}" -f $saveResult.SavedDetails.Count, $script:pairedTracks.Count)) -ForegroundColor Green -Context $Context
+                                        Show-Message -Message (("✓ Processed {0} track(s). Remaining: {1}" -f $saveResult.SavedDetails.Count, $State.PairedTracks.Count)) -ForegroundColor Green -Context $Context
                                     }
                                     else {
                                         Show-Message -Message "No tracks were updated." -ForegroundColor Yellow -Context $Context
                                     }
 
-                                    $script:refreshTracks = $false
+                                    $State.RefreshTracks = $false
                                     continue doTracks
                                 }
                                 '^st$' {
                                     try {
 
 
-                                        foreach ($pair in $script:pairedTracks) {
+                                        foreach ($pair in $State.PairedTracks) {
                                             if ($null -ne $pair.AudioFile) {
                                                 $filePath = $pair.AudioFile.FilePath
                                                 $tagsParams = @{
@@ -1441,7 +1441,7 @@ function Start-OM {
 
 
 
-                                    foreach ($pair in $script:pairedTracks) {
+                                    foreach ($pair in $State.PairedTracks) {
                                         # check if pair has audio and spotify track with get-ifexists
                                         if ($null -ne (Get-IfExists $pair 'AudioFile') -and $null -ne (Get-IfExists $pair 'SpotifyTrack')) {
                                             $filePath = $pair.AudioFile.FilePath
@@ -1500,7 +1500,7 @@ function Start-OM {
                                         -ProviderArtist $ProviderArtist `
                                         -AlbumPath $State.Album.FullName `
                                         -AudioFiles $audioFiles `
-                                        -ManualAlbumArtist $script:ManualAlbumArtist `
+                                        -ManualAlbumArtist $State.ManualAlbumArtist `
                                         -AlbumName $State.AlbumName `
                                         -UseWhatIf:$useWhatIf `
                                         -ReloadTags:(-not $useWhatIf)
@@ -1515,7 +1515,7 @@ function Start-OM {
                                     if (-not $useWhatIf -and $moveResult -and $moveResult.NewAlbumPath -eq $oldpath) {
                                         Write-Verbose "Reloading audio files to reflect saved tags (folder not moved)"
                                         # Reload audio files with fresh TagLib handles
-                                        $script:audioFiles = Reload-OMAudioFiles -AlbumPath $State.Album.FullName
+                                        $State.AudioFiles = Reload-OMAudioFiles -AlbumPath $State.Album.FullName
                                         
                                         # Update paired tracks with reloaded audio files to preserve pairing
                                         if ($State.PairedTracks -and $State.PairedTracks.Count -gt 0) {
