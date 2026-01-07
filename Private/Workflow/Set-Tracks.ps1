@@ -6,6 +6,10 @@ function Set-Tracks {
         [switch]$Reverse  # If set, iterate over audio files and match to Spotify tracks
     )
 
+    # Ensure arrays are actually arrays (defensive)
+    $AudioFiles = @($AudioFiles | Where-Object { $_ -ne $null })
+    $SpotifyTracks = @($SpotifyTracks | Where-Object { $_ -ne $null })
+    
     #Write-Host "DEBUG Set-Tracks: Entered with SortMethod=$SortMethod, Reverse=$Reverse, AudioFiles count=$($AudioFiles.Count), SpotifyTracks count=$($SpotifyTracks.Count)"
 
     $pairedTracks = @()

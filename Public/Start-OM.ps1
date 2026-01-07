@@ -977,8 +977,8 @@ function Start-OM {
                                 if ($useWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
                                 $param = @{
                                     SortMethod    = $sortMethod
-                                    AudioFiles    = $State.AudioFiles
-                                    SpotifyTracks = $tracksForAlbum
+                                    AudioFiles    = @($State.AudioFiles)
+                                    SpotifyTracks = @($tracksForAlbum)
                                 }
                                 if ($reverseSource) { $param.Reverse = $true }
                                 $State.PairedTracks = Set-Tracks @param
