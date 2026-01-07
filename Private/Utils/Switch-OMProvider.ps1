@@ -7,7 +7,7 @@ function Switch-OMProvider {
         Parses provider shortcodes (ps, pq, pd, pm) and returns the provider name.
         Returns $null if the input is not a recognized provider shortcode.
     
-    .PARAMETER Input
+    .PARAMETER UserInput
         The user input to check for provider switch codes.
     
     .PARAMETER Context
@@ -31,7 +31,8 @@ function Switch-OMProvider {
     param(
         [Parameter(Mandatory)]
         [AllowEmptyString()]
-        [string]$Input,
+        [Alias('Input')]
+        [string]$UserInput,
         
         [Parameter()]
         [hashtable]$Context,
@@ -40,7 +41,7 @@ function Switch-OMProvider {
         [switch]$Silent
     )
     
-    $provider = switch ($Input.ToLower()) {
+    $provider = switch ($UserInput.ToLower()) {
         'ps' { 'Spotify' }
         'pq' { 'Qobuz' }
         'pd' { 'Discogs' }
