@@ -61,6 +61,21 @@ function Sync-OMScriptToState {
 
     # Sync script-scope variables back to State (only if they've been set)
     # Use Get-Variable with -ErrorAction SilentlyContinue to check if variables exist
+    # Only sync if the variable has a non-null value to avoid overwriting State with nulls
+    $audioFilesVar = Get-Variable -Name 'audioFiles' -Scope Script -ErrorAction SilentlyContinue
+    if ($audioFilesVar -and $null -ne $audioFilesVar.Value) {
+        $State.AudioFiles = $script:audioFiles
+    }
+    $pairedTracksVar = Get-Variable -Name 'pairedTracks' -Scope Script -ErrorAction SilentlyContinue
+    if ($pairedTracksVar -and $null -ne $pairedTracksVar.Value) {
+        $State.PairedTracks = $script:pairedTracks
+    }
+    $refreshTracksVar = Get-Variable -Name 'refreshTracks' -Scope Script -ErrorAction SilentlyContinue
+    if ($refreshTracksVar -and $null -ne $refreshTracksVar.Value) {
+        $State.RefreshTracks = $script:refreshTracks
+    }
+    
+    # For other variables, keep original logic (these can be null)
     if ($null -ne (Get-Variable -Name 'album' -Scope Script -ErrorAction SilentlyContinue)) {
         $State.Album = $script:album
     }
@@ -72,15 +87,6 @@ function Sync-OMScriptToState {
     }
     if ($null -ne (Get-Variable -Name 'trackCount' -Scope Script -ErrorAction SilentlyContinue)) {
         $State.TrackCount = $script:trackCount
-    }
-    if ($null -ne (Get-Variable -Name 'audioFiles' -Scope Script -ErrorAction SilentlyContinue)) {
-        $State.AudioFiles = $script:audioFiles
-    }
-    if ($null -ne (Get-Variable -Name 'pairedTracks' -Scope Script -ErrorAction SilentlyContinue)) {
-        $State.PairedTracks = $script:pairedTracks
-    }
-    if ($null -ne (Get-Variable -Name 'refreshTracks' -Scope Script -ErrorAction SilentlyContinue)) {
-        $State.RefreshTracks = $script:refreshTracks
     }
     if ($null -ne (Get-Variable -Name 'findMode' -Scope Script -ErrorAction SilentlyContinue)) {
         $State.FindMode = $script:findMode

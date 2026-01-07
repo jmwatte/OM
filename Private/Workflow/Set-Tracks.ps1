@@ -10,9 +10,41 @@ function Set-Tracks {
     $AudioFiles = @($AudioFiles | Where-Object { $_ -ne $null })
     $SpotifyTracks = @($SpotifyTracks | Where-Object { $_ -ne $null })
     
-    #Write-Host "DEBUG Set-Tracks: Entered with SortMethod=$SortMethod, Reverse=$Reverse, AudioFiles count=$($AudioFiles.Count), SpotifyTracks count=$($SpotifyTracks.Count)"
+    Write-Verbose "Set-Tracks: Entered with SortMethod=$SortMethod, Reverse=$Reverse, AudioFiles count=$($AudioFiles.Count), SpotifyTracks count=$($SpotifyTracks.Count)"
 
     $pairedTracks = @()
+    
+    # Handle edge cases: empty arrays
+    if ($SpotifyTracks.Count -eq 0 -and $AudioFiles.Count -eq 0) {
+        return @()
+    }
+    
+    # If no Spotify tracks, return unpaired audio files
+    if ($SpotifyTracks.Count -eq 0) {
+        foreach ($audio in $AudioFiles) {
+            $pairedTracks += [PSCustomObject]@{
+                SpotifyTrack    = $null
+                AudioFile       = $audio
+                Confidence      = 0
+                ConfidenceLevel = "Low"
+            }
+        }
+        return $pairedTracks
+    }
+    
+    # If no audio files, return unpaired Spotify tracks
+    if ($AudioFiles.Count -eq 0) {
+        foreach ($spotify in $SpotifyTracks) {
+            $pairedTracks += [PSCustomObject]@{
+                SpotifyTrack    = $spotify
+                AudioFile       = $null
+                Confidence      = 0
+                ConfidenceLevel = "Low"
+            }
+        }
+        return $pairedTracks
+    }
+    
     #Write-Host "DEBUG: Starting Set-Tracks with Reverse=$Reverse"
     switch ($SortMethod) {
         # byFilesystem: Preserve original filesystem order (as files appear on disk)
@@ -20,7 +52,7 @@ function Set-Tracks {
         "byFilesystem" {
             # Sort audio files by leading track number in filename (natural sort)
             # Handles "1. Aria", "2. Variation 1", "10. Variation 9", etc.
-            $sortedAudio = $AudioFiles | Sort-Object {
+            $sortedAudio = @($AudioFiles | Sort-Object {
                 $filename = [System.IO.Path]::GetFileName($_.FilePath)
                 # Extract leading number from filename (e.g., "1. Aria" -> 1, "10. Variation" -> 10)
                 if ($filename -match '^(\d+)') {
@@ -29,12 +61,12 @@ function Set-Tracks {
                     # No leading number, use a high value to sort at end
                     999999
                 }
-            }
-            $sortedSpotify = $SpotifyTracks | Sort-Object disc_number, track_number
+            })
+            $sortedSpotify = @($SpotifyTracks | Sort-Object disc_number, track_number)
             
             if ($Reverse) {
+                $index = 0
                 foreach ($audio in $sortedAudio) {
-                    $index = [Array]::IndexOf($sortedAudio, $audio)
                     $spotifyTrack = if ($index -lt $sortedSpotify.Count) { $sortedSpotify[$index] } else { $null }
                     
                     # Calculate confidence if both tracks exist
@@ -48,11 +80,12 @@ function Set-Tracks {
                         Confidence   = if ($confidence) { $confidence.Score } else { 0 }
                         ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
                     }
+                    $index++
                 }
             }
             else {
+                $index = 0
                 foreach ($spotify in $sortedSpotify) {
-                    $index = [Array]::IndexOf($sortedSpotify, $spotify)
                     $audioFile = if ($index -lt $sortedAudio.Count) { $sortedAudio[$index] } else { $null }
                     
                     # Calculate confidence if both tracks exist
@@ -66,6 +99,7 @@ function Set-Tracks {
                         Confidence   = if ($confidence) { $confidence.Score } else { 0 }
                         ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
                     }
+                    $index++
                 }
             }
         }
@@ -73,52 +107,46 @@ function Set-Tracks {
         # Also applies natural sorting by leading track number
         "byOrder" {
             # Sort audio files by leading track number in filename (natural sort)
-            $sortedAudio = $AudioFiles | Sort-Object {
+            $sortedAudio = @($AudioFiles | Sort-Object {
                 $filename = [System.IO.Path]::GetFileName($_.FilePath)
                 if ($filename -match '^(\d+)') {
                     [int]$matches[1]
                 } else {
                     999999
                 }
-            }
-            $sortedSpotify = $SpotifyTracks | Sort-Object disc_number, track_number
+            })
+            $sortedSpotify = @($SpotifyTracks | Sort-Object disc_number, track_number)
             
             if ($Reverse) {
-                # Iterate over audio files, match to Spotify by order
+                $index = 0
                 foreach ($audio in $sortedAudio) {
-                    $index = [Array]::IndexOf($sortedAudio, $audio)
                     $spotifyTrack = if ($index -lt $sortedSpotify.Count) { $sortedSpotify[$index] } else { $null }
-                    
-                    # Calculate confidence if both tracks exist
                     $confidence = if ($spotifyTrack -and $audio) {
                         Get-MatchConfidence -ProviderTrack $spotifyTrack -AudioFile $audio
                     } else { $null }
-                    
                     $pairedTracks += [PSCustomObject]@{
                         SpotifyTrack = $spotifyTrack
                         AudioFile    = $audio
                         Confidence   = if ($confidence) { $confidence.Score } else { 0 }
                         ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
                     }
+                    $index++
                 }
             }
             else {
-                # Original: Iterate over Spotify tracks
+                $index = 0
                 foreach ($spotify in $sortedSpotify) {
-                    $index = [Array]::IndexOf($sortedSpotify, $spotify)
                     $audioFile = if ($index -lt $sortedAudio.Count) { $sortedAudio[$index] } else { $null }
-                    
-                    # Calculate confidence if both tracks exist
                     $confidence = if ($spotify -and $audioFile) {
                         Get-MatchConfidence -ProviderTrack $spotify -AudioFile $audioFile
                     } else { $null }
-                    
                     $pairedTracks += [PSCustomObject]@{
                         SpotifyTrack = $spotify
                         AudioFile    = $audioFile
                         Confidence   = if ($confidence) { $confidence.Score } else { 0 }
                         ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
                     }
+                    $index++
                 }
             }
         }
@@ -316,56 +344,46 @@ function Set-Tracks {
             if ($useOrderFallback) {
                 Write-Verbose "Audio files lack valid track numbers, pairing by sorted order"
                 # Sort both lists and pair sequentially
-                $sortedSpotify = $SpotifyTracks | Sort-Object disc_number, track_number
-                
+                $sortedSpotify = @($SpotifyTracks | Sort-Object disc_number, track_number)
                 # Try to extract numeric prefix from filenames for smarter sorting
-                $sortedAudio = $AudioFiles | Sort-Object {
+                $sortedAudio = @($AudioFiles | Sort-Object {
                     $filename = [System.IO.Path]::GetFileName($_.FilePath)
-                    # Try to extract leading number (e.g., "01 - Title.flac" -> 1)
                     if ($filename -match '^(\d+)') {
                         [int]$matches[1]
                     } else {
-                        # No number found, sort alphabetically
                         $_.FilePath
                     }
-                }
-                
+                })
                 if ($Reverse) {
-                    # Iterate over audio files
+                    $index = 0
                     foreach ($audio in $sortedAudio) {
-                        $index = [Array]::IndexOf($sortedAudio, $audio)
                         $spotifyTrack = if ($index -lt $sortedSpotify.Count) { $sortedSpotify[$index] } else { $null }
-                        
-                        # Calculate confidence if both tracks exist
                         $confidence = if ($spotifyTrack -and $audio) {
                             Get-MatchConfidence -ProviderTrack $spotifyTrack -AudioFile $audio
                         } else { $null }
-                        
                         $pairedTracks += [PSCustomObject]@{
                             SpotifyTrack = $spotifyTrack
                             AudioFile    = $audio
                             Confidence   = if ($confidence) { $confidence.Score } else { 0 }
                             ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
                         }
+                        $index++
                     }
                 }
                 else {
-                    # Iterate over Spotify tracks
+                    $index = 0
                     foreach ($spotify in $sortedSpotify) {
-                        $index = [Array]::IndexOf($sortedSpotify, $spotify)
                         $audioFile = if ($index -lt $sortedAudio.Count) { $sortedAudio[$index] } else { $null }
-                        
-                        # Calculate confidence if both tracks exist
                         $confidence = if ($spotify -and $audioFile) {
                             Get-MatchConfidence -ProviderTrack $spotify -AudioFile $audioFile
                         } else { $null }
-                        
                         $pairedTracks += [PSCustomObject]@{
                             SpotifyTrack = $spotify
                             AudioFile    = $audioFile
                             Confidence   = if ($confidence) { $confidence.Score } else { 0 }
                             ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
                         }
+                        $index++
                     }
                 }
             }
@@ -697,5 +715,11 @@ function Set-Tracks {
         }
     }
 
+    Write-Verbose "Set-Tracks: Returning $($pairedTracks.Count) paired tracks"
+    if ($pairedTracks.Count -gt 0) {
+        $withAudio = @($pairedTracks | Where-Object { $_.AudioFile -ne $null }).Count
+        $withSpotify = @($pairedTracks | Where-Object { $_.SpotifyTrack -ne $null }).Count
+        Write-Verbose "Set-Tracks: $withAudio have AudioFile, $withSpotify have SpotifyTrack"
+    }
     return $pairedTracks
 }

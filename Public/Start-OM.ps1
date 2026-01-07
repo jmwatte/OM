@@ -974,6 +974,7 @@ function Start-OM {
                             Write-Verbose "DEBUG: Inside doTracks, checking if we need to refresh..."
                             if ($State.RefreshTracks -or -not $State.PairedTracks) {
                                 Write-Verbose "DEBUG: Will call Set-Tracks"
+                                Write-Verbose "DEBUG: State.AudioFiles type: $(if ($State.AudioFiles) { $State.AudioFiles.GetType().Name } else { 'NULL' }), count: $(if ($State.AudioFiles) { $State.AudioFiles.Count } else { 0 })"
                                 if ($useWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
                                 $param = @{
                                     SortMethod    = $sortMethod
@@ -984,13 +985,22 @@ function Start-OM {
                                 $State.PairedTracks = Set-Tracks @param
                                 
                                 # Sort paired tracks by confidence (High → Medium → Low)
-                                # This makes it easy to spot problematic matches at the bottom
+                                # Use stable sort to preserve original order when confidence is equal
+                                # This ensures matched tracks stay in position even when all have same confidence
                                 $ptType = if ($null -eq $State.PairedTracks) { 'null' } else { $State.PairedTracks.GetType().Name }
                                 $ptCount = if ($null -eq $State.PairedTracks) { 0 } elseif ($State.PairedTracks -is [array]) { $State.PairedTracks.Count } else { 1 }
                                 Write-Verbose "DEBUG: About to check confidence sorting... State.PairedTracks type: $ptType, Count: $ptCount"
                                 if ($State.PairedTracks -and $ptCount -gt 0 -and $State.PairedTracks[0].PSObject.Properties['Confidence']) {
-                                    $State.PairedTracks = @($State.PairedTracks | Sort-Object Confidence -Descending)
-                                    Write-Verbose "Sorted $($State.PairedTracks.Count) tracks by confidence"
+                                    # Add index for stable sort, then sort by confidence (desc) and original index
+                                    $indexedTracks = for ($i = 0; $i -lt $State.PairedTracks.Count; $i++) {
+                                        $State.PairedTracks[$i] | Add-Member -NotePropertyName '_OriginalIndex' -NotePropertyValue $i -PassThru
+                                    }
+                                    $State.PairedTracks = @($indexedTracks | Sort-Object @{Expression='Confidence'; Descending=$true}, @{Expression='_OriginalIndex'; Descending=$false})
+                                    # Remove the temporary index property
+                                    foreach ($track in $State.PairedTracks) {
+                                        $track.PSObject.Properties.Remove('_OriginalIndex')
+                                    }
+                                    Write-Verbose "Sorted $($State.PairedTracks.Count) tracks by confidence (stable)"
                                 }
                                 
                                 $State.RefreshTracks = $false
