@@ -22,7 +22,8 @@ Describe 'Start-OM AUTO provider fallback and autosave cover tests' {
         $script:msgs = New-Object System.Collections.Concurrent.ConcurrentBag[System.String]
         Mock -CommandName Show-Message -ModuleName OM -MockWith { $script:msgs.Add($args[0]) }
 
-        $res = Start-OM -Path $testDir -Auto -AutoFallback -NonInteractive -WhatIf -Confirm:$false -Context [PSCustomObject]@{}
+        $ctx = [PSCustomObject]@{}
+        $res = Start-OM -Path $testDir -Auto -AutoFallback -NonInteractive -WhatIf -Confirm:$false -Context $ctx
 
         $script:msgs -join "`n" | Should -Match 'Switched to provider: Qobuz|Switched to provider'
         $res.Completed | Should -Be $true
