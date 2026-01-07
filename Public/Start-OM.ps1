@@ -1192,7 +1192,9 @@ function Start-OM {
                                         Start-Sleep -Seconds 1
                                     }
                                     
-                                    $State.RefreshTracks = $true
+                                    # DO NOT set RefreshTracks = true here!
+                                    # Invoke-StageB-ReviewMarkedTracks modifies $State.PairedTracks in-place
+                                    # Setting RefreshTracks would call Set-Tracks again and overwrite manual matches
                                     continue
                                 }
                                 '^gm$' {
