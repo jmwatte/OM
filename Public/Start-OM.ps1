@@ -769,7 +769,7 @@ function Start-OM {
                             $script:autoModeActive = $false
                             # In NonInteractive mode, skip to next album instead of entering interactive loop
                             if ($NonInteractive) {
-                                Write-Warning "NonInteractive: Skipping album '$script:albumName' (no auto match)."
+                                Write-Warning "NonInteractive: Skipping album '$($State.AlbumName)' (no auto match)."
                                 $albumDone = $true
                                 break stageLoop
                             }
@@ -881,7 +881,7 @@ function Start-OM {
                                 $albumIndex = $index - 1
                                 $selectedAlbum = $albumCandidates[$albumIndex]
                                 if ($selectedAlbum.cover_url) {
-                                    $result = Save-CoverArt -CoverUrl $selectedAlbum.cover_url -AlbumPath $script:album.FullName -Action SaveToFolder -MaxSize $maxSize -WhatIf:$useWhatIf
+                                    $result = Save-CoverArt -CoverUrl $selectedAlbum.cover_url -AlbumPath $State.Album.FullName -Action SaveToFolder -MaxSize $maxSize -WhatIf:$useWhatIf
                                     if (-not $result.Success) {
                                         Write-Warning "Failed to save cover art for album $index ($($selectedAlbum.name)): $($result.Error)"
                                     }
@@ -912,7 +912,7 @@ function Start-OM {
                             $config = Get-OMConfig
                             $maxSize = $config.CoverArt.TagImageSize
                             # Get audio files for embedding using helper
-                            $audioFiles = Get-OMAudioFile -Path $script:album.FullName
+                            $audioFiles = Get-OMAudioFile -Path $State.Album.FullName
 
                             if ($audioFiles.Count -gt 0) {
                                 foreach ($index in @($selectedIndices)) {
@@ -1213,7 +1213,7 @@ function Start-OM {
                         # collect audio files and tags
                         Write-Verbose "sortMethod = '$sortMethod'"
                         $skipSort = $sortMethod -eq 'byFilesystem'
-                        $script:audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName -SkipSort:$skipSort
+                        $script:audioFiles = Reload-OMAudioFiles -AlbumPath $State.Album.FullName -SkipSort:$skipSort
                         Write-Verbose "Loaded $($script:audioFiles.Count) audio files (SkipSort: $skipSort)"
                         
                         # Check if any valid audio files were loaded
@@ -1222,7 +1222,7 @@ function Start-OM {
                             Show-Message -Message "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Red -Context $Context
                             Show-Message -Message "⚠️  ERROR: No valid audio files found!" -ForegroundColor Red -Context $Context
                             Show-Message -Message "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Red -Context $Context
-                            Show-Message -Message "`nAlbum folder: $($script:album.FullName)" -ForegroundColor Yellow -Context $Context
+                            Show-Message -Message "`nAlbum folder: $($State.Album.FullName)" -ForegroundColor Yellow -Context $Context
                             Show-Message -Message "All audio files were corrupted or invalid. Skipping this album." -ForegroundColor Yellow -Context $Context
                             if (-not $NonInteractive) {
                                 Prompt-PressEnter -Context $Context
