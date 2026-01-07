@@ -488,8 +488,8 @@ function Invoke-OMQuickFind {
         elseif ($albumChoice -match '^cv(.*)$') {
             $rangeText = $matches[1]
             if (-not $rangeText) { $rangeText = "1" }
-            Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false
-            Prompt-PressEnter -Context $Context
+            [void](Show-CoverArt -RangeText $rangeText -AlbumList $albumCandidates -Provider $Provider -Size 'original' -Grid $false)
+            [void](Prompt-PressEnter -Context $Context)
             continue albumSelectionLoop
         }
         elseif ($albumChoice -match '^cs(.*)$') {
