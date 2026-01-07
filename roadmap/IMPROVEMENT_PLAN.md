@@ -61,13 +61,17 @@ This phase focuses on organizing the code, reducing complexity within `Start-OM.
 -   **Impact:** Significantly declutters `Start-OM.ps1`, promotes reusability, and allows for independent testing of these helpers.
 
 ### 2.2. Centralize Audio File Loading
--   **Status:** `Partial` - Helpers exist (`Get-OMAudioFile`, `Reload-OMAudioFiles`) but not fully utilized
+-   **Status:** `COMPLETE` ✅
 -   **Objective:** Create a single, reusable function for loading and processing audio files from a given path.
 -   **Implementation Details:**
     -   Helpers created: `Get-OMAudioFile.ps1` and `Reload-OMAudioFiles.ps1` in `Private/Utils/`
-    -   `Reload-OMAudioFiles` is used in 5 places in Start-OM.ps1
-    -   Still ~6 places with inline `Get-ChildItem` audio file loading that could use these helpers
-    -   TODO: Replace inline audio loading with helper calls
+    -   `Reload-OMAudioFiles` is used in 3 places in Start-OM.ps1
+    -   **ALL inline `Get-ChildItem` audio loading replaced with `Get-OMAudioFile` helper:**
+        -   Start-OM.ps1: Initial path detection, subfolder audio check, album validation (3 replacements)
+        -   Invoke-StageB-AlbumSelection.ps1: Cover art embed audio loading (1 replacement)
+        -   Invoke-OMQuickFind.ps1: First audio file tag detection (1 replacement)
+    -   Benefits: Consistent error handling, TagLib integration, natural sorting, code reuse
+-   **Completed:** January 2026 (Commit 52c328c)
 
 ## Phase 3: Long-Term Architectural Refactoring
 
