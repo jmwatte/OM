@@ -1994,6 +1994,40 @@ function Start-OM {
                                             $selection = "1"
                                         }
                                         
+                                        # Handle universal actions (b, x, s, p)
+                                        if ($selection -eq 'x') {
+                                            Show-Message -Message "Exiting manual review..." -ForegroundColor Yellow -Context $Context
+                                            $exitDo = $true
+                                            $albumDone = $true
+                                            break
+                                        }
+                                        
+                                        if ($selection -eq 'b') {
+                                            Show-Message -Message "Going back to album selection..." -ForegroundColor Yellow -Context $Context
+                                            $stage = 'B'
+                                            $exitDo = $true
+                                            break
+                                        }
+                                        
+                                        if ($selection -match '^p\s*(.+)?$') {
+                                            $newProvider = $matches[1]
+                                            if ($newProvider) {
+                                                $providerMap = @{ 's' = 'Spotify'; 'q' = 'Qobuz'; 'd' = 'Discogs'; 'm' = 'MusicBrainz' }
+                                                if ($providerMap.ContainsKey($newProvider.ToLower())) {
+                                                    $Provider = $providerMap[$newProvider.ToLower()]
+                                                }
+                                                else {
+                                                    $Provider = $newProvider
+                                                }
+                                                Show-Message -Message "Switched to provider: $Provider (will apply on next search)" -ForegroundColor Green -Context $Context
+                                            }
+                                            else {
+                                                Show-Message -Message "Usage: p <provider> (e.g., p spotify, p qobuz, p discogs, p musicbrainz)" -ForegroundColor Yellow -Context $Context
+                                            }
+                                            Start-Sleep -Seconds 1
+                                            continue
+                                        }
+                                        
                                         if ($selection -eq 's') {
                                             Show-Message -Message "Skipped" -ForegroundColor Gray -Context $Context
                                             continue
