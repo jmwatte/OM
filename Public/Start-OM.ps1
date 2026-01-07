@@ -1494,7 +1494,7 @@ function Start-OM {
                                 if ($useWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
                                 $param = @{
                                     SortMethod    = $sortMethod
-                                    AudioFiles    = $script:audioFiles
+                                    AudioFiles    = $State.AudioFiles
                                     SpotifyTracks = $tracksForAlbum
                                 }
                                 if ($reverseSource) { $param.Reverse = $true }
@@ -1524,7 +1524,7 @@ function Start-OM {
                                         ProviderAlbum = $ProviderAlbum
                                     }
                                     if ($reverseSource) { $autoShowParams.Reverse = $true }
-                                    if ($script:showVerbose) { $autoShowParams.Verbose = $true }
+                                    if ($State.ShowVerbose) { $autoShowParams.Verbose = $true }
                                     Write-Verbose "TRACE: Before Show-Tracks (auto path) - InputReader present: $([bool]$autoReader)"
                                     Show-Tracks @autoShowParams -InputReader $autoReader | Out-Null
                                     $goCDisplayShown = $true
@@ -1544,7 +1544,7 @@ function Start-OM {
                                         # Create temporary pairing with this strategy
                                         $tempParam = @{
                                             SortMethod    = $strategy
-                                            AudioFiles    = $script:audioFiles
+                                            AudioFiles    = $State.AudioFiles
                                             SpotifyTracks = $tracksForAlbum
                                         }
                                         if ($reverseSource) { $tempParam.Reverse = $true }
@@ -1617,7 +1617,7 @@ function Start-OM {
                             else {
                                 if ($useWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
                                 $whatIfStatus = if ($useWhatIf) { "ON" } else { "OFF" }
-                                $verboseStatus = if ($script:showVerbose) { "ON" } else { "OFF" }
+                                $verboseStatus = if ($State.ShowVerbose) { "ON" } else { "OFF" }
                                 
                                 # Build sort method options with active one highlighted
                                 $sortOptions = @{
@@ -1649,7 +1649,7 @@ function Start-OM {
                                     SortMethod    = $sortMethod
                                 }
                                 if ($reverseSource) { $paramshow.Reverse = $true }
-                                if ($script:showVerbose) { $paramshow.Verbose = $true }
+                                if ($State.ShowVerbose) { $paramshow.Verbose = $true }
                                 if ($VerbosePreference -ne 'Continue') { Clear-Host }
                                 $inputF = Show-Tracks @paramshow
 
