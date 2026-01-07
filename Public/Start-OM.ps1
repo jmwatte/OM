@@ -382,40 +382,40 @@ function Start-OM {
         
         # Initialize WhatIf mode early
         $useWhatIf = $isWhatIf
-        $script:findMode = 'artist-first'  # Default to artist-first mode
-        $script:autoModeActive = $false    # Will be set to $true if Auto mode finds a match
+        $State.FindMode = 'artist-first'  # Default to artist-first mode
+        $State.AutoModeActive = $false    # Will be set to $true if Auto mode finds a match
         $currentAlbumPage = 1
         
         foreach ($albumOriginal in @($albums)) {
-            $script:album = $albumOriginal
-            Write-Verbose "TRACE: Start processing album: $($script:album.FullName)"
-            $script:ManualAlbumArtist = $null
-            # Initialize script-scope variables
-            $script:audioFiles = $null
-            $script:pairedTracks = $null
-            $script:refreshTracks = $false
+            $State.Album = $albumOriginal
+            Write-Verbose "TRACE: Start processing album: $($State.Album.FullName)"
+            $State.ManualAlbumArtist = $null
+            # Initialize State properties
+            $State.AudioFiles = $null
+            $State.PairedTracks = $null
+            $State.RefreshTracks = $false
             
             # derive album name and year
             # Try to extract year from the start of the folder name (e.g., "2023 - Album Name")
-            if ($script:album.Name -match '^(\d{4})\s*[-]?\s*(.+)') {
+            if ($State.Album.Name -match '^(\d{4})\s*[-]?\s*(.+)') {
                 $year = $matches[1]
                 $albumName = $matches[2].Trim()
-                $script:albumName = $matches[2].Trim()
+                $State.AlbumName = $matches[2].Trim()
             }
             else {
                 $year = $null
-                $script:albumName = $script:album.Name.Trim()
-                $albumName = $script:album.Name.Trim()
+                $State.AlbumName = $State.Album.Name.Trim()
+                $albumName = $State.Album.Name.Trim()
 
             }
-            $audioFilesCheck = @(Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+            $audioFilesCheck = @(Get-ChildItem -LiteralPath $State.Album.FullName -File -Recurse | 
                 Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
                 Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) })
             if (-not $audioFilesCheck -or $audioFilesCheck.Count -eq 0) {
-                Write-Warning "No supported audio files found in album folder: $($script:album.FullName). Skipping album."
+                Write-Warning "No supported audio files found in album folder: $($State.Album.FullName). Skipping album."
                 continue
             }
-            $script:trackCount = $audioFilesCheck.Count
+            $State.TrackCount = $audioFilesCheck.Count
             $artistQuery = $artist
             $stage = "A"
             $cachedAlbums = $null
@@ -423,16 +423,16 @@ function Start-OM {
             $loadStageBResults = $true 
             # Pagination fields (unused right now) removed to avoid analyzer warnings
             $albumDone = $false
-            $script:findMode = 'quick'  # Always start in quick find mode
-            $script:quickAlbumCandidates = $null
-            $script:quickCurrentPage = 1
-            $script:backNavigationMode = $false
-            $currentArtist = $script:artist  # Persistent current artist for quick find mode
-            $currentAlbum = $script:albumName  # Persistent current album for quick find mode
+            $State.FindMode = 'quick'  # Always start in quick find mode
+            $State.QuickAlbumCandidates = $null
+            $State.QuickCurrentPage = 1
+            $State.BackNavigationMode = $false
+            $currentArtist = $State.Artist  # Persistent current artist for quick find mode
+            $currentAlbum = $State.AlbumName  # Persistent current album for quick find mode
             $skipQuickPrompts = $false  # Flag to skip prompts when re-entering quick find after provider change
 
-            # Sync remaining album state to State object
-            Sync-OMScriptToState -State $State
+            # Sync State to script scope for legacy code
+            Sync-OMStateToScript -State $State
 
             :stageLoop while ($true) {
                 # Sync State at start of each stage loop iteration
