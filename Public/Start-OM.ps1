@@ -281,13 +281,6 @@ function Start-OM {
         $subFoldersInPath = @(Get-ChildItem -LiteralPath $Path -Directory -ErrorAction SilentlyContinue)
         Write-Verbose "Start-OM: enumerated $($audioFilesInPath.Count) audio files and $($subFoldersInPath.Count) subfolders"
         
-        # Helper function to detect if a folder name is a disc folder
-        $isDiscFolder = {
-            param([string]$FolderName)
-            # Match patterns: Disc1, Disc 1, Disc 01, CD1, CD 1, CD01, Disk1, Disk 1, Disk01, etc.
-            return $FolderName -match '^\s*(Disc|CD|Disk)\s*\d+\s*$'
-        }
-        
         # Single album mode: Path has audio files and either no subfolders or all subfolders are disc folders
         $script:isSingleAlbumPath = $false
         $script:originalPath = $Path
@@ -308,9 +301,8 @@ function Start-OM {
             }
             else {
                 # Subfolders with audio exist - check if they're ALL disc folders
-                if (-not ($isDiscFolder -is [scriptblock])) { Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("isDiscFolder is not a scriptblock (value: '$isDiscFolder')")), 'InvalidTarget', 'InvalidOperation', $isDiscFolder) ; throw "isDiscFolder invalid" }
-                Write-Verbose ("TRACE: Building nonDiscFolders: subFoldersWithAudio.Count=$($subFoldersWithAudio.Count); isDiscFolder isScriptBlock=$($isDiscFolder -is [scriptblock])")
-                $nonDiscFolders = @($subFoldersWithAudio | Where-Object { -not (Invoke-SafeScriptBlock -Block { & $isDiscFolder $_.Name } -ContextMsg 'isDiscFolder invocation') })
+                Write-Verbose ("TRACE: Building nonDiscFolders: subFoldersWithAudio.Count=$($subFoldersWithAudio.Count)")
+                $nonDiscFolders = @($subFoldersWithAudio | Where-Object { -not (Assert-DiscFolder -FolderName $_.Name) })
                 
                 if ($nonDiscFolders.Count -eq 0) {
                     # ALL subfolders with audio are disc folders → single multi-disc album
@@ -365,45 +357,6 @@ function Start-OM {
                 $qobuzUrlLocale = $qobuzLocale
             }
             Write-Verbose "Cached Qobuz URL locale: $qobuzUrlLocale"
-        }
-        
-        # Helper function to normalize Discogs IDs (strip brackets, resolve masters)
-        $normalizeDiscogsId = {
-            param([string]$InputId)
-            
-            $id = $InputId.Trim()
-            
-            # Remove brackets if present: [r2388472] → r2388472, [m1764178] → m1764178
-            $id = $id -replace '^\[|\]$', ''
-            
-            # Check if it's a master release (m prefix)
-            # if ($id -match '^m(\d+)$') {
-            #     Write-Host "Detected Discogs master release: $id" -ForegroundColor Yellow
-            #     Write-Host "Fetching master to resolve main release..." -ForegroundColor Cyan
-            #     try {
-            #         $masterId = $matches[1]
-            #         $master = Invoke-DiscogsRequest -Uri "/masters/$masterId"
-            #         if ($master -and $master.main_release) {
-            #             $id ="r"+[string]$master.main_release
-            #             Write-Host "✓ Resolved to main release: $id" -ForegroundColor Green
-            #         }
-            #         else {
-            #             Write-Warning "Could not resolve master $masterId to main release, using master ID"
-            #             $id = $masterId
-            #         }
-            #     }
-            #     catch {
-            #         Write-Warning "Failed to fetch master release: $_"
-            #         $id = $masterId
-            #     }
-            # }
-            # # Strip 'r' prefix if present: r2388472 → 2388472
-            # elseif ($id -match '^r(\d+)$') {
-
-            #     #$id = $matches[1]
-            # }
-            
-            return $id
         }
         
         # Helper function to show consistent header across all stages
@@ -1396,7 +1349,7 @@ function Start-OM {
                                 }
                                 '^id:(.+)$' { 
                                     $id = $matches[1].Trim()
-                                    if ($Provider -eq 'Discogs') { if (-not ($normalizeDiscogsId -is [scriptblock])) { Dump-ExceptionDiagnostics -ErrorRecord (New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception("normalizeDiscogsId is not a scriptblock (value: '$normalizeDiscogsId')")), 'InvalidTarget', 'InvalidOperation', $normalizeDiscogsId) ; throw "normalizeDiscogsId invalid" } ; $id = Invoke-SafeScriptBlock -Block $normalizeDiscogsId -Args @($id) -ContextMsg 'normalizeDiscogsId' }
+                                    if ($Provider -eq 'Discogs') { $id = ConvertTo-DiscogsId -InputId $id }
                                     $ProviderArtist = @{ id = $id; name = $id }
                                     $stage = 'B'
                                     continue 
