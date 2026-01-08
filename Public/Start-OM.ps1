@@ -1359,7 +1359,7 @@ function Start-OM {
                                         -ProviderAlbum $ProviderAlbum `
                                         -ProviderArtist $ProviderArtist `
                                         -AlbumPath $State.Album.FullName `
-                                        -AudioFiles $audioFiles `
+                                        -AudioFiles $State.AudioFiles `
                                         -ManualAlbumArtist $State.ManualAlbumArtist `
                                         -AlbumName $State.AlbumName `
                                         -UseWhatIf:$useWhatIf `
@@ -1559,15 +1559,19 @@ function Start-OM {
                                     }
                                     
                                     # Use helper for folder move - use ReloadTags since we just saved tags
-                                    $folderMoveResult = Invoke-OMFolderMove `
-                                        -ProviderAlbum $ProviderAlbum `
-                                        -ProviderArtist $ProviderArtist `
-                                        -AlbumPath $State.Album.FullName `
-                                        -AudioFiles $State.AudioFiles `
-                                        -ManualAlbumArtist $State.ManualAlbumArtist `
-                                        -AlbumName $State.AlbumName `
-                                        -UseWhatIf:$useWhatIf `
-                                        -ReloadTags:(-not $useWhatIf)
+                                    $fmParams = @{
+                                        ProviderAlbum      = $ProviderAlbum
+                                        ProviderArtist     = $ProviderArtist
+                                        AlbumPath          = $State.Album.FullName
+                                        AudioFiles         = $State.AudioFiles
+                                        ManualAlbumArtist  = $State.ManualAlbumArtist
+                                        AlbumName          = $State.AlbumName
+                                        UseWhatIf          = $useWhatIf
+                                    }
+                                    if (-not $useWhatIf) {
+                                        $fmParams['ReloadTags'] = $true
+                                    }
+                                    $folderMoveResult = Invoke-OMFolderMove @fmParams
                                     
                                     Write-Verbose ("TRACE: Invoke-OMHandleMoveSuccess args: moveResult=($($folderMoveResult.MoveResult -as [string])); useWhatIf=$useWhatIf; oldpath=$($folderMoveResult.OldPath)")
                                     Invoke-OMHandleMoveSuccess -MoveResult $folderMoveResult.MoveResult -UseWhatIf $useWhatIf -OldPath $folderMoveResult.OldPath `
