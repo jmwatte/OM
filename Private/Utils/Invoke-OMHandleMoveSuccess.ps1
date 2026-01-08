@@ -83,24 +83,29 @@ function Invoke-OMHandleMoveSuccess {
     # Not WhatIf - actual move occurred
     if ($MoveResult.NewAlbumPath -eq $OldPath) {
         Write-Verbose "Move result indicates no change to album path; continuing."
-        Show-Message -Message "Album saved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow -Context $Context
-        return
-    }
-
-    # Folder was moved - update State and reload audio files
-    $State.Album = Get-Item -LiteralPath $MoveResult.NewAlbumPath
-    $State.AudioFiles = Reload-OMAudioFiles -AlbumPath $State.Album.FullName
-
-    # Update paired tracks with reloaded audio files
-    if ($State.PairedTracks -and $State.PairedTracks.Count -gt 0) {
-        for ($i = 0; $i -lt [Math]::Min($State.PairedTracks.Count, $State.AudioFiles.Count); $i++) {
-            if ($State.PairedTracks[$i].AudioFile.TagFile) {
-                try { $State.PairedTracks[$i].AudioFile.TagFile.Dispose() } catch { Write-Verbose "Dispose failed: $($_.Exception.Message)" }
-            }
-            $State.PairedTracks[$i].AudioFile = $State.AudioFiles[$i]
+        # Even if folder wasn't renamed, check if we need to move to TargetFolder
+        if (-not $TargetFolder) {
+            Show-Message -Message "Album saved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow -Context $Context
+            return
         }
+        # TargetFolder specified - proceed to move logic below
     }
-    $State.RefreshTracks = $true  # Trigger display refresh
+    else {
+        # Folder was moved/renamed - update State and reload audio files
+        $State.Album = Get-Item -LiteralPath $MoveResult.NewAlbumPath
+        $State.AudioFiles = Reload-OMAudioFiles -AlbumPath $State.Album.FullName
+
+        # Update paired tracks with reloaded audio files
+        if ($State.PairedTracks -and $State.PairedTracks.Count -gt 0) {
+            for ($i = 0; $i -lt [Math]::Min($State.PairedTracks.Count, $State.AudioFiles.Count); $i++) {
+                if ($State.PairedTracks[$i].AudioFile.TagFile) {
+                    try { $State.PairedTracks[$i].AudioFile.TagFile.Dispose() } catch { Write-Verbose "Dispose failed: $($_.Exception.Message)" }
+                }
+                $State.PairedTracks[$i].AudioFile = $State.AudioFiles[$i]
+            }
+        }
+        $State.RefreshTracks = $true  # Trigger display refresh
+    }
 
     # Handle TargetFolder move if specified
     if ($TargetFolder) {
