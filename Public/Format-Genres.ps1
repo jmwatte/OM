@@ -443,9 +443,9 @@ function Show-GenreFrequencySummary {
         [hashtable]$Analysis
     )
 
-    Write-Output "`n╔════════════════════════════════════════════════════════════════╗"
-    Write-Output "║                    GENRE ANALYSIS SUMMARY                      ║"
-    Write-Output "╠════════════════════════════════════════════════════════════════╣"
+    Write-Host "`n╔════════════════════════════════════════════════════════════════╗"
+    Write-Host "║                    GENRE ANALYSIS SUMMARY                      ║"
+    Write-Host "╠════════════════════════════════════════════════════════════════╣"
 
     $rows = @()
 
@@ -490,9 +490,9 @@ function Show-GenreFrequencySummary {
         @{ Label = "Genre"; Expression = { $_.Genre }; Width = 25 }
         @{ Label = "Files"; Expression = { $_.Count }; Width = 8 }
         @{ Label = "Action"; Expression = { $_.Action }; Width = 25 }
-    ) | Out-String | Write-Output
+    ) | Out-String | Write-Host
 
-    Write-Output "╚════════════════════════════════════════════════════════════════╝"
+    Write-Host "╚════════════════════════════════════════════════════════════════╝"
 }
 
 # Helper function to process unmapped genres
@@ -522,18 +522,18 @@ function Process-UnmappedGenres {
 
         while (-not $decision) {
             # Always display the genre being processed (helps when going back)
-            Write-Output "`n╔════════════════════════════════════════════════════════════════╗"
-            Write-Output "  Found '$originalGenre' in $count file(s)"
-            Write-Output "╚════════════════════════════════════════════════════════════════╝"
+            Write-Host "`n╔════════════════════════════════════════════════════════════════╗"
+            Write-Host "  Found '$originalGenre' in $count file(s)"
+            Write-Host "╚════════════════════════════════════════════════════════════════╝"
             
-            Write-Output "`nOptions:"
-            Write-Output "  [N]ew      - Add as new standard genre"
-            Write-Output "  [A]ddTo    - Map to existing standard genre"
-            Write-Output "  [C]hange   - Replace with different genre"
-            Write-Output "  [D]elete   - Mark as garbage, remove from tags"
-            Write-Output "  [R]eview   - Review and modify recent decisions"
-            Write-Output "  [S]kip     - Skip for now (don't decide)"
-            Write-Output "  [Show]     - Show sample files with this genre"
+            Write-Host "`nOptions:"
+            Write-Host "  [N]ew      - Add as new standard genre"
+            Write-Host "  [A]ddTo    - Map to existing standard genre"
+            Write-Host "  [C]hange   - Replace with different genre"
+            Write-Host "  [D]elete   - Mark as garbage, remove from tags"
+            Write-Host "  [R]eview   - Review and modify recent decisions"
+            Write-Host "  [S]kip     - Skip for now (don't decide)"
+            Write-Host "  [Show]     - Show sample files with this genre"
 
             if (-not $Force) {
                 $choice = Read-Host "Choose option (N/A/C/D/R/S/Show)"
@@ -739,9 +739,9 @@ function Process-UnmappedGenres {
                             $index++
                         }
                         
-Write-Output "`nOptions:"
-                    Write-Output "  Enter number to delete that decision"
-                    Write-Output "  'B' to go back"
+Write-Host "`nOptions:"
+                    Write-Host "  Enter number to delete that decision"
+                    Write-Host "  'B' to go back"
                         
                         $reviewChoice = Read-Host "Choice"
                         

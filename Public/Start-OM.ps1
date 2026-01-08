@@ -201,7 +201,7 @@ function Start-OM {
         trap [System.Management.Automation.ParameterBindingException] {
             Write-Error "Start-OM: ParameterBindingException caught: $($_.Exception.Message)"
             Dump-ExceptionDiagnostics -ErrorRecord $_ -ContextMsg "ParameterBindingException trap"
-            Write-Output "Path: $Path"
+            Write-Host "Path: $Path"
             throw
         }
 
@@ -209,7 +209,7 @@ function Start-OM {
         trap [System.InvalidOperationException] {
             Write-Error "Start-OM: InvalidOperationException caught: $($_.Exception.Message)"
             Dump-ExceptionDiagnostics -ErrorRecord $_ -ContextMsg "InvalidOperationException trap"
-            Write-Output "Path: $Path"
+            Write-Host "Path: $Path"
             throw
         }
 
@@ -223,7 +223,7 @@ function Start-OM {
                 Show-Message -Message $Message -ForegroundColor $Color -Context $Context
             } else {
                 Write-Verbose "Send-Message fallback: $Message"
-                Write-Output $Message
+                Write-Host $Message
             }
         }
 

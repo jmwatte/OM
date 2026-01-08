@@ -116,8 +116,8 @@
             
             if (-not $tagLibPath) {
                 # TagLib-Sharp not found - offer to install
-                Write-Output "TagLib-Sharp is required for track tag reading but is not installed."
-                Write-Output ""
+                Write-Host "TagLib-Sharp is required for track tag reading but is not installed."
+                Write-Host ""
 
                 # Only prompt if running interactively
                 if ([Environment]::UserInteractive -and -not $env:CI) {
@@ -127,16 +127,16 @@
                         if (Get-Command Install-TagLibSharp -ErrorAction SilentlyContinue) {
                             Install-TagLibSharp
                         } else {
-                            Write-Output "To install TagLib-Sharp:"
-                            Write-Output "  Install-Package TagLibSharp -Force"
-                            Write-Output "  -or-"
-                            Write-Output "  Download from: https://www.nuget.org/packages/TagLibSharp/"
+                            Write-Host "To install TagLib-Sharp:"
+                            Write-Host "  Install-Package TagLibSharp -Force"
+                            Write-Host "  -or-"
+                            Write-Host "  Download from: https://www.nuget.org/packages/TagLibSharp/"
                         }
                     }
                 } else {
-                    Write-Output "To install TagLib-Sharp:"
-                    Write-Output "  Install-Package TagLibSharp"
-                    Write-Output "  -or- Use: Install-TagLibSharp (helper function)"
+                    Write-Host "To install TagLib-Sharp:"
+                    Write-Host "  Install-Package TagLibSharp"
+                    Write-Host "  -or- Use: Install-TagLibSharp (helper function)"
                 }
 
                 return @()

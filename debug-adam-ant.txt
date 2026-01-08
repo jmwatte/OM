@@ -1,0 +1,43 @@
+
+id                     name                                                  disc_number track_number
+--                     ----                                                  ----------- ------------
+14oumgYnassLxoi0ZBH9uL Dog Eat Dog - Remastered                                        1            1
+2tYnmGr2CTrCugCNK73uoW Antmusic - Remastered                                           1            2
+3Howe6tEjLNzxWiIG6qELt Feed Me to the Lions - Remastered                               1            3
+3Ejbl0tfmLYcTKU4yd6sCp Los Rancheros - Remastered                                      1            4
+6a1VHgMjzv59EHrPi4msn6 Ants Invasion - Remastered                                      1            5
+4jrkAU2Q98ODpyV6J12RMm Killer in the Home - Remastered                                 1            6
+0ugShJGilOJ4zOjBOlVD7Q Kings of the Wild Frontier - Remastered                         1            7
+2hnKvbs8nbHLcy1qvTK91y The Magnificent Five - Remastered                               1            8
+4lsep4XvXE1XmKb7TZR4YK Don't Be Square (Be There) - Remastered                         1            9
+49dp32hxAGdN6f3VB4WXGN Jolly Roger - Remastered                                        1           10
+6pti1Q8elLXU87RBsHPQOP Making History - Remastered                                     1           11
+6D6LvuRPcdB7q32uqtqm52 The Human Beings - Remastered                                   1           12
+1qhcnzdvb03PZCVUT8yFi5 Press Darlings - B Side Remastered                              1           13
+55CJDjr28qyEPeLRlccncN Physical (You're So) - B Side Remastered                        1           14
+5Q4LzKz9Uy9reNgPJNzATV Fall In - B Side Remastered                                     1           15
+6jtHi0rYYnHFMrXTXQOjBX Don't Be Square (Be There) - KPM Studio Demo                    1           16
+1vSntiBs9gwnBkHe3hVYnV The Human Beings - KPM Studio Demo                              1           17
+6nyrYaKQ2FXZv1gXwYrmrM Los Rancheros - KPM Studio Demo                                 1           18
+6hyzq8x31UmI1nA705yIyE Making History - KPM Studio Demo                                1           19
+1UTyEJXTWs35E5768VeLLk The Human Beings - Live                                         2            1
+5Fy9TfSFwubMVyc3bNB6mr Dog Eat Dog - Live                                              2            2
+1jirdAFzbKwnDFO0wuchSA The Magnificent Five - Live                                     2            3
+3u3ysm9owEm0WAvBACXv5J Don't Be Square (Be There) - Live                               2            4
+75IDlXTwJag8D6vBpkvFLi Los Rancheros - Live                                            2            5
+0TxCSGSuM0nTfcKOqUl120 Ants Invasion - Live                                            2            6
+08YdvjykNDBhRuAFd6PTlW Killer in the Home - Live                                       2            7
+7BsW7qGJ0rbPWBHhhKpt7g Cleopatra - Live                                                2            8
+0E8N2RQSK3lzRsjuHaPm4L Press Darlings - Live                                           2            9
+5OL9imiwr1jykYqxfB8QqQ Kick! - Live                                                    2           10
+0BeLqodgbMiNXTn7iQhXz2 Antmusic - Live                                                 2           11
+4qj2oizFMzYqApLahq4wUv Beat My Guest - Live                                            2           12
+2sFnwTkHEEMgV59ouJsUtN Jolly Roger - Live                                              2           13
+7g6qUOMQWU4LrpxuTLwcoI Zerøx - Live                                                    2           14
+4uOc8E8Ow7ts2886AsBDgz Car Trouble - Live                                              2           15
+7IsbwnsOOzVx0eL1uscfQb Kings of the Wild Frontier - Live                               2           16
+6ffCdtijZoD4t9HHnZSoyV Physical (You're So) - Live                                     2           17
+3sC0uu9d8lpOUrHrDMG5or A.N.T.S.                                                        2           18
+2hzI2QUp29D3bbdKEtvjxA Antmusic - Final Rough Cut                                      2           19
+1kenuaszWwWlKtjzLWVfsa Don't Be Square (Be There) - (Final Rough Cut) [Live]           2           20
+

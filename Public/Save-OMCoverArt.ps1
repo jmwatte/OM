@@ -87,7 +87,7 @@
                 Select-Object -First 1
 
             if ($existingCover -and -not $Force) {
-                Write-Output "⊘ Skipping (artwork exists): $Path"
+                Write-Host "⊞ Skipping (artwork exists): $Path"
                 return
             }
 
@@ -109,15 +109,15 @@
             # Strip year prefix from album name (e.g., "2020 - Album Name" -> "Album Name")
             $albumName = $albumFolderItem.Name -replace '^\d{4}\s*-\s*', ''
 
-            Write-Output "`n╔════════════════════════════════════════════════════════════════╗"
-            Write-Output "  Fetching artwork: $artistName - $albumName"
+            Write-Host "`n╔════════════════════════════════════════════════════════════════╗"
+            Write-Host "  Fetching artwork: $artistName - $albumName"
             if ($isDiscFolder) {
-                Write-Output "  (Disc subfolder detected: saving to $folderName)"
+                Write-Host "  (Disc subfolder detected: saving to $folderName)"
             }
-            Write-Output "╚════════════════════════════════════════════════════════════════╝"
+            Write-Host "╚════════════════════════════════════════════════════════════════╝"
 
             # Search for album using the provider
-            Write-Output "Searching $Provider..."
+            Write-Host "Searching $Provider..."
             
             $searchResults = Invoke-ProviderSearchAlbums -Provider $Provider `
                 -ArtistName $artistName `
@@ -131,8 +131,8 @@
             # Use the first (best) match
             $bestMatch = $searchResults[0]
             
-            Write-Output "Found: $($bestMatch.artist) - $($bestMatch.name)"
-            Write-Output "  Provider ID: $($bestMatch.id)"
+            Write-Host "Found: $($bestMatch.artist) - $($bestMatch.name)"
+            Write-Host "  Provider ID: $($bestMatch.id)"
 
             # Check if cover URL exists
             if (-not $bestMatch.cover_url) {
@@ -145,7 +145,7 @@
             $actualMaxSize = if ($MaxSize -gt 0) { $MaxSize } else { 2000 }  # Use 2000 for "original"
 
             # Download and save cover art
-            Write-Output "Downloading cover art..."
+            Write-Host "Downloading cover art..."
             
             $result = Save-CoverArt -CoverUrl $bestMatch.cover_url `
                 -AlbumPath $Path `
@@ -153,7 +153,7 @@
                 -MaxSize $actualMaxSize
 
             if ($result.Success) {
-                Write-Output "✓ Cover art saved successfully"
+                Write-Host "✓ Cover art saved successfully"
             } else {
                 Write-Warning "Failed to save cover art: $($result.Error)"
             }

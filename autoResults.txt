@@ -1,0 +1,881 @@
+foreach ($dir in $dirs) { Write-Host "`n`n=== Processing: $dir ===" -ForegroundColor Cyan;
+>     Start-OM -Path $dir -Provider Qobuz -Auto -AutoFallback -AutoSaveCover -TargetFolder $checked -verbose; if (-not $?) { Write-Host "Failed on $dir" -ForegroundColor Red } }
+
+
+=== Processing: H:\__Fresh\Bluetech ===
+VERBOSE: Found candidate (module installed): C:\Users\jmw\Documents\PowerShell\Modules\MuFo\lib\TagLib.dll
+VERBOSE: Found candidate under module base: C:\Users\jmw\Documents\PowerShell\Modules\MuFo\lib\TagLib.dll
+VERBOSE: Found candidate under module base: C:\Users\jmw\Documents\PowerShell\Modules\MuFo\lib\TagLibSharp.2.3.0\lib\net462\TagLibSharp.dll
+VERBOSE: Found candidate under module base: C:\Users\jmw\Documents\PowerShell\Modules\MuFo\lib\TagLibSharp.2.3.0\lib\netstandard2.0\TagLibSharp.dll
+VERBOSE: Found candidate (PSModulePath): C:\Users\jmw\Documents\PowerShell\Modules\MuFo\lib\TagLib.dll
+VERBOSE: Attempting to load TagLib from: C:\Users\jmw\Documents\PowerShell\Modules\MuFo\lib\TagLib.dll
+VERBOSE: TagLib type now available after Add-Type (C:\Users\jmw\Documents\PowerShell\Modules\MuFo\lib\TagLib.dll)
+VERBOSE: Start-OM: begin (diagnostics)
+VERBOSE: PSBoundParameters: Path,Provider,Auto,AutoFallback,AutoSaveCover,TargetFolder,Verbose
+VERBOSE: Path value: 'H:\__Fresh\Bluetech' (Length: 19)
+VERBOSE: Start-OM: enumerating files in H:\__Fresh\Bluetech
+VERBOSE: Start-OM: enumerated 13 audio files and 2 subfolders
+VERBOSE: TRACE: Building nonDiscFolders: subFoldersWithAudio.Count=2
+VERBOSE: Detected artist folder path: H:\__Fresh\Bluetech (has 2 album subfolders with audio files)
+VERBOSE: Loading module from path 'C:\Program Files\WindowsPowerShell\Modules\Spotishell\1.1.1\Spotishell.psd1'.
+VERBOSE: Importing function 'Add-CurrentUserSavedAlbum'.
+VERBOSE: Importing function 'Add-CurrentUserSavedShow'.
+VERBOSE: Importing function 'Add-CurrentUserSavedTrack'.
+VERBOSE: Importing function 'Add-FollowedArtist'.
+VERBOSE: Importing function 'Add-FollowedPlaylist'.
+VERBOSE: Importing function 'Add-FollowedUser'.
+VERBOSE: Importing function 'Add-ItemInPlaybackQueue'.
+VERBOSE: Importing function 'Add-PlaylistItem'.
+VERBOSE: Importing function 'Backup-Library'.
+VERBOSE: Importing function 'ConvertTo-Hashtable'.
+VERBOSE: Importing function 'Edit-PlaylistOrder'.
+VERBOSE: Importing function 'Get-Album'.
+VERBOSE: Importing function 'Get-AlbumTracks'.
+VERBOSE: Importing function 'Get-Artist'.
+VERBOSE: Importing function 'Get-ArtistAlbums'.
+VERBOSE: Importing function 'Get-ArtistRelatedArtists'.
+VERBOSE: Importing function 'Get-ArtistTopTracks'.
+VERBOSE: Importing function 'Get-AvailableDevices'.
+VERBOSE: Importing function 'Get-Category'.
+VERBOSE: Importing function 'Get-CategoryPlaylists'.
+VERBOSE: Importing function 'Get-CurrentPlaybackInfo'.
+VERBOSE: Importing function 'Get-CurrentTrack'.
+VERBOSE: Importing function 'Get-CurrentUserPlaylists'.
+VERBOSE: Importing function 'Get-CurrentUserProfile'.
+VERBOSE: Importing function 'Get-CurrentUserSavedAlbums'.
+VERBOSE: Importing function 'Get-CurrentUserSavedShows'.
+VERBOSE: Importing function 'Get-CurrentUserSavedTracks'.
+VERBOSE: Importing function 'Get-CurrentUserTopArtists'.
+VERBOSE: Importing function 'Get-CurrentUserTopTracks'.
+VERBOSE: Importing function 'Get-Episode'.
+VERBOSE: Importing function 'Get-FeaturedPlaylists'.
+VERBOSE: Importing function 'Get-FollowedArtists'.
+VERBOSE: Importing function 'Get-NewReleases'.
+VERBOSE: Importing function 'Get-Playlist'.
+VERBOSE: Importing function 'Get-PlaylistCoverImage'.
+VERBOSE: Importing function 'Get-PlaylistItems'.
+VERBOSE: Importing function 'Get-RecentlyPlayedTracks'.
+VERBOSE: Importing function 'Get-RecommendationGenres'.
+VERBOSE: Importing function 'Get-Recommendations'.
+VERBOSE: Importing function 'Get-Show'.
+VERBOSE: Importing function 'Get-ShowEpisodes'.
+VERBOSE: Importing function 'Get-SpotifyApplication'.
+VERBOSE: Importing function 'Get-Track'.
+VERBOSE: Importing function 'Get-TrackAudioAnalysis'.
+VERBOSE: Importing function 'Get-TrackAudioFeature'.
+VERBOSE: Importing function 'Get-UserPlaylists'.
+VERBOSE: Importing function 'Get-UserProfile'.
+VERBOSE: Importing function 'Initialize-SpotifyApplication'.
+VERBOSE: Importing function 'Invoke-NextTrack'.
+VERBOSE: Importing function 'Invoke-PreviousTrack'.
+VERBOSE: Importing function 'Invoke-SeekPositionCurrentTrack'.
+VERBOSE: Importing function 'Invoke-SpotishellLogo'.
+VERBOSE: Importing function 'Move-Playback'.
+VERBOSE: Importing function 'New-Playlist'.
+VERBOSE: Importing function 'New-SpotifyApplication'.
+VERBOSE: Importing function 'Remove-CurrentUserSavedAlbum'.
+VERBOSE: Importing function 'Remove-CurrentUserSavedShow'.
+VERBOSE: Importing function 'Remove-CurrentUserSavedTrack'.
+VERBOSE: Importing function 'Remove-FollowedArtist'.
+VERBOSE: Importing function 'Remove-FollowedPlaylist'.
+VERBOSE: Importing function 'Remove-FollowedUser'.
+VERBOSE: Importing function 'Remove-PlaylistItems'.
+VERBOSE: Importing function 'Remove-SpotifyApplication'.
+VERBOSE: Importing function 'Restore-Library'.
+VERBOSE: Importing function 'Resume-Playback'.
+VERBOSE: Importing function 'Search-Item'.
+VERBOSE: Importing function 'Send-PlaylistCoverImage'.
+VERBOSE: Importing function 'Set-PlaybackVolume'.
+VERBOSE: Importing function 'Set-Playlist'.
+VERBOSE: Importing function 'Set-PlaylistItems'.
+VERBOSE: Importing function 'Set-RepeatMode'.
+VERBOSE: Importing function 'Set-ShufflePlayback'.
+VERBOSE: Importing function 'Set-SpotifyApplication'.
+VERBOSE: Importing function 'Start-Playback'.
+VERBOSE: Importing function 'Suspend-Playback'.
+VERBOSE: Importing function 'Test-CurrentUserSavedAlbum'.
+VERBOSE: Importing function 'Test-CurrentUserSavedShow'.
+VERBOSE: Importing function 'Test-FollowedArtist'.
+VERBOSE: Importing function 'Test-FollowedPlaylist'.
+VERBOSE: Importing function 'Test-FollowedUser'.
+VERBOSE: Importing function 'Test-UserSavedTrack'.
+VERBOSE: Loaded configuration from: C:\Users\jmw\.OM\config.json
+VERBOSE: Using Discogs Token from environment variable (legacy)
+VERBOSE: Cached Qobuz URL locale: us-en
+VERBOSE: Artist folder mode: Processing 2 album folders under artist 'Bluetech'
+VERBOSE: TRACE: Start processing album: H:\__Fresh\Bluetech\2024 - Spacehop Chronicles 2_ Monument to the Conquerors
+
+🎵 ═══════════════════════════════════════════════════════════
+🔍 Provider: Qobuz (us-en)
+👤 Original Artist: Bluetech
+💿 Original Album: 2024 - Spacehop Chronicles 2_ Monument to the Conquerors (3 tracks)
+📁 Original Path: H:\__Fresh\Bluetech\2024 - Spacehop Chronicles 2_ Monument to the Conquerors
+═══════════════════════════════════════════════════════════
+
+🔍 Find Mode: Quick Album Search
+
+VERBOSE: DEBUG: Running auto-detection (SkipQuickPrompts=False)
+VERBOSE: DEBUG: Using tag from first audio file
+VERBOSE: DEBUG: AlbumArtist tag='Bluetech'
+📁 Auto-detected from folder: Artist='Bluetech', Album='Spacehop Chronicles 2_ Monument to the Conquerors'
+🎵 Using AlbumArtist tag for better match: 'Bluetech'
+VERBOSE: DEBUG: Set CurrentArtist='Bluetech', CurrentAlbum='Spacehop Chronicles 2_ Monument to the Conquerors'
+Searching for 'Spacehop Chronicles 2_ Monument to the Conquerors' by 'Bluetech'...
+VERBOSE: TRACE: Quick search: quickAlbum='Spacehop Chronicles 2_ Monument to the Conquerors' quickArtist='Bluetech' Provider='Qobuz'
+VERBOSE: Invoke-ProviderSearch: Provider=Qobuz, Type=album, Album=Spacehop Chronicles 2_ Monument to the Conquerors, Artist=Bluetech, Query=
+VERBOSE: Populating RepositorySourceLocation property for module PowerHTML.
+VERBOSE: Loading module from path 'C:\Users\jmw\Documents\PowerShell\Modules\PowerHTML\0.2.0\PowerHTML.psm1'.
+VERBOSE: Loading module from path 'C:\Users\jmw\Documents\PowerShell\Modules\PowerHTML\0.2.0\PowerHTML.psd1'.
+VERBOSE: Importing function 'ConvertFrom-Html'.
+VERBOSE: Populating RepositorySourceLocation property for module PowerHTML.
+VERBOSE: Loading module from path 'C:\Users\jmw\Documents\PowerShell\Modules\PowerHTML\0.2.0\PowerHTML.psm1'.
+VERBOSE: Loading module from path 'C:\Users\jmw\Documents\PowerShell\Modules\PowerHTML\0.2.0\PowerHTML.psd1'.
+VERBOSE: Importing function 'ConvertFrom-Html'.
+VERBOSE: Loaded configuration from: C:\Users\jmw\.OM\config.json
+VERBOSE: Using Discogs Token from environment variable (legacy)
+VERBOSE: Using Qobuz configured locale: en-BE (PSCulture: en-BE)
+VERBOSE: Loaded configuration from: C:\Users\jmw\.OM\config.json
+VERBOSE: Using Discogs Token from environment variable (legacy)
+VERBOSE: Google API key present: True; Google CSE present: True
+VERBOSE: Using Qobuz native search fallback for query: Spacehop Chronicles 2_ Monument to the Conquerors Bluetech
+VERBOSE: Qobuz search URL (using us-en): https://www.qobuz.com/us-en/search/albums/Spacehop%20Chronicles%202_%20Monument%20to%20the%20Conquerors%20Bluetech
+VERBOSE: Requested HTTP/1.1 GET with 0-byte payload
+VERBOSE: Received HTTP/1.1 response of content type text/html of unknown size
+VERBOSE: Found 60 album cards
+VERBOSE: Successfully extracted 60 albums from Qobuz search, returning first 10
+VERBOSE: Found album via Qobuz search and parsing; returning result.
+🤖 AUTO: Calculating confidence scores...
+   [1] Spacehop Chronicles 2: Monument to the Conquerors : 70%
+   [2] Spacehop Chronicles 2 : 17.5%
+   [3] Spacehop Chronicles 2: The Black Sky : 45.7%
+   [4] 1000 gecs and The Tree of Clues : 10%
+   [5] The Thunderfist Chronicles : 24.2%
+   [6] The Thunderfist Chronicles (Deluxe Version) : 9.2%
+   [7] Spacehop Chronicles 2: Echoes Of Orion : 53.3%
+   [8] Wu-Chronicles: Chapter 2 : 11.7%
+   [9] The Essential Wu-Tang Clan : 7.5%
+   [10] Quarantine Chronicles Vol. 2 : 34.8%
+VERBOSE: Get-BestAutoMatch: Candidates.Count=10, LocalArtist=Bluetech, LocalAlbum=Spacehop Chronicles 2_ Monument to the Conquerors, LocalTrackCount=3, Threshold=0,7
+✓ AUTO: Found high-confidence match on Qobuz (70%)
+✓ AUTO: Selected album: Spacehop Chronicles 2: Monument to the Conquerors
+VERBOSE: TRACE: showHeader args: Provider=Qobuz; Artist=Bluetech; AlbumName=Spacehop Chronicles 2_ Monument to the Conquerors; TrackCount=3
+
+🎵 ═══════════════════════════════════════════════════════════
+🔍 Provider: Qobuz (us-en)
+👤 Original Artist: Bluetech
+💿 Original Album: 2024 - Spacehop Chronicles 2_ Monument to the Conquerors (3 tracks)
+📁 Original Path: H:\__Fresh\Bluetech\2024 - Spacehop Chronicles 2_ Monument to the Conquerors
+═══════════════════════════════════════════════════════════
+
+🔍 Find Mode: Quick Album Search
+
+Searching tracks for album: Spacehop Chronicles 2: Monument to the Conquerors (id: ytojq7zpmp0pc)
+VERBOSE: sortMethod = 'byFilesystem'
+VERBOSE: Loaded 3 audio files (SkipSort: True)
+VERBOSE: TRACE: Before Invoke-ProviderGetTracks (Provider=Qobuz, AlbumId=ytojq7zpmp0pc)
+VERBOSE: Calling Invoke-ProviderGetTracks for provider Qobuz with ID ytojq7zpmp0pc
+VERBOSE: Populating RepositorySourceLocation property for module PowerHTML.
+VERBOSE: Loading module from path 'C:\Users\jmw\Documents\PowerShell\Modules\PowerHTML\0.2.0\PowerHTML.psm1'.
+VERBOSE: Loading module from path 'C:\Users\jmw\Documents\PowerShell\Modules\PowerHTML\0.2.0\PowerHTML.psd1'.
+VERBOSE: Importing function 'ConvertFrom-Html'.
+VERBOSE: Loaded configuration from: C:\Users\jmw\.OM\config.json
+VERBOSE: Using Discogs Token from environment variable (legacy)
+VERBOSE: Using configured locale 'en-BE' (URL: 'us-en') for album URL
+VERBOSE: Constructed album URL with locale us-en: https://www.qobuz.com/us-en/album/ytojq7zpmp0pc
+VERBOSE: Fetching Qobuz album page: https://www.qobuz.com/us-en/album/ytojq7zpmp0pc
+VERBOSE: Requested HTTP/1.1 GET with 0-byte payload
+VERBOSE: Received HTTP/1.1 response of content type text/html of unknown size
+VERBOSE: Extracted release date from Product JSON-LD: 2024-03-08
+VERBOSE: Extracted album name from Product JSON-LD: Spacehop Chronicles 2: Monument to the Conquerors
+VERBOSE: Extracted album artist from Product JSON-LD brand: Bluetech
+VERBOSE: Found 3 player__item nodes
+VERBOSE: Processing player__item node...
+VERBOSE: Found trackDiv, extracting data...
+VERBOSE: ParsePerformer called with: [Copyright Control, MusicPublisher - Bluetech, Producer, MainArtist, MasteringEngineer - Evan Mark Bartholomew, Composer]
+VERBOSE:   -> Split into 3 entries: Copyright Control, MusicPublisher | Bluetech, Producer, MainArtist, MasteringEngineer | Evan Mark Bartholomew, Composer
+VERBOSE: Creating track object - releaseDate variable value: [2024-03-08]
+VERBOSE: Processing player__item node...
+VERBOSE: Found trackDiv, extracting data...
+VERBOSE: ParsePerformer called with: [Copyright Control, MusicPublisher - Bluetech, Producer, MainArtist, MasteringEngineer - Beatfarmer, Remixer - Evan Mark Bartholomew, Composer]
+VERBOSE:   -> Split into 4 entries: Copyright Control, MusicPublisher | Bluetech, Producer, MainArtist, MasteringEngineer | Beatfarmer, Remixer | Evan Mark Bartholomew, Composer
+VERBOSE: Creating track object - releaseDate variable value: [2024-03-08]
+VERBOSE: Processing player__item node...
+VERBOSE: Found trackDiv, extracting data...
+VERBOSE: ParsePerformer called with: [Copyright Control, MusicPublisher - Bluetech, Producer, MainArtist, MasteringEngineer - Stillhead, Remixer - Evan Mark Bartholomew, Composer]
+VERBOSE:   -> Split into 4 entries: Copyright Control, MusicPublisher | Bluetech, Producer, MainArtist, MasteringEngineer | Stillhead, Remixer | Evan Mark Bartholomew, Composer
+VERBOSE: Creating track object - releaseDate variable value: [2024-03-08]
+VERBOSE: rawTracks type: System.Object[]
+VERBOSE: rawTracks is array: True
+VERBOSE: rawTracks count: 3
+VERBOSE: Received 3 tracks
+VERBOSE: About to access first track...
+VERBOSE: firstTrack type: System.Management.Automation.PSCustomObject
+VERBOSE: firstTrack has album_name: Yes
+VERBOSE: Updated album artist from track metadata: Bluetech
+VERBOSE: Provider tracks for album: Spacehop Chronicles 2: Monument to the Conquerors (count: 3)
+VERBOSE: DEBUG: About to call Format-Table on tracksForAlbum
+
+id        name                                          disc_number track_number
+--        ----                                          ----------- ------------
+319372078 Monument to the Conquerors                    01          01
+319372079 Monument to the Conquerors (beatfarmer Remix) 01          02
+319372080 Monument to the Conquerors (Stillhead Remix)  01          03
+
+VERBOSE: DEBUG: Format-Table completed successfully
+VERBOSE: DEBUG: Starting doTracks loop, State.PairedTracks is null: True
+VERBOSE: DEBUG: Inside doTracks, checking if we need to refresh...
+VERBOSE: DEBUG: Will call Set-Tracks
+VERBOSE: DEBUG: State.AudioFiles type: Object[], count: 3
+VERBOSE: Set-Tracks: Entered with SortMethod=byOrder, Reverse=False, AudioFiles count=3, SpotifyTracks count=3
+VERBOSE: Provider: 'Monument to the Conquerors' -> Catalog: ''
+VERBOSE: Audio: 'Monument to the Conquerors' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Provider: 'Monument to the Conquerors (beatfarmer Remix)' -> Catalog: ''
+VERBOSE: Audio: 'Monument to the Conquerors (beatfarmer Remix)' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Provider: 'Monument to the Conquerors (Stillhead Remix)' -> Catalog: ''
+VERBOSE: Audio: 'Monument to the Conquerors (Stillhead Remix)' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Set-Tracks: Returning 3 paired tracks
+VERBOSE: Set-Tracks: 3 have AudioFile, 3 have SpotifyTrack
+VERBOSE: DEBUG: About to check confidence sorting... State.PairedTracks type: Object[], Count: 3
+VERBOSE: Sorted 3 tracks by confidence (stable)
+🐛 DEBUG: AUTO MODE block starting...
+🐛 DEBUG: Auto=True, AutoModeActive=False, goC=False
+🤖 AUTO: Analyzing track matches...
+VERBOSE: Set-Tracks: Entered with SortMethod=byOrder, Reverse=False, AudioFiles count=3, SpotifyTracks count=3
+VERBOSE: Provider: 'Monument to the Conquerors' -> Catalog: ''
+VERBOSE: Audio: 'Monument to the Conquerors' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Provider: 'Monument to the Conquerors (beatfarmer Remix)' -> Catalog: ''
+VERBOSE: Audio: 'Monument to the Conquerors (beatfarmer Remix)' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Provider: 'Monument to the Conquerors (Stillhead Remix)' -> Catalog: ''
+VERBOSE: Audio: 'Monument to the Conquerors (Stillhead Remix)' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Set-Tracks: Returning 3 paired tracks
+VERBOSE: Set-Tracks: 3 have AudioFile, 3 have SpotifyTrack
+VERBOSE: Strategy 'byOrder': 3 high-confidence matches
+VERBOSE: Set-Tracks: Entered with SortMethod=byTitle, Reverse=False, AudioFiles count=3, SpotifyTracks count=3
+VERBOSE: Calculating confidence for match: Monument to the Conquerors (beatfarmer Remix) <-> Monument to the Conquerors (beatfarmer Remix)
+VERBOSE: Provider: 'Monument to the Conquerors (beatfarmer Remix)' -> Catalog: ''
+VERBOSE: Audio: 'Monument to the Conquerors (beatfarmer Remix)' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Confidence: 70% (High)
+VERBOSE: Calculating confidence for match: Monument to the Conquerors (Stillhead Remix) <-> Monument to the Conquerors (Stillhead Remix)
+VERBOSE: Provider: 'Monument to the Conquerors (Stillhead Remix)' -> Catalog: ''
+VERBOSE: Audio: 'Monument to the Conquerors (Stillhead Remix)' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Confidence: 69.8% (High)
+VERBOSE: Calculating confidence for match: Monument to the Conquerors <-> Monument to the Conquerors
+VERBOSE: Provider: 'Monument to the Conquerors' -> Catalog: ''
+VERBOSE: Audio: 'Monument to the Conquerors' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Confidence: 69.7% (High)
+VERBOSE: Set-Tracks: Returning 3 paired tracks
+VERBOSE: Set-Tracks: 3 have AudioFile, 3 have SpotifyTrack
+VERBOSE: Strategy 'byTitle': 3 high-confidence matches
+VERBOSE: Set-Tracks: Entered with SortMethod=byDuration, Reverse=False, AudioFiles count=3, SpotifyTracks count=3
+VERBOSE: Provider: 'Monument to the Conquerors (beatfarmer Remix)' -> Catalog: ''
+VERBOSE: Audio: 'Monument to the Conquerors (beatfarmer Remix)' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Provider: 'Monument to the Conquerors (Stillhead Remix)' -> Catalog: ''
+VERBOSE: Audio: 'Monument to the Conquerors (Stillhead Remix)' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Provider: 'Monument to the Conquerors' -> Catalog: ''
+VERBOSE: Audio: 'Monument to the Conquerors' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Set-Tracks: Returning 3 paired tracks
+VERBOSE: Set-Tracks: 3 have AudioFile, 3 have SpotifyTrack
+VERBOSE: Strategy 'byDuration': 3 high-confidence matches
+🐛 DEBUG: bestScore=3, totalTracks=3, confidencePercent=100%, threshold=70%
+🤖 AUTO: Best strategy: 'byOrder' (3/3 matches, 100% confidence)
+✓ AUTO: Confidence threshold met, auto-saving tags and cover...
+🖼️  AUTO: Saving cover art...
+VERBOSE: Loaded configuration from: C:\Users\jmw\.OM\config.json
+VERBOSE: Using Discogs Token from environment variable (legacy)
+VERBOSE: Downloading cover art from: https://static.qobuz.com/images/covers/pc/p0/ytojq7zpmp0pc_org.jpg (provider: Qobuz, size: original)
+VERBOSE: Requested HTTP/1.1 GET with 0-byte payload
+VERBOSE: Received HTTP/1.1 2079461-byte response of content type image/jpeg
+VERBOSE: Saving original size image: 3000x3000 (no resizing)
+✓ Saved cover art to: H:\__Fresh\Bluetech\2024 - Spacehop Chronicles 2_ Monument to the Conquerors\cover.jpg (3000x3000)
+✓ AUTO: Cover art saved
+goC: auto-applying Save-All for album 'Spacehop Chronicles 2: Monument to the Conquerors'.
+VERBOSE: Using track-level genres: Electronic, electro
+VERBOSE: Get-Tags: Album.release_date raw value: '2024' (Type: System.String)
+VERBOSE: Get-Tags: Get-ReleaseYear resolved Year: 2024
+VERBOSE: Saving tags to: H:\__Fresh\Bluetech\2024 - Spacehop Chronicles 2_ Monument to the Conquerors\1. Monument to the Conquerors.flac
+VERBOSE: Tag values:\n
+Name                           Value
+----                           -----
+Album                          Spacehop Chronicles 2: Monument to the Conquerors
+Performers                     Bluetech
+Composers                      Evan Mark Bartholomew
+Genres                         Electronic, electro
+Disc                           01
+AlbumArtist                    Bluetech
+Title                          Monument to the Conquerors
+Comment                        Copyright Control, MusicPublisher - Bluetech, Producer, Main…
+Date                           2024
+Track                          01
+
+
+Saved tags: 1. Monument to the Conquerors.flac -> 01.01: Monument to the Conquerors
+VERBOSE: Using track-level genres: Electronic, electro
+VERBOSE: Get-Tags: Album.release_date raw value: '2024' (Type: System.String)
+VERBOSE: Get-Tags: Get-ReleaseYear resolved Year: 2024
+VERBOSE: Saving tags to: H:\__Fresh\Bluetech\2024 - Spacehop Chronicles 2_ Monument to the Conquerors\2. Monument to the Conquerors (beatfarmer Remix).flac
+VERBOSE: Tag values:\n
+Name                           Value
+----                           -----
+Album                          Spacehop Chronicles 2: Monument to the Conquerors
+Performers                     Bluetech
+Composers                      Evan Mark Bartholomew
+Genres                         Electronic, electro
+Disc                           01
+AlbumArtist                    Bluetech
+Title                          Monument to the Conquerors (beatfarmer Remix)
+Comment                        Copyright Control, MusicPublisher - Bluetech, Producer, Main…
+Date                           2024
+Track                          02
+
+
+Saved tags: 2. Monument to the Conquerors (beatfarmer Remix).flac -> 01.02: Monument to the Conquerors (beatfarmer Remix)
+VERBOSE: Using track-level genres: Electronic, electro
+VERBOSE: Get-Tags: Album.release_date raw value: '2024' (Type: System.String)
+VERBOSE: Get-Tags: Get-ReleaseYear resolved Year: 2024
+VERBOSE: Saving tags to: H:\__Fresh\Bluetech\2024 - Spacehop Chronicles 2_ Monument to the Conquerors\3. Monument to the Conquerors (Stillhead Remix).flac
+VERBOSE: Tag values:\n
+Name                           Value
+----                           -----
+Album                          Spacehop Chronicles 2: Monument to the Conquerors
+Performers                     Bluetech
+Composers                      Evan Mark Bartholomew
+Genres                         Electronic, electro
+Disc                           01
+AlbumArtist                    Bluetech
+Title                          Monument to the Conquerors (Stillhead Remix)
+Comment                        Copyright Control, MusicPublisher - Bluetech, Producer, Main…
+Date                           2024
+Track                          03
+
+
+Saved tags: 3. Monument to the Conquerors (Stillhead Remix).flac -> 01.03: Monument to the Conquerors (Stillhead Remix)
+VERBOSE: Read AlbumArtist from tags: Bluetech
+VERBOSE: Forcing garbage collection before folder move to release file handles
+--- DEBUG: Move-AlbumFolder ---
+Input AlbumPath: H:\__Fresh\Bluetech\2024 - Spacehop Chronicles 2_ Monument to the Conquerors
+Input NewArtist: Bluetech
+Input NewYear: 2024
+Input NewAlbumName: Spacehop Chronicles 2_ Monument to the Conquerors
+--------------------------------
+Derived currentArtistPath: H:\__Fresh\Bluetech
+Derived artistParentPath: H:\__Fresh
+Derived targetArtistPath: H:\__Fresh\Bluetech
+Derived baseAlbumName: 2024 - Spacehop Chronicles 2_ Monument to the Conquerors
+--------------------------------
+Get-UniqueAlbumPath candidate: H:\__Fresh\Bluetech\2024 - Spacehop Chronicles 2_ Monument to the Conquerors
+Final destAlbumPath: H:\__Fresh\Bluetech\2024 - Spacehop Chronicles 2_ Monument to the Conquerors
+VERBOSE: Source and destination album paths are identical (case-sensitive match). No move or rename necessary.
+VERBOSE: TRACE: Invoke-OMHandleMoveSuccess args: moveResult=(@{Success=True; OldAlbumPath=H:\__Fresh\Bluetech\2024 - Spacehop Chronicles 2_ Monument to the Conquerors; NewAlbumPath=H:\__Fresh\Bluetech\2024 - Spacehop Chronicles 2_ Monument to the Conquerors; OldArtistPath=H:\__Fresh\Bluetech; NewArtistPath=H:\__Fresh\Bluetech; CollisionAdjusted=False; Action=None}); useWhatIf=False; oldpath=H:\__Fresh\Bluetech\2024 - Spacehop Chronicles 2_ Monument to the Conquerors
+VERBOSE: Move result indicates no change to album path; continuing.
+Album saved. Choose 's' to skip to next album, or select another option.
+✓ AUTO: Album completed successfully, moving to next album...
+VERBOSE: TRACE: Start processing album: H:\__Fresh\Bluetech\Spacehop Chronicles 2 (2025)
+
+🎵 ═══════════════════════════════════════════════════════════
+🔍 Provider: Qobuz (us-en)
+👤 Original Artist: Bluetech
+💿 Original Album: Spacehop Chronicles 2 (2025) (10 tracks)
+📁 Original Path: H:\__Fresh\Bluetech\Spacehop Chronicles 2 (2025)
+═══════════════════════════════════════════════════════════
+
+🔍 Find Mode: Quick Album Search
+
+VERBOSE: DEBUG: Running auto-detection (SkipQuickPrompts=False)
+VERBOSE: DEBUG: Using tag from first audio file
+VERBOSE: DEBUG: AlbumArtist tag='Bluetech'
+📁 Auto-detected from folder: Artist='Bluetech', Album='Spacehop Chronicles 2 (2025)'
+🎵 Using AlbumArtist tag for better match: 'Bluetech'
+VERBOSE: DEBUG: Set CurrentArtist='Bluetech', CurrentAlbum='Spacehop Chronicles 2 (2025)'
+Searching for 'Spacehop Chronicles 2 (2025)' by 'Bluetech'...
+VERBOSE: TRACE: Quick search: quickAlbum='Spacehop Chronicles 2 (2025)' quickArtist='Bluetech' Provider='Qobuz'
+VERBOSE: Invoke-ProviderSearch: Provider=Qobuz, Type=album, Album=Spacehop Chronicles 2 (2025), Artist=Bluetech, Query=
+VERBOSE: Populating RepositorySourceLocation property for module PowerHTML.
+VERBOSE: Loading module from path 'C:\Users\jmw\Documents\PowerShell\Modules\PowerHTML\0.2.0\PowerHTML.psm1'.
+VERBOSE: Loading module from path 'C:\Users\jmw\Documents\PowerShell\Modules\PowerHTML\0.2.0\PowerHTML.psd1'.
+VERBOSE: Importing function 'ConvertFrom-Html'.
+VERBOSE: Populating RepositorySourceLocation property for module PowerHTML.
+VERBOSE: Loading module from path 'C:\Users\jmw\Documents\PowerShell\Modules\PowerHTML\0.2.0\PowerHTML.psm1'.
+VERBOSE: Loading module from path 'C:\Users\jmw\Documents\PowerShell\Modules\PowerHTML\0.2.0\PowerHTML.psd1'.
+VERBOSE: Importing function 'ConvertFrom-Html'.
+VERBOSE: Loaded configuration from: C:\Users\jmw\.OM\config.json
+VERBOSE: Using Discogs Token from environment variable (legacy)
+VERBOSE: Using Qobuz configured locale: en-BE (PSCulture: en-BE)
+VERBOSE: Loaded configuration from: C:\Users\jmw\.OM\config.json
+VERBOSE: Using Discogs Token from environment variable (legacy)
+VERBOSE: Google API key present: True; Google CSE present: True
+VERBOSE: Using Qobuz native search fallback for query: Spacehop Chronicles 2 (2025) Bluetech
+VERBOSE: Qobuz search URL (using us-en): https://www.qobuz.com/us-en/search/albums/Spacehop%20Chronicles%202%20%282025%29%20Bluetech
+VERBOSE: Requested HTTP/1.1 GET with 0-byte payload
+VERBOSE: Received HTTP/1.1 response of content type text/html of unknown size
+VERBOSE: Found 60 album cards
+VERBOSE: Successfully extracted 60 albums from Qobuz search, returning first 10
+VERBOSE: Found album via Qobuz search and parsing; returning result.
+🤖 AUTO: Calculating confidence scores...
+   [1] Spacehop Chronicles 2: Monument to the Conquerors : 18.3%
+   [2] Spacehop Chronicles 2: Echoes Of Orion : 23.8%
+   [3] Spacehop Chronicles 2 : 60%
+   [4] Spacehop Chronicles 2: Limonchik : 28.4%
+   [5] Spacehop Chronicles 2: Restless : 29.3%
+   [6] Spacehop Chronicles 2: The Black Sky : 25.1%
+   [7] Spacehop Chronicles, Vol. 1 : 43.6%
+   [8] The Horror Chronicles 1&2: The 2025 Nashville Sessions : 44.3%
+   [9] Zunge 2025 : 10%
+   [10] Sommernachtskonzert 2025 / Summer Night Concert 2025 : 9.6%
+VERBOSE: Get-BestAutoMatch: Candidates.Count=10, LocalArtist=Bluetech, LocalAlbum=Spacehop Chronicles 2 (2025), LocalTrackCount=10, Threshold=0,7
+⚠️  AUTO: Best match below threshold (need 70%)
+⚠️  AUTO: No high-confidence match on Qobuz, trying fallback providers...
+   Trying Spotify...
+VERBOSE: Invoke-ProviderSearch: Provider=Spotify, Type=album, Album=Spacehop Chronicles 2 (2025), Artist=Bluetech, Query=
+VERBOSE: Processing top 10 albums based on similarity to query
+VERBOSE: Processing album: Spacehop Chronicles 2 by Bluetech (similarity: 1,000)
+VERBOSE: Processing album: ocean dreams by bluescape (similarity: 0,000)
+VERBOSE: Processing album: A Sky Inside by Starfield Echo (similarity: 0,000)
+VERBOSE: Processing album: Éther Ardent by Shimmerweave (similarity: 0,000)
+VERBOSE: Processing album: Neon Pulse by Nebula Echoes (similarity: 0,000)
+VERBOSE: Processing album: Echoes Of Desire by hornja (similarity: 0,000)
+VERBOSE: Processing album: Dreams in White by Titan Pulse (similarity: 0,000)
+VERBOSE: Processing album: Echoes in a Hollow Sky by Enigmatic Horizons (similarity: 0,000)
+VERBOSE: Processing album: Making Space Gamma by Waves Of Sine (similarity: 0,000)
+VERBOSE: Processing album: Marine Echoes by Aquatic Dreamer (similarity: 0,000)
+VERBOSE: Get-BestAutoMatch: Candidates.Count=10, LocalArtist=Bluetech, LocalAlbum=Spacehop Chronicles 2 (2025), LocalTrackCount=10, Threshold=0,7
+   Trying Discogs...
+VERBOSE: Invoke-ProviderSearch: Provider=Discogs, Type=album, Album=Spacehop Chronicles 2 (2025), Artist=Bluetech, Query=
+VERBOSE: Searching Discogs for album with query: 'Bluetech Spacehop Chronicles 2 (2025)'
+VERBOSE: Calling Discogs API with URI: /database/search?q=Bluetech%20Spacehop%20Chronicles%202%20%282025%29&type=release&format_exact=CD
+VERBOSE: Loaded configuration from: C:\Users\jmw\.OM\config.json
+VERBOSE: Using Discogs Token from environment variable (legacy)
+VERBOSE: Using Discogs Personal Access Token authentication
+VERBOSE: Requested HTTP/1.1 GET with 0-byte payload
+VERBOSE: Received HTTP/1.1 response of content type application/json of unknown size
+VERBOSE: Content encoding: utf-8
+VERBOSE: Discogs request successful. Rate limit: 1/60 in last minute
+VERBOSE: Found 2 results from Discogs
+VERBOSE: Processing top 2 results based on similarity to query
+VERBOSE: Processing result: Bluetech - Spacehop Chronicles 2 (similarity: 1,000)
+VERBOSE: Using thumbnail cover art for Bluetech - Spacehop Chronicles 2: https://i.discogs.com/E_x6NhOQTwAL93RQM7TZWgRiFgGkCVWBIfBzl-F_NP4/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTM1MTU4/NzUzLTE3NTg0Mzcx/MjEtNjgzMC5qcGVn.jpeg
+VERBOSE: Extracted artist 'Bluetech' from album title 'Bluetech - Spacehop Chronicles 2'
+VERBOSE: Loaded configuration from: C:\Users\jmw\.OM\config.json
+VERBOSE: Using Discogs Token from environment variable (legacy)
+VERBOSE: Using Discogs Personal Access Token authentication
+VERBOSE: Requested HTTP/1.1 GET with 0-byte payload
+VERBOSE: Received HTTP/1.1 response of content type application/json of unknown size
+VERBOSE: Content encoding: utf-8
+VERBOSE: Discogs request successful. Rate limit: 2/60 in last minute
+VERBOSE: Processing result: Bluetech - Spacehop Chronicles 2 (similarity: 1,000)
+VERBOSE: Using thumbnail cover art for Bluetech - Spacehop Chronicles 2: https://i.discogs.com/qApt-DYPy0QMJsycalscttw3F7Lc1rcGWjCgbDrAxuk/rs:fit/g:sm/q:40/h:150/w:150/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTM1NDA5/ODM1LTE3NjA3OTY4/MTUtNjA5OC5qcGVn.jpeg
+VERBOSE: Extracted artist 'Bluetech' from album title 'Bluetech - Spacehop Chronicles 2'
+VERBOSE: Loaded configuration from: C:\Users\jmw\.OM\config.json
+VERBOSE: Using Discogs Token from environment variable (legacy)
+VERBOSE: Using Discogs Personal Access Token authentication
+VERBOSE: Requested HTTP/1.1 GET with 0-byte payload
+VERBOSE: Received HTTP/1.1 response of content type application/json of unknown size
+VERBOSE: Content encoding: utf-8
+VERBOSE: Discogs request successful. Rate limit: 3/60 in last minute
+VERBOSE: Returning 2 albums from Discogs search
+VERBOSE: Get-BestAutoMatch: Candidates.Count=2, LocalArtist=Bluetech, LocalAlbum=Spacehop Chronicles 2 (2025), LocalTrackCount=10, Threshold=0,7
+   Trying MusicBrainz...
+VERBOSE: Invoke-ProviderSearch: Provider=MusicBrainz, Type=album, Album=Spacehop Chronicles 2 (2025), Artist=Bluetech, Query=
+VERBOSE: Searching MusicBrainz for album : Spacehop Chronicles 2 (2025)Bluetech
+VERBOSE: Loaded configuration from: C:\Users\jmw\.OM\config.json
+VERBOSE: Using Discogs Token from environment variable (legacy)
+VERBOSE: MusicBrainz API request: release
+VERBOSE: Full URL: https://musicbrainz.org/ws/2/release?fmt=json&query=release%3ASpacehop%20Chronicles%202%20%282025%29%20AND%20artist%3ABluetech%20AND%20format%3ACD&limit=25
+VERBOSE: Requested HTTP/1.1 GET with 0-byte payload
+VERBOSE: Received HTTP/1.1 73-byte response of content type application/json
+VERBOSE: Content encoding: utf-8
+VERBOSE: MusicBrainz request successful
+VERBOSE: No album found for query: Spacehop Chronicles 2 (2025)Bluetech
+🔄 AUTO: Using Spotify (best match: 0.6%) for interactive selection
+WARNING: AUTO: No high-confidence match found. Falling back to interactive selection.
+VERBOSE: TRACE: showHeader args: Provider=Spotify; Artist=Bluetech; AlbumName=Spacehop Chronicles 2 (2025); TrackCount=10
+
+🎵 ═══════════════════════════════════════════════════════════
+🔍 Provider: Spotify
+👤 Original Artist: Bluetech
+💿 Original Album: Spacehop Chronicles 2 (2025) (10 tracks)
+📁 Original Path: H:\__Fresh\Bluetech\Spacehop Chronicles 2 (2025)
+═══════════════════════════════════════════════════════════
+
+🔍 Find Mode: Quick Album Search
+
+Spotify Album candidates for 'Spacehop Chronicles 2 (2025)' by 'Bluetech':
+[1] Spacehop Chronicles 2 - Bluetech (id: 5YiJCt9ImpG929pxrUHLdo) (year: 2025-09-19) (10 tracks)
+[2] ocean dreams - bluescape (id: 1KE4jKZOcQmvfX2U4RfllR) (year: 2024-11-03) (1 tracks)
+[3] A Sky Inside - Starfield Echo (id: 4p4i5aXparmdP3ZJYL2Hbd) (year: 2025-06-13) (1 tracks)
+[4] Éther Ardent - Shimmerweave (id: 3dRUwAZN5a5Vdg0qAKgxn4) (year: 2025-01-03) (1 tracks)
+[5] Neon Pulse - Nebula Echoes (id: 2wm1yJqZF75a7nf31rCWlj) (year: 2025-11-10) (20 tracks)
+[6] Echoes Of Desire - hornja (id: 5CBS6mlimL9d9rND6xUfCv) (year: 2023-09-01) (2 tracks)
+[7] Dreams in White - Titan Pulse (id: 2MU5F73KbDspAV3MW3nCJm) (year: 2024-08-11) (1 tracks)
+[8] Echoes in a Hollow Sky - Enigmatic Horizons (id: 69kGsQFJ47ZnvRxIEXReIi) (year: 2025-02-28) (1 tracks)
+[9] Making Space Gamma - Waves Of Sine (id: 36jKqyv35HYdSCSMExpvai) (year: 2024-07-05) (2 tracks)
+[10] Marine Echoes - Aquatic Dreamer (id: 3PLFMqM5nTlWSHKWSa4BcZ) (year: 2025-04-10) (1 tracks)
+Select album [number] (Enter=first), (P)rovider, Shift+{F}indMode, (ni) New Item, (s)kip, e(x)it, (C)over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags}, or new search term ()::
+VERBOSE: Extracted artist from album metadata: Bluetech
+VERBOSE: Fetching full artist details for ID: 5yUtOYdnxxWdcIoZM1dx68
+VERBOSE: TRACE: showHeader args: Provider=Spotify; Artist=Bluetech; AlbumName=Spacehop Chronicles 2 (2025); TrackCount=10
+
+🎵 ═══════════════════════════════════════════════════════════
+🔍 Provider: Spotify
+👤 Original Artist: Bluetech
+💿 Original Album: Spacehop Chronicles 2 (2025) (10 tracks)
+📁 Original Path: H:\__Fresh\Bluetech\Spacehop Chronicles 2 (2025)
+═══════════════════════════════════════════════════════════
+
+🔍 Find Mode: Quick Album Search
+
+Searching tracks for album: Spacehop Chronicles 2 (id: 5YiJCt9ImpG929pxrUHLdo)
+VERBOSE: sortMethod = 'byOrder'
+VERBOSE: Loaded 10 audio files (SkipSort: False)
+VERBOSE: TRACE: Before Invoke-ProviderGetTracks (Provider=Spotify, AlbumId=5YiJCt9ImpG929pxrUHLdo)
+VERBOSE: Calling Invoke-ProviderGetTracks for provider Spotify with ID 5YiJCt9ImpG929pxrUHLdo
+VERBOSE: rawTracks type: System.Object[]
+VERBOSE: rawTracks is array: True
+VERBOSE: rawTracks count: 10
+VERBOSE: Received 10 tracks
+VERBOSE: About to access first track...
+VERBOSE: firstTrack type: System.Management.Automation.PSCustomObject
+VERBOSE: firstTrack has album_name: No
+VERBOSE: Provider tracks for album: Spacehop Chronicles 2 (count: 10)
+VERBOSE: DEBUG: About to call Format-Table on tracksForAlbum
+
+id                     name                             disc_number track_number
+--                     ----                             ----------- ------------
+351r1FUYnEUeqEu0k7jN9x Kudryavka                                  1            1
+08g5PUa65eTci2XBxx5z4I Restless                                   1            2
+5ZSNps7nTsJpksMJy01GVv Echoes of Orion                            1            3
+5sCkh7YLx9owKvCOUnC1Cs Monument to the Conquerors                 1            4
+2zEagEptAyPj3kyb13ZoRE The Black Sky                              1            5
+4jnuVPkJl3BTBjlXDtM7Xu Interlude Sputnik 2                        1            6
+2GatHJI4g3QWxmr20EfPga Limonchik                                  1            7
+0ddZNPTuI7q11hxlQWeJH4 Amorphous Crystals of Cassiopeia           1            8
+1OK0WWUsrqoyNAbcKGPYvo Artemis Program (Laika's Lament)           1            9
+25J3nE24Y2DEqIDhgQpnev Chronos Empire of Rust                     1           10
+
+VERBOSE: DEBUG: Format-Table completed successfully
+VERBOSE: DEBUG: Starting doTracks loop, State.PairedTracks is null: True
+VERBOSE: DEBUG: Inside doTracks, checking if we need to refresh...
+VERBOSE: DEBUG: Will call Set-Tracks
+VERBOSE: DEBUG: State.AudioFiles type: Object[], count: 10
+VERBOSE: Set-Tracks: Entered with SortMethod=byOrder, Reverse=False, AudioFiles count=10, SpotifyTracks count=10
+VERBOSE: Provider: 'Kudryavka' -> Catalog: ''
+VERBOSE: Audio: 'Kudryavka' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Provider: 'Restless' -> Catalog: ''
+VERBOSE: Audio: 'Restless' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Provider: 'Echoes of Orion' -> Catalog: ''
+VERBOSE: Audio: 'Echoes of Orion' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Provider: 'Monument to the Conquerors' -> Catalog: ''
+VERBOSE: Audio: 'Monument to the Conquerors' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Provider: 'The Black Sky' -> Catalog: ''
+VERBOSE: Audio: 'The Black Sky' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Provider: 'Interlude Sputnik 2' -> Catalog: ''
+VERBOSE: Audio: 'Interlude Sputnik 2' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Provider: 'Limonchik' -> Catalog: ''
+VERBOSE: Audio: 'Limonchik' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Provider: 'Amorphous Crystals of Cassiopeia' -> Catalog: ''
+VERBOSE: Audio: 'Amorphous Crystals of Cassiopeia' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Provider: 'Artemis Program (Laika's Lament)' -> Catalog: ''
+VERBOSE: Audio: 'Artemis Program (Laika's Lament)' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Provider: 'Chronos Empire of Rust' -> Catalog: ''
+VERBOSE: Audio: 'Chronos Empire of Rust' -> Catalog: ''
+VERBOSE: No catalog match (provider: , audio: )
+VERBOSE: Set-Tracks: Returning 10 paired tracks
+VERBOSE: Set-Tracks: 10 have AudioFile, 10 have SpotifyTrack
+VERBOSE: DEBUG: About to check confidence sorting... State.PairedTracks type: Object[], Count: 10
+VERBOSE: Sorted 10 tracks by confidence (stable)
+VERBOSE: TRACE: Before Show-Tracks (auto path) - InputReader present: True
+Tracks for album Spacehop Chronicles 2: (Page 1 of 1)
+
+Match Confidence: ✅ 10 High
+
+[1] filename: 01. Bluetech - Kudryavka.flac
+↓       01.01: Kudryavka (01:57)
+_       00.01: Kudryavka (01:57)
+
+[2] filename: 02. Bluetech - Restless.flac
+↓       01.02: Restless (03:25)
+_       00.02: Restless (03:25)
+
+[3] filename: 03. Bluetech - Echoes of Orion.flac
+↓       01.03: Echoes of Orion (04:10)
+_       00.03: Echoes of Orion (04:10)
+
+[4] filename: 04. Bluetech - Monument to the Conquerors.flac
+↓       01.04: Monument to the Conquerors (03:33)
+_       00.04: Monument to the Conquerors (03:33)
+
+[5] filename: 05. Bluetech - The Black Sky.flac
+↓       01.05: The Black Sky (05:41)
+_       00.05: The Black Sky (05:41)
+
+[6] filename: 06. Bluetech - Interlude Sputnik 2.flac
+↓       01.06: Interlude Sputnik 2 (01:49)
+_       00.06: Interlude Sputnik 2 (01:49)
+
+[7] filename: 07. Bluetech - Limonchik.flac
+↓       01.07: Limonchik (04:37)
+_       00.07: Limonchik (04:37)
+
+[8] filename: 08. Bluetech - Amorphous Crystals of Cassiopeia.flac
+↓       01.08: Amorphous Crystals of Cassiopeia (05:43)
+_       00.08: Amorphous Crystals of Cassiopeia (05:43)
+
+[9] filename: 09. Bluetech - Artemis Program (Laika's Lament).flac
+↓       01.09: Artemis Program (Laika's Lament) (04:15)
+_       00.09: Artemis Program (Laika's Lament) (04:15)
+
+[10] filename: 10. Bluetech - Chronos Empire of Rust.flac
+↓       01.10: Chronos Empire of Rust (04:29)
+_       00.10: Chronos Empire of Rust (04:29)
+
+
+Page 1 of 1 (Tracks 1 to 10 of 10)
+goC: auto-applying Save-All for album 'Spacehop Chronicles 2'.
+VERBOSE: No track-level genres, using artist/album genres
+VERBOSE: Get-Tags: Album.release_date raw value: '2025-09-19' (Type: System.String)
+VERBOSE: Get-Tags: Get-ReleaseYear resolved Year: 2025
+VERBOSE: Saving tags to: H:\__Fresh\Bluetech\Spacehop Chronicles 2 (2025)\01. Bluetech - Kudryavka.flac
+VERBOSE: Tag values:\n
+Name                           Value
+----                           -----
+Album                          Spacehop Chronicles 2
+Performers                     Bluetech
+Genres                         {downtempo, ambient}
+Disc                           01
+AlbumArtist                    Bluetech
+Title                          Kudryavka
+Date                           2025
+Track                          01
+
+
+Saved tags: 01. Bluetech - Kudryavka.flac -> 01.01: Kudryavka
+VERBOSE: No track-level genres, using artist/album genres
+VERBOSE: Get-Tags: Album.release_date raw value: '2025-09-19' (Type: System.String)
+VERBOSE: Get-Tags: Get-ReleaseYear resolved Year: 2025
+VERBOSE: Saving tags to: H:\__Fresh\Bluetech\Spacehop Chronicles 2 (2025)\02. Bluetech - Restless.flac
+VERBOSE: Tag values:\n
+Name                           Value
+----                           -----
+Album                          Spacehop Chronicles 2
+Performers                     Bluetech
+Genres                         {downtempo, ambient}
+Disc                           01
+AlbumArtist                    Bluetech
+Title                          Restless
+Date                           2025
+Track                          02
+
+
+Saved tags: 02. Bluetech - Restless.flac -> 01.02: Restless
+VERBOSE: No track-level genres, using artist/album genres
+VERBOSE: Get-Tags: Album.release_date raw value: '2025-09-19' (Type: System.String)
+VERBOSE: Get-Tags: Get-ReleaseYear resolved Year: 2025
+VERBOSE: Saving tags to: H:\__Fresh\Bluetech\Spacehop Chronicles 2 (2025)\03. Bluetech - Echoes of Orion.flac
+VERBOSE: Tag values:\n
+Name                           Value
+----                           -----
+Album                          Spacehop Chronicles 2
+Performers                     Bluetech
+Genres                         {downtempo, ambient}
+Disc                           01
+AlbumArtist                    Bluetech
+Title                          Echoes of Orion
+Date                           2025
+Track                          03
+
+
+Saved tags: 03. Bluetech - Echoes of Orion.flac -> 01.03: Echoes of Orion
+VERBOSE: No track-level genres, using artist/album genres
+VERBOSE: Get-Tags: Album.release_date raw value: '2025-09-19' (Type: System.String)
+VERBOSE: Get-Tags: Get-ReleaseYear resolved Year: 2025
+VERBOSE: Saving tags to: H:\__Fresh\Bluetech\Spacehop Chronicles 2 (2025)\04. Bluetech - Monument to the Conquerors.flac
+VERBOSE: Tag values:\n
+Name                           Value
+----                           -----
+Album                          Spacehop Chronicles 2
+Performers                     Bluetech
+Genres                         {downtempo, ambient}
+Disc                           01
+AlbumArtist                    Bluetech
+Title                          Monument to the Conquerors
+Date                           2025
+Track                          04
+
+
+Saved tags: 04. Bluetech - Monument to the Conquerors.flac -> 01.04: Monument to the Conquerors
+VERBOSE: No track-level genres, using artist/album genres
+VERBOSE: Get-Tags: Album.release_date raw value: '2025-09-19' (Type: System.String)
+VERBOSE: Get-Tags: Get-ReleaseYear resolved Year: 2025
+VERBOSE: Saving tags to: H:\__Fresh\Bluetech\Spacehop Chronicles 2 (2025)\05. Bluetech - The Black Sky.flac
+VERBOSE: Tag values:\n
+Name                           Value
+----                           -----
+Album                          Spacehop Chronicles 2
+Performers                     Bluetech
+Genres                         {downtempo, ambient}
+Disc                           01
+AlbumArtist                    Bluetech
+Title                          The Black Sky
+Date                           2025
+Track                          05
+
+
+Saved tags: 05. Bluetech - The Black Sky.flac -> 01.05: The Black Sky
+VERBOSE: No track-level genres, using artist/album genres
+VERBOSE: Get-Tags: Album.release_date raw value: '2025-09-19' (Type: System.String)
+VERBOSE: Get-Tags: Get-ReleaseYear resolved Year: 2025
+VERBOSE: Saving tags to: H:\__Fresh\Bluetech\Spacehop Chronicles 2 (2025)\06. Bluetech - Interlude Sputnik 2.flac
+VERBOSE: Tag values:\n
+Name                           Value
+----                           -----
+Album                          Spacehop Chronicles 2
+Performers                     Bluetech
+Genres                         {downtempo, ambient}
+Disc                           01
+AlbumArtist                    Bluetech
+Title                          Interlude Sputnik 2
+Date                           2025
+Track                          06
+
+
+Saved tags: 06. Bluetech - Interlude Sputnik 2.flac -> 01.06: Interlude Sputnik 2
+VERBOSE: No track-level genres, using artist/album genres
+VERBOSE: Get-Tags: Album.release_date raw value: '2025-09-19' (Type: System.String)
+VERBOSE: Get-Tags: Get-ReleaseYear resolved Year: 2025
+VERBOSE: Saving tags to: H:\__Fresh\Bluetech\Spacehop Chronicles 2 (2025)\07. Bluetech - Limonchik.flac
+VERBOSE: Tag values:\n
+Name                           Value
+----                           -----
+Album                          Spacehop Chronicles 2
+Performers                     Bluetech; BISHØP
+Genres                         {downtempo, ambient}
+Disc                           01
+AlbumArtist                    Bluetech
+Title                          Limonchik
+Date                           2025
+Track                          07
+
+
+Saved tags: 07. Bluetech - Limonchik.flac -> 01.07: Limonchik
+VERBOSE: No track-level genres, using artist/album genres
+VERBOSE: Get-Tags: Album.release_date raw value: '2025-09-19' (Type: System.String)
+VERBOSE: Get-Tags: Get-ReleaseYear resolved Year: 2025
+VERBOSE: Saving tags to: H:\__Fresh\Bluetech\Spacehop Chronicles 2 (2025)\08. Bluetech - Amorphous Crystals of Cassiopeia.flac
+VERBOSE: Tag values:\n
+Name                           Value
+----                           -----
+Album                          Spacehop Chronicles 2
+Performers                     Bluetech
+Genres                         {downtempo, ambient}
+Disc                           01
+AlbumArtist                    Bluetech
+Title                          Amorphous Crystals of Cassiopeia
+Date                           2025
+Track                          08
+
+
+Saved tags: 08. Bluetech - Amorphous Crystals of Cassiopeia.flac -> 01.08: Amorphous Crystals of Cassiopeia
+VERBOSE: No track-level genres, using artist/album genres
+VERBOSE: Get-Tags: Album.release_date raw value: '2025-09-19' (Type: System.String)
+VERBOSE: Get-Tags: Get-ReleaseYear resolved Year: 2025
+VERBOSE: Saving tags to: H:\__Fresh\Bluetech\Spacehop Chronicles 2 (2025)\09. Bluetech - Artemis Program (Laika's Lament).flac
+VERBOSE: Tag values:\n
+Name                           Value
+----                           -----
+Album                          Spacehop Chronicles 2
+Performers                     Bluetech
+Genres                         {downtempo, ambient}
+Disc                           01
+AlbumArtist                    Bluetech
+Title                          Artemis Program (Laika's Lament)
+Date                           2025
+Track                          09
+
+
+Saved tags: 09. Bluetech - Artemis Program (Laika's Lament).flac -> 01.09: Artemis Program (Laika's Lament)
+VERBOSE: No track-level genres, using artist/album genres
+VERBOSE: Get-Tags: Album.release_date raw value: '2025-09-19' (Type: System.String)
+VERBOSE: Get-Tags: Get-ReleaseYear resolved Year: 2025
+VERBOSE: Saving tags to: H:\__Fresh\Bluetech\Spacehop Chronicles 2 (2025)\10. Bluetech - Chronos Empire of Rust.flac
+VERBOSE: Tag values:\n
+Name                           Value
+----                           -----
+Album                          Spacehop Chronicles 2
+Performers                     Bluetech; Lisa Bella Donna
+Genres                         {downtempo, ambient}
+Disc                           01
+AlbumArtist                    Bluetech
+Title                          Chronos Empire of Rust
+Date                           2025
+Track                          10
+
+
+Saved tags: 10. Bluetech - Chronos Empire of Rust.flac -> 01.10: Chronos Empire of Rust
+VERBOSE: Read AlbumArtist from tags: Bluetech
+VERBOSE: Forcing garbage collection before folder move to release file handles
+--- DEBUG: Move-AlbumFolder ---
+Input AlbumPath: H:\__Fresh\Bluetech\Spacehop Chronicles 2 (2025)
+Input NewArtist: Bluetech
+Input NewYear: 2025
+Input NewAlbumName: Spacehop Chronicles 2
+--------------------------------
+Derived currentArtistPath: H:\__Fresh\Bluetech
+Derived artistParentPath: H:\__Fresh
+Derived targetArtistPath: H:\__Fresh\Bluetech
+Derived baseAlbumName: 2025 - Spacehop Chronicles 2
+--------------------------------
+Get-UniqueAlbumPath candidate: H:\__Fresh\Bluetech\2025 - Spacehop Chronicles 2
+Final destAlbumPath: H:\__Fresh\Bluetech\2025 - Spacehop Chronicles 2
+VERBOSE: Renaming 'H:\__Fresh\Bluetech\Spacehop Chronicles 2 (2025)' -> '2025 - Spacehop Chronicles 2'
+VERBOSE: TRACE: Invoke-OMHandleMoveSuccess args: moveResult=(@{Success=True; OldAlbumPath=H:\__Fresh\Bluetech\Spacehop Chronicles 2 (2025); NewAlbumPath=H:\__Fresh\Bluetech\2025 - Spacehop Chronicles 2; OldArtistPath=H:\__Fresh\Bluetech; NewArtistPath=H:\__Fresh\Bluetech; CollisionAdjusted=False; Action=Rename}); useWhatIf=False; oldpath=H:\__Fresh\Bluetech\Spacehop Chronicles 2 (2025)
+VERBOSE: TargetFolder specified: H:\__checkedAudio
+VERBOSE: Current album path: H:\__Fresh\Bluetech\2025 - Spacehop Chronicles 2
+VERBOSE: Folder name: 2025 - Spacehop Chronicles 2
+VERBOSE: Found 10 audio files for AlbumArtist extraction
+VERBOSE: Reading AlbumArtist from: H:\__Fresh\Bluetech\2025 - Spacehop Chronicles 2\01. Bluetech - Kudryavka.flac
+VERBOSE: Disposed existing TagFile handle
+VERBOSE: Reloaded TagFile for AlbumArtist check
+VERBOSE: Read AlbumArtist from saved tags for TargetFolder: Bluetech
+VERBOSE: Creating artist directory: H:\__checkedAudio\Bluetech
+Moving album to target folder: H:\__checkedAudio\Bluetech\2025 - Spacehop Chronicles 2
+VERBOSE: Parent folder not empty (1 items remaining), keeping it
+Album saved and folder moved. Choose 's' to skip to next album, or select another option.
+✓ AUTO: Album completed successfully, moving to next album...
+
+
+
+=== Processing: H:\__Fresh\efdemin ===
+VERBOSE: Found candidate (module installed): C:\Users\jmw\Documents\PowerShell\Modules\MuFo\lib\TagLib.dll
+VERBOSE: Found candidate under module base: C:\Users\jmw\Documents\PowerShell\Modules\MuFo\lib\TagLib.dll
+VERBOSE: Found candidate under module base: C:\Users\jmw\Documents\PowerShell\Modules\MuFo\lib\TagLibSharp.2.3.0\lib\net462\TagLibSharp.dll
+VERBOSE: Found candidate under module base: C:\Users\jmw\Documents\PowerShell\Modules\MuFo\lib\TagLibSharp.2.3.0\lib\netstandard2.0\TagLibSharp.dll
+VERBOSE: Found candidate (PSModulePath): C:\Users\jmw\Documents\PowerShell\Modules\MuFo\lib\TagLib.dll
+VERBOSE: Attempting to load TagLib from: C:\Users\jmw\Documents\PowerShell\Modules\MuFo\lib\TagLib.dll
+VERBOSE: TagLib type now available after Add-Type (C:\Users\jmw\Documents\PowerShell\Modules\MuFo\lib\TagLib.dll)
+VERBOSE: Start-OM: begin (diagnostics)
+VERBOSE: PSBoundParameters: Path,Provider,Auto,AutoFallback,AutoSaveCover,TargetFolder,Verbose
+VERBOSE: Path value: 'H:\__Fresh\efdemin' (Length: 18)
+VERBOSE: Start-OM: enumerating files in H:\__Fresh\efdemin
+VERBOSE: Start-OM: enumerated 11 audio files and 1 subfolders
+VERBOSE: TRACE: Building nonDiscFolders: subFoldersWithAudio.Count=1
+VERBOSE: Detected artist folder path: H:\__Fresh\efdemin (has 1 album subfolders with audio files)
