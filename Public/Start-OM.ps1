@@ -1063,7 +1063,9 @@ function Start-OM {
                                 }
                                 
                                 # AUTO MODE: Smart matching with best sort strategy
-                                if ($Auto -and $State.AutoModeActive -and -not $goC) {
+                                # Run if -Auto flag is set, regardless of whether album was auto-selected
+                                # This allows auto-save even when album was selected manually but tracks match well
+                                if ($Auto -and -not $goC) {
                                     Write-Host "🐛 DEBUG: AUTO MODE block starting..." -ForegroundColor Magenta
                                     Write-Host "🐛 DEBUG: Auto=$Auto, AutoModeActive=$($State.AutoModeActive), goC=$goC" -ForegroundColor Magenta
                                     Show-Message -Message "🤖 AUTO: Analyzing track matches..." -ForegroundColor Cyan -Context $Context
@@ -1147,7 +1149,7 @@ function Start-OM {
                                 Show-Message -Message "goC: auto-applying Save-All for album '$($ProviderAlbum.name)'." -ForegroundColor Yellow -Context $Context
                                 $inputF = 'sa'
                             }
-                            elseif ($Auto -and $State.AutoModeActive -and $inputF -eq 'sa') {
+                            elseif ($Auto -and $inputF -eq 'sa') {
                                 # Auto mode already set inputF to 'sa' above, proceed
                             }
                             else {
