@@ -108,7 +108,7 @@ function Invoke-OMFolderMove {
         Start-Sleep -Milliseconds 100  # Brief pause to ensure OS releases locks
     }
     
-    $moveResult = Invoke-MoveAlbumWithRetry -mvArgs $mvArgs -useWhatIf $UseWhatIf
+    $moveResult = Invoke-MoveAlbumWithRetry -mvArgs $mvArgs -UseWhatIf:$UseWhatIf
     
     return [PSCustomObject]@{
         Success    = ($moveResult -ne $null)
