@@ -314,6 +314,10 @@ function Invoke-OMQuickFind {
         }
         
         # Try fallback providers if no match
+        $bestFallbackProvider = $null
+        $bestFallbackCandidates = @()
+        $bestFallbackScore = 0
+        
         if (-not $bestMatch -and $AutoFallback) {
             if ($albumCandidates.Count -gt 0) {
                 Show-Message -Message "⚠️  AUTO: No high-confidence match on $Provider, trying fallback providers..." -ForegroundColor Yellow -Context $Context
@@ -347,6 +351,13 @@ function Invoke-OMQuickFind {
                 if ($fallbackCandidates.Count -gt 0) {
                     $fallbackMatch = Get-BestAutoMatch -Candidates $fallbackCandidates -LocalArtist $quickArtist -LocalAlbum $quickAlbum -LocalTrackCount $State.TrackCount -Threshold $AutoConfidenceThreshold
                     
+                    # Track best fallback even if below threshold
+                    if ($fallbackMatch -and $fallbackMatch.Confidence -gt $bestFallbackScore) {
+                        $bestFallbackScore = $fallbackMatch.Confidence
+                        $bestFallbackProvider = $fallbackProvider
+                        $bestFallbackCandidates = $fallbackCandidates
+                    }
+                    
                     if ($fallbackMatch) {
                         Show-Message -Message "   ✓ Found high-confidence match on $fallbackProvider ($($fallbackMatch.Confidence)%)" -ForegroundColor Green -Context $Context
                         $bestMatch = $fallbackMatch
@@ -356,6 +367,14 @@ function Invoke-OMQuickFind {
                         break
                     }
                 }
+            }
+            
+            # If no high-confidence match found but we have a better fallback provider, use it
+            if (-not $bestMatch -and $bestFallbackProvider) {
+                Show-Message -Message "🔄 AUTO: Using $bestFallbackProvider (best match: $bestFallbackScore%) for interactive selection" -ForegroundColor Cyan -Context $Context
+                $Provider = $bestFallbackProvider
+                $result.Provider = $bestFallbackProvider
+                $albumCandidates = $bestFallbackCandidates
             }
         }
         
