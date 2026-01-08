@@ -1580,7 +1580,7 @@ function Start-OM {
                                     
                                     # Reload audio files with updated tags if not in WhatIf mode and folder wasn't moved
                                     # (Invoke-OMHandleMoveSuccess reloads if folder was moved, but we need to reload even if it wasn't)
-                                    if (-not $useWhatIf -and $moveResult -and $moveResult.NewAlbumPath -eq $oldpath) {
+                                    if (-not $useWhatIf -and $folderMoveResult.MoveResult -and $folderMoveResult.MoveResult.NewAlbumPath -eq $folderMoveResult.OldPath) {
                                         Write-Verbose "Reloading audio files to reflect saved tags (folder not moved)"
                                         # Reload audio files with fresh TagLib handles
                                         $State.AudioFiles = Reload-OMAudioFiles -AlbumPath $State.Album.FullName

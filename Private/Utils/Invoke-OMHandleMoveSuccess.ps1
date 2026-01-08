@@ -111,17 +111,16 @@ function Invoke-OMHandleMoveSuccess {
         Write-Verbose "Current album path: $currentPath"
         Write-Verbose "Folder name: $folderName"
 
-        # Get AlbumArtist from the first audio file's tags
+        # Get AlbumArtist from the first audio file's tags (use State.AudioFiles which has updated paths)
         $albumArtistName = 'Unknown Artist'
-        $workingAudioFiles = if ($AudioFiles) { $AudioFiles } else { $State.AudioFiles }
-        if ($workingAudioFiles -and $workingAudioFiles.Count -gt 0 -and $workingAudioFiles[0].PSObject.Properties['FilePath']) {
-            Write-Verbose "Found $($workingAudioFiles.Count) audio files for AlbumArtist extraction"
+        if ($State.AudioFiles -and $State.AudioFiles.Count -gt 0 -and $State.AudioFiles[0].PSObject.Properties['FilePath']) {
+            Write-Verbose "Found $($State.AudioFiles.Count) audio files for AlbumArtist extraction"
             try {
-                $firstFilePath = $workingAudioFiles[0].FilePath
+                $firstFilePath = $State.AudioFiles[0].FilePath
                 Write-Verbose "Reading AlbumArtist from: $firstFilePath"
                 # Dispose old handle if exists
-                if ($workingAudioFiles[0].PSObject.Properties['TagFile'] -and $workingAudioFiles[0].TagFile) {
-                    try { $workingAudioFiles[0].TagFile.Dispose() } catch { Write-Verbose "Dispose failed: $($_.Exception.Message)" }
+                if ($State.AudioFiles[0].PSObject.Properties['TagFile'] -and $State.AudioFiles[0].TagFile) {
+                    try { $State.AudioFiles[0].TagFile.Dispose() } catch { Write-Verbose "Dispose failed: $($_.Exception.Message)" }
                     Write-Verbose "Disposed existing TagFile handle"
                 }
                 # Reload file to read current saved tags
