@@ -1578,6 +1578,14 @@ function Start-OM {
                                         -State $State -TargetFolder $TargetFolder -Context $Context -NonInteractive:$NonInteractive -GoC:$goC -AudioFiles $State.AudioFiles
                                     Sync-OMStateToScript -State $State  # Sync State back to script variables
                                     
+                                    # AUTO MODE: Skip to next album after successful save
+                                    if ($Auto) {
+                                        Show-Message -Message "✓ AUTO: Album completed successfully, moving to next album..." -ForegroundColor Green -Context $Context
+                                        $albumDone = $true
+                                        $exitDo = $true
+                                        break
+                                    }
+                                    
                                     # Reload audio files with updated tags if not in WhatIf mode and folder wasn't moved
                                     # (Invoke-OMHandleMoveSuccess reloads if folder was moved, but we need to reload even if it wasn't)
                                     if (-not $useWhatIf -and $folderMoveResult.MoveResult -and $folderMoveResult.MoveResult.NewAlbumPath -eq $folderMoveResult.OldPath) {
@@ -1592,14 +1600,6 @@ function Start-OM {
                                             }
                                         }
                                         $State.RefreshTracks = $true
-                                    }
-                                    
-                                    # AUTO MODE: Skip to next album after successful save
-                                    if ($Auto -and $State.AutoModeActive) {
-                                        Show-Message -Message "✓ AUTO: Album completed successfully, moving to next album..." -ForegroundColor Green -Context $Context
-                                        $albumDone = $true
-                                        $exitDo = $true
-                                        break
                                     }
                                     
                                     continue                                   
