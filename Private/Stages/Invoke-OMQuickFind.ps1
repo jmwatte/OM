@@ -336,6 +336,8 @@ function Invoke-OMQuickFind {
                     try { "$(Get-Date -Format o) | INVOKE: Invoke-ProviderSearch Provider=$fallbackProvider Album=$quickAlbum Artist=$quickArtist" | Out-File -FilePath (Join-Path $env:TEMP 'start_om_invocation_log.txt') -Append -Encoding utf8 -Force } catch { }
                     $fallbackResults = Invoke-ProviderSearch -Provider $fallbackProvider -Album $quickAlbum -Artist $quickArtist -Type album
                     $fallbackCandidates = if ($fallbackResults -and $fallbackResults.albums -and $fallbackResults.albums.items) { @($fallbackResults.albums.items | Where-Object { $_ -ne $null }) } else { @() }
+                    # Ensure it's an array even if Where-Object returns null
+                    if ($null -eq $fallbackCandidates) { $fallbackCandidates = @() }
                 }
                 catch {
                     Write-Verbose "Fallback provider $fallbackProvider search failed: $_"
