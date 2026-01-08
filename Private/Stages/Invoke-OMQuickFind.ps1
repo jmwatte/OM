@@ -349,15 +349,26 @@ function Invoke-OMQuickFind {
                 }
                 
                 if ($fallbackCandidates.Count -gt 0) {
-                    $fallbackMatch = Get-BestAutoMatch -Candidates $fallbackCandidates -LocalArtist $quickArtist -LocalAlbum $quickAlbum -LocalTrackCount $State.TrackCount -Threshold $AutoConfidenceThreshold
+                    # Calculate best match for this provider (regardless of threshold)
+                    $fallbackBestScore = 0.0
+                    $fallbackBestCandidate = $null
+                    for ($i = 0; $i -lt $fallbackCandidates.Count; $i++) {
+                        $score = Get-AlbumMatchConfidence -Candidate $fallbackCandidates[$i] -LocalArtist $quickArtist -LocalAlbum $quickAlbum -LocalTrackCount $State.TrackCount
+                        if ($score -gt $fallbackBestScore) {
+                            $fallbackBestScore = $score
+                            $fallbackBestCandidate = $fallbackCandidates[$i]
+                        }
+                    }
                     
-                    # Track best fallback even if below threshold
-                    if ($fallbackMatch -and $fallbackMatch.Confidence -gt $bestFallbackScore) {
-                        $bestFallbackScore = $fallbackMatch.Confidence
+                    # Track best fallback provider regardless of threshold
+                    if ($fallbackBestScore -gt $bestFallbackScore) {
+                        $bestFallbackScore = $fallbackBestScore
                         $bestFallbackProvider = $fallbackProvider
                         $bestFallbackCandidates = $fallbackCandidates
                     }
                     
+                    # Check if it meets threshold for auto-selection
+                    $fallbackMatch = Get-BestAutoMatch -Candidates $fallbackCandidates -LocalArtist $quickArtist -LocalAlbum $quickAlbum -LocalTrackCount $State.TrackCount -Threshold $AutoConfidenceThreshold
                     if ($fallbackMatch) {
                         Show-Message -Message "   ✓ Found high-confidence match on $fallbackProvider ($($fallbackMatch.Confidence)%)" -ForegroundColor Green -Context $Context
                         $bestMatch = $fallbackMatch

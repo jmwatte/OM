@@ -1563,7 +1563,7 @@ function Start-OM {
                                         -ProviderAlbum $ProviderAlbum `
                                         -ProviderArtist $ProviderArtist `
                                         -AlbumPath $State.Album.FullName `
-                                        -AudioFiles $audioFiles `
+                                        -AudioFiles $State.AudioFiles `
                                         -ManualAlbumArtist $State.ManualAlbumArtist `
                                         -AlbumName $State.AlbumName `
                                         -UseWhatIf:$useWhatIf `
@@ -1571,7 +1571,7 @@ function Start-OM {
                                     
                                     Write-Verbose ("TRACE: Invoke-OMHandleMoveSuccess args: moveResult=($($folderMoveResult.MoveResult -as [string])); useWhatIf=$useWhatIf; oldpath=$($folderMoveResult.OldPath)")
                                     Invoke-OMHandleMoveSuccess -MoveResult $folderMoveResult.MoveResult -UseWhatIf $useWhatIf -OldPath $folderMoveResult.OldPath `
-                                        -State $State -TargetFolder $TargetFolder -Context $Context -NonInteractive:$NonInteractive -GoC:$goC -AudioFiles $audioFiles
+                                        -State $State -TargetFolder $TargetFolder -Context $Context -NonInteractive:$NonInteractive -GoC:$goC -AudioFiles $State.AudioFiles
                                     Sync-OMStateToScript -State $State  # Sync State back to script variables
                                     
                                     # Reload audio files with updated tags if not in WhatIf mode and folder wasn't moved
