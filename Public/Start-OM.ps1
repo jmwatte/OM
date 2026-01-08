@@ -1064,6 +1064,8 @@ function Start-OM {
                                 
                                 # AUTO MODE: Smart matching with best sort strategy
                                 if ($Auto -and $State.AutoModeActive -and -not $goC) {
+                                    Write-Host "🐛 DEBUG: AUTO MODE block starting..." -ForegroundColor Magenta
+                                    Write-Host "🐛 DEBUG: Auto=$Auto, AutoModeActive=$($State.AutoModeActive), goC=$goC" -ForegroundColor Magenta
                                     Show-Message -Message "🤖 AUTO: Analyzing track matches..." -ForegroundColor Cyan -Context $Context
                                     
                                     # Try different sort strategies and pick the best
@@ -1107,6 +1109,8 @@ function Start-OM {
                                     $confidencePercent = if ($totalTracks -gt 0) { 
                                         [Math]::Round(($bestScore / $totalTracks) * 100, 0) 
                                     } else { 0 }
+                                    
+                                    Write-Host "🐛 DEBUG: bestScore=$bestScore, totalTracks=$totalTracks, confidencePercent=$confidencePercent%, threshold=$($AutoConfidenceThreshold * 100)%" -ForegroundColor Magenta
                                     
                                     Show-Message -Message "🤖 AUTO: Best strategy: '$bestStrategy' ($bestScore/$totalTracks matches, $confidencePercent% confidence)" -ForegroundColor Green -Context $Context
                                     
