@@ -86,6 +86,26 @@
     When used with -Auto, automatically saves cover art to the album folder after saving tags.
     Requires Auto mode to be enabled.
 
+.PARAMETER UpdateOnly
+    Specifies which metadata fields to update from the provider. By default, all fields are updated.
+    Use this to selectively update only specific metadata while preserving other existing tags.
+    
+    Valid values:
+    - 'All' (default): Update all metadata fields
+    - 'Genres': Only update genre tags
+    - 'Year': Only update the release year
+    - 'AlbumArtist': Only update the album artist field
+    - 'Artists': Only update track-level performer/artist fields
+    - 'TrackInfo': Only update track title, track number, and disc number
+    - 'Album': Only update album name
+    - 'CoverArt': Only download/update cover art (no tag changes)
+    - 'Composers': Only update composer fields
+    
+    Multiple values can be combined: -UpdateOnly Genres,Year,CoverArt
+    
+    Note: CoverArt is handled separately from tags. When 'CoverArt' is included,
+    cover art will be saved regardless of other UpdateOnly values.
+
 .EXAMPLE
     Start-OM -Path "C:\Music\MyArtist"
 
@@ -124,6 +144,48 @@
 
     Preview what Auto mode would do without making any changes. Shows which albums would be auto-selected
     and which would require manual intervention.
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\Artist" -Auto -AutoFallback -UpdateOnly Genres
+
+    Auto-matches albums and updates ONLY the genre tags from the provider, preserving all other existing tags.
+    Useful for enriching genre metadata without changing track titles, artists, etc.
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\Artist" -Auto -AutoFallback -UpdateOnly Year,AlbumArtist
+
+    Updates only the release year and album artist fields from the provider, leaving all other tags unchanged.
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\Artist" -Auto -AutoFallback -UpdateOnly CoverArt
+
+    Only downloads and saves cover art (cover.jpg) without modifying any audio file tags.
+    Perfect for albums that already have correct tags but are missing artwork.
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\Artist" -Auto -AutoFallback -UpdateOnly Genres,Year,CoverArt
+
+    Combines multiple update targets: fetches genres and year from the provider and downloads cover art,
+    while preserving existing track titles, artists, album names, and other metadata.
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\Classical" -Auto -UpdateOnly Artists,Composers -Provider Qobuz
+
+    Updates only the track-level performers and composer fields from Qobuz.
+    Useful for classical music where performer credits are important but you want to keep existing metadata.
+
+.EXAMPLE
+    Get-ChildItem "D:\Music\Unsorted" -Directory | ForEach-Object {
+        Start-OM -Path $_.FullName -Auto -AutoFallback -UpdateOnly Genres -Provider Qobuz
+    }
+
+    Batch process: Updates only genre tags for all artist folders in D:\Music\Unsorted using Qobuz.
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\Album" -Auto -UpdateOnly TrackInfo,Album
+
+    Updates track titles, track numbers, disc numbers, and album name from the provider,
+    while preserving artists, genres, year, and other existing tags.
 
 .NOTES
     This function requires the TagLib-Sharp library for reading and writing audio file tags.
@@ -176,6 +238,10 @@ function Start-OM {
         [switch]$AutoFallback,
         [Parameter(Mandatory = $false)]
         [switch]$AutoSaveCover,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('All', 'Genres', 'Year', 'AlbumArtist', 'Artists', 'TrackInfo', 'Album', 'CoverArt', 'Composers')]
+        [string[]]$UpdateOnly = @('All'),
 
         [Parameter(Mandatory = $false)][object]$Context
 
@@ -1118,24 +1184,26 @@ function Start-OM {
                                     
                                     # Auto-proceed if confidence is high enough
                                     if ($confidencePercent -ge ($AutoConfidenceThreshold * 100)) {
-                                        Show-Message -Message "✓ AUTO: Confidence threshold met, auto-saving tags and cover..." -ForegroundColor Green -Context $Context
+                                        # Build message based on UpdateOnly
+                                        $updateModeText = if ($UpdateOnly -contains 'All') { 
+                                            "auto-saving tags" 
+                                        } else { 
+                                            "auto-saving: $($UpdateOnly -join ', ')" 
+                                        }
+                                        if ($AutoSaveCover -or $UpdateOnly -contains 'CoverArt') {
+                                            $updateModeText += " and cover"
+                                        }
+                                        Show-Message -Message "✓ AUTO: Confidence threshold met, $updateModeText..." -ForegroundColor Green -Context $Context
                                         
                                         # Auto-execute save-all command
                                         $inputF = 'sa'
                                         $goC = $true  # Simulate goC to trigger save-all
                                         
-                                        # If AutoSaveCover is enabled, also save cover art
-                                        if ($AutoSaveCover) {
-                                            $coverUrl = Get-IfExists $ProviderAlbum 'cover_url'
-                                            if ($coverUrl) {
-                                                Show-Message -Message "🖼️  AUTO: Saving cover art..." -ForegroundColor Cyan -Context $Context
-                                                $config = Get-OMConfig
-                                                $maxSize = $config.CoverArt.FolderImageSize
-                                                $result = Save-CoverArt -CoverUrl $coverUrl -AlbumPath $State.Album.FullName `\n                                                    -Action SaveToFolder -MaxSize $maxSize -WhatIf:$useWhatIf
-                                                if ($result.Success) {
-                                                    Show-Message -Message "✓ AUTO: Cover art saved" -ForegroundColor Green -Context $Context
-                                                }
-                                            }
+                                        # Note: Cover art is now handled in the '^sa$' block based on UpdateOnly parameter
+                                        # AutoSaveCover enables it implicitly by adding 'CoverArt' to the save logic
+                                        if ($AutoSaveCover -and $UpdateOnly -notcontains 'CoverArt') {
+                                            # Add CoverArt to UpdateOnly for this save operation
+                                            $UpdateOnly = @($UpdateOnly) + 'CoverArt'
                                         }
                                     }
                                     else {
@@ -1501,10 +1569,38 @@ function Start-OM {
                                     }
                                 }
                                 '^sa$' {
-
-
-
-
+                                    # Check if we're in CoverArt-only mode
+                                    $coverArtOnlyMode = ($UpdateOnly.Count -eq 1 -and $UpdateOnly[0] -eq 'CoverArt')
+                                    $shouldSaveCoverArt = ($UpdateOnly -contains 'All' -or $UpdateOnly -contains 'CoverArt')
+                                    
+                                    # Show UpdateOnly mode indicator if not saving all
+                                    if ($UpdateOnly -notcontains 'All') {
+                                        Show-Message -Message "ℹ️  UpdateOnly mode: $($UpdateOnly -join ', ')" -ForegroundColor Cyan -Context $Context
+                                    }
+                                    
+                                    # Save CoverArt first if requested
+                                    if ($shouldSaveCoverArt) {
+                                        $coverUrl = Get-IfExists $ProviderAlbum 'cover_url'
+                                        if ($coverUrl) {
+                                            Show-Message -Message "🖼️  Saving cover art..." -ForegroundColor Cyan -Context $Context
+                                            $config = Get-OMConfig
+                                            $maxSize = $config.CoverArt.FolderImageSize
+                                            $coverResult = Save-CoverArt -CoverUrl $coverUrl -AlbumPath $State.Album.FullName `
+                                                -Action SaveToFolder -MaxSize $maxSize -WhatIf:$useWhatIf
+                                            if ($coverResult.Success) {
+                                                Show-Message -Message "✓ Cover art saved" -ForegroundColor Green -Context $Context
+                                            }
+                                            else {
+                                                Write-Warning "Failed to save cover art: $($coverResult.Error)"
+                                            }
+                                        }
+                                        else {
+                                            Write-Verbose "No cover art URL available for this album"
+                                        }
+                                    }
+                                    
+                                    # Skip tag saving if CoverArt-only mode
+                                    if (-not $coverArtOnlyMode) {
                                     foreach ($pair in $State.PairedTracks) {
                                         # check if pair has audio and spotify track with get-ifexists
                                         if ($null -ne (Get-IfExists $pair 'AudioFile') -and $null -ne (Get-IfExists $pair 'SpotifyTrack')) {
@@ -1518,12 +1614,24 @@ function Start-OM {
                                                 $tagsParams['ManualAlbumArtist'] = ConvertTo-AlbumArtistString -Value $State.ManualAlbumArtist
                                             }
                                             $tags = Get-Tags @tagsParams
+                                            
+                                            # Filter tags based on UpdateOnly parameter
+                                            $tags = Get-FilteredTags -Tags $tags -UpdateOnly $UpdateOnly
+                                            
+                                            # Skip if no tags to save after filtering
+                                            if ($tags.Count -eq 0) {
+                                                Write-Verbose "No tags to save for $filePath after filtering"
+                                                continue
+                                            }
+                                            
                                             Write-Verbose ("Saving tags to: {0}" -f $filePath)
                                             Write-Verbose ("Tag values:\n{0}" -f ($tags | Out-String))
                                             $genreMerge = ($State.GenreMode -eq 'Merge')
                                             $res = Save-TagsForFile -FilePath $filePath -TagValues $tags -WhatIf:$useWhatIf -GenreMergeMode:$genreMerge
                                             if ($res.Success) { 
-                                                Show-Message -Message (("Saved tags: {0} -> {1:D2}.{2:D2}: {3}" -f (Split-Path -Leaf $filePath), $tags.Disc, $tags.Track, $tags.Title)) -ForegroundColor Green -Context $Context 
+                                                # Build display message based on what was saved
+                                                $savedFields = $tags.Keys -join ', '
+                                                Show-Message -Message (("Saved [{0}]: {1}" -f $savedFields, (Split-Path -Leaf $filePath))) -ForegroundColor Green -Context $Context 
                                             }
                                             else { 
                                                 Write-Warning ("Skipped/Failed: {0} ({1})" -f $filePath, ($res.Reason -or 'unknown')) 
@@ -1539,6 +1647,7 @@ function Start-OM {
                                             }
                                         }
                                     }
+                                    } # End of if (-not $coverArtOnlyMode)
                                     
 
 

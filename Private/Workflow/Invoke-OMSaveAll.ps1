@@ -74,6 +74,8 @@ function Invoke-OMSaveAll {
         
         [switch]$UseWhatIf,
         
+        [string[]]$UpdateOnly = @('All'),
+        
         $Context
     )
 
@@ -86,7 +88,15 @@ function Invoke-OMSaveAll {
         ReloadRequired = $false
     }
 
+    # Check if we should skip tag saving entirely (CoverArt only mode)
+    $skipTagSaving = ($UpdateOnly.Count -eq 1 -and $UpdateOnly[0] -eq 'CoverArt')
+    
     # Phase 1: Save tags to all paired tracks
+    if ($skipTagSaving) {
+        Write-Verbose "Skipping tag saving - CoverArt only mode"
+        Show-Message -Message "ℹ️  UpdateOnly=CoverArt: Skipping tag updates" -ForegroundColor Cyan -Context $Context
+    }
+    else {
     foreach ($pair in $PairedTracks) {
         if ($null -ne (Get-IfExists $pair 'AudioFile') -and $null -ne (Get-IfExists $pair 'SpotifyTrack')) {
             $filePath = $pair.AudioFile.FilePath
@@ -113,6 +123,46 @@ function Invoke-OMSaveAll {
             }
             
             $tags = Get-Tags @tagsParams
+            
+            # Filter tags based on UpdateOnly parameter
+            if ($UpdateOnly -notcontains 'All') {
+                $filteredTags = @{}
+                
+                if ('Genres' -in $UpdateOnly) { 
+                    if ($tags.ContainsKey('Genres')) { $filteredTags.Genres = $tags.Genres }
+                }
+                if ('Year' -in $UpdateOnly) { 
+                    if ($tags.ContainsKey('Date')) { $filteredTags.Date = $tags.Date }
+                }
+                if ('AlbumArtist' -in $UpdateOnly) { 
+                    if ($tags.ContainsKey('AlbumArtist')) { $filteredTags.AlbumArtist = $tags.AlbumArtist }
+                }
+                if ('Artists' -in $UpdateOnly) { 
+                    if ($tags.ContainsKey('Performers')) { $filteredTags.Performers = $tags.Performers }
+                }
+                if ('TrackInfo' -in $UpdateOnly) { 
+                    if ($tags.ContainsKey('Title')) { $filteredTags.Title = $tags.Title }
+                    if ($tags.ContainsKey('Track')) { $filteredTags.Track = $tags.Track }
+                    if ($tags.ContainsKey('Disc')) { $filteredTags.Disc = $tags.Disc }
+                }
+                if ('Album' -in $UpdateOnly) { 
+                    if ($tags.ContainsKey('Album')) { $filteredTags.Album = $tags.Album }
+                }
+                if ('Composers' -in $UpdateOnly) { 
+                    if ($tags.ContainsKey('Composers')) { $filteredTags.Composers = $tags.Composers }
+                    if ($tags.ContainsKey('Conductor')) { $filteredTags.Conductor = $tags.Conductor }
+                }
+                
+                $tags = $filteredTags
+                Write-Verbose "Filtered tags to: $($tags.Keys -join ', ')"
+            }
+            
+            # Skip if no tags to save after filtering
+            if ($tags.Count -eq 0) {
+                Write-Verbose "No tags to save for $filePath after filtering"
+                continue
+            }
+            
             Write-Verbose ("Saving tags to: {0}" -f $filePath)
             Write-Verbose ("Tag values:`n{0}" -f ($tags | Out-String))
             
@@ -136,6 +186,7 @@ function Invoke-OMSaveAll {
             $result.TagsSkipped++
         }
     }
+    } # End of if (-not $skipTagSaving)
 
     # Phase 2: Dispose TagFile handles (only when actually applying changes)
     if (-not $UseWhatIf) {
