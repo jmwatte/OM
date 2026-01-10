@@ -484,7 +484,16 @@ function Start-OM {
         $State.AutoModeActive = $false    # Will be set to $true if Auto mode finds a match
         $currentAlbumPage = 1
         
+        # Remember if -goC was passed as a parameter (should apply to all albums)
+        # vs set dynamically by confidence check (should be reset per album)
+        $goCParameter = $goC.IsPresent -or $goC -eq $true
+        
         foreach ($albumOriginal in @($albums)) {
+            # Reset goC for each album unless it was explicitly passed as a parameter
+            if (-not $goCParameter) {
+                $goC = $false
+            }
+            
             $State.Album = $albumOriginal
             Write-Verbose "TRACE: Start processing album: $($State.Album.FullName)"
             $State.ManualAlbumArtist = $null
@@ -1207,7 +1216,12 @@ function Start-OM {
                                         }
                                     }
                                     else {
-                                        Write-Warning "AUTO: Confidence too low ($confidencePercent%), falling back to interactive mode"
+                                        $lowConfCount = $totalTracks - $bestScore
+                                        Write-Host ""
+                                        Write-Host "⚠️  AUTO: SKIPPING auto-save due to low confidence!" -ForegroundColor Red
+                                        Write-Host "   Only $bestScore of $totalTracks tracks match ($confidencePercent% < $([int]($AutoConfidenceThreshold * 100))% threshold)" -ForegroundColor Yellow
+                                        Write-Host "   $lowConfCount tracks have LOW confidence matches - manual review required" -ForegroundColor Yellow
+                                        Write-Host ""
                                         $State.AutoModeActive = $false
                                     }
                                 }
