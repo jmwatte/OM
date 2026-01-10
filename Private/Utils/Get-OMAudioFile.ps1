@@ -16,15 +16,18 @@ function Get-OMAudioFile {
 
     $extsNormalized = @($Extensions) | ForEach-Object { $_.ToLower() }
 
-    $files = Get-ChildItem -LiteralPath $Path -File -Recurse |
-        Where-Object { $extsNormalized -contains $_.Extension.ToLower() }
+    $files = @(Get-ChildItem -LiteralPath $Path -File -Recurse |
+        Where-Object { $extsNormalized -contains $_.Extension.ToLower() })
 
     if ($SortMethod -eq 'alphabetical') {
-        $files = $files | Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) }
+        $files = @($files | Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) })
     }
 
     if ($ReturnPathsOnly) {
-        return $files.FullName
+        if ($files.Count -eq 0) {
+            return @()
+        }
+        return @($files.FullName)
     }
 
     $result = @()
