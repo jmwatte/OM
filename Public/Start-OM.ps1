@@ -494,6 +494,9 @@ function Start-OM {
                 $goC = $false
             }
             
+            # Reset tried providers for each new album (for AutoFallback)
+            $State.TriedProviders = @()
+            
             $State.Album = $albumOriginal
             Write-Verbose "TRACE: Start processing album: $($State.Album.FullName)"
             $State.ManualAlbumArtist = $null
@@ -1080,6 +1083,7 @@ function Start-OM {
                         $State.PairedTracks = $null
                         $State.RefreshTracks = $true
                         $goCDisplayShown = $false
+                        $autoModeEvaluated = $false  # Track if we've already run AUTO mode evaluation for this album
                         Write-Verbose "DEBUG: Starting doTracks loop, State.PairedTracks is null: $($null -eq $State.PairedTracks)"
                         :doTracks do {
                             Sync-OMScriptToState -State $State  # Sync at start of track matching loop
@@ -1138,12 +1142,14 @@ function Start-OM {
                                 }
                                 
                                 # AUTO MODE: Smart matching with best sort strategy
-                                # Run if -Auto flag is set, regardless of whether album was auto-selected
-                                # This allows auto-save even when album was selected manually but tracks match well
-                                if ($Auto -and -not $goC) {
+                                # Run ONCE if -Auto flag is set and we haven't already evaluated this album
+                                # After evaluation (pass or fail), don't re-run on sort changes
+                                if ($Auto -and -not $goC -and -not $autoModeEvaluated) {
+                                    $autoModeEvaluated = $true  # Mark as evaluated so we don't re-run
+                                    
                                     Write-Host "🐛 DEBUG: AUTO MODE block starting..." -ForegroundColor Magenta
                                     Write-Host "🐛 DEBUG: Auto=$Auto, AutoModeActive=$($State.AutoModeActive), goC=$goC" -ForegroundColor Magenta
-                                    Show-Message -Message "🤖 AUTO: Analyzing track matches..." -ForegroundColor Cyan -Context $Context
+                                    Show-Message -Message "🤖 AUTO: Analyzing track matches on $Provider..." -ForegroundColor Cyan -Context $Context
                                     
                                     # Try different sort strategies and pick the best
                                     $strategies = @('byOrder', 'byTitle', 'byDuration')
@@ -1218,13 +1224,29 @@ function Start-OM {
                                     else {
                                         $lowConfCount = $totalTracks - $bestScore
                                         Write-Host ""
-                                        Write-Host "⚠️  AUTO: SKIPPING auto-save due to low confidence!" -ForegroundColor Red
+                                        Write-Host "⚠️  AUTO: Low confidence on $Provider!" -ForegroundColor Red
                                         Write-Host "   Only $bestScore of $totalTracks tracks match ($confidencePercent% < $([int]($AutoConfidenceThreshold * 100))% threshold)" -ForegroundColor Yellow
                                         Write-Host "   $lowConfCount tracks have LOW confidence matches - manual review required" -ForegroundColor Yellow
+                                        
+                                        # Note: Provider fallback is handled by Invoke-OMQuickFind at the album search stage.
+                                        # If we got here, QuickFind already tried all providers and this was the best match.
+                                        # So we just fall back to interactive mode for manual track review.
+                                        
                                         Write-Host ""
+                                        
+                                        # In verbose mode, pause for inspection before falling back to interactive
+                                        if ($VerbosePreference -eq 'Continue') {
+                                            Read-Host "Press Enter to continue to interactive mode (Verbose mode pause)"
+                                        }
+                                        
                                         $State.AutoModeActive = $false
                                     }
                                 }
+                            }
+
+                            # Initialize $inputF - may be set by Auto mode above, or by user interaction below
+                            if (-not (Get-Variable -Name 'inputF' -Scope Local -ErrorAction SilentlyContinue) -or $null -eq $inputF) {
+                                $inputF = $null
                             }
 
                             if ($goC) {
@@ -1704,6 +1726,13 @@ function Start-OM {
                                     # AUTO MODE: Skip to next album after successful save
                                     if ($Auto) {
                                         Show-Message -Message "✓ AUTO: Album completed successfully, moving to next album..." -ForegroundColor Green -Context $Context
+                                        
+                                        # In verbose mode, pause before moving to next album for inspection
+                                        if ($VerbosePreference -eq 'Continue') {
+                                            Write-Host ""
+                                            Read-Host "Press Enter to continue to next album (Verbose mode pause)"
+                                        }
+                                        
                                         $albumDone = $true
                                         $exitDo = $true
                                         break

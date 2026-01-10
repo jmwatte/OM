@@ -60,6 +60,7 @@ function New-OMState {
         
         # Auto mode state
         AutoModeActive    = $false         # Whether auto-processing is active
+        TriedProviders    = @()            # Providers tried for current album (for AutoFallback)
         
         # User preferences (per-session)
         ShowVerbose       = $false         # Toggle verbose track display

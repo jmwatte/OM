@@ -279,6 +279,8 @@
         $script:allGenresFrequency = @{}
         $script:allInputObjects = @()
         $script:genreDecisions = @{}
+        $script:emptyGenreFiles = @()  # Track files with no genres
+        $script:emptyGenreAssignment = $null  # Genre to assign to empty files
     }
 
     process {
@@ -300,8 +302,8 @@
                 }
             }
 
-            # Track frequency
-            if ($genres) {
+            # Track frequency or empty genres
+            if ($genres -and $genres.Count -gt 0) {
                 foreach ($genre in $genres) {
                     $genreKey = $genre.ToLower()
                     if (-not $script:allGenresFrequency.ContainsKey($genreKey)) {
@@ -315,23 +317,41 @@
                     $script:allGenresFrequency[$genreKey].files += $InputObject.Path
                 }
             }
+            else {
+                # Track files with no genres
+                $script:emptyGenreFiles += $InputObject
+            }
         }
     }
 
     end {
         if ($script:allInputObjects.Count -eq 0) {
-            Write-Warning "No input objects with genres found."
+            Write-Warning "No input objects found."
             return
         }
 
         Write-Verbose "Processing $($script:allInputObjects.Count) objects with $($script:allGenresFrequency.Count) unique genres."
+        if ($script:emptyGenreFiles.Count -gt 0) {
+            Write-Verbose "Found $($script:emptyGenreFiles.Count) files with empty genres."
+        }
 
-        # Analyze genres: categorize as allowed, mapped, or unmapped
+        # Analyze genres: categorize as allowed, mapped, unmapped, or empty
         $genreAnalysis = @{
             allowed  = @()
             mapped   = @()
             unmapped = @()
             garbage  = @()
+            empty    = @()  # Files with no genres
+        }
+        
+        # Add empty genre files to analysis
+        if ($script:emptyGenreFiles.Count -gt 0) {
+            $genreAnalysis.empty = @($script:emptyGenreFiles | ForEach-Object {
+                @{
+                    path = $_.Path
+                    file = $_
+                }
+            })
         }
 
         foreach ($genreKey in $script:allGenresFrequency.Keys) {
@@ -414,11 +434,32 @@
             }
         }
 
+        # Handle files with empty genres
+        if ($genreAnalysis.empty.Count -gt 0) {
+            if ($Mode -eq 'Review') {
+                Show-Message -Message "`nFiles with NO genres ($($genreAnalysis.empty.Count) files):" -ForegroundColor Yellow -Context $Context
+                $genreAnalysis.empty | Select-Object -First 5 | ForEach-Object {
+                    Show-Message -Message ("  - " + (Split-Path $_.path -Leaf)) -ForegroundColor Gray -Context $Context
+                }
+                if ($genreAnalysis.empty.Count -gt 5) {
+                    Show-Message -Message ("  ... and $($genreAnalysis.empty.Count - 5) more") -ForegroundColor Gray -Context $Context
+                }
+            }
+            elseif (-not $NonInteractive -and ($Mode -eq 'Interactive' -or $Mode -eq 'Batch')) {
+                $script:emptyGenreAssignment = Process-EmptyGenreFiles -EmptyFiles $genreAnalysis.empty `
+                    -AllowedGenresNormalized $allowedGenresNormalized `
+                    -Force ([bool]$Force) `
+                    -WhatIf ([bool]$WhatIf) `
+                    -Context $Context
+            }
+        }
+
         # Apply all corrections to objects
         $correctedObjects = Apply-GenreCorrections -InputObjects $script:allInputObjects `
             -AllowedGenresNormalized $allowedGenresNormalized `
             -GenreMappings $omConfig.Genres.GenreMappings `
-            -GarbageGenres $omConfig.Genres.GarbageGenres
+            -GarbageGenres $omConfig.Genres.GarbageGenres `
+            -EmptyGenreAssignment $script:emptyGenreAssignment
 
         # Output results
         if ($PassThru) {
@@ -434,6 +475,8 @@
         $script:allGenresFrequency = @{}
         $script:allInputObjects = @()
         $script:genreDecisions = @{}
+        $script:emptyGenreFiles = @()
+        $script:emptyGenreAssignment = $null
     }
 }
 
@@ -482,6 +525,16 @@ function Show-GenreFrequencySummary {
             Genre  = $item.original
             Count  = $item.count
             Action = "Delete"
+        }
+    }
+
+    # Add empty genre files to summary
+    if ($Analysis.empty -and $Analysis.empty.Count -gt 0) {
+        $rows += [PSCustomObject]@{
+            Status = "○ EMPTY"
+            Genre  = "(no genre)"
+            Count  = $Analysis.empty.Count
+            Action = "Assign genre?"
         }
     }
 
@@ -790,7 +843,8 @@ function Apply-GenreCorrections {
         [array]$InputObjects,
         [hashtable]$AllowedGenresNormalized,
         [hashtable]$GenreMappings,
-        [array]$GarbageGenres
+        [array]$GarbageGenres,
+        [string]$EmptyGenreAssignment = $null
     )
 
     foreach ($obj in $InputObjects) {
@@ -830,9 +884,98 @@ function Apply-GenreCorrections {
         }
 
         # Update genres and remove duplicates (case-insensitive)
-        $obj.Genres = @($correctedGenres | Select-Object -Unique)
+        # If no corrected genres and we have an empty genre assignment, apply it
+        if ($correctedGenres.Count -eq 0 -and $EmptyGenreAssignment) {
+            $obj.Genres = @($EmptyGenreAssignment)
+        }
+        else {
+            $obj.Genres = @($correctedGenres | Select-Object -Unique)
+        }
         $obj
     }
+}
+
+# Helper function to process files with empty genres
+function Process-EmptyGenreFiles {
+    param(
+        [array]$EmptyFiles,
+        [hashtable]$AllowedGenresNormalized,
+        [bool]$Force,
+        [bool]$WhatIf,
+        $Context
+    )
+
+    if ($EmptyFiles.Count -eq 0) {
+        return $null
+    }
+
+    Write-Host "`n╔════════════════════════════════════════════════════════════════╗"
+    Write-Host "║            FILES WITH NO GENRES ($($EmptyFiles.Count) files)                     ║"
+    Write-Host "╠════════════════════════════════════════════════════════════════╣"
+    
+    # Show sample files
+    Write-Host "  Sample files:"
+    $EmptyFiles | Select-Object -First 5 | ForEach-Object {
+        Write-Host "    - $(Split-Path $_.path -Leaf)" -ForegroundColor Gray
+    }
+    if ($EmptyFiles.Count -gt 5) {
+        Write-Host "    ... and $($EmptyFiles.Count - 5) more" -ForegroundColor Gray
+    }
+    Write-Host "╚════════════════════════════════════════════════════════════════╝"
+
+    Write-Host "`nOptions for files with no genres:"
+    Write-Host "  [A]ssign  - Assign a genre from the whitelist"
+    Write-Host "  [S]kip    - Leave them without genres"
+
+    if ($Force) {
+        return $null
+    }
+
+    $choice = Read-Host "Choose option (A/S)"
+    $choice = $choice.ToUpper()
+    if ($choice.Length -gt 0) { $choice = $choice.Substring(0, 1) }
+
+    if ($choice -eq 'A') {
+        # Show whitelist and let user pick
+        $currentAllowedGenres = @($AllowedGenresNormalized.Values | Sort-Object)
+        
+        Write-Host "`nStandard genres (page through with Enter, or type number):"
+        $pageSize = 20
+        $page = 0
+        $totalPages = [Math]::Ceiling($currentAllowedGenres.Count / $pageSize)
+        
+        while ($true) {
+            $start = $page * $pageSize
+            $end = [Math]::Min($start + $pageSize, $currentAllowedGenres.Count)
+            
+            Write-Host "`n--- Page $($page + 1) of $totalPages ---" -ForegroundColor Cyan
+            for ($i = $start; $i -lt $end; $i++) {
+                Write-Host "$($i + 1). $($currentAllowedGenres[$i])" -ForegroundColor Gray
+            }
+            
+            $selection = Read-Host "`nEnter genre number (1-$($currentAllowedGenres.Count)), 'N' for next page, 'P' for previous, or 'B' to go back"
+            
+            if ($selection -eq 'B' -or $selection -eq 'b') {
+                return $null
+            }
+            elseif ($selection -eq 'N' -or $selection -eq 'n' -or $selection -eq '') {
+                $page = ($page + 1) % $totalPages
+            }
+            elseif ($selection -eq 'P' -or $selection -eq 'p') {
+                $page = if ($page -eq 0) { $totalPages - 1 } else { $page - 1 }
+            }
+            elseif ($selection -match '^\d+$' -and [int]$selection -ge 1 -and [int]$selection -le $currentAllowedGenres.Count) {
+                $selectedGenre = $currentAllowedGenres[[int]$selection - 1]
+                Write-Host "`n✓ Will assign '$selectedGenre' to $($EmptyFiles.Count) files with no genres" -ForegroundColor Green
+                return $selectedGenre
+            }
+            else {
+                Write-Host "Invalid selection." -ForegroundColor Red
+            }
+        }
+    }
+    
+    return $null
 }
 
 # Helper function to update config
