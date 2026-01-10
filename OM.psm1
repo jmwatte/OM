@@ -26,7 +26,9 @@ if ($env:OM_GLOBAL_TRAP -eq '1') {
     }
 }
 New-Alias -Name FOG -Value Format-Genres -Description "Alias for Format-Genres" -Force
+New-Alias -Name FOPT -Value Find-OMPlaylistTracks -Description "Alias for Find-OMPlaylistTracks" -Force
 New-Alias -Name GOT -Value Get-OMTags -Description "Alias for Get-OMTags" -Force
+New-Alias -Name IOLI -Value Import-OMLibraryIndex -Description "Alias for Import-OMLibraryIndex" -Force
 New-Alias -Name MOT -Value Move-OMTags -Description "Alias for Move-OMTags" -Force
 New-Alias -Name SOT -Value Set-OMTags -Description "Alias for Set-OMTags" -Force
 New-Alias -Name SOM -Value Start-OM -Description "Alias for Start-OM" -Force

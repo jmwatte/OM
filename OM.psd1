@@ -72,11 +72,14 @@ Description = 'OM PowerShell module for music organization'
 FunctionsToExport = @(
     'Add-OMDiscNumbers',
     'Export-OMGenres',
+    'Find-OMPlaylistTracks',
     'Format-Genres',
     'Get-OMConfig',
     'Get-OMTags',
     'Import-OMGenres',
+    'Import-OMLibraryIndex',
     'Move-OMTags',
+    'New-OMPlaylistFromSongbook',
     'Save-OMCoverArt',
     'Set-OMConfig',
     'Set-OMDiscTrackNumbers',
@@ -93,8 +96,10 @@ VariablesToExport = @()
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
 AliasesToExport = @(
     'AOD',  # Add-OMDiscNumbers
+    'FOPT', # Find-OMPlaylistTracks
     'FOG',  # Format-Genres
     'GOT',  # Get-OMTags
+    'IOLI', # Import-OMLibraryIndex
     'MOT',  # Move-OMTags
     'SOT',  # Set-OMTags
     'SOM'   # Start-OM
