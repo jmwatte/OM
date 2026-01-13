@@ -209,6 +209,20 @@
     Starts interactive mode with genre merge enabled. Provider genres will be combined with
     existing tags instead of replacing them. Can still be toggled with 'gm' command during session.
 
+.EXAMPLE
+    Get-ChildItem "D:\Music\Electronic" -Directory | ForEach-Object {
+        Start-OM -Path $_.FullName -Auto -AutoFallback -UpdateOnly Genres -GenreMode Merge -Provider Qobuz
+    }
+
+    Batch process: Enriches genre tags for all artist folders by merging Qobuz genres with existing tags.
+    Useful for adding provider-sourced subgenres while keeping your custom genre organization.
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\Artist" -Auto -AutoFallback -UpdateOnly Genres,Year -GenreMode Replace
+
+    Auto-matches and replaces genre tags completely with provider genres (default behavior).
+    Also updates the release year while preserving all other existing tags.
+
 .NOTES
     This function requires the TagLib-Sharp library for reading and writing audio file tags.
     It will attempt to install it automatically if it's missing.
