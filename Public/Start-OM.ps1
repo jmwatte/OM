@@ -106,6 +106,16 @@
     Note: CoverArt is handled separately from tags. When 'CoverArt' is included,
     cover art will be saved regardless of other UpdateOnly values.
 
+.PARAMETER GenreMode
+    Controls how genre tags are applied when saving metadata.
+    
+    Valid values:
+    - 'Replace' (default): Provider genres replace any existing genre tags
+    - 'Merge': Provider genres are merged with existing genre tags (deduplicated)
+    
+    In manual mode, this can be toggled interactively using the 'gm' command.
+    Useful for preserving custom genre tags while enriching from provider data.
+
 .EXAMPLE
     Start-OM -Path "C:\Music\MyArtist"
 
@@ -187,6 +197,18 @@
     Updates track titles, track numbers, disc numbers, and album name from the provider,
     while preserving artists, genres, year, and other existing tags.
 
+.EXAMPLE
+    Start-OM -Path "C:\Music\Artist" -Auto -AutoFallback -UpdateOnly Genres -GenreMode Merge
+
+    Auto-matches albums and merges provider genres with existing genre tags (deduplicated).
+    Existing custom genres are preserved while adding new genres from the provider.
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\Album" -GenreMode Merge
+
+    Starts interactive mode with genre merge enabled. Provider genres will be combined with
+    existing tags instead of replacing them. Can still be toggled with 'gm' command during session.
+
 .NOTES
     This function requires the TagLib-Sharp library for reading and writing audio file tags.
     It will attempt to install it automatically if it's missing.
@@ -243,6 +265,10 @@ function Start-OM {
         [ValidateSet('All', 'Genres', 'Year', 'AlbumArtist', 'Artists', 'TrackInfo', 'Album', 'CoverArt', 'Composers')]
         [string[]]$UpdateOnly = @('All'),
 
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('Replace', 'Merge')]
+        [string]$GenreMode = 'Replace',
+
         [Parameter(Mandatory = $false)][object]$Context
 
     )
@@ -297,8 +323,9 @@ function Start-OM {
         # Note: These are synced to $State after creation via Sync-OMScriptToState
         if (-not (Get-Variable -Name showVerbose -Scope Script -ErrorAction SilentlyContinue)) {
             $showVerbose = $false
-            $genreMode = 'Replace'  # 'Replace' or 'Merge'
         }
+        # Note: genreMode is now initialized from the -GenreMode parameter after State creation
+        # The interactive 'gm' toggle can still change $State.GenreMode during the session
 
         if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
             throw "Path not found or not a directory: $Path"
@@ -307,6 +334,9 @@ function Start-OM {
         # Initialize central state object (Phase 3.1 - complete)
         # Replaced all $script: scoped variables with explicit $State properties
         $State = New-OMState -Path $Path -Provider $Provider -Context $Context
+        
+        # Set GenreMode from parameter (can be toggled interactively with 'gm' command)
+        $State.GenreMode = $GenreMode
 
         # Detect path type: single album folder (has audio files) vs artist folder (has album subfolders)
         Write-Verbose "Start-OM: enumerating files in $Path"
