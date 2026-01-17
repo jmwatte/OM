@@ -541,6 +541,22 @@ function Start-OM {
             # Reset tried providers for each new album (for AutoFallback)
             $State.TriedProviders = @()
             
+            # Reset Provider to original value for each album
+            # This ensures AutoFallback doesn't carry over provider changes to subsequent albums
+            if ($PSBoundParameters.ContainsKey('Provider')) {
+                # Provider parameter was explicitly provided - use it
+                $Provider = $PSBoundParameters['Provider']
+                Write-Verbose "Starting album with explicitly provided provider: $Provider"
+            }
+            else {
+                # No explicit provider parameter - use config default
+                $config = Get-OMConfig
+                if ($config.DefaultProvider) {
+                    $Provider = $config.DefaultProvider
+                    Write-Verbose "Starting album with config default provider: $Provider"
+                }
+            }
+            
             $State.Album = $albumOriginal
             Write-Verbose "TRACE: Start processing album: $($State.Album.FullName)"
             $State.ManualAlbumArtist = $null
