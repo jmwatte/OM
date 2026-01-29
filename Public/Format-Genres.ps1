@@ -55,6 +55,10 @@
     .PARAMETER Force
         Skip all confirmations.
 
+    .PARAMETER Rename
+        Skip normal genre processing and enter interactive rename mode for existing whitelisted genres.
+        This allows users to rename genres without triggering the full formatting workflow.
+
     .EXAMPLE
         # Basic usage: Interactively clean up genres and write back to files
         # IMPORTANT: Use -PassThru to pass modified tags to Set-OMTags
@@ -146,38 +150,60 @@
         [Parameter(Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'Batch')]
         [PSCustomObject]$InputObject,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter(ParameterSetName = 'Default')]
+        [Parameter(ParameterSetName = 'Interactive')]
+        [Parameter(ParameterSetName = 'Batch')]
         [ValidateSet('Interactive', 'Batch', 'Auto', 'Review')]
         [string]$Mode = 'Interactive',
 
-        [Parameter(Mandatory = $false)]
+        [Parameter(ParameterSetName = 'Default')]
+        [Parameter(ParameterSetName = 'Interactive')]
+        [Parameter(ParameterSetName = 'Batch')]
         [switch]$NonInteractive,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter(ParameterSetName = 'Default')]
+        [Parameter(ParameterSetName = 'Interactive')]
+        [Parameter(ParameterSetName = 'Batch')]
         [switch]$ShowFrequency,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter(ParameterSetName = 'Default')]
+        [Parameter(ParameterSetName = 'Interactive')]
+        [Parameter(ParameterSetName = 'Batch')]
         [switch]$AllowGenreEditing,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter(ParameterSetName = 'Default')]
+        [Parameter(ParameterSetName = 'Interactive')]
+        [Parameter(ParameterSetName = 'Batch')]
         [string]$TargetLocale = 'en-US',
 
-        [Parameter(Mandatory = $false)]
+        [Parameter(ParameterSetName = 'Default')]
+        [Parameter(ParameterSetName = 'Interactive')]
+        [Parameter(ParameterSetName = 'Batch')]
         [switch]$AutoApplyTags,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter(ParameterSetName = 'Default')]
+        [Parameter(ParameterSetName = 'Interactive')]
+        [Parameter(ParameterSetName = 'Batch')]
         [switch]$BatchAllMatches,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter(ParameterSetName = 'Default')]
+        [Parameter(ParameterSetName = 'Interactive')]
+        [Parameter(ParameterSetName = 'Batch')]
         [switch]$PassThru,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter(ParameterSetName = 'Default')]
+        [Parameter(ParameterSetName = 'Interactive')]
+        [Parameter(ParameterSetName = 'Batch')]
         [switch]$Details,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter()]
         [switch]$Force,
 
-        [Parameter(Mandatory = $false)][object]$Context
+        [Parameter()]
+        [object]$Context,
+
+        [Parameter(Mandatory = $true, ParameterSetName = 'Rename')]
+        [switch]$Rename
     )
 
     begin {
@@ -284,6 +310,11 @@
     }
 
     process {
+        # Skip processing if in Rename mode
+        if ($Rename) {
+            return
+        }
+        
         # Collect input objects and genres
         if ($InputObject) {
             $script:allInputObjects += $InputObject
@@ -325,6 +356,16 @@
     }
 
     end {
+        # Handle rename mode if specified - do this FIRST before any input checks
+        if ($Rename) {
+            $isWhatIf = $PSBoundParameters.ContainsKey('WhatIf') -and $WhatIf
+            Process-RenameGenres -AllowedGenres $omConfig.Genres.AllowedGenreNames `
+                -AllowedGenresNormalized $allowedGenresNormalized `
+                -Config $omConfig `
+                -WhatIf $isWhatIf
+            return
+        }
+
         if ($script:allInputObjects.Count -eq 0) {
             Write-Warning "No input objects found."
             return
@@ -584,15 +625,16 @@ function Process-UnmappedGenres {
             Write-Host "  [A]ddTo    - Map to existing standard genre"
             Write-Host "  [C]hange   - Replace with different genre"
             Write-Host "  [D]elete   - Mark as garbage, remove from tags"
+            Write-Host "  [Rename]   - Rename an existing standard genre"
             Write-Host "  [R]eview   - Review and modify recent decisions"
             Write-Host "  [S]kip     - Skip for now (don't decide)"
             Write-Host "  [Show]     - Show sample files with this genre"
 
             if (-not $Force) {
-                $choice = Read-Host "Choose option (N/A/C/D/R/S/Show)"
+                $choice = Read-Host "Choose option (N/A/C/D/Rename/R/S/Show)"
                 $choice = $choice.ToUpper()
-                # Handle 'SHOW' before truncating to first character
-                if ($choice -ne 'SHOW') {
+                # Handle 'SHOW' and 'RENAME' before truncating to first character
+                if ($choice -ne 'SHOW' -and $choice -ne 'RENAME') {
                     $choice = $choice.Substring(0, 1)
                 }
             }
@@ -830,7 +872,7 @@ Write-Host "`nOptions:"
                 }
 
                 default {
-                    Show-Message -Message "Invalid option. Please choose N, A, D, R, S, or Show." -ForegroundColor Red -Context $Context
+                    Show-Message -Message "Invalid option. Please choose N, A, C, D, Rename, R, S, or Show." -ForegroundColor Red -Context $Context
                 }
             }
         }
@@ -1015,6 +1057,178 @@ function Update-GenresConfig {
     }
     catch {
         Write-Warning "Failed to save genre mappings to config: $_"
+    }
+}
+
+# Helper function to process renaming of existing standard genres
+function Process-RenameGenres {
+    param(
+        [array]$AllowedGenres,
+        [hashtable]$AllowedGenresNormalized,
+        [object]$Config,
+        [bool]$WhatIf
+    )
+
+    while ($true) {
+        $currentAllowedGenres = @($AllowedGenresNormalized.Values | Sort-Object)
+        
+        Write-Host "`nExisting standard genres:" -ForegroundColor Cyan
+        for ($i = 0; $i -lt $currentAllowedGenres.Count; $i++) {
+            Write-Host "$($i + 1). $($currentAllowedGenres[$i])" -ForegroundColor Gray
+        }
+
+        $selection = Read-Host "Select genre to rename (1-$($currentAllowedGenres.Count)), or 'Q' to quit"
+        
+        if ($selection -eq 'Q' -or $selection -eq 'q') {
+            Write-Host "Exiting rename mode." -ForegroundColor Gray
+            break
+        }
+        elseif ($selection -match '^\d+$' -and [int]$selection -ge 1 -and [int]$selection -le $currentAllowedGenres.Count) {
+            $oldGenre = $currentAllowedGenres[[int]$selection - 1]
+            $oldGenreLower = $oldGenre.ToLower()
+            
+            $newGenreName = Read-Host "Enter new name for '$oldGenre' (or 'B' to go back)"
+            
+            if ($newGenreName -eq 'B' -or $newGenreName -eq 'b') {
+                Write-Host "Going back..." -ForegroundColor Gray
+                continue
+            }
+            elseif ([string]::IsNullOrWhiteSpace($newGenreName)) {
+                Write-Host "New name cannot be empty." -ForegroundColor Red
+                continue
+            }
+            
+            # Standardize to Title Case
+            $textInfo = (Get-Culture).TextInfo
+            $newGenreName = $textInfo.ToTitleCase($newGenreName.ToLower())
+            $newGenreLower = $newGenreName.ToLower()
+            
+            # Check if new name already exists
+            if ($AllowedGenresNormalized.ContainsKey($newGenreLower)) {
+                $existingGenre = $AllowedGenresNormalized[$newGenreLower]
+                
+                # Offer to merge instead
+                Write-Host "`n'$existingGenre' already exists in standard genres." -ForegroundColor Yellow
+                Write-Host "Options:" -ForegroundColor Cyan
+                Write-Host "  [M]erge  - Remove '$oldGenre' and redirect all mappings to '$existingGenre'"
+                Write-Host "  [B]ack   - Go back and choose a different name"
+                
+                $mergeChoice = Read-Host "Choose option (M/B)"
+                
+                if ($mergeChoice -eq 'M' -or $mergeChoice -eq 'm') {
+                    # Confirm merge
+                    $confirm = Read-Host "Merge '$oldGenre' into '$existingGenre'? This will remove '$oldGenre' from the whitelist. (y/N)"
+                    if ($confirm -ne 'y' -and $confirm -ne 'Y') {
+                        Write-Host "Merge cancelled." -ForegroundColor Gray
+                        continue
+                    }
+                    
+                    if (-not $WhatIf) {
+                        # Remove old genre from AllowedGenreNames
+                        $Config.Genres.AllowedGenreNames = @($Config.Genres.AllowedGenreNames | Where-Object { $_ -ne $oldGenre })
+                        
+                        # Remove from normalized hashtable
+                        $AllowedGenresNormalized.Remove($oldGenreLower)
+                        
+                        # Update any mappings that reference the old genre to point to the existing one
+                        $updatedMappings = 0
+                        foreach ($key in @($Config.Genres.GenreMappings.Keys)) {
+                            if ($Config.Genres.GenreMappings[$key] -eq $oldGenre) {
+                                $Config.Genres.GenreMappings[$key] = $existingGenre
+                                $updatedMappings++
+                            }
+                        }
+                        
+                        # Add a mapping from old genre name to the existing one (for files with the old genre)
+                        $Config.Genres.GenreMappings[$oldGenreLower] = $existingGenre
+                        
+                        # Save config
+                        Save-GenresConfig -Config $Config
+                        
+                        Write-Host "✓ Merged '$oldGenre' into '$existingGenre'" -ForegroundColor Green
+                        Write-Host "  - Removed '$oldGenre' from whitelist" -ForegroundColor Gray
+                        Write-Host "  - Added mapping: '$oldGenre' → '$existingGenre'" -ForegroundColor Gray
+                        if ($updatedMappings -gt 0) {
+                            Write-Host "  - Updated $updatedMappings existing mapping(s)" -ForegroundColor Gray
+                        }
+                    }
+                    else {
+                        Write-Host "What if: Would merge '$oldGenre' into '$existingGenre'" -ForegroundColor Cyan
+                    }
+                }
+                else {
+                    Write-Host "Going back..." -ForegroundColor Gray
+                }
+                continue
+            }
+            
+            # Confirm rename
+            $confirm = Read-Host "Rename '$oldGenre' to '$newGenreName'? (y/N)"
+            if ($confirm -ne 'y' -and $confirm -ne 'Y') {
+                Write-Host "Rename cancelled." -ForegroundColor Gray
+                continue
+            }
+            
+            if (-not $WhatIf) {
+                # Update AllowedGenreNames array
+                $index = [array]::IndexOf($Config.Genres.AllowedGenreNames, $oldGenre)
+                if ($index -ge 0) {
+                    $Config.Genres.AllowedGenreNames[$index] = $newGenreName
+                }
+                
+                # Update normalized hashtable
+                $AllowedGenresNormalized.Remove($oldGenreLower)
+                $AllowedGenresNormalized[$newGenreLower] = $newGenreName
+                
+                # Update any mappings that reference the old genre
+                foreach ($key in @($Config.Genres.GenreMappings.Keys)) {
+                    if ($Config.Genres.GenreMappings[$key] -eq $oldGenre) {
+                        $Config.Genres.GenreMappings[$key] = $newGenreName
+                    }
+                }
+                
+                # Add mapping from old name to new name (for files with old genre)
+                $Config.Genres.GenreMappings[$oldGenreLower] = $newGenreName
+                
+                # Save config
+                Save-GenresConfig -Config $Config
+                
+                Write-Host "✓ Renamed '$oldGenre' to '$newGenreName'" -ForegroundColor Green
+                Write-Host "  - Updated whitelist" -ForegroundColor Gray
+                Write-Host "  - Added mapping: '$oldGenre' → '$newGenreName'" -ForegroundColor Gray
+            }
+            else {
+                Write-Host "What if: Would rename '$oldGenre' to '$newGenreName'" -ForegroundColor Cyan
+            }
+        }
+        else {
+            Write-Host "Invalid selection." -ForegroundColor Red
+        }
+    }
+}
+
+# Helper function to save config (extracted for reuse)
+function Save-GenresConfig {
+    param([object]$Config)
+    
+    try {
+        $configPath = if ($IsLinux -or $IsMacOS) {
+            Join-Path $HOME '.OM' 'config.json'
+        }
+        else {
+            Join-Path $env:USERPROFILE '.OM' 'config.json'
+        }
+        
+        $configDir = Split-Path $configPath -Parent
+        if (-not (Test-Path $configDir)) {
+            New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+        }
+        
+        $Config | ConvertTo-Json -Depth 10 | Set-Content -Path $configPath -Encoding UTF8 -ErrorAction Stop
+        Write-Verbose "Saved config at: $configPath"
+    }
+    catch {
+        Write-Warning "Failed to save config: $_"
     }
 }
 
