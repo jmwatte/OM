@@ -981,45 +981,28 @@ function Process-EmptyGenreFiles {
         # Show whitelist and let user pick
         $currentAllowedGenres = @($AllowedGenresNormalized.Values | Sort-Object)
         
-        Write-Host "`nStandard genres (page through with Enter, or type number):"
-        $pageSize = 20
-        $page = 0
-        $totalPages = [Math]::Ceiling($currentAllowedGenres.Count / $pageSize)
+        Show-Message -Message "`nStandard genres:" -ForegroundColor Cyan -Context $Context
+        for ($i = 0; $i -lt $currentAllowedGenres.Count; $i++) {
+            Show-Message -Message "  $($i + 1). $($currentAllowedGenres[$i])" -ForegroundColor Gray -Context $Context
+        }
         
-        while ($true) {
-            $start = $page * $pageSize
-            $end = [Math]::Min($start + $pageSize, $currentAllowedGenres.Count)
-            
-            Write-Host "`n--- Page $($page + 1) of $totalPages ---" -ForegroundColor Cyan
-            for ($i = $start; $i -lt $end; $i++) {
-                Write-Host "$($i + 1). $($currentAllowedGenres[$i])" -ForegroundColor Gray
-            }
-            
-            $selection = Read-Host "`nEnter genre number (1-$($currentAllowedGenres.Count)), 'N' for next page, 'P' for previous, or 'B' to go back"
-            
-            if ($selection -eq 'B' -or $selection -eq 'b') {
-                return $null
-            }
-            elseif ($selection -eq 'N' -or $selection -eq 'n' -or $selection -eq '') {
-                $page = ($page + 1) % $totalPages
-            }
-            elseif ($selection -eq 'P' -or $selection -eq 'p') {
-                $page = if ($page -eq 0) { $totalPages - 1 } else { $page - 1 }
-            }
-            elseif ($selection -match '^\d+$' -and [int]$selection -ge 1 -and [int]$selection -le $currentAllowedGenres.Count) {
-                $selectedGenre = $currentAllowedGenres[[int]$selection - 1]
-                Write-Host "`n✓ Will assign '$selectedGenre' to $($EmptyFiles.Count) files with no genres" -ForegroundColor Green
-                return $selectedGenre
-            }
-            else {
-                Write-Host "Invalid selection." -ForegroundColor Red
-            }
+        $selection = Read-Host "Enter genre number (1-$($currentAllowedGenres.Count)), or 'B' to go back"
+        
+        if ($selection -eq 'B' -or $selection -eq 'b') {
+            return $null
+        }
+        elseif ($selection -match '^\d+$' -and [int]$selection -ge 1 -and [int]$selection -le $currentAllowedGenres.Count) {
+            $selectedGenre = $currentAllowedGenres[[int]$selection - 1]
+            Write-Host "`n✓ Will assign '$selectedGenre' to $($EmptyFiles.Count) files with no genres" -ForegroundColor Green
+            return $selectedGenre
+        }
+        else {
+            Write-Host "Invalid selection." -ForegroundColor Red
         }
     }
     
     return $null
 }
-
 # Helper function to update config
 function Update-GenresConfig {
     param(
