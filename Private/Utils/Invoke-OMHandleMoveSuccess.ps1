@@ -191,8 +191,13 @@ function Invoke-OMHandleMoveSuccess {
             $remainingItems = @(Get-ChildItem -LiteralPath $originalParentFolder -Force)
             if ($remainingItems.Count -eq 0) {
                 Write-Verbose "Removing empty parent folder: $originalParentFolder"
-                Remove-Item -LiteralPath $originalParentFolder -Force
-                Write-Verbose "Cleaned up empty folder: $originalParentFolder"
+                try {
+                    Remove-Item -LiteralPath $originalParentFolder -Force
+                    Write-Verbose "Cleaned up empty folder: $originalParentFolder"
+                }
+                catch {
+                    Write-Warning "Could not remove empty parent folder '$originalParentFolder': $($_.Exception.Message)"
+                }
             }
             else {
                 Write-Verbose "Parent folder not empty ($(($remainingItems.Count)) items remaining), keeping it"
