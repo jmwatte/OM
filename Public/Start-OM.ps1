@@ -1207,8 +1207,7 @@ function Start-OM {
                                 if ($Auto -and -not $goC -and -not $autoModeEvaluated) {
                                     $autoModeEvaluated = $true  # Mark as evaluated so we don't re-run
                                     
-                                    Write-Host "🐛 DEBUG: AUTO MODE block starting..." -ForegroundColor Magenta
-                                    Write-Host "🐛 DEBUG: Auto=$Auto, AutoModeActive=$($State.AutoModeActive), goC=$goC" -ForegroundColor Magenta
+                                    Write-Verbose "AUTO MODE block starting: Auto=$Auto, AutoModeActive=$($State.AutoModeActive), goC=$goC"
                                     Show-Message -Message "🤖 AUTO: Analyzing track matches on $Provider..." -ForegroundColor Cyan -Context $Context
                                     
                                     # Try different sort strategies and pick the best
@@ -1253,7 +1252,7 @@ function Start-OM {
                                         [Math]::Round(($bestScore / $totalTracks) * 100, 0) 
                                     } else { 0 }
                                     
-                                    Write-Host "🐛 DEBUG: bestScore=$bestScore, totalTracks=$totalTracks, confidencePercent=$confidencePercent%, threshold=$($AutoConfidenceThreshold * 100)%" -ForegroundColor Magenta
+                                    Write-Verbose "AUTO: bestScore=$bestScore, totalTracks=$totalTracks, confidencePercent=$confidencePercent%, threshold=$($AutoConfidenceThreshold * 100)%"
                                     
                                     Show-Message -Message "🤖 AUTO: Best strategy: '$bestStrategy' ($bestScore/$totalTracks matches, $confidencePercent% confidence)" -ForegroundColor Green -Context $Context
                                     
@@ -1310,7 +1309,7 @@ function Start-OM {
                             }
 
                             if ($goC) {
-                                Show-Message -Message "goC: auto-applying Save-All for album '$($ProviderAlbum.name)'." -ForegroundColor Yellow -Context $Context
+                                Write-Verbose "goC: auto-applying Save-All for album '$($ProviderAlbum.name)'."
                                 $inputF = 'sa'
                             }
                             elseif ($Auto -and $inputF -eq 'sa') {

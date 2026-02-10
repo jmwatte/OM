@@ -192,7 +192,7 @@ function Invoke-OMHandleMoveSuccess {
             if ($remainingItems.Count -eq 0) {
                 Write-Verbose "Removing empty parent folder: $originalParentFolder"
                 Remove-Item -LiteralPath $originalParentFolder -Force
-                Show-Message -Message "Cleaned up empty folder: $originalParentFolder" -ForegroundColor Gray -Context $Context
+                Write-Verbose "Cleaned up empty folder: $originalParentFolder"
             }
             else {
                 Write-Verbose "Parent folder not empty ($(($remainingItems.Count)) items remaining), keeping it"

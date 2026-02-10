@@ -10,21 +10,12 @@
     )
 
     begin {
-        if (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) {
-            Show-Message -Message "--- DEBUG: Move-AlbumFolder ---" -ForegroundColor Magenta
-            Show-Message -Message "Input AlbumPath: $AlbumPath"
-            Show-Message -Message "Input NewArtist: $NewArtist"
-            Show-Message -Message "Input NewYear: $NewYear"
-            Show-Message -Message "Input NewAlbumName: $NewAlbumName"
-            Show-Message -Message "--------------------------------" -ForegroundColor Magenta
-        } else {
-            Write-Verbose "--- DEBUG: Move-AlbumFolder ---"
-            Write-Verbose "Input AlbumPath: $AlbumPath"
-            Write-Verbose "Input NewArtist: $NewArtist"
-            Write-Verbose "Input NewYear: $NewYear"
-            Write-Verbose "Input NewAlbumName: $NewAlbumName"
-            Write-Verbose "--------------------------------"
-        }
+        Write-Verbose "--- Move-AlbumFolder ---"
+        Write-Verbose "Input AlbumPath: $AlbumPath"
+        Write-Verbose "Input NewArtist: $NewArtist"
+        Write-Verbose "Input NewYear: $NewYear"
+        Write-Verbose "Input NewAlbumName: $NewAlbumName"
+        Write-Verbose "--------------------------------"
 
         $AlbumPath = $AlbumPath.TrimEnd('\/')
         if (-not (Test-Path -LiteralPath $AlbumPath -PathType Container)) {
@@ -51,24 +42,16 @@
         $targetArtistPath = Join-Path -Path $artistParentPath -ChildPath $NewArtist
         if ($NewYear) { $baseAlbumName = "$NewYear - $NewAlbumName" } else { $baseAlbumName = $NewAlbumName }
 
-        if (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) {
-            Show-Message -Message "Derived currentArtistPath: $currentArtistPath"
-            Show-Message -Message "Derived artistParentPath: $artistParentPath"
-            Show-Message -Message "Derived targetArtistPath: $targetArtistPath"
-            Show-Message -Message "Derived baseAlbumName: $baseAlbumName"
-            Show-Message -Message "--------------------------------" -ForegroundColor Magenta
-        } else {
-            Write-Verbose "Derived currentArtistPath: $currentArtistPath"
-            Write-Verbose "Derived artistParentPath: $artistParentPath"
-            Write-Verbose "Derived targetArtistPath: $targetArtistPath"
-            Write-Verbose "Derived baseAlbumName: $baseAlbumName"
-            Write-Verbose "--------------------------------"
-        }
+        Write-Verbose "Derived currentArtistPath: $currentArtistPath"
+        Write-Verbose "Derived artistParentPath: $artistParentPath"
+        Write-Verbose "Derived targetArtistPath: $targetArtistPath"
+        Write-Verbose "Derived baseAlbumName: $baseAlbumName"
+        Write-Verbose "--------------------------------"
 
         function Get-UniqueAlbumPath {
             param([string]$ArtistPath, [string]$BaseAlbumName, [string]$OriginalAlbumPath)
             $candidate = Join-Path -Path $ArtistPath -ChildPath $BaseAlbumName
-            if (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) { Show-Message -Message "Get-UniqueAlbumPath candidate: $candidate" } else { Write-Verbose "Get-UniqueAlbumPath candidate: $candidate" }
+            Write-Verbose "Get-UniqueAlbumPath candidate: $candidate"
 
             if (-not (Test-Path -LiteralPath $candidate)) { return $candidate }
 
@@ -119,7 +102,7 @@
         }
 
         $destAlbumPath = Get-UniqueAlbumPath -ArtistPath $targetArtistPath -BaseAlbumName $baseAlbumName -OriginalAlbumPath $AlbumPath
-        if (Get-Command -Name Show-Message -ErrorAction SilentlyContinue) { Show-Message -Message "Final destAlbumPath: $destAlbumPath" -ForegroundColor Cyan } else { Write-Verbose "Final destAlbumPath: $destAlbumPath" }
+        Write-Verbose "Final destAlbumPath: $destAlbumPath"
 
         $renamingOnly = ($currentArtistPath.Trim() -ceq $targetArtistPath.Trim())
         $oldLeaf = Split-Path -Leaf $AlbumPath
