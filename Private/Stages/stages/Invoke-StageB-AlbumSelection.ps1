@@ -359,8 +359,22 @@ Show-Message -Message "Original Artist: $Artist" -ForegroundColor Cyan -Context 
                 }
             }
     
-            $inputF = Show-OMPrompt -Prompt "Enter '(b)ack', '(s)kip or (x)ip', 'id:<id>' or album name to filter" -Context $Context
+            $inputF = Show-OMPrompt -Prompt "Enter '(b)ack', '(s)kip or (x)ip', 'id:<id>', (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, or album name to filter" -Context $Context
             switch -Regex ($inputF) {
+                '^p([qsdm])$' {
+                    $newProvider = Switch-OMProvider -Input $matches[0] -Context $Context
+                    if ($newProvider) {
+                        return @{
+                            NextStage             = 'A'
+                            SelectedAlbum         = $null
+                            UpdatedCache          = $CachedAlbums
+                            UpdatedCachedArtistId = $CachedArtistId
+                            UpdatedProvider       = $newProvider
+                            CurrentPage           = $currentPage
+                        }
+                    }
+                    continue
+                }
                 '^b$' {
                     return @{
                         NextStage             = 'A'
@@ -821,53 +835,19 @@ Show-Message -Message "Original Artist: $Artist" -ForegroundColor Cyan -Context 
                 Show-Message -Message "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray -Context $Context
                 continue
             }
-            '^ps$' {
-                $Provider = 'Spotify'
-                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                return @{
-                    NextStage             = 'A'
-                    SelectedAlbum         = $null
-                    UpdatedCache          = $CachedAlbums
-                    UpdatedCachedArtistId = $CachedArtistId
-                    UpdatedProvider       = $Provider
-                    CurrentPage           = $currentPage
+            '^p([qsdm])$' {
+                $newProvider = Switch-OMProvider -Input $matches[0] -Context $Context
+                if ($newProvider) {
+                    return @{
+                        NextStage             = 'A'
+                        SelectedAlbum         = $null
+                        UpdatedCache          = $CachedAlbums
+                        UpdatedCachedArtistId = $CachedArtistId
+                        UpdatedProvider       = $newProvider
+                        CurrentPage           = $currentPage
+                    }
                 }
-            }
-            '^pq$' {
-                $Provider = 'Qobuz'
-                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                return @{
-                    NextStage             = 'A'
-                    SelectedAlbum         = $null
-                    UpdatedCache          = $CachedAlbums
-                    UpdatedCachedArtistId = $CachedArtistId
-                    UpdatedProvider       = $Provider
-                    CurrentPage           = $currentPage
-                }
-            }
-            '^pd$' {
-                $Provider = 'Discogs'
-                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                return @{
-                    NextStage             = 'A'
-                    SelectedAlbum         = $null
-                    UpdatedCache          = $CachedAlbums
-                    UpdatedCachedArtistId = $CachedArtistId
-                    UpdatedProvider       = $Provider
-                    CurrentPage           = $currentPage
-                }
-            }
-            '^pm$' {
-                $Provider = 'MusicBrainz'
-                Write-Host "Switched to provider: $Provider" -ForegroundColor Green
-                return @{
-                    NextStage             = 'A'
-                    SelectedAlbum         = $null
-                    UpdatedCache          = $CachedAlbums
-                    UpdatedCachedArtistId = $CachedArtistId
-                    UpdatedProvider       = $Provider
-                    CurrentPage           = $currentPage
-                }
+                continue
             }
             '^f$' {
                 # Toggle find mode between quick and artist-first

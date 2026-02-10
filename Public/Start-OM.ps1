@@ -986,8 +986,18 @@ function Start-OM {
                                     $canRetryReleases = (Get-IfExists $ProviderAlbum '_masterReleases') -and $ProviderAlbum._masterReleases.Count -gt 0
                                     $backPrompt = if ($canRetryReleases) { "'b' to try different release" } else { "'b' to go back to album selection" }
                                     
-                                    $skipChoice = Show-OMPrompt -Prompt "Press Enter to skip this album, $backPrompt, or 'p' to change provider" -Context $Context
-                                    if ($skipChoice -eq 'b') {
+                                    $skipChoice = Show-OMPrompt -Prompt "Press Enter to skip this album, $backPrompt, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -Context $Context
+                                    if ($skipChoice -match '^p([qsdm])$') {
+                                        $newProvider = Switch-OMProvider -Input $skipChoice -Context $Context
+                                        if ($newProvider) {
+                                            $Provider = $newProvider
+                                            $cachedAlbums = $null
+                                            $cachedArtistId = $null
+                                            $stage = 'A'
+                                            continue stageLoop
+                                        }
+                                    }
+                                    elseif ($skipChoice -eq 'b') {
                                         if ($canRetryReleases) {
                                             # Use helper function to select release
                                             $releaseResult = Select-DiscogsMasterRelease `
@@ -1011,14 +1021,6 @@ function Start-OM {
                                             continue stageLoop
                                         }
                                     }
-                                    elseif ($skipChoice -eq 'p') {
-                                        # Show current provider and available shortcuts
-                                        $config = Get-OMConfig
-                                        $defaultProvider = $config.DefaultProvider
-                                        Show-Message -Message "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan -Context $Context
-                                        Show-Message -Message "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray -Context $Context
-                                        continue stageLoop
-                                    }
                                     else {
                                         # Skip this album
                                         break
@@ -1039,8 +1041,18 @@ function Start-OM {
                                     break stageLoop
                                 }
                                 
-                                $skipChoice = Show-OMPrompt -Prompt "Press Enter to skip, 'r' to retry, $backPrompt, 'p' to change provider" -Context $Context
-                                if ($skipChoice -eq 'r') {
+                                $skipChoice = Show-OMPrompt -Prompt "Press Enter to skip, 'r' to retry, $backPrompt, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -Context $Context
+                                if ($skipChoice -match '^p([qsdm])$') {
+                                    $newProvider = Switch-OMProvider -Input $skipChoice -Context $Context
+                                    if ($newProvider) {
+                                        $Provider = $newProvider
+                                        $cachedAlbums = $null
+                                        $cachedArtistId = $null
+                                        $stage = 'A'
+                                        continue stageLoop
+                                    }
+                                }
+                                elseif ($skipChoice -eq 'r') {
                                     Show-Message -Message "Retrying..." -ForegroundColor Cyan -Context $Context
                                     continue stageLoop
                                 }
@@ -1066,14 +1078,6 @@ function Start-OM {
                                         $stage = 'B'
                                         continue stageLoop
                                     }
-                                }
-                                elseif ($skipChoice -eq 'p') {
-                                    # Show current provider and available shortcuts
-                                    $config = Get-OMConfig
-                                    $defaultProvider = $config.DefaultProvider
-                                    Show-Message -Message "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan -Context $Context
-                                    Show-Message -Message "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray -Context $Context
-                                    continue stageLoop
                                 }
                                 else {
                                     break

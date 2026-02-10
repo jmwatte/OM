@@ -170,21 +170,28 @@
             break
         }
 
-        # Handle provider switch command
+        # Handle provider switch command (supports both 'ps'/'pq'/'pd'/'pm' and 'p s'/'p q'/'p d'/'p m')
         if ($selection -match '^p\s*(.+)?$') {
-            $newProvider = $matches[1]
-            if ($newProvider) {
+            $providerArg = $matches[1]
+            # Try contiguous form first (ps, pq, pd, pm) via Switch-OMProvider
+            $newProvider = Switch-OMProvider -Input $selection -Context $Context -Silent
+            if (-not $newProvider -and $providerArg) {
+                # Fall back to space-separated form (p s, p q, etc.)
                 $providerMap = @{ 's' = 'Spotify'; 'q' = 'Qobuz'; 'd' = 'Discogs'; 'm' = 'MusicBrainz' }
-                if ($providerMap.ContainsKey($newProvider.ToLower())) {
-                    $result.ProviderSwitch = $providerMap[$newProvider.ToLower()]
+                if ($providerMap.ContainsKey($providerArg.ToLower())) {
+                    $newProvider = $providerMap[$providerArg.ToLower()]
                 }
                 else {
-                    $result.ProviderSwitch = $newProvider
+                    $newProvider = $providerArg
                 }
-                Invoke-SafeScriptBlock -Block $display -Args @("Switched to provider: $($result.ProviderSwitch) (will apply on next search)", "Green") -ContextMsg "ReviewMarkedTracks provider"
+            }
+
+            if ($newProvider) {
+                $result.ProviderSwitch = $newProvider
+                Invoke-SafeScriptBlock -Block $display -Args @("Switched to provider: $newProvider (will apply on next search)", "Green") -ContextMsg "ReviewMarkedTracks provider"
             }
             else {
-                Invoke-SafeScriptBlock -Block $display -Args @("Usage: p <provider> (e.g., p spotify, p qobuz, p discogs, p musicbrainz)", "Yellow") -ContextMsg "ReviewMarkedTracks provider usage"
+                Invoke-SafeScriptBlock -Block $display -Args @("Usage: ps/pq/pd/pm or p <provider>", "Yellow") -ContextMsg "ReviewMarkedTracks provider usage"
             }
             Start-Sleep -Seconds 1
             continue

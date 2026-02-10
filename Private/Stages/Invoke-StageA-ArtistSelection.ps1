@@ -153,24 +153,11 @@ function Invoke-StageA-ArtistSelection {
                 $result.NextStage = 'Skip'
                 return $result
             }
-            '^ps$' {
-                $result.UpdatedProvider = 'Spotify'
-                Show-Message -Message "Switched to provider: Spotify" -ForegroundColor Green -Context $Context
-                return $result
-            }
-            '^pq$' {
-                $result.UpdatedProvider = 'Qobuz'
-                Show-Message -Message "Switched to provider: Qobuz" -ForegroundColor Green -Context $Context
-                return $result
-            }
-            '^pd$' {
-                $result.UpdatedProvider = 'Discogs'
-                Show-Message -Message "Switched to provider: Discogs" -ForegroundColor Green -Context $Context
-                return $result
-            }
-            '^pm$' {
-                $result.UpdatedProvider = 'MusicBrainz'
-                Show-Message -Message "Switched to provider: MusicBrainz" -ForegroundColor Green -Context $Context
+            '^p([qsdm])$' {
+                $newProvider = Switch-OMProvider -Input $matches[0] -Context $Context
+                if ($newProvider) {
+                    $result.UpdatedProvider = $newProvider
+                }
                 return $result
             }
             '^id:(.+)$' { 
@@ -266,24 +253,9 @@ function Invoke-StageA-ArtistSelection {
     }
     
     # Handle provider switches
-    if ($inputF -eq 'ps') {
-        $result.UpdatedProvider = 'Spotify'
-        Show-Message -Message "Switched to provider: Spotify" -ForegroundColor Green -Context $Context
-        return $result
-    }
-    if ($inputF -eq 'pq') {
-        $result.UpdatedProvider = 'Qobuz'
-        Show-Message -Message "Switched to provider: Qobuz" -ForegroundColor Green -Context $Context
-        return $result
-    }
-    if ($inputF -eq 'pd') {
-        $result.UpdatedProvider = 'Discogs'
-        Show-Message -Message "Switched to provider: Discogs" -ForegroundColor Green -Context $Context
-        return $result
-    }
-    if ($inputF -eq 'pm') {
-        $result.UpdatedProvider = 'MusicBrainz'
-        Show-Message -Message "Switched to provider: MusicBrainz" -ForegroundColor Green -Context $Context
+    $newProvider = Switch-OMProvider -Input $inputF -Context $Context
+    if ($newProvider) {
+        $result.UpdatedProvider = $newProvider
         return $result
     }
     
