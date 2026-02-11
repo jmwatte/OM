@@ -1793,6 +1793,19 @@ function Start-OM {
                                         -State $State -TargetFolder $TargetFolder -Context $Context -NonInteractive:$NonInteractive -GoC:$goC -AudioFiles $State.AudioFiles
                                     Sync-OMStateToScript -State $State  # Sync State back to script variables
                                     
+                                    # If move failed, reload audio files (handles were disposed before move attempt) so UI still works
+                                    if (-not $folderMoveResult.MoveResult -or -not $folderMoveResult.MoveResult.Success) {
+                                        if (-not $useWhatIf) {
+                                            $State.AudioFiles = Reload-OMAudioFiles -AlbumPath $State.Album.FullName
+                                            if ($State.PairedTracks -and $State.PairedTracks.Count -gt 0) {
+                                                for ($i = 0; $i -lt [Math]::Min($State.PairedTracks.Count, $State.AudioFiles.Count); $i++) {
+                                                    $State.PairedTracks[$i].AudioFile = $State.AudioFiles[$i]
+                                                }
+                                            }
+                                            $State.RefreshTracks = $true
+                                        }
+                                    }
+                                    
                                     # AUTO MODE: Skip to next album after successful save
                                     if ($Auto) {
                                         Show-Message -Message "✓ AUTO: Album completed successfully, moving to next album..." -ForegroundColor Green -Context $Context

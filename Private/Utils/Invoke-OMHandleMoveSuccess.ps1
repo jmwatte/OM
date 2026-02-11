@@ -60,7 +60,9 @@ function Invoke-OMHandleMoveSuccess {
     )
 
     if (-not $MoveResult -or -not $MoveResult.Success) {
-        Write-Warning "Move failed or was skipped. Move result: $MoveResult"
+        Show-Message -Message "`n⚠️  Tags were saved but folder move/rename failed." -ForegroundColor Yellow -Context $Context
+        Show-Message -Message "   The folder may be locked by another process (Explorer, media player, etc.)" -ForegroundColor Gray -Context $Context
+        Show-Message -Message "   You can retry with 'sf' (save folder), or 'x' to skip to next album." -ForegroundColor Gray -Context $Context
         return
     }
 
