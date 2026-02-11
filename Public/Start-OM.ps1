@@ -1759,6 +1759,13 @@ function Start-OM {
                                                 $a.TagFile = $null
                                             }
                                         }
+                                        # Also dispose TagFile handles held by PairedTracks to release folder locks
+                                        foreach ($pair in @($State.PairedTracks)) {
+                                            if ($null -ne $pair.AudioFile -and ($tf = Get-IfExists $pair.AudioFile 'TagFile')) {
+                                                try { $tf.Dispose() } catch { Write-Verbose "Failed disposing PairedTrack TagFile: $_" }
+                                                $pair.AudioFile.TagFile = $null
+                                            }
+                                        }
                                         # NOTE: Audio files will be reloaded AFTER the folder move (if move happens)
                                     }
                                     else {

@@ -36,7 +36,7 @@ function Invoke-OMHandleMoveSuccess {
     #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)]
+        [Parameter()]
         $MoveResult,
         
         [Parameter(Mandatory)]
