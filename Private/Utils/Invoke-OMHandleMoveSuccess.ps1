@@ -98,7 +98,7 @@ function Invoke-OMHandleMoveSuccess {
         # Update paired tracks with reloaded audio files
         if ($State.PairedTracks -and $State.PairedTracks.Count -gt 0) {
             for ($i = 0; $i -lt [Math]::Min($State.PairedTracks.Count, $State.AudioFiles.Count); $i++) {
-                if ($State.PairedTracks[$i].AudioFile.TagFile) {
+                if ($null -ne $State.PairedTracks[$i].AudioFile -and $State.PairedTracks[$i].AudioFile.PSObject.Properties['TagFile'] -and $State.PairedTracks[$i].AudioFile.TagFile) {
                     try { $State.PairedTracks[$i].AudioFile.TagFile.Dispose() } catch { Write-Verbose "Dispose failed: $($_.Exception.Message)" }
                 }
                 $State.PairedTracks[$i].AudioFile = $State.AudioFiles[$i]
@@ -214,7 +214,7 @@ function Invoke-OMHandleMoveSuccess {
         # Update paired tracks with reloaded audio files
         if ($State.PairedTracks -and $State.PairedTracks.Count -gt 0) {
             for ($i = 0; $i -lt [Math]::Min($State.PairedTracks.Count, $State.AudioFiles.Count); $i++) {
-                if ($State.PairedTracks[$i].AudioFile.TagFile) {
+                if ($null -ne $State.PairedTracks[$i].AudioFile -and $State.PairedTracks[$i].AudioFile.PSObject.Properties['TagFile'] -and $State.PairedTracks[$i].AudioFile.TagFile) {
                     try { $State.PairedTracks[$i].AudioFile.TagFile.Dispose() } catch { Write-Verbose "Dispose failed: $($_.Exception.Message)" }
                 }
                 $State.PairedTracks[$i].AudioFile = $State.AudioFiles[$i]
