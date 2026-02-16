@@ -2850,52 +2850,13 @@ function Start-OM {
                                 }
                                 '^st$' {
                                     try {
+                                        Save-OMTagsLoop -PairedTracks $script:pairedTracks `
+                                            -ProviderArtist $ProviderArtist `
+                                            -ProviderAlbum $ProviderAlbum `
+                                            -ManualAlbumArtist $script:ManualAlbumArtist `
+                                            -GenreMode $script:genreMode `
+                                            -UseWhatIf:$useWhatIf
 
-
-                                        foreach ($pair in $script:pairedTracks) {
-                                            if ($null -ne $pair.AudioFile) {
-                                                $filePath = $pair.AudioFile.FilePath
-                                                $tagsParams = @{
-                                                    Artist       = $ProviderArtist
-                                                    Album        = $ProviderAlbum
-                                                    ProviderTrack = $pair.ProviderTrack
-                                                }
-                                                if ($script:ManualAlbumArtist) {
-                                                    # Debug: Show type and value
-                                                    Write-Verbose "ManualAlbumArtist type: $($script:ManualAlbumArtist.GetType().FullName)"
-                                                    Write-Verbose "ManualAlbumArtist value: $($script:ManualAlbumArtist | Out-String)"
-                                                    
-                                                    # Ensure it's a string
-                                                    $albumArtistString = if ($script:ManualAlbumArtist -is [string]) {
-                                                        $script:ManualAlbumArtist
-                                                    }
-                                                    elseif ($script:ManualAlbumArtist -is [array]) {
-                                                        $script:ManualAlbumArtist -join '; '
-                                                    }
-                                                    else {
-                                                        $script:ManualAlbumArtist.ToString()
-                                                    }
-                                                    $tagsParams['ManualAlbumArtist'] = $albumArtistString
-                                                }
-                                                $tags = Get-Tags @tagsParams
-                                                Write-Verbose ("Saving tags to: {0}" -f $filePath)
-                                                Write-Verbose ("Tag values:\n{0}" -f ($tags | Out-String))
-                                                $genreMerge = ($script:genreMode -eq 'Merge')
-                                                $res = Save-TagsForFile -FilePath $filePath -TagValues $tags -WhatIf:$useWhatIf -GenreMergeMode:$genreMerge
-                                                if ($res.Success) { 
-                                                    Write-Host ("Saved tags: {0} -> {1:D2}.{2:D2}: {3}" -f (Split-Path -Leaf $filePath), $tags.Disc, $tags.Track, $tags.Title) -ForegroundColor Green 
-                                                }
-                                                else { 
-                                                    Write-Warning ("Skipped/Failed: {0} ({1})" -f $filePath, ($res.Reason -or 'unknown')) 
-                                                }
-                                            }
-                                            else {
-                                                Write-Verbose ("Skipping track '{0}' - no matching audio file" -f $pair.ProviderTrack.name)
-                                            }
-                                        }
-                                       
-                                        
-                                        
                                         # Dispose old TagFile handles and reload to show updated tags
                                         if (-not $useWhatIf) {
                                             foreach ($af in $audioFiles) {
@@ -2924,60 +2885,13 @@ function Start-OM {
                                     }
                                 }
                                 '^sa$' {
-
-
-
-
-                                    foreach ($pair in $script:pairedTracks) {
-                                        # check if pair has audio and provider track with get-ifexists
-                                        if ($null -ne (Get-IfExists $pair 'AudioFile') -and $null -ne (Get-IfExists $pair 'ProviderTrack')) {
-                                            $filePath = $pair.AudioFile.FilePath
-                                            $tagsParams = @{
-                                                Artist       = $ProviderArtist
-                                                Album        = $ProviderAlbum
-                                                ProviderTrack = $pair.ProviderTrack
-                                            }
-                                            if ($script:ManualAlbumArtist) {
-                                                # Debug: Show type and value
-                                                Write-Verbose "ManualAlbumArtist type: $($script:ManualAlbumArtist.GetType().FullName)"
-                                                Write-Verbose "ManualAlbumArtist value: $($script:ManualAlbumArtist | Out-String)"
-                                                
-                                                # Ensure it's a string
-                                                $albumArtistString = if ($script:ManualAlbumArtist -is [string]) {
-                                                    $script:ManualAlbumArtist
-                                                }
-                                                elseif ($script:ManualAlbumArtist -is [array]) {
-                                                    $script:ManualAlbumArtist -join '; '
-                                                }
-                                                else {
-                                                    $script:ManualAlbumArtist.ToString()
-                                                }
-                                                $tagsParams['ManualAlbumArtist'] = $albumArtistString
-                                            }
-                                            $tags = Get-Tags @tagsParams
-                                            Write-Verbose ("Saving tags to: {0}" -f $filePath)
-                                            Write-Verbose ("Tag values:\n{0}" -f ($tags | Out-String))
-                                            $genreMerge = ($script:genreMode -eq 'Merge')
-                                            $res = Save-TagsForFile -FilePath $filePath -TagValues $tags -WhatIf:$useWhatIf -GenreMergeMode:$genreMerge
-                                            if ($res.Success) { 
-                                                Write-Host ("Saved tags: {0} -> {1:D2}.{2:D2}: {3}" -f (Split-Path -Leaf $filePath), $tags.Disc, $tags.Track, $tags.Title) -ForegroundColor Green 
-                                            }
-                                            else { 
-                                                Write-Warning ("Skipped/Failed: {0} ({1})" -f $filePath, ($res.Reason -or 'unknown')) 
-                                            }
-                                        }
-                                        else {
-                                            #let the user know what is missing for this pair
-                                            if ($null -eq $pair.AudioFile) {
-                                                Write-Verbose ("Skipping track '{0}' - no matching audio file" -f $pair.ProviderTrack.name)
-                                            }
-                                            if ($null -eq $pair.ProviderTrack) {
-                                                Write-Verbose ("Skipping track '{0}' - no matching provider track" -f $pair.AudioFile.name)
-                                            }
-                                        }
-                                    }
-                                    
-
+                                    Save-OMTagsLoop -PairedTracks $script:pairedTracks `
+                                        -ProviderArtist $ProviderArtist `
+                                        -ProviderAlbum $ProviderAlbum `
+                                        -ManualAlbumArtist $script:ManualAlbumArtist `
+                                        -GenreMode $script:genreMode `
+                                        -UseWhatIf:$useWhatIf `
+                                        -RequireBothPaired
 
                                     # dispose any lingering TagFile handles only when actually applying changes (not in -WhatIf)
                                     if (-not $useWhatIf) {
