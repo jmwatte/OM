@@ -9,14 +9,14 @@ function Get-Tags {
         [object]$Album,
 
         [Parameter(Mandatory = $true)]
-        [object]$SpotifyTrack,
+        [object]$ProviderTrack,
         
         [Parameter(Mandatory = $false)]
         [string]$ManualAlbumArtist
     )
 
     # Get genres - prefer track-level genres (e.g., from MusicBrainz) over artist-level
-    $genreT = if ($trackGenres = Get-IfExists $SpotifyTrack 'genres') {
+    $genreT = if ($trackGenres = Get-IfExists $ProviderTrack 'genres') {
         # Track has genres - use them directly
         Write-Verbose "Using track-level genres: $($trackGenres -join ', ')"
         $trackGenres -join ', '
@@ -73,12 +73,12 @@ function Get-Tags {
         Write-Verbose "Classical music detected, checking for performers as album artist"
         
         # Try to get conductor from track
-        $conductor = Get-IfExists $SpotifyTrack 'Conductor'
+        $conductor = Get-IfExists $ProviderTrack 'Conductor'
         
         # Try to get ensemble/orchestra from artists
         # Collect all ensemble-type performers, not just the first one
         $ensembles = @()
-        if ($value = Get-IfExists $SpotifyTrack 'artists') {
+        if ($value = Get-IfExists $ProviderTrack 'artists') {
             Write-Verbose "  Checking artists array (count: $(if ($value -is [array]) { $value.Count } else { 1 }))"
             if ($value -is [array]) {
                 foreach ($a in $value) {
@@ -121,17 +121,17 @@ function Get-Tags {
     }
 
     # Extract track title (handle both Spotify 'name' and Qobuz 'title' properties)
-    $trackTitle = if ($value = Get-IfExists $SpotifyTrack 'name') { $value } elseif ($value = Get-IfExists $SpotifyTrack 'title') { $value } else { 'Unknown Title' }
+    $trackTitle = if ($value = Get-IfExists $ProviderTrack 'name') { $value } elseif ($value = Get-IfExists $ProviderTrack 'title') { $value } else { 'Unknown Title' }
     
     # Extract track number (handle both formats)
-    $trackNumber = if ($value = Get-IfExists $SpotifyTrack 'track_number') { $value } elseif ($value = Get-IfExists $SpotifyTrack 'TrackNumber') { $value } else { 0 }
+    $trackNumber = if ($value = Get-IfExists $ProviderTrack 'track_number') { $value } elseif ($value = Get-IfExists $ProviderTrack 'TrackNumber') { $value } else { 0 }
     
     # Extract disc number (handle both formats)
-    $discNumber = if ($value = Get-IfExists $SpotifyTrack 'disc_number') { $value } elseif ($value = Get-IfExists $SpotifyTrack 'DiscNumber') { $value } else { 1 }
+    $discNumber = if ($value = Get-IfExists $ProviderTrack 'disc_number') { $value } elseif ($value = Get-IfExists $ProviderTrack 'DiscNumber') { $value } else { 1 }
 
     # Extract and format performers (artists) - handle multiple provider formats
     $artistT = 'Unknown Artist'
-    if ($value = Get-IfExists $SpotifyTrack 'artists') {
+    if ($value = Get-IfExists $ProviderTrack 'artists') {
         if ($value -is [array]) {
             $artistT = ($value | ForEach-Object { if ($_.name) { $_.name } else { $_.ToString() } }) -join '; '
         } elseif ($value.name) {
@@ -139,9 +139,9 @@ function Get-Tags {
         } else {
             $artistT = $value.ToString()
         }
-    } elseif ($value = Get-IfExists $SpotifyTrack 'performer') {
+    } elseif ($value = Get-IfExists $ProviderTrack 'performer') {
         $artistT = if ($value -is [array]) { $value -join '; ' } else { $value }
-    } elseif ($value = Get-IfExists $SpotifyTrack 'Artist') {
+    } elseif ($value = Get-IfExists $ProviderTrack 'Artist') {
         $artistT = if ($value -is [array]) { $value -join '; ' } else { $value }
     }
 
@@ -158,17 +158,17 @@ function Get-Tags {
     }
 
     # Conditionally add composers if present in the Spotify track
-    if ($value = Get-IfExists $SpotifyTrack  'composer') {
+    if ($value = Get-IfExists $ProviderTrack  'composer') {
         $tags.Composers = $value -join '; '
     }
 
     # Add Conductor if present (Qobuz classical music)
-    if ($value = Get-IfExists $SpotifyTrack 'Conductor') {
+    if ($value = Get-IfExists $ProviderTrack 'Conductor') {
         $tags.Conductor = $value
     }
 
     # Add Comment field with full production credits (Qobuz)
-    if ($value = Get-IfExists $SpotifyTrack 'Comment') {
+    if ($value = Get-IfExists $ProviderTrack 'Comment') {
         try {
             $decoded = [System.Net.WebUtility]::HtmlDecode([string]$value)
         } catch {

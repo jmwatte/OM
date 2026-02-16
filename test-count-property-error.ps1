@@ -3,9 +3,9 @@ Set-StrictMode -Version Latest
 
 # Simulate the problematic scope scenario
 $script:pairedTracks = @(
-    [PSCustomObject]@{ AudioFile = @{ FilePath = "track1.mp3" }; SpotifyTrack = @{ name = "Track 1" }; Confidence = 95 }
-    [PSCustomObject]@{ AudioFile = @{ FilePath = "track2.mp3" }; SpotifyTrack = @{ name = "Track 2" }; Confidence = 85 }
-    [PSCustomObject]@{ AudioFile = @{ FilePath = "track3.mp3" }; SpotifyTrack = @{ name = "Track 3" }; Confidence = 75 }
+    [PSCustomObject]@{ AudioFile = @{ FilePath = "track1.mp3" }; ProviderTrack = @{ name = "Track 1" }; Confidence = 95 }
+    [PSCustomObject]@{ AudioFile = @{ FilePath = "track2.mp3" }; ProviderTrack = @{ name = "Track 2" }; Confidence = 85 }
+    [PSCustomObject]@{ AudioFile = @{ FilePath = "track3.mp3" }; ProviderTrack = @{ name = "Track 3" }; Confidence = 75 }
 )
 
 Write-Host "Initial script:pairedTracks.Count: $($script:pairedTracks.Count)" -ForegroundColor Green

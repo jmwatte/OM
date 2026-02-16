@@ -42,10 +42,10 @@ function Get-BestSortMethod {
         Write-Verbose "   → Testing $method..."
         
         # Run Set-Tracks with this method
-        $pairedTracks = Set-Tracks -SortMethod $method -AudioFiles $AudioFiles -SpotifyTracks $ProviderTracks -Reverse:$Reverse
+        $pairedTracks = Set-Tracks -SortMethod $method -AudioFiles $AudioFiles -ProviderTracks $ProviderTracks -Reverse:$Reverse
         
         # Calculate average confidence for successfully paired tracks (ignore unpaired)
-        $pairedWithBoth = @($pairedTracks | Where-Object { $_.SpotifyTrack -and $_.AudioFile })
+        $pairedWithBoth = @($pairedTracks | Where-Object { $_.ProviderTrack -and $_.AudioFile })
         
         if ($pairedWithBoth.Count -gt 0) {
             $avgConfidence = ($pairedWithBoth | Measure-Object -Property Confidence -Average).Average

@@ -5,7 +5,7 @@ function Search-MBArtist {
     
     .DESCRIPTION
     Searches MusicBrainz for artists matching the query string.
-    Returns normalized artist objects compatible with MuFo workflow.
+    Returns normalized artist objects compatible with OM workflow.
     
     .PARAMETER Query
     Artist name or search query

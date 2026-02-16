@@ -54,7 +54,7 @@ function Invoke-MusicBrainzRequest {
     
     # MusicBrainz requires User-Agent header
     $headers = @{
-        'User-Agent' = "MuFo/1.0 ( $contact )"
+        'User-Agent' = "OM/1.0 ( $contact )"
     }
     
     # Rate limiting: 1 request per second (MusicBrainz requirement)

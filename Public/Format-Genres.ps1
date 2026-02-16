@@ -432,9 +432,10 @@ function Show-GenreFrequencySummary {
         [hashtable]$Analysis
     )
 
-    Write-Host "`n╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-    Write-Host "║                    GENRE ANALYSIS SUMMARY                      ║" -ForegroundColor Cyan
-    Write-Host "╠════════════════════════════════════════════════════════════════╣" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "📊 ═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
+    Write-Host "📊 GENRE ANALYSIS SUMMARY" -ForegroundColor Cyan
+    Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
 
     $rows = @()
 
@@ -481,7 +482,7 @@ function Show-GenreFrequencySummary {
         @{ Label = "Action"; Expression = { $_.Action }; Width = 25 }
     ) | Out-String | Write-Host
 
-    Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+    Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
 }
 
 # Helper function to process unmapped genres
@@ -511,9 +512,10 @@ function Process-UnmappedGenres {
 
         while (-not $decision) {
             # Always display the genre being processed (helps when going back)
-            Write-Host "`n╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+            Write-Host ""
+            Write-Host "🎤 ═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
             Write-Host "  Found '$originalGenre' in $count file(s)" -ForegroundColor Yellow
-            Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+            Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
             
             Write-Host "`nOptions:" -ForegroundColor Cyan
             Write-Host "  [N]ew      - Add as new standard genre" -ForegroundColor Gray
@@ -710,9 +712,10 @@ function Process-UnmappedGenres {
                         Write-Host "No decisions made yet." -ForegroundColor Yellow
                     }
                     else {
-                        Write-Host "`n╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+                        Write-Host ""
+                        Write-Host "📝 ═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
                         Write-Host "  Recent Decisions (this session):" -ForegroundColor Yellow
-                        Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+                        Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
                         
                         $decisionList = @()
                         $index = 1

@@ -6,7 +6,7 @@ function Get-MBAlbumTracks {
     .DESCRIPTION
     Retrieves the track listing from a specific MusicBrainz release ID (MBID).
     Includes detailed artist credits and relationships (conductor, performer, etc.).
-    Returns normalized track objects compatible with MuFo workflow.
+    Returns normalized track objects compatible with OM workflow.
     
     .PARAMETER Id
     MusicBrainz Release ID (MBID)

@@ -88,6 +88,8 @@ function Save-TagsForFile {
                                 $tagFile.Tag.Genres = $v
                             } elseif ($v -is [string] -and $v -match ';') {
                                 $tagFile.Tag.Genres = $v -split '\s*;\s*'
+                            } elseif ($v -is [string] -and $v -match ',') {
+                                $tagFile.Tag.Genres = $v -split '\s*,\s*'
                             } else {
                                 $tagFile.Tag.Genres = @($v)
                             }

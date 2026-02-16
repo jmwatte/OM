@@ -76,7 +76,7 @@ Write-Host "Testing Set-Tracks with byTrackNumber (should trigger smart matching
 Write-Host "Looking for: 'Using smart variation/movement matching (X matched)'" -ForegroundColor Gray
 Write-Host ""
 
-$result = Set-Tracks -AudioFiles $audioFiles -SpotifyTracks $providerTracks -SortMethod byTrackNumber -Reverse:$false -Verbose 4>&1
+$result = Set-Tracks -AudioFiles $audioFiles -ProviderTracks $providerTracks -SortMethod byTrackNumber -Reverse:$false -Verbose 4>&1
 
 # Extract verbose messages about smart matching
 $smartMatchMsg = $result | Where-Object { $_ -match "smart.*variation|Using smart" }
@@ -94,7 +94,7 @@ Write-Host "`n=== Pairing Results ===" -ForegroundColor Cyan
 Write-Host "Total pairs: $($pairedTracks.Count)" -ForegroundColor White
 
 # Count successful matches
-$successfulMatches = @($pairedTracks | Where-Object { $_.AudioFile -and $_.SpotifyTrack }).Count
+$successfulMatches = @($pairedTracks | Where-Object { $_.AudioFile -and $_.ProviderTrack }).Count
 $highConfidence = @($pairedTracks | Where-Object { $_.ConfidenceLevel -eq 'High' }).Count
 $mediumConfidence = @($pairedTracks | Where-Object { $_.ConfidenceLevel -eq 'Medium' }).Count
 $lowConfidence = @($pairedTracks | Where-Object { $_.ConfidenceLevel -eq 'Low' }).Count
@@ -108,7 +108,7 @@ Write-Host "  Low confidence: $lowConfidence" -ForegroundColor Red
 Write-Host "`n=== First 10 Pairings ===" -ForegroundColor Cyan
 $pairedTracks | Select-Object -First 10 | ForEach-Object {
     $audioName = if ($_.AudioFile) { [System.IO.Path]::GetFileNameWithoutExtension($_.AudioFile.FilePath) } else { "[UNPAIRED]" }
-    $providerName = if ($_.SpotifyTrack) { $_.SpotifyTrack.name } else { "[UNPAIRED]" }
+    $providerName = if ($_.ProviderTrack) { $_.ProviderTrack.name } else { "[UNPAIRED]" }
     $color = switch ($_.ConfidenceLevel) {
         'High' { 'Green' }
         'Medium' { 'Yellow' }

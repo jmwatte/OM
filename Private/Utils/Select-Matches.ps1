@@ -1,9 +1,9 @@
 function Select-matches {
-    #given the $audioFiles and $SpotifyTracks it should output the $audioFiles sorted in a manual way to match the spotifyTracks
+    #given the $audioFiles and $ProviderTracks it should output the $audioFiles sorted in a manual way to match the providerTracks
     # If PairedTracks is provided, uses that order as the starting point for manual refinement
     param(
         [array]$AudioFiles,
-        [array]$SpotifyTracks,
+        [array]$ProviderTracks,
         [array]$PairedTracks,  # Pre-sorted pairing from previous sort method
         [switch]$Reverse
     )
@@ -30,64 +30,64 @@ function Select-matches {
             $AudioFiles = $orderedAudioFiles
         }
         else {
-            # In normal mode, sort SpotifyTracks by the order they appear in PairedTracks
-            $orderedSpotifyTracks = @()
+            # In normal mode, sort providerTracks by the order they appear in PairedTracks
+            $orderedproviderTracks = @()
             foreach ($pair in $PairedTracks) {
-                if ($pair.SpotifyTrack) {
-                    $orderedSpotifyTracks += $pair.SpotifyTrack
+                if ($pair.ProviderTrack) {
+                    $orderedproviderTracks += $pair.ProviderTrack
                 }
             }
-            # Add any Spotify tracks not in the pairing
-            foreach ($spotify in $SpotifyTracks) {
-                if ($spotify -notin $orderedSpotifyTracks) {
-                    $orderedSpotifyTracks += $spotify
+            # Add any provider tracks not in the pairing
+            foreach ($spotify in $ProviderTracks) {
+                if ($spotify -notin $orderedproviderTracks) {
+                    $orderedproviderTracks += $spotify
                 }
             }
-            $SpotifyTracks = $orderedSpotifyTracks
+            $ProviderTracks = $orderedproviderTracks
         }
     }
 
     if ($Reverse) {
-        # Reverse mode: iterate over each audio file, let user pick from Spotify tracks
+        # Reverse mode: iterate over each audio file, let user pick from provider tracks
         foreach ($audioFile in $AudioFiles) {
             $audioName = if ($audioFile.Name) { $audioFile.Name } else { Split-Path -Leaf $audioFile.FilePath }
             
-            $selected = $SpotifyTracks | Select-Object -Property @{N='Track';E={$_.track_number}}, @{N='Disc';E={$_.disc_number}}, Name, @{N='Duration';E={[TimeSpan]::FromMilliseconds($_.duration_ms).ToString('mm\:ss')}}, id | Out-GridView -Title "Select provider track for audio file: $audioName" -PassThru
+            $selected = $ProviderTracks | Select-Object -Property @{N='Track';E={$_.track_number}}, @{N='Disc';E={$_.disc_number}}, Name, @{N='Duration';E={[TimeSpan]::FromMilliseconds($_.duration_ms).ToString('mm\:ss')}}, id | Out-GridView -Title "Select provider track for audio file: $audioName" -PassThru
             
            if ($selected) {
-                $spotifyTrack = $SpotifyTracks | Where-Object { $_.id -eq $selected.id }
+                $providerTrack = $ProviderTracks | Where-Object { $_.id -eq $selected.id }
                 $pairedTracks += [PSCustomObject]@{
-                    SpotifyTrack = $spotifyTrack
+                    ProviderTrack = $providerTrack
                     AudioFile    = $audioFile
                 }
                 # Remove selected track to avoid duplicates
-                $SpotifyTracks = $SpotifyTracks | Where-Object { $_ -ne $spotifyTrack }
+                $ProviderTracks = $ProviderTracks | Where-Object { $_ -ne $providerTrack }
             }
             else {
                 # User skipped - add unpaired audio file
                 $pairedTracks += [PSCustomObject]@{
-                    SpotifyTrack = $null
+                    ProviderTrack = $null
                     AudioFile    = $audioFile
                 }
             }
         }
         
-        # Add any remaining unpaired Spotify tracks
-        foreach ($spotify in $SpotifyTracks) {
+        # Add any remaining unpaired provider tracks
+        foreach ($spotify in $ProviderTracks) {
             $pairedTracks += [PSCustomObject]@{
-                SpotifyTrack = $spotify
+                ProviderTrack = $spotify
                 AudioFile    = $null
             }
         }
     }
     else {
-        # Normal mode: iterate over Spotify tracks, let user pick from audio files
-        foreach ($spotifyTrack in $SpotifyTracks) {
-            $audioFile = $AudioFiles | Out-GridView -Title "Select matching audio file for '$($spotifyTrack.Name)'" -PassThru
+        # Normal mode: iterate over provider tracks, let user pick from audio files
+        foreach ($providerTrack in $ProviderTracks) {
+            $audioFile = $AudioFiles | Out-GridView -Title "Select matching audio file for '$($providerTrack.Name)'" -PassThru
 
             if ($audioFile) {
                 $pairedTracks += [PSCustomObject]@{
-                    SpotifyTrack = $spotifyTrack
+                    ProviderTrack = $providerTrack
                     AudioFile    = $audioFile
                 }
                 # Remove selected audio file to avoid duplicates
@@ -96,7 +96,7 @@ function Select-matches {
             else {
                 # User skipped - add unpaired Spotify track
                 $pairedTracks += [PSCustomObject]@{
-                    SpotifyTrack = $spotifyTrack
+                    ProviderTrack = $providerTrack
                     AudioFile    = $null
                 }
             }
@@ -105,7 +105,7 @@ function Select-matches {
         # Add any remaining unpaired audio files
         foreach ($audio in $AudioFiles) {
             $pairedTracks += [PSCustomObject]@{
-                SpotifyTrack = $null
+                ProviderTrack = $null
                 AudioFile    = $audio
             }
         }

@@ -104,17 +104,19 @@ function Save-OMCoverArt {
 
             # Extract artist/album from metadata folder structure
             $albumFolderItem = Get-Item $metadataFolder
-            $artistName = $albumFolderItem.Parent.Name
+            $artistName = Undo-PathSanitization -Name $albumFolderItem.Parent.Name
             
             # Strip year prefix from album name (e.g., "2020 - Album Name" -> "Album Name")
-            $albumName = $albumFolderItem.Name -replace '^\d{4}\s*-\s*', ''
+            # and reverse sanitization artifacts for better search results
+            $albumName = Undo-PathSanitization -Name ($albumFolderItem.Name -replace '^\d{4}\s*[-]?\s*', '')
 
-            Write-Host "`n╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-            Write-Host "  Fetching artwork: $artistName - $albumName" -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "🎨 ═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
+            Write-Host "🖼️  Fetching artwork: $artistName - $albumName" -ForegroundColor Yellow
             if ($isDiscFolder) {
-                Write-Host "  (Disc subfolder detected: saving to $folderName)" -ForegroundColor Gray
+                Write-Host "   (Disc subfolder detected: saving to $folderName)" -ForegroundColor Gray
             }
-            Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+            Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
 
             # Search for album using the provider
             Write-Host "Searching $Provider..." -ForegroundColor Cyan

@@ -10,13 +10,6 @@ function Move-AlbumFolder {
     )
 
     begin {
-        Write-Host "--- DEBUG: Move-AlbumFolder ---" -ForegroundColor Magenta
-        Write-Host "Input AlbumPath: $AlbumPath"
-        Write-Host "Input NewArtist: $NewArtist"
-        Write-Host "Input NewYear: $NewYear"
-        Write-Host "Input NewAlbumName: $NewAlbumName"
-        Write-Host "--------------------------------" -ForegroundColor Magenta
-
         $AlbumPath = $AlbumPath.TrimEnd('\/')
         if (-not (Test-Path -LiteralPath $AlbumPath -PathType Container)) {
             throw "Album folder not found: $AlbumPath"
@@ -42,16 +35,15 @@ function Move-AlbumFolder {
         $targetArtistPath = Join-Path -Path $artistParentPath -ChildPath $NewArtist
         if ($NewYear) { $baseAlbumName = "$NewYear - $NewAlbumName" } else { $baseAlbumName = $NewAlbumName }
 
-        Write-Host "Derived currentArtistPath: $currentArtistPath"
-        Write-Host "Derived artistParentPath: $artistParentPath"
-        Write-Host "Derived targetArtistPath: $targetArtistPath"
-        Write-Host "Derived baseAlbumName: $baseAlbumName"
-        Write-Host "--------------------------------" -ForegroundColor Magenta
+        Write-Verbose "Derived currentArtistPath: $currentArtistPath"
+        Write-Verbose "Derived artistParentPath: $artistParentPath"
+        Write-Verbose "Derived targetArtistPath: $targetArtistPath"
+        Write-Verbose "Derived baseAlbumName: $baseAlbumName"
 
         function Get-UniqueAlbumPath {
             param([string]$ArtistPath, [string]$BaseAlbumName, [string]$OriginalAlbumPath)
             $candidate = Join-Path -Path $ArtistPath -ChildPath $BaseAlbumName
-            Write-Host "Get-UniqueAlbumPath candidate: $candidate"
+            Write-Verbose "Get-UniqueAlbumPath candidate: $candidate"
 
             if (-not (Test-Path -LiteralPath $candidate)) { return $candidate }
 
@@ -102,7 +94,7 @@ function Move-AlbumFolder {
         }
 
         $destAlbumPath = Get-UniqueAlbumPath -ArtistPath $targetArtistPath -BaseAlbumName $baseAlbumName -OriginalAlbumPath $AlbumPath
-        Write-Host "Final destAlbumPath: $destAlbumPath" -ForegroundColor Cyan
+        Write-Verbose "Final destAlbumPath: $destAlbumPath"
 
         $renamingOnly = ($currentArtistPath.Trim() -ceq $targetArtistPath.Trim())
         $oldLeaf = Split-Path -Leaf $AlbumPath

@@ -115,7 +115,7 @@ foreach ($test in $testCases) {
     
     # Create a mock paired track
     $pairedTrack = [PSCustomObject]@{
-        SpotifyTrack = $test.Track
+        ProviderTrack = $test.Track
         AudioFile = $null
     }
     

@@ -38,7 +38,7 @@ function Save-OMTrackSelection {
         }
     }
 
-    $TagFactory = if ($TagFactory) { $TagFactory } else { { param($artist, $album, $spotifyTrack) get-Tags -Artist $artist -Album $album -SpotifyTrack $spotifyTrack } }
+    $TagFactory = if ($TagFactory) { $TagFactory } else { { param($artist, $album, $providerTrack) get-Tags -Artist $artist -Album $album -ProviderTrack $providerTrack } }
     $TagSaver = if ($TagSaver) { $TagSaver } else { { param($filePath, $tags, $useWhatIf) Save-TagsForFile -FilePath $filePath -TagValues $tags -WhatIf:$useWhatIf } }
 
     $uniqueIndices = $SelectedIndices | Sort-Object -Unique
@@ -55,7 +55,7 @@ function Save-OMTrackSelection {
         }
 
         $audio = $pair.AudioFile
-        $spotify = $pair.SpotifyTrack
+        $spotify = $pair.ProviderTrack
 
         if (-not $audio) {
             $skipped += [PSCustomObject]@{ Index = $idx; Reason = 'NoAudio' }
@@ -119,15 +119,15 @@ function Save-OMTrackSelection {
         if ($pair.AudioFile) {
             $remainingAudio += $pair.AudioFile
         }
-        if ($pair.SpotifyTrack) {
-            $remainingSpotify += $pair.SpotifyTrack
+        if ($pair.ProviderTrack) {
+            $remainingSpotify += $pair.ProviderTrack
         }
     }
 
     return [PSCustomObject]@{
         UpdatedPairs         = $remainingPairs
         UpdatedAudioFiles    = $remainingAudio
-        UpdatedSpotifyTracks = $remainingSpotify
+        UpdatedProviderTracks = $remainingSpotify
         SavedDetails         = $savedDetails
         Skipped              = $skipped
         Failed               = $failed

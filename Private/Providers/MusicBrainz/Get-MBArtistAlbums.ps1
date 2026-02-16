@@ -5,7 +5,7 @@ function Get-MBArtistAlbums {
     
     .DESCRIPTION
     Retrieves all releases for a given MusicBrainz artist ID (MBID).
-    Returns normalized album objects compatible with MuFo workflow.
+    Returns normalized album objects compatible with OM workflow.
     
     .PARAMETER ArtistId
     MusicBrainz Artist ID (MBID)

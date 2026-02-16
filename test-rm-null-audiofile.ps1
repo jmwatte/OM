@@ -14,7 +14,7 @@ $pairedTracks = @(
             FilePath = "C:\test\track1.flac"
             Duration = 150000
         }
-        SpotifyTrack = [PSCustomObject]@{
+        ProviderTrack = [PSCustomObject]@{
             id = "track1"
             name = "Track 1"
         }
@@ -23,7 +23,7 @@ $pairedTracks = @(
     # Track with NULL AudioFile (unmatched provider track)
     [PSCustomObject]@{
         AudioFile = $null
-        SpotifyTrack = [PSCustomObject]@{
+        ProviderTrack = [PSCustomObject]@{
             id = "track2"
             name = "Track 2 - No Audio File"
         }
@@ -35,7 +35,7 @@ $pairedTracks = @(
             FilePath = "C:\test\track3.flac"
             Duration = 180000
         }
-        SpotifyTrack = [PSCustomObject]@{
+        ProviderTrack = [PSCustomObject]@{
             id = "track3"
             name = "Track 3"
         }
@@ -54,7 +54,7 @@ $markedTracks = @($pairedTracks | Where-Object { $_.PSObject.Properties['Marked'
 Write-Host "`nMarked tracks: $($markedTracks.Count)"
 
 # Build provider track pool (this works fine)
-$providerTrackPool = @($markedTracks | Where-Object { $_.SpotifyTrack } | ForEach-Object { $_.SpotifyTrack })
+$providerTrackPool = @($markedTracks | Where-Object { $_.ProviderTrack } | ForEach-Object { $_.ProviderTrack })
 Write-Host "Provider track pool: $($providerTrackPool.Count)"
 
 # Simulate iterating through marked tracks (should skip null AudioFiles)
@@ -87,7 +87,7 @@ try {
         # BUG: This line throws error when AudioFile is null
         if ($pairedTracks[$i].AudioFile.FilePath -eq $markedTrack.AudioFile.FilePath) {
             Write-Host "  Found match at index $i"
-            $pairedTracks[$i].SpotifyTrack = $selectedTrack
+            $pairedTracks[$i].ProviderTrack = $selectedTrack
             $pairedTracks[$i].Marked = $false
             break
         }
@@ -108,7 +108,7 @@ for ($i = 0; $i -lt $pairedTracks.Count; $i++) {
     if ($pairedTracks[$i].AudioFile -and 
         $pairedTracks[$i].AudioFile.FilePath -eq $markedTrack.AudioFile.FilePath) {
         Write-Host "  Found match at index $i" -ForegroundColor Green
-        $pairedTracks[$i].SpotifyTrack = $selectedTrack
+        $pairedTracks[$i].ProviderTrack = $selectedTrack
         $pairedTracks[$i].Marked = $false
         $updateCount++
         break
@@ -124,7 +124,7 @@ if ($updateCount -eq 1) {
 
 # Verify update
 Write-Host "`n--- Step 5: Verify update ---" -ForegroundColor Yellow
-if ($pairedTracks[0].SpotifyTrack.id -eq "track1" -and $pairedTracks[0].Marked) {
+if ($pairedTracks[0].ProviderTrack.id -eq "track1" -and $pairedTracks[0].Marked) {
     Write-Host "✓ Track 0: Unchanged (still marked, original track)" -ForegroundColor Green
 } else {
     Write-Host "❌ Track 0: Unexpected state" -ForegroundColor Red
@@ -138,7 +138,7 @@ if ($null -eq $pairedTracks[1].AudioFile -and $pairedTracks[1].Marked) {
     $testFailed = $true
 }
 
-if ($pairedTracks[2].SpotifyTrack.id -eq "newtrack3" -and -not $pairedTracks[2].Marked) {
+if ($pairedTracks[2].ProviderTrack.id -eq "newtrack3" -and -not $pairedTracks[2].Marked) {
     Write-Host "✓ Track 2: Updated to newtrack3, unmarked" -ForegroundColor Green
 } else {
     Write-Host "❌ Track 2: Update failed" -ForegroundColor Red

@@ -2,11 +2,11 @@ function Set-Tracks {
     param (
         [string]$SortMethod,
         [array]$AudioFiles,
-        [array]$SpotifyTracks,
-        [switch]$Reverse  # If set, iterate over audio files and match to Spotify tracks
+        [array]$ProviderTracks,
+        [switch]$Reverse  # If set, iterate over audio files and match to provider tracks
     )
 
-    #Write-Host "DEBUG Set-Tracks: Entered with SortMethod=$SortMethod, Reverse=$Reverse, AudioFiles count=$($AudioFiles.Count), SpotifyTracks count=$($SpotifyTracks.Count)"
+    #Write-Host "DEBUG Set-Tracks: Entered with SortMethod=$SortMethod, Reverse=$Reverse, AudioFiles count=$($AudioFiles.Count), ProviderTracks count=$($ProviderTracks.Count)"
 
     $pairedTracks = @()
     #Write-Host "DEBUG: Starting Set-Tracks with Reverse=$Reverse"
@@ -26,20 +26,20 @@ function Set-Tracks {
                     999999
                 }
             }
-            $sortedSpotify = $SpotifyTracks | Sort-Object disc_number, track_number
+            $sortedSpotify = $ProviderTracks | Sort-Object disc_number, track_number
             
             if ($Reverse) {
                 foreach ($audio in $sortedAudio) {
                     $index = [Array]::IndexOf($sortedAudio, $audio)
-                    $spotifyTrack = if ($index -lt $sortedSpotify.Count) { $sortedSpotify[$index] } else { $null }
+                    $ProviderTrack = if ($index -lt $sortedSpotify.Count) { $sortedSpotify[$index] } else { $null }
                     
                     # Calculate confidence if both tracks exist
-                    $confidence = if ($spotifyTrack -and $audio) {
-                        Get-MatchConfidence -ProviderTrack $spotifyTrack -AudioFile $audio
+                    $confidence = if ($providerTrack -and $audio) {
+                        Get-MatchConfidence -ProviderTrack $providerTrack -AudioFile $audio
                     } else { $null }
                     
                     $pairedTracks += [PSCustomObject]@{
-                        SpotifyTrack = $spotifyTrack
+                        ProviderTrack = $providerTrack
                         AudioFile    = $audio
                         Confidence   = if ($confidence) { $confidence.Score } else { 0 }
                         ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
@@ -57,7 +57,7 @@ function Set-Tracks {
                     } else { $null }
                     
                     $pairedTracks += [PSCustomObject]@{
-                        SpotifyTrack = $spotify
+                        ProviderTrack = $spotify
                         AudioFile    = $audioFile
                         Confidence   = if ($confidence) { $confidence.Score } else { 0 }
                         ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
@@ -77,21 +77,21 @@ function Set-Tracks {
                     999999
                 }
             }
-            $sortedSpotify = $SpotifyTracks | Sort-Object disc_number, track_number
+            $sortedSpotify = $ProviderTracks | Sort-Object disc_number, track_number
             
             if ($Reverse) {
                 # Iterate over audio files, match to Spotify by order
                 foreach ($audio in $sortedAudio) {
                     $index = [Array]::IndexOf($sortedAudio, $audio)
-                    $spotifyTrack = if ($index -lt $sortedSpotify.Count) { $sortedSpotify[$index] } else { $null }
+                    $ProviderTrack = if ($index -lt $sortedSpotify.Count) { $sortedSpotify[$index] } else { $null }
                     
                     # Calculate confidence if both tracks exist
-                    $confidence = if ($spotifyTrack -and $audio) {
-                        Get-MatchConfidence -ProviderTrack $spotifyTrack -AudioFile $audio
+                    $confidence = if ($providerTrack -and $audio) {
+                        Get-MatchConfidence -ProviderTrack $providerTrack -AudioFile $audio
                     } else { $null }
                     
                     $pairedTracks += [PSCustomObject]@{
-                        SpotifyTrack = $spotifyTrack
+                        ProviderTrack = $providerTrack
                         AudioFile    = $audio
                         Confidence   = if ($confidence) { $confidence.Score } else { 0 }
                         ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
@@ -99,7 +99,7 @@ function Set-Tracks {
                 }
             }
             else {
-                # Original: Iterate over Spotify tracks
+                # Original: Iterate over provider tracks
                 foreach ($spotify in $sortedSpotify) {
                     $index = [Array]::IndexOf($sortedSpotify, $spotify)
                     $audioFile = if ($index -lt $sortedAudio.Count) { $sortedAudio[$index] } else { $null }
@@ -110,7 +110,7 @@ function Set-Tracks {
                     } else { $null }
                     
                     $pairedTracks += [PSCustomObject]@{
-                        SpotifyTrack = $spotify
+                        ProviderTrack = $spotify
                         AudioFile    = $audioFile
                         Confidence   = if ($confidence) { $confidence.Score } else { 0 }
                         ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
@@ -123,7 +123,7 @@ function Set-Tracks {
             # This approach works for both normal and reverse modes
             $matchesR = @()
             
-            foreach ($spotify in $SpotifyTracks) {
+            foreach ($spotify in $ProviderTracks) {
                 foreach ($audio in $AudioFiles) {
                     $filename = [System.IO.Path]::GetFileNameWithoutExtension($audio.FilePath)
                     
@@ -167,7 +167,7 @@ function Set-Tracks {
                     $confidence = Get-MatchConfidence -ProviderTrack $match.Spotify -AudioFile $match.Audio
                     
                     $pairedTracks += [PSCustomObject]@{
-                        SpotifyTrack = $match.Spotify
+                        ProviderTrack = $match.Spotify
                         AudioFile    = $match.Audio
                         Confidence   = $confidence.Score
                         ConfidenceLevel = $confidence.Level
@@ -177,15 +177,15 @@ function Set-Tracks {
                 }
             }
             
-            # Add unpaired Spotify tracks
-            if ($SpotifyTracks -and $SpotifyTracks.Count -gt 0) {
-                $unpairedSpotify = $SpotifyTracks | Where-Object { 
+            # Add unpaired provider tracks
+            if ($ProviderTracks -and $ProviderTracks.Count -gt 0) {
+                $unpairedSpotify = $ProviderTracks | Where-Object { 
                     $sid = if ($_.id) { $_.id } else { $_.name }
                     -not $usedSpotify.ContainsKey($sid)
                 }
                 foreach ($spotify in $unpairedSpotify) {
                     $pairedTracks += [PSCustomObject]@{
-                        SpotifyTrack = $spotify
+                        ProviderTrack = $spotify
                         AudioFile    = $null
                     }
                 }
@@ -197,7 +197,7 @@ function Set-Tracks {
             }
             foreach ($audio in $unpairedAudio) {
                 $pairedTracks += [PSCustomObject]@{
-                    SpotifyTrack = $null
+                    ProviderTrack = $null
                     AudioFile    = $audio
                 }
             }
@@ -206,7 +206,7 @@ function Set-Tracks {
             # Build all possible matches with scores (title similarity + duration)
             $matchesR = @()
             
-            foreach ($spotify in $SpotifyTracks) {
+            foreach ($spotify in $ProviderTracks) {
                 foreach ($audio in $AudioFiles) {
                     # Primary: Title similarity
                     $titleSimilarity = Get-StringSimilarity-Jaccard -String1 $spotify.name -String2 $audio.Title
@@ -261,7 +261,7 @@ function Set-Tracks {
                     Write-Verbose "Confidence: $($confidence.Score)% ($($confidence.Level))"
                     
                     $pairedTracks += [PSCustomObject]@{
-                        SpotifyTrack = $match.Spotify
+                        ProviderTrack = $match.Spotify
                         AudioFile    = $match.Audio
                         Confidence   = $confidence.Score
                         ConfidenceLevel = $confidence.Level
@@ -271,15 +271,15 @@ function Set-Tracks {
                 }
             }
             
-            # Add unpaired Spotify tracks
-            if ($SpotifyTracks -and $SpotifyTracks.Count -gt 0) {
-                $unpairedSpotify = $SpotifyTracks | Where-Object { 
+            # Add unpaired provider tracks
+            if ($ProviderTracks -and $ProviderTracks.Count -gt 0) {
+                $unpairedSpotify = $ProviderTracks | Where-Object { 
                     $sid = if ($_.id) { $_.id } else { $_.name }
                     -not $usedSpotify.ContainsKey($sid)
                 }
                 foreach ($spotify in $unpairedSpotify) {
                     $pairedTracks += [PSCustomObject]@{
-                        SpotifyTrack = $spotify
+                        ProviderTrack = $spotify
                         AudioFile    = $null
                         Confidence   = 0
                         ConfidenceLevel = "Low"
@@ -293,7 +293,7 @@ function Set-Tracks {
             }
             foreach ($audio in $unpairedAudio) {
                 $pairedTracks += [PSCustomObject]@{
-                    SpotifyTrack = $null
+                    ProviderTrack = $null
                     AudioFile    = $audio
                     Confidence   = 0
                     ConfidenceLevel = "Low"
@@ -312,7 +312,7 @@ function Set-Tracks {
             if ($useOrderFallback) {
                 Write-Verbose "Audio files lack valid track numbers, pairing by sorted order"
                 # Sort both lists and pair sequentially
-                $sortedSpotify = $SpotifyTracks | Sort-Object disc_number, track_number
+                $sortedSpotify = $ProviderTracks | Sort-Object disc_number, track_number
                 
                 # Try to extract numeric prefix from filenames for smarter sorting
                 $sortedAudio = $AudioFiles | Sort-Object {
@@ -330,15 +330,15 @@ function Set-Tracks {
                     # Iterate over audio files
                     foreach ($audio in $sortedAudio) {
                         $index = [Array]::IndexOf($sortedAudio, $audio)
-                        $spotifyTrack = if ($index -lt $sortedSpotify.Count) { $sortedSpotify[$index] } else { $null }
+                        $ProviderTrack = if ($index -lt $sortedSpotify.Count) { $sortedSpotify[$index] } else { $null }
                         
                         # Calculate confidence if both tracks exist
-                        $confidence = if ($spotifyTrack -and $audio) {
-                            Get-MatchConfidence -ProviderTrack $spotifyTrack -AudioFile $audio
+                        $confidence = if ($providerTrack -and $audio) {
+                            Get-MatchConfidence -ProviderTrack $providerTrack -AudioFile $audio
                         } else { $null }
                         
                         $pairedTracks += [PSCustomObject]@{
-                            SpotifyTrack = $spotifyTrack
+                            ProviderTrack = $providerTrack
                             AudioFile    = $audio
                             Confidence   = if ($confidence) { $confidence.Score } else { 0 }
                             ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
@@ -346,7 +346,7 @@ function Set-Tracks {
                     }
                 }
                 else {
-                    # Iterate over Spotify tracks
+                    # Iterate over provider tracks
                     foreach ($spotify in $sortedSpotify) {
                         $index = [Array]::IndexOf($sortedSpotify, $spotify)
                         $audioFile = if ($index -lt $sortedAudio.Count) { $sortedAudio[$index] } else { $null }
@@ -357,7 +357,7 @@ function Set-Tracks {
                         } else { $null }
                         
                         $pairedTracks += [PSCustomObject]@{
-                            SpotifyTrack = $spotify
+                            ProviderTrack = $spotify
                             AudioFile    = $audioFile
                             Confidence   = if ($confidence) { $confidence.Score } else { 0 }
                             ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
@@ -372,7 +372,7 @@ function Set-Tracks {
                 $hasDiscNumbers = $AudioFiles | Where-Object { $_.DiscNumber -and $_.DiscNumber -gt 0 } | Select-Object -First 1
                 
                 # Check if provider has multiple discs
-                $providerDiscs = ($SpotifyTracks | Select-Object -ExpandProperty disc_number -Unique | Measure-Object).Count
+                $providerDiscs = ($ProviderTracks | Select-Object -ExpandProperty disc_number -Unique | Measure-Object).Count
                 $providerHasMultipleDiscs = $providerDiscs -gt 1
                 
                 if ($hasDiscNumbers -and $providerHasMultipleDiscs) {
@@ -380,17 +380,17 @@ function Set-Tracks {
                     Write-Verbose "Audio files have disc numbers, matching by disc+track"
                     if ($Reverse) {
                         foreach ($audio in $AudioFiles) {
-                            $spotifyTrack = $SpotifyTracks | Where-Object { 
+                            $ProviderTrack = $ProviderTracks | Where-Object { 
                                 $_.disc_number -eq $audio.DiscNumber -and $_.track_number -eq $audio.TrackNumber 
                             } | Select-Object -First 1
                             
                             # Calculate confidence if both tracks exist
-                            $confidence = if ($spotifyTrack -and $audio) {
-                                Get-MatchConfidence -ProviderTrack $spotifyTrack -AudioFile $audio
+                            $confidence = if ($providerTrack -and $audio) {
+                                Get-MatchConfidence -ProviderTrack $providerTrack -AudioFile $audio
                             } else { $null }
                             
                             $pairedTracks += [PSCustomObject]@{
-                                SpotifyTrack = $spotifyTrack
+                                ProviderTrack = $providerTrack
                                 AudioFile    = $audio
                                 Confidence   = if ($confidence) { $confidence.Score } else { 0 }
                                 ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
@@ -398,8 +398,8 @@ function Set-Tracks {
                         }
                     }
                     else {
-                        $SpotifyTracks = $SpotifyTracks | Sort-Object disc_number, track_number
-                        foreach ($spotify in $SpotifyTracks) {
+                        $ProviderTracks = $ProviderTracks | Sort-Object disc_number, track_number
+                        foreach ($spotify in $ProviderTracks) {
                             $audioFile = $AudioFiles | Where-Object { 
                                 $_.DiscNumber -eq $spotify.disc_number -and $_.TrackNumber -eq $spotify.track_number 
                             } | Select-Object -First 1
@@ -410,7 +410,7 @@ function Set-Tracks {
                             } else { $null }
                             
                             $pairedTracks += [PSCustomObject]@{
-                                SpotifyTrack = $spotify
+                                ProviderTrack = $spotify
                                 AudioFile    = $audioFile
                                 Confidence   = if ($confidence) { $confidence.Score } else { 0 }
                                 ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
@@ -421,23 +421,23 @@ function Set-Tracks {
                 else {
                     # Single disc scenario OR audio files lack disc numbers - match by track number only
                     Write-Verbose "Single disc or no disc numbers, matching by track number only"
-                    $sortedSpotify = $SpotifyTracks | Sort-Object disc_number, track_number
+                    $sortedSpotify = $ProviderTracks | Sort-Object disc_number, track_number
                     $sortedAudio = $AudioFiles | Sort-Object TrackNumber
                     
                     if ($Reverse) {
                         foreach ($audio in $sortedAudio) {
                             # Match by track number only, ignoring disc
-                            $spotifyTrack = $sortedSpotify | Where-Object { 
+                            $ProviderTrack = $sortedSpotify | Where-Object { 
                                 $_.track_number -eq $audio.TrackNumber 
                             } | Select-Object -First 1
                             
                             # Calculate confidence if both tracks exist
-                            $confidence = if ($spotifyTrack -and $audio) {
-                                Get-MatchConfidence -ProviderTrack $spotifyTrack -AudioFile $audio
+                            $confidence = if ($providerTrack -and $audio) {
+                                Get-MatchConfidence -ProviderTrack $providerTrack -AudioFile $audio
                             } else { $null }
                             
                             $pairedTracks += [PSCustomObject]@{
-                                SpotifyTrack = $spotifyTrack
+                                ProviderTrack = $providerTrack
                                 AudioFile    = $audio
                                 Confidence   = if ($confidence) { $confidence.Score } else { 0 }
                                 ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
@@ -457,7 +457,7 @@ function Set-Tracks {
                             } else { $null }
                             
                             $pairedTracks += [PSCustomObject]@{
-                                SpotifyTrack = $spotify
+                                ProviderTrack = $spotify
                                 AudioFile    = $audioFile
                                 Confidence   = if ($confidence) { $confidence.Score } else { 0 }
                                 ConfidenceLevel = if ($confidence) { $confidence.Level } else { "Low" }
@@ -471,7 +471,7 @@ function Set-Tracks {
             # Build all possible matches with scores (duration + title similarity)
             $matchesR = @()
             
-            foreach ($spotify in $SpotifyTracks) {
+            foreach ($spotify in $ProviderTracks) {
                 foreach ($audio in $AudioFiles) {
                     $diff = [Math]::Abs($spotify.duration_ms - $audio.Duration)
                     $tolerance = $spotify.duration_ms * 0.1  # 10% tolerance
@@ -511,7 +511,7 @@ function Set-Tracks {
                     $confidence = Get-MatchConfidence -ProviderTrack $match.Spotify -AudioFile $match.Audio
                     
                     $pairedTracks += [PSCustomObject]@{
-                        SpotifyTrack = $match.Spotify
+                        ProviderTrack = $match.Spotify
                         AudioFile    = $match.Audio
                         Confidence   = $confidence.Score
                         ConfidenceLevel = $confidence.Level
@@ -521,15 +521,15 @@ function Set-Tracks {
                 }
             }
             
-            # Add unpaired Spotify tracks
-            if ($SpotifyTracks -and $SpotifyTracks.Count -gt 0) {
-                $unpairedSpotify = $SpotifyTracks | Where-Object { 
+            # Add unpaired provider tracks
+            if ($ProviderTracks -and $ProviderTracks.Count -gt 0) {
+                $unpairedSpotify = $ProviderTracks | Where-Object { 
                     $sid = if ($_.id) { $_.id } else { $_.name }
                     -not $usedSpotify.ContainsKey($sid)
                 }
                 foreach ($spotify in $unpairedSpotify) {
                     $pairedTracks += [PSCustomObject]@{
-                        SpotifyTrack = $spotify
+                        ProviderTrack = $spotify
                         AudioFile    = $null
                         Confidence   = 0
                         ConfidenceLevel = "Low"
@@ -543,7 +543,7 @@ function Set-Tracks {
             }
             foreach ($audio in $unpairedAudio) {
                 $pairedTracks += [PSCustomObject]@{
-                    SpotifyTrack = $null
+                    ProviderTrack = $null
                     AudioFile    = $audio
                     Confidence   = 0
                     ConfidenceLevel = "Low"
@@ -552,18 +552,18 @@ function Set-Tracks {
         }
         "hybrid" {
             # Check if provider has multiple discs - if not, ignore disc number in matching
-            $providerDiscs = ($SpotifyTracks | Select-Object -ExpandProperty disc_number -Unique | Measure-Object).Count
+            $providerDiscs = ($ProviderTracks | Select-Object -ExpandProperty disc_number -Unique | Measure-Object).Count
             $providerHasMultipleDiscs = $providerDiscs -gt 1
             
             if ($Reverse) {
-                # Hybrid: Iterate over audio files, score against Spotify tracks
+                # Hybrid: Iterate over audio files, score against provider tracks
                 $discTrackWeight = 50
                 $titleWeight = 30
                 $durationWeight = 20
                 
                 $matchesR = @()
                 foreach ($audio in $AudioFiles) {
-                    foreach ($spotify in $SpotifyTracks) {
+                    foreach ($spotify in $ProviderTracks) {
                         $score = 0
                         
                         # Disc/Track match - ignore disc if provider is single-disc
@@ -601,7 +601,7 @@ function Set-Tracks {
                 foreach ($match in $matchesR) {
                     if (-not $usedSpotify.ContainsKey($match.Spotify.id) -and $match.Score -ge 20) {
                         $pairedTracks += [PSCustomObject]@{
-                            SpotifyTrack = $match.Spotify
+                            ProviderTrack = $match.Spotify
                             AudioFile    = $match.Audio
                         }
                         $usedSpotify[$match.Spotify.id] = $true
@@ -613,7 +613,7 @@ function Set-Tracks {
                 $unpairedAudio = $AudioFiles | Where-Object { $_ -notin $pairedAudio }
                 foreach ($audio in $unpairedAudio) {
                     $pairedTracks += [PSCustomObject]@{
-                        SpotifyTrack = $null
+                        ProviderTrack = $null
                         AudioFile    = $audio
                     }
                 }
@@ -625,7 +625,7 @@ function Set-Tracks {
                 $durationWeight = 20
                 
                 $matchesR = @()
-                foreach ($spotify in $SpotifyTracks) {
+                foreach ($spotify in $ProviderTracks) {
                     foreach ($audio in $AudioFiles) {
                         $score = 0
                         
@@ -661,18 +661,18 @@ function Set-Tracks {
                 foreach ($match in $matchesR) {
                     if (-not $usedAudio.ContainsKey($match.Audio.FilePath) -and $match.Score -ge 20) {
                         $pairedTracks += [PSCustomObject]@{
-                            SpotifyTrack = $match.Spotify
+                            ProviderTrack = $match.Spotify
                             AudioFile    = $match.Audio
                         }
                         $usedAudio[$match.Audio.FilePath] = $true
                     }
                 }
                 
-                $pairedSpotify = $pairedTracks | ForEach-Object { $_.SpotifyTrack }
-                $unpairedSpotify = $SpotifyTracks | Where-Object { $_ -notin $pairedSpotify }
+                $pairedProvider = $pairedTracks | ForEach-Object { $_.ProviderTrack }
+                $unpairedProvider = $ProviderTracks | Where-Object { $_ -notin $pairedProvider }
                 foreach ($spotify in $unpairedSpotify) {
                     $pairedTracks += [PSCustomObject]@{
-                        SpotifyTrack = $spotify
+                        ProviderTrack = $spotify
                         AudioFile    = $null
                     }
                 }
@@ -683,12 +683,12 @@ function Set-Tracks {
             # This allows users to refine good matches (e.g., from byTitle) with 1-2 manual corrections
             # instead of starting from scratch
             if ($Reverse) {
-                # Reverse mode: iterate over audio files, let user pick from Spotify tracks
-                $pairedTracks = Select-matches -AudioFiles $AudioFiles -SpotifyTracks $SpotifyTracks -PairedTracks $pairedTracks -Reverse
+                # Reverse mode: iterate over audio files, let user pick from provider tracks
+                $pairedTracks = Select-matches -AudioFiles $AudioFiles -ProviderTracks $ProviderTracks -PairedTracks $pairedTracks -Reverse
             }
             else {
-                # Normal mode: iterate over Spotify tracks, let user pick from audio files
-                $pairedTracks = Select-matches -AudioFiles $AudioFiles -SpotifyTracks $SpotifyTracks -PairedTracks $pairedTracks
+                # Normal mode: iterate over provider tracks, let user pick from audio files
+                $pairedTracks = Select-matches -AudioFiles $AudioFiles -ProviderTracks $ProviderTracks -PairedTracks $pairedTracks
             }
         }
     }

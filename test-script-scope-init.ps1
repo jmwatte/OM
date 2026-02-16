@@ -89,8 +89,8 @@ function Test-InitializationFix {
         [PSCustomObject]@{ FilePath = "C:\test2.mp3"; TagFile = $null }
     )
     $script:pairedTracks = @(
-        [PSCustomObject]@{ AudioFile = $script:audioFiles[0]; SpotifyTrack = [PSCustomObject]@{ name = "Track 1" } },
-        [PSCustomObject]@{ AudioFile = $script:audioFiles[1]; SpotifyTrack = [PSCustomObject]@{ name = "Track 2" } }
+        [PSCustomObject]@{ AudioFile = $script:audioFiles[0]; ProviderTrack = [PSCustomObject]@{ name = "Track 1" } },
+        [PSCustomObject]@{ AudioFile = $script:audioFiles[1]; ProviderTrack = [PSCustomObject]@{ name = "Track 2" } }
     )
     $script:refreshTracks = $false
     
