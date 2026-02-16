@@ -307,9 +307,11 @@ function Start-OM {
     # ... (begin block unchanged)
     
     process {
+        # Cache config once — no Set-OMConfig calls exist in Start-OM, so it never changes during execution
+        $config = Get-OMConfig
+
         # If Provider was not explicitly specified, use DefaultProvider from config
         if (-not $PSBoundParameters.ContainsKey('Provider')) {
-            $config = Get-OMConfig
             if ($config.DefaultProvider) {
                 $Provider = $config.DefaultProvider
                 Write-Verbose "Using DefaultProvider from config: $Provider"
@@ -318,7 +320,7 @@ function Start-OM {
         
         # Cache Qobuz locale early to avoid repeated config calls during header display
         $qobuzUrlLocale = $null
-        if ($Provider -eq 'Qobuz' -or (Get-OMConfig).DefaultProvider -eq 'Qobuz') {
+        if ($Provider -eq 'Qobuz' -or $config.DefaultProvider -eq 'Qobuz') {
             $qobuzConfig = Get-OMConfig -Provider Qobuz
             $qobuzLocale = if ($qobuzConfig -and $qobuzConfig.Locale) { $qobuzConfig.Locale } else { $PSCulture }
             if (Get-Command -Name Get-QobuzUrlLocale -ErrorAction SilentlyContinue) {
@@ -341,55 +343,7 @@ function Start-OM {
             return $id
         }
         
-        # Helper function to show consistent header across all stages
-        $showHeader = {
-            param(
-                [string]$Provider,
-                [string]$Artist,
-                [string]$AlbumName,
-                [int]$TrackCount = 0
-            )
-            Write-Host ""
-            Write-Host "🎵 ═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
-            Write-Host "🔍 Provider: " -NoNewline -ForegroundColor Magenta
-            
-            # Add locale for Qobuz provider (use cached value from parent scope)
-            if ($Provider -eq 'Qobuz' -and $qobuzUrlLocale) {
-                Write-Host "$Provider ($qobuzUrlLocale)" -ForegroundColor Cyan
-            } else {
-                Write-Host $Provider -ForegroundColor Cyan
-            }
-            
-            Write-Host "👤 Original Artist: " -NoNewline -ForegroundColor Yellow
-            Write-Host $Artist -ForegroundColor White
-            Write-Host "💿 Original Album: " -NoNewline -ForegroundColor Green
-            
-            # Try to extract year from folder name (e.g., "2011 - Bach Cello Suites")
-            $folderYear = ""
-            if ($script:album -and $script:album.Name) {
-                if ($script:album.Name -match '^(\d{4})\s*-\s*') {
-                    $folderYear = "$($matches[1]) - "
-                }
-            }
-            
-            Write-Host "$folderYear$AlbumName" -NoNewline -ForegroundColor White
-            if ($TrackCount -gt 0) {
-                Write-Host " ($TrackCount tracks)" -ForegroundColor White
-            }
-            else {
-                Write-Host ""  # Ensure newline
-            }
-            
-            # Display original path (folder only)
-            if ($script:album -and $script:album.FullName) {
-                Write-Host "📁 Original Path: " -NoNewline -ForegroundColor Cyan
-                Write-Host $script:album.FullName -ForegroundColor White
-            }
-            
-            Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor DarkCyan
-            Write-Host ""
-        }
-        # Replace inline showHeader with wrapper that delegates to Private helper
+        # Helper: delegates header rendering to Private Show-OMHeader
         $showHeader = {
             param(
                 [string]$Provider,
@@ -1274,7 +1228,6 @@ function Start-OM {
                         
                         if ($albumChoice -eq 'p') {
                             # Show current provider and available shortcuts
-                            $config = Get-OMConfig
                             $defaultProvider = $config.DefaultProvider
                             Write-Host "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan
                             Write-Host "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray
@@ -1357,7 +1310,6 @@ function Start-OM {
                                 Write-Warning "No valid albums selected for cs command"
                                 continue albumSelectionLoop
                             }
-                            $config = Get-OMConfig
                             $maxSize = $config.CoverArt.FolderImageSize
                             foreach ($index in $selectedIndices) {
                                 $albumIndex = $index - 1
@@ -1391,7 +1343,6 @@ function Start-OM {
                                 Write-Warning "No valid albums selected for ct command"
                                 continue albumSelectionLoop
                             }
-                            $config = Get-OMConfig
                             $maxSize = $config.CoverArt.TagImageSize
                             # Get audio files for embedding
                             $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
@@ -2242,7 +2193,6 @@ function Start-OM {
                                     }
                                     elseif ($skipChoice -eq 'p') {
                                         # Show current provider and available shortcuts
-                                        $config = Get-OMConfig
                                         $defaultProvider = $config.DefaultProvider
                                         Write-Host "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan
                                         Write-Host "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray
@@ -2357,7 +2307,6 @@ function Start-OM {
                                 }
                                 elseif ($skipChoice -eq 'p') {
                                     # Show current provider and available shortcuts
-                                    $config = Get-OMConfig
                                     $defaultProvider = $config.DefaultProvider
                                     Write-Host "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan
                                     Write-Host "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray
@@ -2535,7 +2484,6 @@ function Start-OM {
                                             $coverUrl = Get-IfExists $ProviderAlbum 'cover_url'
                                             if ($coverUrl) {
                                                 Write-Host "🖼️  AUTO: Saving cover art..." -ForegroundColor Cyan
-                                                $config = Get-OMConfig
                                                 $maxSize = $config.CoverArt.FolderImageSize
                                                 $result = Save-CoverArt -CoverUrl $coverUrl -AlbumPath $script:album.FullName `\n                                                    -Action SaveToFolder -MaxSize $maxSize -WhatIf:$useWhatIf
                                                 if ($result.Success) {
@@ -2834,7 +2782,6 @@ function Start-OM {
                                 }
                                 '^p$' {
                                     # Show current provider and available shortcuts
-                                    $config = Get-OMConfig
                                     $defaultProvider = $config.DefaultProvider
                                     Write-Host "`nCurrent provider: $Provider (default: $defaultProvider)" -ForegroundColor Cyan
                                     Write-Host "To switch providers, use: (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz" -ForegroundColor Gray
@@ -3393,7 +3340,6 @@ function Start-OM {
                                     $coverUrl = Get-IfExists $ProviderAlbum 'cover_url'
                                     
                                     if ($coverUrl) {
-                                        $config = Get-OMConfig
                                         $maxSize = $config.CoverArt.FolderImageSize
                                         $result = Save-CoverArt -CoverUrl $coverUrl -AlbumPath $script:album.FullName -Action SaveToFolder -MaxSize $maxSize -WhatIf:$useWhatIf
                                         if (-not $result.Success) {
@@ -3410,7 +3356,6 @@ function Start-OM {
                                     $coverUrl = Get-IfExists $ProviderAlbum 'cover_url'
                                     
                                     if ($coverUrl) {
-                                        $config = Get-OMConfig
                                         $maxSize = $config.CoverArt.TagImageSize
                                         # Get audio files for embedding
                                         $audioFilesForCover = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
@@ -3469,5 +3414,4 @@ function Start-OM {
         }
     }
 }
-
 

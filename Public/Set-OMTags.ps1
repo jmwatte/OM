@@ -573,7 +573,7 @@ function Set-OMTags {
         
         $processedCount = 0
         $errorCount = 0
-        $results = @()
+        $results = [System.Collections.Generic.List[PSCustomObject]]::new()
         $trackCounter = if ($PSBoundParameters.ContainsKey('RenumberTracks')) { $RenumberTracks } else { 0 }
         
         Write-Verbose "Starting tag update process"
@@ -869,7 +869,7 @@ function Set-OMTags {
                 $processedCount++
                 
                 if ($PassThru) {
-                    $results += $currentTags
+                    $results.Add($currentTags)
                 }
                 return
             }
@@ -1078,10 +1078,10 @@ function Set-OMTags {
                     if ($PassThru) {
                         if (-not $WhatIfPreference) {
                             $updatedTags = Get-OMTags -Path $filePath
-                            $results += $updatedTags
+                            $results.Add($updatedTags)
                         } else {
                             # In WhatIf mode, return the proposed tags
-                            $results += $newTags
+                            $results.Add($newTags)
                         }
                     }
                     
@@ -1092,7 +1092,7 @@ function Set-OMTags {
                 Write-Verbose "Skipped (user declined): $(Split-Path $filePath -Leaf)"
                 # Still return results in WhatIf mode if PassThru requested
                 if ($PassThru -and $WhatIfPreference) {
-                    $results += $newTags
+                    $results.Add($newTags)
                 }
             }
             

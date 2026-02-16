@@ -1,4 +1,4 @@
-﻿function Get-TracksFromHtml {
+function Get-TracksFromHtml {
     param (
         [string]$Path
     )
@@ -29,7 +29,7 @@
     $trackNodes = $html.SelectNodes("//*[@data-track]")
     if (-not $trackNodes -or $trackNodes.Count -eq 0) { $trackNodes = $html.SelectNodes("//div[contains(@class,'track')]") }
 
-    $results = @()
+    $results = [System.Collections.Generic.List[PSCustomObject]]::new()
     $currentDisc = 1
     $currentDiscTrackCounter = 0
 
@@ -88,7 +88,7 @@
                     } catch { }
                     if ($artistsArr.Count -gt 0) { $artistStr = ($artistsArr -join '; ') }
 
-                    $results += [pscustomobject]@{ id=$id; name=$title; disc_number=$discNum; track_number=$tn; duration_ms=$dur; duration = if ($dur) { [math]::Round($dur/1000) } else { $null }; Artist = $artistStr; artists = ($artistsArr | ForEach-Object { [pscustomobject]@{ name = $_ } }); _RawProviderObject = $n }
+                    $results.Add([pscustomobject]@{ id=$id; name=$title; disc_number=$discNum; track_number=$tn; duration_ms=$dur; duration = if ($dur) { [math]::Round($dur/1000) } else { $null }; Artist = $artistStr; artists = ($artistsArr | ForEach-Object { [pscustomobject]@{ name = $_ } }); _RawProviderObject = $n })
                     $processed[$key] = $true
                 }
             }
@@ -104,9 +104,9 @@
     }
 
     # Build combined list of labels and tracks with line info, then sort by line to preserve document order
-    $combined = @()
-    if ($allLabelNodes) { foreach ($ln in @($allLabelNodes)) { $combined += [pscustomobject]@{ Type='label'; Node=$ln; Line = Get-NodeLine $ln } } }
-    if ($trackNodes) { foreach ($tn in @($trackNodes)) { $combined += [pscustomobject]@{ Type='track'; Node=$tn; Line = Get-NodeLine $tn } } }
+    $combined = [System.Collections.Generic.List[PSCustomObject]]::new()
+    if ($allLabelNodes) { foreach ($ln in @($allLabelNodes)) { $combined.Add([pscustomobject]@{ Type='label'; Node=$ln; Line = Get-NodeLine $ln }) } }
+    if ($trackNodes) { foreach ($tn in @($trackNodes)) { $combined.Add([pscustomobject]@{ Type='track'; Node=$tn; Line = Get-NodeLine $tn }) } }
     $combined = $combined | Sort-Object Line
 
     foreach ($entry in $combined) {
@@ -198,7 +198,7 @@
         $nameNode = $track.SelectSingleNode('.//div[contains(@class,"track__item--name")]//span')
         $nameVal = if ($nameNode) { $nameNode.InnerText.Trim() } else { $track.InnerText.Trim() }
 
-        $results += [pscustomobject]@{ id = $idVal; name = $nameVal; disc_number = $discToUse; track_number = $tn; duration_ms = $durationMs; duration = if ($durationMs) { [math]::Round($durationMs/1000) } else { $null }; Artist = $artistStr; artists = ($artistsArr | ForEach-Object { [pscustomobject]@{ name = $_ } }); _RawProviderObject = $track }
+        $results.Add([pscustomobject]@{ id = $idVal; name = $nameVal; disc_number = $discToUse; track_number = $tn; duration_ms = $durationMs; duration = if ($durationMs) { [math]::Round($durationMs/1000) } else { $null }; Artist = $artistStr; artists = ($artistsArr | ForEach-Object { [pscustomobject]@{ name = $_ } }); _RawProviderObject = $track })
         $processed[$checkKey] = $true
     }
 

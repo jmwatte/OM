@@ -25,7 +25,7 @@ function Reload-OMAudioFiles {
 
     if ($Trace) { Write-Host "[Reload] Found files: $($files.Count)" }
 
-    $result = @()
+    $result = [System.Collections.Generic.List[PSCustomObject]]::new()
     foreach ($f in $files) {
         if ($Trace) { Write-Host "[Reload] Processing: $($f.FullName)" }
         try {
@@ -55,7 +55,7 @@ function Reload-OMAudioFiles {
                 Name        = if ($tagFile -and $tagFile.Tag.Title) { $tagFile.Tag.Title } else { $f.BaseName }
                 Duration    = $duration
             }
-            $result += $obj
+            $result.Add($obj)
             if ($Trace) { Write-Host "[Reload] Added object for: $($f.Name)" }
         }
         catch {

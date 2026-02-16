@@ -202,7 +202,7 @@ function Get-OMTags {
         } 
         #if $path is an array of paths
         elseif ($Path -is [System.Collections.IEnumerable]) {
-            $files = @()
+            $files = [System.Collections.Generic.List[string]]::new()
             foreach ($p in $Path) {
                 if (Test-Path -LiteralPath $p -PathType Leaf) {
                     $fileExtension = [System.IO.Path]::GetExtension($p).ToLower()
@@ -211,7 +211,7 @@ function Get-OMTags {
                         continue
                     } elseif ($supportedExtensions -contains $fileExtension) {
                         # Convert to absolute path
-                        $files += (Get-Item -LiteralPath $p).FullName
+                        $files.Add((Get-Item -LiteralPath $p).FullName)
                     } else {
                         Write-Warning "File '$p' is not a supported audio format"
                         continue
@@ -222,7 +222,7 @@ function Get-OMTags {
                                     $_.Extension.ToLower() -in $supportedExtensions 
                                 } | 
                                 Select-Object -ExpandProperty FullName
-                    $files += $dirFiles
+                    $files.AddRange([string[]]$dirFiles)
                 } else {
                     Write-Warning "Path '$p' does not exist or is not accessible."
                 }
@@ -466,7 +466,7 @@ function Get-OMTags {
                     }
                 }
 
-                $results += $normalizedTag
+                $results.Add($normalizedTag)
                 
                 # Log detailed information if requested
                 if ($LogTo) {

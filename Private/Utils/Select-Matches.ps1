@@ -9,38 +9,38 @@ function Select-matches {
     )
 
     # Use provided pairing order if available, otherwise start fresh
-    $pairedTracks = @()
+    $pairedTracks = [System.Collections.Generic.List[PSCustomObject]]::new()
     
     # If we have a pre-sorted pairing, use its order to pre-sort the lists
     if ($PairedTracks -and $PairedTracks.Count -gt 0) {
         if ($Reverse) {
             # In reverse mode, sort AudioFiles by the order they appear in PairedTracks
-            $orderedAudioFiles = @()
+            $orderedAudioFiles = [System.Collections.Generic.List[object]]::new()
             foreach ($pair in $PairedTracks) {
                 if ($pair.AudioFile) {
-                    $orderedAudioFiles += $pair.AudioFile
+                    $orderedAudioFiles.Add($pair.AudioFile)
                 }
             }
             # Add any audio files not in the pairing (shouldn't happen, but be safe)
             foreach ($audio in $AudioFiles) {
                 if ($audio -notin $orderedAudioFiles) {
-                    $orderedAudioFiles += $audio
+                    $orderedAudioFiles.Add($audio)
                 }
             }
             $AudioFiles = $orderedAudioFiles
         }
         else {
             # In normal mode, sort providerTracks by the order they appear in PairedTracks
-            $orderedproviderTracks = @()
+            $orderedproviderTracks = [System.Collections.Generic.List[object]]::new()
             foreach ($pair in $PairedTracks) {
                 if ($pair.ProviderTrack) {
-                    $orderedproviderTracks += $pair.ProviderTrack
+                    $orderedproviderTracks.Add($pair.ProviderTrack)
                 }
             }
             # Add any provider tracks not in the pairing
-            foreach ($spotify in $ProviderTracks) {
-                if ($spotify -notin $orderedproviderTracks) {
-                    $orderedproviderTracks += $spotify
+            foreach ($provider in $ProviderTracks) {
+                if ($provider -notin $orderedproviderTracks) {
+                    $orderedproviderTracks.Add($provider)
                 }
             }
             $ProviderTracks = $orderedproviderTracks
@@ -56,28 +56,28 @@ function Select-matches {
             
            if ($selected) {
                 $providerTrack = $ProviderTracks | Where-Object { $_.id -eq $selected.id }
-                $pairedTracks += [PSCustomObject]@{
+                $pairedTracks.Add([PSCustomObject]@{
                     ProviderTrack = $providerTrack
                     AudioFile    = $audioFile
-                }
+                })
                 # Remove selected track to avoid duplicates
                 $ProviderTracks = $ProviderTracks | Where-Object { $_ -ne $providerTrack }
             }
             else {
                 # User skipped - add unpaired audio file
-                $pairedTracks += [PSCustomObject]@{
+                $pairedTracks.Add([PSCustomObject]@{
                     ProviderTrack = $null
                     AudioFile    = $audioFile
-                }
+                })
             }
         }
         
         # Add any remaining unpaired provider tracks
-        foreach ($spotify in $ProviderTracks) {
-            $pairedTracks += [PSCustomObject]@{
-                ProviderTrack = $spotify
+        foreach ($provider in $ProviderTracks) {
+            $pairedTracks.Add([PSCustomObject]@{
+                ProviderTrack = $provider
                 AudioFile    = $null
-            }
+            })
         }
     }
     else {
@@ -86,28 +86,28 @@ function Select-matches {
             $audioFile = $AudioFiles | Out-GridView -Title "Select matching audio file for '$($providerTrack.Name)'" -PassThru
 
             if ($audioFile) {
-                $pairedTracks += [PSCustomObject]@{
+                $pairedTracks.Add([PSCustomObject]@{
                     ProviderTrack = $providerTrack
                     AudioFile    = $audioFile
-                }
+                })
                 # Remove selected audio file to avoid duplicates
                 $AudioFiles = $AudioFiles | Where-Object { $_ -ne $audioFile }
             }
             else {
-                # User skipped - add unpaired Spotify track
-                $pairedTracks += [PSCustomObject]@{
+                # User skipped - add unpaired provider track
+                $pairedTracks.Add([PSCustomObject]@{
                     ProviderTrack = $providerTrack
                     AudioFile    = $null
-                }
+                })
             }
         }
         
         # Add any remaining unpaired audio files
         foreach ($audio in $AudioFiles) {
-            $pairedTracks += [PSCustomObject]@{
+            $pairedTracks.Add([PSCustomObject]@{
                 ProviderTrack = $null
                 AudioFile    = $audio
-            }
+            })
         }
     }
 
