@@ -88,6 +88,11 @@ function Reload-OMAudioFiles {
         catch {
             Write-Warning "Skipping corrupted or invalid audio file: $($f.FullName) - Error: $($_.Exception.Message)"
             if ($Trace) { Write-Host "[Reload] Caught error for $($f.Name): $($_.Exception.Message)" }
+            # Dispose TagFile handle if it was created before the error
+            if ($tagFile) {
+                try { $tagFile.Dispose() } catch { }
+                $tagFile = $null
+            }
             continue
         }
     }

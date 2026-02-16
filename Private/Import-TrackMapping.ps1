@@ -137,13 +137,17 @@ function Import-TrackMapping {
         try {
             if (([System.Management.Automation.PSTypeName]'TagLib.File').Type) {
                 $tagFile = [TagLib.File]::Create($file.FullName)
-                $currentTags = @{
-                    Track = $tagFile.Tag.Track
-                    Title = $tagFile.Tag.Title
-                    Artist = $tagFile.Tag.FirstPerformer
-                    Album = $tagFile.Tag.Album
+                try {
+                    $currentTags = @{
+                        Track = $tagFile.Tag.Track
+                        Title = $tagFile.Tag.Title
+                        Artist = $tagFile.Tag.FirstPerformer
+                        Album = $tagFile.Tag.Album
+                    }
                 }
-                $tagFile.Dispose()
+                finally {
+                    $tagFile.Dispose()
+                }
             }
         } catch {
             Write-Warning "Could not read tags from: $($file.Name)"
@@ -232,10 +236,14 @@ function Import-TrackMapping {
             if ($change.WillUpdateTags) {
                 if (([System.Management.Automation.PSTypeName]'TagLib.File').Type) {
                     $tagFile = [TagLib.File]::Create($change.File.FullName)
-                    $tagFile.Tag.Track = $change.NewTrack
-                    $tagFile.Tag.Title = $change.NewTitle
-                    $tagFile.Save()
-                    $tagFile.Dispose()
+                    try {
+                        $tagFile.Tag.Track = $change.NewTrack
+                        $tagFile.Tag.Title = $change.NewTitle
+                        $tagFile.Save()
+                    }
+                    finally {
+                        $tagFile.Dispose()
+                    }
                     Write-Host "✅ Updated tags: $($change.File.Name)" -ForegroundColor Green
                 } else {
                     Write-Warning "TagLib not available - skipping tag update for: $($change.File.Name)"

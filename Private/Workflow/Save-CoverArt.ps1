@@ -205,20 +205,23 @@ function Save-CoverArt {
                     $filePath = $audioFile.FilePath
                     if ($PSCmdlet.ShouldProcess($filePath, "Embed cover art")) {
                         $tagFile = [TagLib.File]::Create($filePath)
+                        try {
+                            # Create picture object
+                            $picture = [TagLib.Picture]::new()
+                            $picture.Type = [TagLib.PictureType]::FrontCover
+                            $picture.MimeType = "image/jpeg"
+                            $picture.Description = "Cover"
+                            $picture.Data = $resizedBytes
 
-                        # Create picture object
-                        $picture = [TagLib.Picture]::new()
-                        $picture.Type = [TagLib.PictureType]::FrontCover
-                        $picture.MimeType = "image/jpeg"
-                        $picture.Description = "Cover"
-                        $picture.Data = $resizedBytes
+                            # Set the picture
+                            $tagFile.Tag.Pictures = @($picture)
 
-                        # Set the picture
-                        $tagFile.Tag.Pictures = @($picture)
-
-                        # Save the file
-                        $tagFile.Save()
-                        $tagFile.Dispose()
+                            # Save the file
+                            $tagFile.Save()
+                        }
+                        finally {
+                            $tagFile.Dispose()
+                        }
 
                         $successCount++
                         Write-Verbose "Embedded cover art in: $(Split-Path -Leaf $filePath)"

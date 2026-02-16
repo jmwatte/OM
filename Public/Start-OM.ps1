@@ -390,15 +390,19 @@ function Start-OM {
                             try { $AudioFiles[0].TagFile.Dispose() } catch { }
                         }
                         $tempTag = [TagLib.File]::Create($firstFilePath)
-                        if ($tempTag.Tag.AlbumArtists -and $tempTag.Tag.AlbumArtists.Count -gt 0) {
-                            $artistNameForFolder = $tempTag.Tag.AlbumArtists[0]
-                            Write-Verbose "Read AlbumArtist from saved tags: $artistNameForFolder"
+                        try {
+                            if ($tempTag.Tag.AlbumArtists -and $tempTag.Tag.AlbumArtists.Count -gt 0) {
+                                $artistNameForFolder = $tempTag.Tag.AlbumArtists[0]
+                                Write-Verbose "Read AlbumArtist from saved tags: $artistNameForFolder"
+                            }
+                            elseif ($tempTag.Tag.FirstAlbumArtist) {
+                                $artistNameForFolder = $tempTag.Tag.FirstAlbumArtist
+                                Write-Verbose "Read FirstAlbumArtist from saved tags: $artistNameForFolder"
+                            }
                         }
-                        elseif ($tempTag.Tag.FirstAlbumArtist) {
-                            $artistNameForFolder = $tempTag.Tag.FirstAlbumArtist
-                            Write-Verbose "Read FirstAlbumArtist from saved tags: $artistNameForFolder"
+                        finally {
+                            $tempTag.Dispose()
                         }
-                        $tempTag.Dispose()
                     }
                 }
                 catch {
@@ -503,24 +507,20 @@ function Start-OM {
                     # Folder was moved - update $album and reload audio files from new location
                     $script:album = Get-Item -LiteralPath $moveResult.NewAlbumPath
             
+                    # Dispose old TagFile handles before reload to avoid orphaned handles
+                    if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
+                        foreach ($pt in $script:pairedTracks) {
+                            if ($pt.AudioFile -and $pt.AudioFile.TagFile) {
+                                try { $pt.AudioFile.TagFile.Dispose() } catch { }
+                            }
+                        }
+                    }
+
                     # Reload audio files with fresh TagLib handles from the NEW album path
                     $script:audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName
                     # Update paired tracks with reloaded audio files to reflect updated tags
                     if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
                         for ($i = 0; $i -lt [Math]::Min($script:pairedTracks.Count, $script:audioFiles.Count); $i++) {
-                            if ($script:pairedTracks[$i].AudioFile.TagFile) {
-                                try { $script:pairedTracks[$i].AudioFile.TagFile.Dispose() } catch { }
-                            }
-                            $script:pairedTracks[$i].AudioFile = $script:audioFiles[$i]
-                        }
-                    }
-
-                    # Update paired tracks with reloaded audio files to reflect updated tags
-                    if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
-                        for ($i = 0; $i -lt [Math]::Min($script:pairedTracks.Count, $script:audioFiles.Count); $i++) {
-                            if ($script:pairedTracks[$i].AudioFile.TagFile) {
-                                try { $script:pairedTracks[$i].AudioFile.TagFile.Dispose() } catch { }
-                            }
                             $script:pairedTracks[$i].AudioFile = $script:audioFiles[$i]
                         }
                     }
@@ -549,19 +549,23 @@ function Start-OM {
                                 }
                                 # Reload file to read current saved tags
                                 $tempTag = [TagLib.File]::Create($firstFilePath)
-                                Write-Verbose "Reloaded TagFile for AlbumArtist check"
-                                if ($tempTag.Tag.AlbumArtists -and $tempTag.Tag.AlbumArtists.Count -gt 0) {
-                                    $albumArtistName = $tempTag.Tag.AlbumArtists[0]
-                                    Write-Verbose "Read AlbumArtist from saved tags for TargetFolder: $albumArtistName"
+                                try {
+                                    Write-Verbose "Reloaded TagFile for AlbumArtist check"
+                                    if ($tempTag.Tag.AlbumArtists -and $tempTag.Tag.AlbumArtists.Count -gt 0) {
+                                        $albumArtistName = $tempTag.Tag.AlbumArtists[0]
+                                        Write-Verbose "Read AlbumArtist from saved tags for TargetFolder: $albumArtistName"
+                                    }
+                                    elseif ($tempTag.Tag.FirstAlbumArtist) {
+                                        $albumArtistName = $tempTag.Tag.FirstAlbumArtist
+                                        Write-Verbose "Read FirstAlbumArtist from saved tags for TargetFolder: $albumArtistName"
+                                    }
+                                    else {
+                                        Write-Verbose "No AlbumArtist found in tags, using default: $albumArtistName"
+                                    }
                                 }
-                                elseif ($tempTag.Tag.FirstAlbumArtist) {
-                                    $albumArtistName = $tempTag.Tag.FirstAlbumArtist
-                                    Write-Verbose "Read FirstAlbumArtist from saved tags for TargetFolder: $albumArtistName"
+                                finally {
+                                    $tempTag.Dispose()
                                 }
-                                else {
-                                    Write-Verbose "No AlbumArtist found in tags, using default: $albumArtistName"
-                                }
-                                $tempTag.Dispose()
                             }
                             catch {
                                 Write-Warning "Could not extract AlbumArtist from tags: $($_.Exception.Message)"
@@ -799,8 +803,12 @@ function Start-OM {
                                 }
                                 
                                 $tagFile = [TagLib.File]::Create($firstAudioFile.FullName)
-                                $tagArtist = if ($tagFile.Tag.FirstAlbumArtist) { $tagFile.Tag.FirstAlbumArtist } else { $null }
-                                $tagFile.Dispose()
+                                try {
+                                    $tagArtist = if ($tagFile.Tag.FirstAlbumArtist) { $tagFile.Tag.FirstAlbumArtist } else { $null }
+                                }
+                                finally {
+                                    $tagFile.Dispose()
+                                }
                                 Write-Verbose "DEBUG: AlbumArtist tag='$tagArtist'"
                             }
                         }
@@ -3022,15 +3030,19 @@ function Start-OM {
                                             # Try to read current tag value from the file (if available)
                                             try {
                                                 $currentTagFile = [TagLib.File]::Create($filePath)
-                                                $existingValue = switch ($actualTagName) {
-                                                    'composer' { $currentTagFile.Tag.Composers -join '; ' }
-                                                    'genre' { $currentTagFile.Tag.Genres -join '; ' }
-                                                    'artist' { $currentTagFile.Tag.Performers -join '; ' }
-                                                    'albumartist' { $currentTagFile.Tag.AlbumArtists -join '; ' }
-                                                    'title' { $currentTagFile.Tag.Title }
-                                                    default { $null }
+                                                try {
+                                                    $existingValue = switch ($actualTagName) {
+                                                        'composer' { $currentTagFile.Tag.Composers -join '; ' }
+                                                        'genre' { $currentTagFile.Tag.Genres -join '; ' }
+                                                        'artist' { $currentTagFile.Tag.Performers -join '; ' }
+                                                        'albumartist' { $currentTagFile.Tag.AlbumArtists -join '; ' }
+                                                        'title' { $currentTagFile.Tag.Title }
+                                                        default { $null }
+                                                    }
                                                 }
-                                                $currentTagFile.Dispose()
+                                                finally {
+                                                    $currentTagFile.Dispose()
+                                                }
                                             }
                                             catch {
                                                 Write-Verbose "Could not read existing tag for $filePath`: $_"
