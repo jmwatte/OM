@@ -1372,46 +1372,18 @@ function Start-OM {
                                 continue albumSelectionLoop
                             }
                             $maxSize = $config.CoverArt.TagImageSize
-                            # Get audio files for embedding
-                            $audioFiles = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
-                                Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
-                                Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) } | ForEach-Object {
-                                try {
-                                    $tagFile = [TagLib.File]::Create($_.FullName)
-                                    [PSCustomObject]@{
-                                        FilePath = $_.FullName
-                                        TagFile  = $tagFile
+                            foreach ($index in $selectedIndices) {
+                                $albumIndex = $index - 1
+                                $selectedAlbum = $albumCandidates[$albumIndex]
+                                if ($selectedAlbum.cover_url) {
+                                    $result = Invoke-OMCoverArtEmbed -AlbumPath $script:album.FullName -CoverUrl $selectedAlbum.cover_url -MaxSize $maxSize -UseWhatIf:$useWhatIf
+                                    if ($null -ne $result -and -not $result.Success) {
+                                        Write-Warning "Failed to embed cover art for album $index ($($selectedAlbum.name)): $($result.Error)"
                                     }
                                 }
-                                catch {
-                                    Write-Warning "Skipping invalid audio file: $($_.FullName)"
-                                    $null
+                                else {
+                                    Write-Warning "No cover art available for album $index ($($selectedAlbum.name))"
                                 }
-                            } | Where-Object { $_ -ne $null }
-
-                            if ($audioFiles.Count -gt 0) {
-                                foreach ($index in $selectedIndices) {
-                                    $albumIndex = $index - 1
-                                    $selectedAlbum = $albumCandidates[$albumIndex]
-                                    if ($selectedAlbum.cover_url) {
-                                        $result = Save-CoverArt -CoverUrl $selectedAlbum.cover_url -AudioFiles $audioFiles -Action EmbedInTags -MaxSize $maxSize -WhatIf:$useWhatIf
-                                        if (-not $result.Success) {
-                                            Write-Warning "Failed to embed cover art for album $index ($($selectedAlbum.name)): $($result.Error)"
-                                        }
-                                    }
-                                    else {
-                                        Write-Warning "No cover art available for album $index ($($selectedAlbum.name))"
-                                    }
-                                }
-                                # Clean up tag files
-                                foreach ($af in $audioFiles) {
-                                    if ($af.TagFile) {
-                                        try { $af.TagFile.Dispose() } catch { }
-                                    }
-                                }
-                            }
-                            else {
-                                Write-Warning "No audio files found to embed cover art in"
                             }
                             continue albumSelectionLoop
                         }
@@ -3177,37 +3149,12 @@ function Start-OM {
                                     
                                     if ($coverUrl) {
                                         $maxSize = $config.CoverArt.TagImageSize
-                                        # Get audio files for embedding
-                                        $audioFilesForCover = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
-                                            Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
-                                            Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) } | ForEach-Object {
-                                            try {
-                                                $tagFile = [TagLib.File]::Create($_.FullName)
-                                                [PSCustomObject]@{
-                                                    FilePath = $_.FullName
-                                                    TagFile  = $tagFile
-                                                }
-                                            }
-                                            catch {
-                                                Write-Warning "Skipping invalid audio file: $($_.FullName)"
-                                                $null
-                                            }
-                                        } | Where-Object { $_ -ne $null }
-
-                                        if ($audioFilesForCover.Count -gt 0) {
-                                            $result = Save-CoverArt -CoverUrl $coverUrl -AudioFiles $audioFilesForCover -Action EmbedInTags -MaxSize $maxSize -WhatIf:$useWhatIf
-                                            if (-not $result.Success) {
-                                                Write-Warning "Failed to embed cover art: $($result.Error)"
-                                            }
-                                            # Clean up tag files
-                                            foreach ($af in $audioFilesForCover) {
-                                                if ($af.TagFile) {
-                                                    try { $af.TagFile.Dispose() } catch { }
-                                                }
-                                            }
+                                        $result = Invoke-OMCoverArtEmbed -AlbumPath $script:album.FullName -CoverUrl $coverUrl -MaxSize $maxSize -UseWhatIf:$useWhatIf
+                                        if ($null -eq $result) {
+                                            # Warning already shown by Invoke-OMCoverArtEmbed
                                         }
-                                        else {
-                                            Write-Warning "No audio files found to embed cover art in"
+                                        elseif (-not $result.Success) {
+                                            Write-Warning "Failed to embed cover art: $($result.Error)"
                                         }
                                     }
                                     else {
