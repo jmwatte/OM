@@ -2,10 +2,14 @@
 # Dot-source all functions from Private and Public folders
 
 # Private functions
-# Dot-source private functions but skip test files (test-*.ps1 and *.Tests.ps1)
-# so they don't get executed when the module is imported.
+# Dot-source only files that define functions/filters. Skip test files, standalone
+# scripts (runNewCDS.ps1 etc.) and anything that doesn't start with a definition.
 Get-ChildItem -Path $PSScriptRoot\Private -Filter *.ps1 -Recurse |
-	Where-Object { $_.Name -notmatch '^test-.*\.ps1$' -and $_.Name -notmatch '\.Tests\.ps1$' } |
+	Where-Object {
+		$_.Name -notmatch '^test-.*\.ps1$' -and
+		$_.Name -notmatch '\.Tests\.ps1$' -and
+		(Get-Content $_.FullName -TotalCount 10 -Raw) -match '(?m)^\s*function\s|^\s*filter\s'
+	} |
 	ForEach-Object { . $_.FullName }
 
 # Public functions
