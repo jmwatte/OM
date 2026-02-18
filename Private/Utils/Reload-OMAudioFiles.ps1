@@ -33,6 +33,7 @@ function Reload-OMAudioFiles {
     $result = [System.Collections.Generic.List[PSCustomObject]]::new()
     foreach ($f in $files) {
         if ($Trace) { Write-Host "[Reload] Processing: $($f.FullName)" }
+        $tagFile = $null
         try {
             $ext = $f.Extension.ToLower()
             if ($ext -eq '.ape') {

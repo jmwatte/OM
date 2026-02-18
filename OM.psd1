@@ -79,6 +79,7 @@ FunctionsToExport = @(
     'Move-OMTags',
     'Save-OMCoverArt',
     'Set-OMConfig',
+    'Repair-AudioFileExtensions',
     'Set-OMDiscTrackNumbers',
     'Set-OMTags',
     'Start-OM'
