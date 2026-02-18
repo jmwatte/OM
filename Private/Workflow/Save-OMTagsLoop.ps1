@@ -18,6 +18,9 @@ function Save-OMTagsLoop {
         Genre handling mode ('Merge' enables genre merge in Save-TagsForFile).
     .PARAMETER UseWhatIf
         When set, passes -WhatIf to Save-TagsForFile for preview-only mode.
+    .PARAMETER UpdateOnly
+        Array of field categories to save. Defaults to 'All'.
+        Passed to Get-FilteredTags to filter the tags hashtable before saving.
     .PARAMETER RequireBothPaired
         When set, skips pairs that lack either AudioFile or ProviderTrack (sa behavior).
         When not set, only AudioFile is required (st behavior).
@@ -41,6 +44,9 @@ function Save-OMTagsLoop {
 
         [Parameter()]
         [switch]$UseWhatIf,
+
+        [Parameter()]
+        [string[]]$UpdateOnly = @('All'),
 
         [Parameter()]
         [switch]$RequireBothPaired
@@ -94,12 +100,26 @@ function Save-OMTagsLoop {
         }
 
         $tags = Get-Tags @tagsParams
+
+        # Filter tags based on UpdateOnly parameter
+        $tags = Get-FilteredTags -Tags $tags -UpdateOnly $UpdateOnly
+
+        if ($tags.Count -eq 0) {
+            Write-Verbose "No tags to save for $filePath after filtering"
+            continue
+        }
+
         Write-Verbose ("Saving tags to: {0}" -f $filePath)
         Write-Verbose ("Tag values:`n{0}" -f ($tags | Out-String))
         $genreMerge = ($GenreMode -eq 'Merge')
         $res = Save-TagsForFile -FilePath $filePath -TagValues $tags -WhatIf:$UseWhatIf -GenreMergeMode:$genreMerge
         if ($res.Success) {
-            Write-Host ("Saved tags: {0} -> {1:D2}.{2:D2}: {3}" -f (Split-Path -Leaf $filePath), $tags.Disc, $tags.Track, $tags.Title) -ForegroundColor Green
+            if ($UpdateOnly -contains 'All') {
+                Write-Host ("Saved tags: {0} -> {1:D2}.{2:D2}: {3}" -f (Split-Path -Leaf $filePath), $tags.Disc, $tags.Track, $tags.Title) -ForegroundColor Green
+            } else {
+                $savedFields = $tags.Keys -join ', '
+                Write-Host ("Saved [{0}]: {1}" -f $savedFields, (Split-Path -Leaf $filePath)) -ForegroundColor Green
+            }
         }
         else {
             Write-Warning ("Skipped/Failed: {0} ({1})" -f $filePath, ($res.Reason -or 'unknown'))

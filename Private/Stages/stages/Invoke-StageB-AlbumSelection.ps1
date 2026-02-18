@@ -53,7 +53,10 @@ function Invoke-StageB-AlbumSelection {
     
     .PARAMETER UpdateGenresOnly
         When enabled, only update genre tags and skip Stage C.
-    
+
+    .PARAMETER UpdateOnly
+        Array of metadata fields to update. Used to determine if cover art should be saved.
+
     .PARAMETER GenreMode
         Genre update mode: 'Replace' or 'Merge'.
     
@@ -130,9 +133,11 @@ function Invoke-StageB-AlbumSelection {
         [switch]$UpdateGenresOnly,
         
         [Parameter()]
-        [ValidateSet('Replace', 'Merge')]
+        [string[]]$UpdateOnly = @('All'),
+
+        [Parameter()]
         [string]$GenreMode = 'Replace',
-        
+
         [Parameter()]
         [switch]$UseWhatIf
     )
@@ -578,7 +583,7 @@ function Invoke-StageB-AlbumSelection {
                 
                 return @{
                     NextStage             = 'AlbumDone'
-                    SelectedAlbum         = $null
+                    SelectedAlbum         = $selectedAlbum
                     UpdatedCache          = $CachedAlbums
                     UpdatedCachedArtistId = $CachedArtistId
                     UpdatedProvider       = $Provider
@@ -649,7 +654,7 @@ function Invoke-StageB-AlbumSelection {
                 
                 return @{
                     NextStage             = 'AlbumDone'
-                    SelectedAlbum         = $null
+                    SelectedAlbum         = $selectedAlbum
                     UpdatedCache          = $CachedAlbums
                     UpdatedCachedArtistId = $CachedArtistId
                     UpdatedProvider       = $Provider
@@ -720,7 +725,7 @@ function Invoke-StageB-AlbumSelection {
                 
                 return @{
                     NextStage             = 'AlbumDone'
-                    SelectedAlbum         = $null
+                    SelectedAlbum         = $selectedAlbum
                     UpdatedCache          = $CachedAlbums
                     UpdatedCachedArtistId = $CachedArtistId
                     UpdatedProvider       = $Provider
@@ -996,7 +1001,7 @@ function Invoke-StageB-AlbumSelection {
                     
                     return @{
                         NextStage             = 'AlbumDone'
-                        SelectedAlbum         = $null
+                        SelectedAlbum         = $selectedAlbum
                         UpdatedCache          = $CachedAlbums
                         UpdatedCachedArtistId = $CachedArtistId
                         UpdatedProvider       = $Provider
@@ -1240,7 +1245,7 @@ function Invoke-StageB-AlbumSelection {
                             Write-Warning "No audio files found. Skipping."
                             return @{
                                 NextStage             = 'AlbumDone'
-                                SelectedAlbum         = $null
+                                SelectedAlbum         = $selectedAlbum
                                 UpdatedCache          = $CachedAlbums
                                 UpdatedCachedArtistId = $CachedArtistId
                                 UpdatedProvider       = $Provider
@@ -1278,7 +1283,7 @@ function Invoke-StageB-AlbumSelection {
                                 Write-Warning "No genres found for this album. Skipping."
                                 return @{
                                     NextStage             = 'AlbumDone'
-                                    SelectedAlbum         = $null
+                                    SelectedAlbum         = $selectedAlbum
                                     UpdatedCache          = $CachedAlbums
                                     UpdatedCachedArtistId = $CachedArtistId
                                     UpdatedProvider       = $Provider
@@ -1349,7 +1354,7 @@ function Invoke-StageB-AlbumSelection {
                             # Return AlbumDone to skip Stage C
                             return @{
                                 NextStage             = 'AlbumDone'
-                                SelectedAlbum         = $null
+                                SelectedAlbum         = $selectedAlbum
                                 UpdatedCache          = $CachedAlbums
                                 UpdatedCachedArtistId = $CachedArtistId
                                 UpdatedProvider       = $Provider
@@ -1360,7 +1365,7 @@ function Invoke-StageB-AlbumSelection {
                             Write-Warning "Failed to fetch album details or update genres: $_"
                             return @{
                                 NextStage             = 'AlbumDone'
-                                SelectedAlbum         = $null
+                                SelectedAlbum         = $selectedAlbum
                                 UpdatedCache          = $CachedAlbums
                                 UpdatedCachedArtistId = $CachedArtistId
                                 UpdatedProvider       = $Provider

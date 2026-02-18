@@ -50,12 +50,13 @@ function Search-DItem {
         
         # Transform Discogs results to match Spotify-like structure
         $items = @()
-        if ($response.results) {
-            Write-Verbose "Found $($response.results.Count) results from Discogs"
+        $responseResults = if ($response.results) { @($response.results) } else { @() }
+        if ($responseResults.Count -gt 0) {
+            Write-Verbose "Found $($responseResults.Count) results from Discogs"
             
             # Score and sort results by similarity to query
             $scoredResults = @()
-            foreach ($result in $response.results) {
+            foreach ($result in $responseResults) {
                 $title = Get-IfExists $result 'title'
                 if ($title) {
                     $similarity = Get-StringSimilarity-Jaccard -String1 $Query -String2 $title
@@ -77,7 +78,7 @@ function Search-DItem {
                 
                 # Extract cover art URL (prefer larger images over thumb)
                 $coverUrl = ""
-                if ($result.PSObject.Properties['images'] -and $result.images.Count -gt 0) {
+                if ($result.PSObject.Properties['images'] -and @($result.images).Count -gt 0) {
                     # Find primary image or use first image
                     $primaryImage = $result.images | Where-Object { $_.type -eq 'primary' } | Select-Object -First 1
                     if (-not $primaryImage) { $primaryImage = $result.images[0] }
@@ -143,7 +144,7 @@ function Search-DItem {
                         Start-Sleep -Milliseconds 850
                         $releaseDetails = Invoke-DiscogsRequest -Uri $resourceUrl -Method 'GET'
                         if ($releaseDetails -and $releaseDetails.tracklist) {
-                            $item.track_count = $releaseDetails.tracklist.Count
+                            $item.track_count = @($releaseDetails.tracklist).Count
                         }
                     }
                 }

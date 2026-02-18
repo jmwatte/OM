@@ -51,13 +51,13 @@
 
 .EXAMPLE
     .\find-missing-genres.ps1 -Path "C:\Music" -PassThru | ForEach-Object {
-        Start-OM -Path $_ -UpdateGenresOnly -Auto -Provider Discogs
+        Start-OM -Path $_ -UpdateOnly Genres -Auto -Provider Discogs
     }
     
     Find albums with missing genres and automatically update them from Discogs.
 
 .NOTES
-    Efficient pre-processing step before running Start-OM -UpdateGenresOnly.
+    Efficient pre-processing step before running Start-OM -UpdateOnly Genres.
     Saves API calls and time by only processing albums that need genre updates.
 #>
 [CmdletBinding()]
@@ -252,17 +252,17 @@ Write-Host "To update genres for these albums:" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "1. Preview changes (WhatIf mode):" -ForegroundColor Cyan
 Write-Host "   .\find-missing-genres.ps1 -Path '$Path' -PassThru | ForEach-Object {" -ForegroundColor White
-Write-Host "       Start-OM -Path `$_ -UpdateGenresOnly -Auto -Provider Discogs -WhatIf" -ForegroundColor White
+Write-Host "       Start-OM -Path `$_ -UpdateOnly Genres -Auto -Provider Discogs -WhatIf" -ForegroundColor White
 Write-Host "   }" -ForegroundColor White
 Write-Host ""
 Write-Host "2. Update genres (for real):" -ForegroundColor Cyan
 Write-Host "   .\find-missing-genres.ps1 -Path '$Path' -PassThru | ForEach-Object {" -ForegroundColor White
-Write-Host "       Start-OM -Path `$_ -UpdateGenresOnly -Auto -Provider Discogs" -ForegroundColor White
+Write-Host "       Start-OM -Path `$_ -UpdateOnly Genres -Auto -Provider Discogs" -ForegroundColor White
 Write-Host "   }" -ForegroundColor White
 Write-Host ""
 Write-Host "3. Interactive selection (review each album):" -ForegroundColor Cyan
 Write-Host "   .\find-missing-genres.ps1 -Path '$Path' -PassThru | ForEach-Object {" -ForegroundColor White
-Write-Host "       Start-OM -Path `$_ -UpdateGenresOnly -Provider Qobuz" -ForegroundColor White
+Write-Host "       Start-OM -Path `$_ -UpdateOnly Genres -Provider Qobuz" -ForegroundColor White
 Write-Host "   }" -ForegroundColor White
 Write-Host ""
 

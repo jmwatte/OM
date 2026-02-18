@@ -185,86 +185,42 @@ function Show-CoverArt {
         # Create arguments for chafa
         $chafaArgs = @()
 
-        if ($Grid) {
-            $chafaArgs += @('--grid=auto')  # Grid layout
-        } else {
+        # Detect terminal and select best image format
+        if ($env:WT_SESSION) {
+            # Windows Terminal supports sixels natively
+            $chafaArgs += '--format=sixels'
+            Write-Verbose "Windows Terminal detected; using sixels"
+        }
+        elseif ($env:KITTY_WINDOW_ID) {
+            $chafaArgs += '--format=kitty'
+            Write-Verbose "Kitty terminal detected; using kitty protocol"
+        }
+        elseif ($env:ITERM_SESSION_ID) {
+            $chafaArgs += '--format=iterm'
+            Write-Verbose "iTerm2 detected; using iterm protocol"
+        }
+        else {
+            # Let chafa auto-detect (falls back to symbols if no graphics support)
+            Write-Verbose "Unknown terminal; letting chafa auto-detect format"
+        }
+
+        # Scale to fill available space and use highest quality rendering
+        $chafaArgs += '--scale=max'
+        $chafaArgs += '--work=9'
+
+        if (-not $Grid) {
             $chafaArgs += @('-l')  # List mode
-        }
-
-        $chafaArgs += @('--label=on')  # Enable labeling with filenames
-
-        # Try to use sixels format for better image quality if supported
-        $useChafa = $true
-        try {
-            $chafaHelp = (& chafa --help 2>&1) -join "`n"
-            if ($chafaHelp -match 'sixel' -or $chafaHelp -match 'sixels') {
-                $chafaArgs += @('--format=sixels')
-                Write-Verbose "chafa supports sixel; using --format=sixels"
-            }
-            elseif ($chafaHelp -match 'kitty') {
-                $chafaArgs += @('--format=kitty')
-                Write-Verbose "chafa supports kitty protocol; using --format=kitty"
-            }
-            else {
-                Write-Verbose "chafa available but terminal does not support sixel or kitty. Falling back to browser."
-                $useChafa = $false
-            }
-        } catch {
-            Write-Verbose "Failed to probe chafa features: $($_.Exception.Message)"
-            $useChafa = $false
-        }
-
-        if (-not $useChafa) {
-            # Fallback to browser
-            Write-Host "Opening $($selectedIndices.Count) cover image(s) in browser (terminal does not support images)..." -ForegroundColor Green
-
-            foreach ($index in $selectedIndices) {
-                $albumIndex = $index - 1
-                $selectedAlbum = $AlbumList[$albumIndex]
-                $coverUrl = Get-IfExists $selectedAlbum 'cover_url'
-
-                if ($coverUrl) {
-                    try {
-                        Write-Host "Opening cover for album $index ($($selectedAlbum.name))" -ForegroundColor Cyan
-                        Start-Process $coverUrl
-                    } catch {
-                        Write-Warning "Failed to open cover art URL for album $index`: $($_.Exception.Message)"
-                    }
-                } else {
-                    Write-Warning "No cover art available for album $index ($($selectedAlbum.name))"
-                }
-            }
-            return
         }
 
         # Add all image files
         $chafaArgs += $tempFiles
 
         # Run chafa - output goes directly to console
-        Write-Verbose "Running chafa with args: $($chafaArgs -join ' ')"
         Write-Verbose "Executing: chafa $($chafaArgs -join ' ')"
         
-        # Call chafa using Start-Process to avoid PowerShell output capturing
-        # or use direct invocation without capturing
         try {
-            # Build command string
-            $chafaCmd = "chafa"
-            $argString = $chafaArgs -join ' '
-            
-            # Direct call without output capture - let chafa write directly to console
-            $processInfo = New-Object System.Diagnostics.ProcessStartInfo
-            $processInfo.FileName = "chafa"
-            $processInfo.Arguments = $argString
-            $processInfo.UseShellExecute = $false
-            $processInfo.RedirectStandardOutput = $false
-            $processInfo.RedirectStandardError = $false
-            
-            $process = New-Object System.Diagnostics.Process
-            $process.StartInfo = $processInfo
-            [void]$process.Start()
-            $process.WaitForExit()
-            
-            Write-Verbose "`nChafa execution completed (exit code: $($process.ExitCode))."
+            & chafa @chafaArgs
+            Write-Verbose "Chafa execution completed."
         }
         catch {
             Write-Warning "Failed to run chafa: $_"

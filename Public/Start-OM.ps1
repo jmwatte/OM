@@ -82,27 +82,42 @@
     - Spotify → Qobuz → Discogs → MusicBrainz
     This helps ensure successful matches even when one provider has incomplete data.
 
+.PARAMETER AutoWait
+    When used with -Auto, falls back to interactive selection instead of skipping albums
+    that couldn't be matched automatically. This lets you manually fix the search query
+    (e.g. use 'ni' to correct the album name) and retry.
+    Without this switch, Auto mode silently skips unmatched albums.
+
 .PARAMETER AutoSaveCover
     When used with -Auto, automatically saves cover art to the album folder after saving tags.
     Requires Auto mode to be enabled.
 
-.PARAMETER UpdateGenresOnly
-    When specified, the function will only update genre tags from the matched album/release.
-    All other tags (Title, Artist, Album, Track numbers, etc.) remain unchanged.
-    This mode:
-    - Uses Quick Find to match albums directly (skips Artist stage)
-    - Fetches genre information from the matched release
-    - Updates only the genre tags on all files in the album
-    - Works with -Auto for batch processing
-    - Respects -GenreMode for Replace vs Merge behavior
-    Useful for adding or updating genre metadata across your library without touching other tags.
+.PARAMETER UpdateOnly
+    Specifies which metadata fields to update from the provider. By default, all fields are updated.
+    Use this to selectively update only specific metadata while preserving other existing tags.
+
+    Valid values:
+    - 'All' (default): Update all metadata fields
+    - 'Genres': Only update genre tags
+    - 'Year': Only update the release year
+    - 'AlbumArtist': Only update the album artist field
+    - 'Artists': Only update track-level performer/artist fields
+    - 'TrackInfo': Only update track title, track number, and disc number
+    - 'Album': Only update album name
+    - 'CoverArt': Only download/update cover art (no tag changes)
+    - 'Composers': Only update composer fields
+
+    Multiple values can be combined: -UpdateOnly Genres,Year,CoverArt
+
+    Note: CoverArt is handled separately from tags. When 'CoverArt' is included,
+    cover art will be saved regardless of other UpdateOnly values.
 
 .PARAMETER GenreMode
     Specifies how to handle existing genres when updating genre tags.
     Valid values:
     - 'Replace': Completely replace existing genres with provider genres (default)
     - 'Merge': Add provider genres to existing genres (keeps both, deduplicates)
-    Only applies when -UpdateGenresOnly is used, or when saving tags in interactive mode.
+    Only applies when -UpdateOnly includes 'Genres', or when saving tags in interactive mode.
     Default is 'Replace'.
 
 .EXAMPLE
@@ -145,16 +160,40 @@
     and which would require manual intervention.
 
 .EXAMPLE
-    Start-OM -Path "C:\Music\Artist" -UpdateGenresOnly -Provider Discogs -Auto
+    Start-OM -Path "C:\Music\Artist" -Auto -AutoFallback -AutoWait
+
+    Auto-processes albums but drops into interactive mode for any album that can't be matched.
+    This lets you manually fix folder-derived names (e.g. strip " (2)" suffixes) and retry.
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\Artist" -UpdateOnly Genres -Provider Discogs -Auto
 
     Automatically update only genre tags for all albums using Discogs. Replaces existing genres with
     Discogs genres. Processes all albums in batch mode.
 
 .EXAMPLE
-    Start-OM -Path "C:\Music\Artist" -UpdateGenresOnly -GenreMode Merge -Provider Qobuz
+    Start-OM -Path "C:\Music\Artist" -UpdateOnly Genres -GenreMode Merge -Provider Qobuz
 
     Interactively update genre tags, adding Qobuz genres to existing genres (keeps both).
     Allows manual album selection for each folder.
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\Artist" -Auto -AutoFallback -UpdateOnly CoverArt
+
+    Only downloads and saves cover art (cover.jpg) without modifying any audio file tags.
+    Perfect for albums that already have correct tags but are missing artwork.
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\Artist" -Auto -AutoFallback -UpdateOnly Genres,Year,CoverArt
+
+    Combines multiple update targets: fetches genres and year from the provider and downloads cover art,
+    while preserving existing track titles, artists, album names, and other metadata.
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\Classical" -Auto -UpdateOnly Artists,Composers -Provider Qobuz
+
+    Updates only the track-level performers and composer fields from Qobuz.
+    Useful for classical music where performer credits are important but you want to keep existing metadata.
 
 .NOTES
     This function requires the TagLib-Sharp library for reading and writing audio file tags.
@@ -206,9 +245,12 @@ function Start-OM {
         [Parameter(Mandatory = $false)]
         [switch]$AutoFallback,
         [Parameter(Mandatory = $false)]
+        [switch]$AutoWait,
+        [Parameter(Mandatory = $false)]
         [switch]$AutoSaveCover,
         [Parameter(Mandatory = $false)]
-        [switch]$UpdateGenresOnly,
+        [ValidateSet('All', 'Genres', 'Year', 'AlbumArtist', 'Artists', 'TrackInfo', 'Album', 'CoverArt', 'Composers')]
+        [string[]]$UpdateOnly = @('All'),
         [Parameter(Mandatory = $false)]
         [ValidateSet('Replace', 'Merge')]
         [string]$GenreMode = 'Replace'
@@ -237,6 +279,12 @@ function Start-OM {
         if ($PSBoundParameters.ContainsKey('GenreMode')) {
             $script:genreMode = $GenreMode
         }
+
+        # Derive backward-compatible UpdateGenresOnly flag from UpdateOnly.
+        # Skip Stage C when UpdateOnly contains only Genres and/or CoverArt (no track-level fields).
+        $UpdateGenresOnly = ($UpdateOnly -notcontains 'All') -and
+            ($UpdateOnly -contains 'Genres') -and
+            -not ($UpdateOnly | Where-Object { $_ -notin @('Genres', 'CoverArt') })
 
         if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
             throw "Path not found or not a directory: $Path"
@@ -993,6 +1041,7 @@ function Start-OM {
                     if ($Auto) {
                         # First, try to find a good match in the candidates we already have
                         $bestMatch = $null
+                        if (-not $albumCandidates) { $albumCandidates = @() }
                         if ($albumCandidates.Count -gt 0) {
                             # Debug: Show confidence scores for all candidates
                             Write-Host "🤖 AUTO: Calculating confidence scores..." -ForegroundColor Cyan
@@ -1038,10 +1087,19 @@ function Start-OM {
                             
                             foreach ($fallbackProvider in $fallbackChain) {
                                 Write-Host "   Trying $fallbackProvider..." -ForegroundColor Cyan
+                                $fallbackCandidates = @()
                                 
                                 try {
                                     $fallbackResults = Invoke-ProviderSearch -Provider $fallbackProvider -Album $quickAlbum -Artist $quickArtist -Type album
-                                    $fallbackCandidates = if ($fallbackResults -and $fallbackResults.albums -and $fallbackResults.albums.items) { @($fallbackResults.albums.items | Where-Object { $_ -ne $null }) } else { @() }
+                                    if ($fallbackResults) {
+                                        $fbAlbums = Get-IfExists $fallbackResults 'albums'
+                                        if ($fbAlbums) {
+                                            $fbItems = Get-IfExists $fbAlbums 'items'
+                                            if ($fbItems) {
+                                                $fallbackCandidates = @($fbItems | Where-Object { $_ -ne $null })
+                                            }
+                                        }
+                                    }
                                 }
                                 catch {
                                     Write-Verbose "Fallback provider $fallbackProvider search failed: $_"
@@ -1221,6 +1279,18 @@ function Start-OM {
                                         }
                                         Write-Host ""
                                         
+                                        # Save cover art if requested via UpdateOnly
+                                        if ($UpdateOnly -contains 'CoverArt') {
+                                            $coverUrl = Get-IfExists $ProviderAlbum 'cover_url'
+                                            Write-Host "🖼️  Saving cover art..." -ForegroundColor Cyan
+                                            $config = Get-OMConfig
+                                            $maxSize = $config.CoverArt.FolderImageSize
+                                            Save-CoverArtWithFallback -CoverUrl $coverUrl -AlbumPath $script:album.FullName `
+                                                -MaxSize $maxSize -Provider $Provider `
+                                                -AlbumName $quickAlbum -ArtistName $quickArtist `
+                                                -AutoFallback:$AutoFallback -UseWhatIf:$useWhatIf
+                                        }
+
                                         $albumDone = $true
                                         continue stageLoop
                                     }
@@ -1236,13 +1306,23 @@ function Start-OM {
                             continue stageLoop
                         }
                         else {
-                            Write-Warning "AUTO: No high-confidence match found. Falling back to interactive selection."
-                            $script:autoModeActive = $false
+                            if ($AutoWait) {
+                                Write-Warning "AUTO: No high-confidence match found. Falling back to interactive selection."
+                                $script:autoModeActive = $false
+                                # Fall through to albumSelectionLoop so user can fix search and retry
+                            }
+                            else {
+                                Write-Warning "AUTO: No high-confidence match found across all providers. Skipping album."
+                                $script:autoModeActive = $false
+                                $albumDone = $true
+                                continue stageLoop
+                            }
                         }
                     }
 
                     # Album selection for quick mode
                     $ProviderArtist = @{ name = $quickArtist; id = $quickArtist }  # Simplified artist object
+                    if (-not $albumCandidates) { $albumCandidates = @() }
 
                     # Album selection loop
                     :albumSelectionLoop while ($true) {
@@ -1596,6 +1676,18 @@ function Start-OM {
                                         Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
                                         Write-Host ""
                                         
+                                        # Save cover art if requested via UpdateOnly
+                                        if ($UpdateOnly -contains 'CoverArt') {
+                                            $coverUrl = Get-IfExists $ProviderAlbum 'cover_url'
+                                            Write-Host "🖼️  Saving cover art..." -ForegroundColor Cyan
+                                            $config = Get-OMConfig
+                                            $maxSize = $config.CoverArt.FolderImageSize
+                                            Save-CoverArtWithFallback -CoverUrl $coverUrl -AlbumPath $script:album.FullName `
+                                                -MaxSize $maxSize -Provider $Provider `
+                                                -AlbumName $quickAlbum -ArtistName $quickArtist `
+                                                -AutoFallback:$AutoFallback -UseWhatIf:$useWhatIf
+                                        }
+
                                         # In Auto mode, automatically move to next album
                                         if ($Auto) {
                                             Write-Host "Auto mode: Moving to next album..." -ForegroundColor Yellow
@@ -1854,6 +1946,7 @@ function Start-OM {
                             MaxResults         = 10
                             CurrentPage        = $currentAlbumPage
                             UpdateGenresOnly   = $UpdateGenresOnly
+                            UpdateOnly         = $UpdateOnly
                             GenreMode          = $script:genreMode
                             UseWhatIf          = $useWhatIf
                         }
@@ -1901,8 +1994,19 @@ function Start-OM {
                             # break
                         }
                         
-                        # Handle AlbumDone status (UpdateGenresOnly completed in Stage B)
+                        # Handle AlbumDone status (UpdateGenresOnly/UpdateOnly completed in Stage B)
                         if ($stage -eq 'AlbumDone') {
+                            # Save cover art if requested via UpdateOnly
+                            if ($UpdateOnly -contains 'CoverArt' -and $ProviderAlbum) {
+                                $coverUrl = Get-IfExists $ProviderAlbum 'cover_url'
+                                Write-Host "🖼️  Saving cover art..." -ForegroundColor Cyan
+                                $config = Get-OMConfig
+                                $maxSize = $config.CoverArt.FolderImageSize
+                                Save-CoverArtWithFallback -CoverUrl $coverUrl -AlbumPath $script:album.FullName `
+                                    -MaxSize $maxSize -Provider $Provider `
+                                    -AlbumName $quickAlbum -ArtistName $quickArtist `
+                                    -AutoFallback:$AutoFallback -UseWhatIf:$useWhatIf
+                            }
                             $albumDone = $true
                             break stageLoop
                         }
@@ -2488,24 +2592,22 @@ function Start-OM {
                                     
                                     # Auto-proceed if confidence is high enough
                                     if ($confidencePercent -ge ($AutoConfidenceThreshold * 100)) {
-                                        Write-Host "✓ AUTO: Confidence threshold met, auto-saving tags and cover..." -ForegroundColor Green
+                                        # Build message based on UpdateOnly
+                                        $updateModeText = if ($UpdateOnly -contains 'All') {
+                                            "auto-saving tags"
+                                        } else {
+                                            "auto-saving: $($UpdateOnly -join ', ')"
+                                        }
+                                        if ($AutoSaveCover -or $UpdateOnly -contains 'CoverArt') {
+                                            $updateModeText += " and cover"
+                                        }
+                                        Write-Host "✓ AUTO: Confidence threshold met, $updateModeText..." -ForegroundColor Green
                                         
                                         # Auto-execute save-all command
                                         $inputF = 'sa'
                                         $goC = $true  # Simulate goC to trigger save-all
                                         
-                                        # If AutoSaveCover is enabled, also save cover art
-                                        if ($AutoSaveCover) {
-                                            $coverUrl = Get-IfExists $ProviderAlbum 'cover_url'
-                                            if ($coverUrl) {
-                                                Write-Host "🖼️  AUTO: Saving cover art..." -ForegroundColor Cyan
-                                                $maxSize = $config.CoverArt.FolderImageSize
-                                                $result = Save-CoverArt -CoverUrl $coverUrl -AlbumPath $script:album.FullName `\n                                                    -Action SaveToFolder -MaxSize $maxSize -WhatIf:$useWhatIf
-                                                if ($result.Success) {
-                                                    Write-Host "✓ AUTO: Cover art saved" -ForegroundColor Green
-                                                }
-                                            }
-                                        }
+                                        # Cover art is now handled in the '^sa$' block via UpdateOnly/AutoSaveCover
                                     }
                                     else {
                                         Write-Warning "AUTO: Confidence too low ($confidencePercent%), falling back to interactive mode"
@@ -2958,13 +3060,45 @@ function Start-OM {
                                     }
                                 }
                                 '^sa$' {
-                                    Save-OMTagsLoop -PairedTracks $script:pairedTracks `
-                                        -ProviderArtist $ProviderArtist `
-                                        -ProviderAlbum $ProviderAlbum `
-                                        -ManualAlbumArtist $script:ManualAlbumArtist `
-                                        -GenreMode $script:genreMode `
-                                        -UseWhatIf:$useWhatIf `
-                                        -RequireBothPaired
+                                    $coverArtOnlyMode = ($UpdateOnly.Count -eq 1 -and $UpdateOnly[0] -eq 'CoverArt')
+                                    $shouldSaveCoverArt = ($UpdateOnly -contains 'CoverArt' -or $AutoSaveCover)
+
+                                    # Show UpdateOnly mode indicator if not saving all
+                                    if ($UpdateOnly -notcontains 'All') {
+                                        Write-Host "ℹ️  UpdateOnly mode: $($UpdateOnly -join ', ')" -ForegroundColor Cyan
+                                    }
+
+                                    # Save CoverArt if requested
+                                    if ($shouldSaveCoverArt) {
+                                        $coverUrl = Get-IfExists $ProviderAlbum 'cover_url'
+                                        Write-Host "🖼️  Saving cover art..." -ForegroundColor Cyan
+                                        $config = Get-OMConfig
+                                        $maxSize = $config.CoverArt.FolderImageSize
+                                        Save-CoverArtWithFallback -CoverUrl $coverUrl -AlbumPath $script:album.FullName `
+                                            -MaxSize $maxSize -Provider $Provider `
+                                            -AlbumName $quickAlbum -ArtistName $quickArtist `
+                                            -AutoFallback:$AutoFallback -UseWhatIf:$useWhatIf
+                                    }
+
+                                    # Save tags (skip if CoverArt-only mode)
+                                    if (-not $coverArtOnlyMode) {
+                                        Save-OMTagsLoop -PairedTracks $script:pairedTracks `
+                                            -ProviderArtist $ProviderArtist `
+                                            -ProviderAlbum $ProviderAlbum `
+                                            -ManualAlbumArtist $script:ManualAlbumArtist `
+                                            -GenreMode $script:genreMode `
+                                            -UseWhatIf:$useWhatIf `
+                                            -UpdateOnly $UpdateOnly `
+                                            -RequireBothPaired
+                                    }
+
+                                    # CoverArt-only: skip folder rename/move and advance to next album
+                                    if ($coverArtOnlyMode) {
+                                        Write-Host "✓ Cover art update complete." -ForegroundColor Green
+                                        $albumDone = $true
+                                        $exitDo = $true
+                                        break
+                                    }
 
                                     # dispose any lingering TagFile handles only when actually applying changes (not in -WhatIf)
                                     if (-not $useWhatIf) {
@@ -2982,38 +3116,57 @@ function Start-OM {
                                         Write-Verbose "Preview: keeping TagFile handles open so interactive UI can display tags."
                                     }
                                     $oldpath = $script:album.FullName
-                                    $moveResult = Invoke-OMFolderRename `
-                                        -AlbumPath $oldpath `
-                                        -ProviderAlbum $ProviderAlbum `
-                                        -ProviderArtist $ProviderArtist `
-                                        -AudioFiles $audioFiles `
-                                        -AlbumNameFallback $script:albumName `
-                                        -ManualAlbumArtist $script:ManualAlbumArtist `
-                                        -UseWhatIf $useWhatIf `
-                                        -SkipTagReading:$useWhatIf
-                                    $script:targetFolderMoved = $false
-                                    & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath
-                                    
-                                    # If album was moved to TargetFolder, advance to next album
-                                    if ($script:targetFolderMoved) {
-                                        $albumDone = $true
-                                        $exitDo = $true
-                                        break
-                                    }
-                                    
-                                    # Reload audio files with updated tags if not in WhatIf mode and folder wasn't moved
-                                    # (handleMoveSuccess reloads if folder was moved, but we need to reload even if it wasn't)
-                                    if (-not $useWhatIf -and $moveResult -and $moveResult.NewAlbumPath -eq $oldpath) {
-                                        Write-Verbose "Reloading audio files to reflect saved tags (folder not moved)"
-                                        $script:audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName
+                                    # Only rename/move folder when UpdateOnly affects folder-name fields (Year, AlbumArtist, Album) or All
+                                    $shouldRenameFolder = ($UpdateOnly -contains 'All') -or
+                                        ($UpdateOnly -contains 'Year') -or
+                                        ($UpdateOnly -contains 'AlbumArtist') -or
+                                        ($UpdateOnly -contains 'Album')
+
+                                    if ($shouldRenameFolder) {
+                                        $moveResult = Invoke-OMFolderRename `
+                                            -AlbumPath $oldpath `
+                                            -ProviderAlbum $ProviderAlbum `
+                                            -ProviderArtist $ProviderArtist `
+                                            -AudioFiles $audioFiles `
+                                            -AlbumNameFallback $script:albumName `
+                                            -ManualAlbumArtist $script:ManualAlbumArtist `
+                                            -UseWhatIf $useWhatIf `
+                                            -SkipTagReading:$useWhatIf
+                                        $script:targetFolderMoved = $false
+                                        & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath
                                         
-                                        # Update paired tracks with reloaded audio files to preserve pairing
-                                        if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
-                                            for ($i = 0; $i -lt [Math]::Min($script:pairedTracks.Count, $script:audioFiles.Count); $i++) {
-                                                $script:pairedTracks[$i].AudioFile = $script:audioFiles[$i]
+                                        # If album was moved to TargetFolder, advance to next album
+                                        if ($script:targetFolderMoved) {
+                                            $albumDone = $true
+                                            $exitDo = $true
+                                            break
+                                        }
+                                        
+                                        # Reload audio files with updated tags if not in WhatIf mode and folder wasn't moved
+                                        # (handleMoveSuccess reloads if folder was moved, but we need to reload even if it wasn't)
+                                        if (-not $useWhatIf -and $moveResult -and $moveResult.NewAlbumPath -eq $oldpath) {
+                                            Write-Verbose "Reloading audio files to reflect saved tags (folder not moved)"
+                                            $script:audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName
+                                            
+                                            # Update paired tracks with reloaded audio files to preserve pairing
+                                            if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
+                                                for ($i = 0; $i -lt [Math]::Min($script:pairedTracks.Count, $script:audioFiles.Count); $i++) {
+                                                    $script:pairedTracks[$i].AudioFile = $script:audioFiles[$i]
+                                                }
+                                            }
+                                            $script:refreshTracks = $true
+                                        }
+                                    } else {
+                                        # No folder rename needed — just reload audio files to reflect saved tags
+                                        if (-not $useWhatIf) {
+                                            $script:audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName
+                                            if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
+                                                for ($i = 0; $i -lt [Math]::Min($script:pairedTracks.Count, $script:audioFiles.Count); $i++) {
+                                                    $script:pairedTracks[$i].AudioFile = $script:audioFiles[$i]
+                                                }
                                             }
                                         }
-                                        $script:refreshTracks = $true
+                                        Write-Host "✓ Tags updated ($($UpdateOnly -join ', '))." -ForegroundColor Green
                                     }
                                     
                                     # AUTO MODE: Skip to next album after successful save
