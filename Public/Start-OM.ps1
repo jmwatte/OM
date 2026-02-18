@@ -628,7 +628,7 @@ function Start-OM {
                         # Dispose old TagLib handles before reloading
                         if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
                             foreach ($pt in $script:pairedTracks) {
-                                if ($pt.AudioFile.TagFile) {
+                                if ($pt.AudioFile -and $pt.AudioFile.TagFile) {
                                     try { $pt.AudioFile.TagFile.Dispose() } catch { }
                                 }
                             }
@@ -2427,6 +2427,63 @@ function Start-OM {
                                     
                                     Write-Host "🤖 AUTO: Best strategy: '$bestStrategy' ($bestScore/$totalTracks matches, $confidencePercent% confidence)" -ForegroundColor Green
                                     
+                                    # Check for track count mismatch between audio files and provider
+                                    $audioCount = @($script:audioFiles).Count
+                                    $providerCount = @($tracksForAlbum).Count
+                                    if ($audioCount -ne $providerCount) {
+                                        Write-Warning "AUTO: Track count mismatch - $audioCount audio file(s) vs $providerCount provider track(s)"
+                                        
+                                        # Build error report
+                                        $reportLines = @(
+                                            "Track Count Mismatch Report"
+                                            "=========================="
+                                            "Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+                                            "Album: $($script:albumName)"
+                                            "Artist: $($script:artist)"
+                                            "Provider: $Provider"
+                                            "Audio files: $audioCount"
+                                            "Provider tracks: $providerCount"
+                                            ""
+                                            "Audio files on disk:"
+                                        )
+                                        foreach ($af in $script:audioFiles) {
+                                            $reportLines += "  - $(Split-Path $af.FilePath -Leaf)"
+                                        }
+                                        $reportLines += ""
+                                        $reportLines += "Provider tracks:"
+                                        foreach ($pt in $tracksForAlbum) {
+                                            $reportLines += "  - $($pt.disc_number).$($pt.track_number): $($pt.name)"
+                                        }
+                                        
+                                        # Identify missing/extra
+                                        $unpairedProvider = @($script:pairedTracks | Where-Object { -not $_.AudioFile } | ForEach-Object { $_.ProviderTrack })
+                                        $unpairedAudio = @($script:pairedTracks | Where-Object { -not $_.ProviderTrack } | ForEach-Object { $_.AudioFile })
+                                        if ($unpairedProvider.Count -gt 0) {
+                                            $reportLines += ""
+                                            $reportLines += "Missing audio files (provider tracks without matching audio):"
+                                            foreach ($up in $unpairedProvider) {
+                                                $reportLines += "  - $($up.disc_number).$($up.track_number): $($up.name)"
+                                            }
+                                        }
+                                        if ($unpairedAudio.Count -gt 0) {
+                                            $reportLines += ""
+                                            $reportLines += "Extra audio files (no matching provider track):"
+                                            foreach ($ua in $unpairedAudio) {
+                                                $reportLines += "  - $(Split-Path $ua.FilePath -Leaf)"
+                                            }
+                                        }
+                                        
+                                        # Write report to album folder
+                                        $reportPath = Join-Path $script:album.FullName "_errorreport.txt"
+                                        $reportLines | Out-File -FilePath $reportPath -Encoding UTF8
+                                        Write-Warning "AUTO: Error report written to: $reportPath"
+                                        Write-Warning "AUTO: Skipping album due to track count mismatch. Review and process manually."
+                                        $script:autoModeActive = $false
+                                        $albumDone = $true
+                                        $exitDo = $true
+                                        break
+                                    }
+                                    
                                     # Auto-proceed if confidence is high enough
                                     if ($confidencePercent -ge ($AutoConfidenceThreshold * 100)) {
                                         Write-Host "✓ AUTO: Confidence threshold met, auto-saving tags and cover..." -ForegroundColor Green
@@ -2960,6 +3017,13 @@ function Start-OM {
                                     # AUTO MODE: Skip to next album after successful save
                                     if ($Auto -and $script:autoModeActive) {
                                         Write-Host "✓ AUTO: Album completed successfully, moving to next album..." -ForegroundColor Green
+                                        $albumDone = $true
+                                        $exitDo = $true
+                                        break
+                                    }
+                                    
+                                    # Interactive mode: save-all is done, advance to next album
+                                    if (-not $useWhatIf) {
                                         $albumDone = $true
                                         $exitDo = $true
                                         break

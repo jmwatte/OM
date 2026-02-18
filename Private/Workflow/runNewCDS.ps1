@@ -6,8 +6,8 @@ $checked ="$HD\__checkedAudio"
 $to="$HD\music"
 $AddGenre="Music For Sonic Installations In The Cavern Of Your Skull"
 
-$f | % {$p = $_.BaseName -split " - ", 2;$artist = $p[0].Trim();
-    $dest = "$fresh\$artist\$($p[1].trim())";
+$f | % {$p = $_.BaseName -split " - ", 2;$artist = Approve-PathSegment -Segment $p[0].Trim();
+    $dest = "$fresh\$artist\$(Approve-PathSegment -Segment $p[1].trim())";
     New-Item -Path $dest -ItemType Directory -Force | Out-Null ;
     & "C:\Program Files\7-Zip\7z.exe" x $_.FullName -o"$dest" -y;
   Repair-AudioFileExtensions -Path $dest -Recurse;
