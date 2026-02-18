@@ -635,16 +635,18 @@ function Start-OM {
                         }
 
                         # Reload audio files with fresh TagLib handles from the target path
-                        $audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName
+                        $script:audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName
 
                         # Update paired tracks with reloaded audio files
                         if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
-                            for ($i = 0; $i -lt [Math]::Min($script:pairedTracks.Count, $audioFiles.Count); $i++) {
-                                $script:pairedTracks[$i].AudioFile = $audioFiles[$i]
+                            for ($i = 0; $i -lt [Math]::Min($script:pairedTracks.Count, $script:audioFiles.Count); $i++) {
+                                $script:pairedTracks[$i].AudioFile = $script:audioFiles[$i]
                             }
                         }
                         
-                        Write-Host "Album saved and moved to target folder. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
+                        # Album has been moved to target folder — mark as done so the loop advances
+                        $script:targetFolderMoved = $true
+                        Write-Host "Album saved and moved to target folder." -ForegroundColor Green
                     }
                     elseif ($moveResult.NewAlbumPath -ne $oldpath) {
                         Write-Host "Album saved and folder renamed. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
@@ -2783,7 +2785,13 @@ function Start-OM {
                                         -AlbumNameFallback $script:albumName `
                                         -ManualAlbumArtist $script:ManualAlbumArtist `
                                         -UseWhatIf $useWhatIf
+                                    $script:targetFolderMoved = $false
                                     & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath
+                                    if ($script:targetFolderMoved) {
+                                        $albumDone = $true
+                                        $exitDo = $true
+                                        break
+                                    }
                                     continue doTracks                         
                                     
                                 }
@@ -2924,7 +2932,15 @@ function Start-OM {
                                         -ManualAlbumArtist $script:ManualAlbumArtist `
                                         -UseWhatIf $useWhatIf `
                                         -SkipTagReading:$useWhatIf
+                                    $script:targetFolderMoved = $false
                                     & $handleMoveSuccess -moveResult $moveResult -useWhatIf $useWhatIf -oldpath $oldpath
+                                    
+                                    # If album was moved to TargetFolder, advance to next album
+                                    if ($script:targetFolderMoved) {
+                                        $albumDone = $true
+                                        $exitDo = $true
+                                        break
+                                    }
                                     
                                     # Reload audio files with updated tags if not in WhatIf mode and folder wasn't moved
                                     # (handleMoveSuccess reloads if folder was moved, but we need to reload even if it wasn't)
