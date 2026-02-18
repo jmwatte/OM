@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Interactively organizes music albums by matching them with online databases.
 
@@ -499,34 +499,31 @@ function Start-OM {
                     # continue doTracks
                 }
                 else {
-                    if ($moveResult.NewAlbumPath -eq $oldpath) {
-                        Write-Verbose "Move result indicates no change to album path; continuing."
-                        Write-Host "Album saved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
-                        #  continue doTracks
-                    }
-                    # Folder was moved - update $album and reload audio files from new location
-                    $script:album = Get-Item -LiteralPath $moveResult.NewAlbumPath
-            
-                    # Dispose old TagFile handles before reload to avoid orphaned handles
-                    if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
-                        foreach ($pt in $script:pairedTracks) {
-                            if ($pt.AudioFile -and $pt.AudioFile.TagFile) {
-                                try { $pt.AudioFile.TagFile.Dispose() } catch { }
+                    if ($moveResult.NewAlbumPath -ne $oldpath) {
+                        # Folder was moved/renamed - update $album and reload audio files from new location
+                        $script:album = Get-Item -LiteralPath $moveResult.NewAlbumPath
+                
+                        # Dispose old TagFile handles before reload to avoid orphaned handles
+                        if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
+                            foreach ($pt in $script:pairedTracks) {
+                                if ($pt.AudioFile -and $pt.AudioFile.TagFile) {
+                                    try { $pt.AudioFile.TagFile.Dispose() } catch { }
+                                }
                             }
                         }
-                    }
 
-                    # Reload audio files with fresh TagLib handles from the NEW album path
-                    $script:audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName
-                    # Update paired tracks with reloaded audio files to reflect updated tags
-                    if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
-                        for ($i = 0; $i -lt [Math]::Min($script:pairedTracks.Count, $script:audioFiles.Count); $i++) {
-                            $script:pairedTracks[$i].AudioFile = $script:audioFiles[$i]
+                        # Reload audio files with fresh TagLib handles from the NEW album path
+                        $script:audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName
+                        # Update paired tracks with reloaded audio files to reflect updated tags
+                        if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
+                            for ($i = 0; $i -lt [Math]::Min($script:pairedTracks.Count, $script:audioFiles.Count); $i++) {
+                                $script:pairedTracks[$i].AudioFile = $script:audioFiles[$i]
+                            }
                         }
+                        $script:refreshTracks = $true  # Trigger display refresh to show updated tags
                     }
-                    $script:refreshTracks = $true  # Trigger display refresh to show updated tags
                     
-                    # Handle TargetFolder move if specified
+                    # Handle TargetFolder move if specified (works regardless of whether rename happened)
                     if ($TargetFolder) {
                         Write-Verbose "TargetFolder specified: $TargetFolder"
                         $currentPath = $script:album.FullName
@@ -646,10 +643,16 @@ function Start-OM {
                                 $script:pairedTracks[$i].AudioFile = $audioFiles[$i]
                             }
                         }
+                        
+                        Write-Host "Album saved and moved to target folder. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
                     }
-                    
-                    Write-Host "Album saved and folder moved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
-                    #  continue doTracks
+                    elseif ($moveResult.NewAlbumPath -ne $oldpath) {
+                        Write-Host "Album saved and folder renamed. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
+                    }
+                    else {
+                        Write-Verbose "Move result indicates no change to album path; continuing."
+                        Write-Host "Album saved. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow
+                    }
                 }
             }
             else {

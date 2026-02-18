@@ -154,7 +154,7 @@ function Get-OMTags {
     }
 
     process {
-        $results = @()
+        $results = [System.Collections.Generic.List[object]]::new()
 
         # Define default properties and their order (custom summary order requested)
         $defaultProperties = @(

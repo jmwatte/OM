@@ -2,10 +2,10 @@
 # Dot-source all functions from Private and Public folders
 
 # Private functions
-# Dot-source private functions but skip test helpers that have filenames starting
-# with 'test-' so they don't get executed when the module is imported.
+# Dot-source private functions but skip test files (test-*.ps1 and *.Tests.ps1)
+# so they don't get executed when the module is imported.
 Get-ChildItem -Path $PSScriptRoot\Private -Filter *.ps1 -Recurse |
-	Where-Object { $_.Name -notmatch '^test-.*\.ps1$' } |
+	Where-Object { $_.Name -notmatch '^test-.*\.ps1$' -and $_.Name -notmatch '\.Tests\.ps1$' } |
 	ForEach-Object { . $_.FullName }
 
 # Public functions
