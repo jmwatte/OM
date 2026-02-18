@@ -8,7 +8,7 @@ Get-ChildItem -Path $PSScriptRoot\Private -Filter *.ps1 -Recurse |
 	Where-Object {
 		$_.Name -notmatch '^test-.*\.ps1$' -and
 		$_.Name -notmatch '\.Tests\.ps1$' -and
-		(Get-Content $_.FullName -TotalCount 10 -Raw) -match '(?m)^\s*function\s|^\s*filter\s'
+		(Get-Content $_.FullName -TotalCount 10) -match '^\s*function\s|^\s*filter\s'
 	} |
 	ForEach-Object { . $_.FullName }
 
