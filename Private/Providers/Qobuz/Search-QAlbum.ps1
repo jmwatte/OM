@@ -68,8 +68,8 @@ function Search-QAlbum {
             return @()
         }
 
-        # Find all ReleaseCard divs
-        $releaseCards = $doc.SelectNodes("//*[@id='search']/section[2]/div/ul/li/div")
+        # Find all ReleaseCard divs (Qobuz uses release-card-grid-{id} div ids)
+        $releaseCards = $doc.SelectNodes("//div[starts-with(@id,'release-card-grid-')]")
         
         if (-not $releaseCards -or $releaseCards.Count -eq 0) {
             Write-Verbose "No ReleaseCard elements found in search results"
@@ -87,8 +87,8 @@ function Search-QAlbum {
                 }
                 else {
                     # Fallback to minimal inline parsing
-                    $titleLink = $card.SelectSingleNode("./div[1]/a")
-                    $n = if ($titleLink) { [System.Web.HttpUtility]::HtmlDecode($titleLink.GetAttributeValue("data-title","")) } else { "" }
+                    $titleLink = $card.SelectSingleNode(".//div[contains(@class,'gap-2')]/a[@title]")
+                    $n = if ($titleLink) { [System.Web.HttpUtility]::HtmlDecode($titleLink.GetAttributeValue("title","")) } else { "" }
                     $raw = [PSCustomObject]@{ name = $n }
                 }
 

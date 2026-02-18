@@ -170,8 +170,8 @@ function Search-GQAlbum {
             $searchResp = Invoke-WebRequest -Uri $qobuzSearchUrl -UseBasicParsing -ErrorAction Stop -TimeoutSec 15
             $searchDoc = ConvertFrom-Html -Content $searchResp.Content
             
-            # Find all ReleaseCard divs using the same XPath as Search-QAlbum.ps1
-            $releaseCards = $searchDoc.SelectNodes("//*[@id='search']/section[2]/div/ul/li/div")
+            # Find all ReleaseCard divs (Qobuz uses release-card-grid-{id} div ids)
+            $releaseCards = $searchDoc.SelectNodes("//div[starts-with(@id,'release-card-grid-')]")
             
             if (-not $releaseCards -or $releaseCards.Count -eq 0) {
                 Write-Verbose "No ReleaseCard elements found in search results"
@@ -187,9 +187,8 @@ function Search-GQAlbum {
                         if (Get-Command -Name Parse-QobuzReleaseCard -ErrorAction SilentlyContinue) {
                             $raw = Parse-QobuzReleaseCard -Card $card
                         } else {
-                            $titleLink = $card.SelectSingleNode("./div[1]/a")
-                            $n = if ($titleLink) { [System.Web.HttpUtility]::HtmlDecode($titleLink.GetAttributeValue("data-title","")) } else { "" }
-                            $raw = [PSCustomObject]@{ name = $n }
+                        $titleLink = $card.SelectSingleNode(".//div[contains(@class,'gap-2')]/a[@title]")
+                        $n = if ($titleLink) { [System.Web.HttpUtility]::HtmlDecode($titleLink.GetAttributeValue("title","")) } else { "" }
                         }
 
                         if (-not $raw) { continue }
