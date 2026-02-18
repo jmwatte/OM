@@ -318,6 +318,9 @@ function Start-OM {
             }
         }
         
+        # Remember the resolved provider so we can reset it at the start of each album
+        $originalProvider = $Provider
+
         # Cache Qobuz locale early to avoid repeated config calls during header display
         $qobuzUrlLocale = $null
         if ($Provider -eq 'Qobuz' -or $config.DefaultProvider -eq 'Qobuz') {
@@ -715,6 +718,9 @@ function Start-OM {
         $currentAlbumPage = 1
         
         foreach ($albumOriginal in $albums) {
+            # Reset provider to the original value so mid-album switches don't carry over
+            $Provider = $originalProvider
+
             $script:album = $albumOriginal
             $script:ManualAlbumArtist = $null
             # Initialize script-scope variables used by handleMoveSuccess scriptblock
