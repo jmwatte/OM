@@ -2477,11 +2477,7 @@ function Start-OM {
                                         $reportPath = Join-Path $script:album.FullName "_errorreport.txt"
                                         $reportLines | Out-File -FilePath $reportPath -Encoding UTF8
                                         Write-Warning "AUTO: Error report written to: $reportPath"
-                                        Write-Warning "AUTO: Skipping album due to track count mismatch. Review and process manually."
-                                        $script:autoModeActive = $false
-                                        $albumDone = $true
-                                        $exitDo = $true
-                                        break
+                                        Write-Warning "AUTO: Proceeding with matched tracks only."
                                     }
                                     
                                     # Auto-proceed if confidence is high enough
