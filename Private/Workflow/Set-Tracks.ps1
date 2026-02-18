@@ -16,7 +16,7 @@ function Set-Tracks {
         "byFilesystem" {
             # Sort audio files by leading track number in filename (natural sort)
             # Handles "1. Aria", "2. Variation 1", "10. Variation 9", etc.
-            $sortedAudio = $AudioFiles | Sort-Object {
+            $sortedAudio = @($AudioFiles | Sort-Object {
                 $filename = [System.IO.Path]::GetFileName($_.FilePath)
                 # Extract leading number from filename (e.g., "1. Aria" -> 1, "10. Variation" -> 10)
                 if ($filename -match '^(\d+)') {
@@ -25,8 +25,8 @@ function Set-Tracks {
                     # No leading number, use a high value to sort at end
                     999999
                 }
-            }
-            $sortedProvider = $ProviderTracks | Sort-Object disc_number, track_number
+            })
+            $sortedProvider = @($ProviderTracks | Sort-Object disc_number, track_number)
             
             if ($Reverse) {
                 foreach ($audio in $sortedAudio) {
@@ -69,15 +69,15 @@ function Set-Tracks {
         # Also applies natural sorting by leading track number
         "byOrder" {
             # Sort audio files by leading track number in filename (natural sort)
-            $sortedAudio = $AudioFiles | Sort-Object {
+            $sortedAudio = @($AudioFiles | Sort-Object {
                 $filename = [System.IO.Path]::GetFileName($_.FilePath)
                 if ($filename -match '^(\d+)') {
                     [int]$matches[1]
                 } else {
                     999999
                 }
-            }
-            $sortedProvider = $ProviderTracks | Sort-Object disc_number, track_number
+            })
+            $sortedProvider = @($ProviderTracks | Sort-Object disc_number, track_number)
             
             if ($Reverse) {
                 # Iterate over audio files, match to provider by order
@@ -312,10 +312,10 @@ function Set-Tracks {
             if ($useOrderFallback) {
                 Write-Verbose "Audio files lack valid track numbers, pairing by sorted order"
                 # Sort both lists and pair sequentially
-                $sortedProvider = $ProviderTracks | Sort-Object disc_number, track_number
+                $sortedProvider = @($ProviderTracks | Sort-Object disc_number, track_number)
                 
                 # Try to extract numeric prefix from filenames for smarter sorting
-                $sortedAudio = $AudioFiles | Sort-Object {
+                $sortedAudio = @($AudioFiles | Sort-Object {
                     $filename = [System.IO.Path]::GetFileName($_.FilePath)
                     # Try to extract leading number (e.g., "01 - Title.flac" -> 1)
                     if ($filename -match '^(\d+)') {
@@ -324,7 +324,7 @@ function Set-Tracks {
                         # No number found, sort alphabetically
                         $_.FilePath
                     }
-                }
+                })
                 
                 if ($Reverse) {
                     # Iterate over audio files
@@ -421,8 +421,8 @@ function Set-Tracks {
                 else {
                     # Single disc scenario OR audio files lack disc numbers - match by track number only
                     Write-Verbose "Single disc or no disc numbers, matching by track number only"
-                    $sortedProvider = $ProviderTracks | Sort-Object disc_number, track_number
-                    $sortedAudio = $AudioFiles | Sort-Object TrackNumber
+                    $sortedProvider = @($ProviderTracks | Sort-Object disc_number, track_number)
+                    $sortedAudio = @($AudioFiles | Sort-Object TrackNumber)
                     
                     if ($Reverse) {
                         foreach ($audio in $sortedAudio) {
