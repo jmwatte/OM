@@ -1,8 +1,28 @@
 # Ignore local test data used for interactive testing
 testdata/
+testfiles/
 
-# Ignore debug/temporary summary file
+# Debug and diagnostic output
+debug_*.txt
+debug-*.ps1
 summary_debug.json
+
+# Ad-hoc test scripts (Pester tests in Private/Tests/ are kept)
+test-*.ps1
+temp_test.ps1
+
+# Backups and disabled files
+backups/
+*.bak
+*.disabled
+
+# Diagnostic trace runs
+tools/diag_runs/
+tools/*.txt
+
+# Editor artifacts
+.zed/
+Private/PowerShellEditorServices.json
 
 # Node/Powershell common
 .DS_Store
@@ -10,4 +30,3 @@ Thumbs.db
 **/node_modules/
 *.log
 *.tmp
-testfiles/
