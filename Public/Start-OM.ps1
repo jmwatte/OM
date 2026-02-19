@@ -2508,8 +2508,8 @@ function Start-OM {
 
                                 $report = [ordered]@{
                                     date           = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')
-                                    album          = $script:albumName
-                                    artist         = $script:artist
+                                    album          = $ProviderAlbum.name
+                                    artist         = $ProviderArtist.name
                                     provider       = $Provider
                                     albumId        = [string]$ProviderAlbum.id
                                     audioFileCount = $audioCount
@@ -2655,8 +2655,8 @@ function Start-OM {
                                             "Track Count Mismatch Report"
                                             "=========================="
                                             "Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-                                            "Album: $($script:albumName)"
-                                            "Artist: $($script:artist)"
+                                            "Album: $($ProviderAlbum.name)"
+                                            "Artist: $($ProviderArtist.name)"
                                             "Provider: $Provider"
                                             "Audio files: $audioCount"
                                             "Provider tracks: $providerCount"
@@ -2705,8 +2705,8 @@ function Start-OM {
                                         }
                                         $jsonReport = [ordered]@{
                                             date               = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')
-                                            album              = $script:albumName
-                                            artist             = $script:artist
+                                            album              = $ProviderAlbum.name
+                                            artist             = $ProviderArtist.name
                                             provider           = $Provider
                                             albumId            = [string]$ProviderAlbum.id
                                             audioFileCount     = $audioCount
@@ -3257,8 +3257,8 @@ function Start-OM {
                                         }
                                         $jsonReport = [ordered]@{
                                             date               = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')
-                                            album              = $script:albumName
-                                            artist             = $script:artist
+                                            album              = $ProviderAlbum.name
+                                            artist             = $ProviderArtist.name
                                             provider           = $Provider
                                             albumId            = [string]$ProviderAlbum.id
                                             audioFileCount     = $saAudioCount
