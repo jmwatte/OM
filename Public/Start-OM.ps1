@@ -2500,9 +2500,9 @@ function Start-OM {
                                 $formatDuration = {
                                     param([int]$ms)
                                     if ($ms -le 0) { return $null }
-                                    $totalSec = [math]::Floor($ms / 1000)
-                                    $min = [math]::Floor($totalSec / 60)
-                                    $sec = $totalSec % 60
+                                    $totalSec = [int][math]::Floor($ms / 1000)
+                                    $min = [int][math]::Floor($totalSec / 60)
+                                    $sec = [int]($totalSec % 60)
                                     return '{0}:{1:D2}' -f $min, $sec
                                 }
 
@@ -2698,9 +2698,9 @@ function Start-OM {
                                         $formatDuration = {
                                             param([int]$ms)
                                             if ($ms -le 0) { return $null }
-                                            $totalSec = [math]::Floor($ms / 1000)
-                                            $min = [math]::Floor($totalSec / 60)
-                                            $sec = $totalSec % 60
+                                            $totalSec = [int][math]::Floor($ms / 1000)
+                                            $min = [int][math]::Floor($totalSec / 60)
+                                            $sec = [int]($totalSec % 60)
                                             return '{0}:{1:D2}' -f $min, $sec
                                         }
                                         $jsonReport = [ordered]@{
@@ -3250,9 +3250,9 @@ function Start-OM {
                                         $formatDuration = {
                                             param([int]$ms)
                                             if ($ms -le 0) { return $null }
-                                            $totalSec = [math]::Floor($ms / 1000)
-                                            $min = [math]::Floor($totalSec / 60)
-                                            $sec = $totalSec % 60
+                                            $totalSec = [int][math]::Floor($ms / 1000)
+                                            $min = [int][math]::Floor($totalSec / 60)
+                                            $sec = [int]($totalSec % 60)
                                             return '{0}:{1:D2}' -f $min, $sec
                                         }
                                         $jsonReport = [ordered]@{
