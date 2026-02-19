@@ -106,6 +106,7 @@
     - 'Album': Only update album name
     - 'CoverArt': Only download/update cover art (no tag changes)
     - 'Composers': Only update composer fields
+    - 'MissingTracks': Only generate a JSON report of missing/extra tracks (no tags are modified)
 
     Multiple values can be combined: -UpdateOnly Genres,Year,CoverArt
 
@@ -195,6 +196,13 @@
     Updates only the track-level performers and composer fields from Qobuz.
     Useful for classical music where performer credits are important but you want to keep existing metadata.
 
+.EXAMPLE
+    Start-OM -Path "C:\Music\Artist" -Auto -AutoFallback -UpdateOnly MissingTracks
+
+    Scans all albums and writes a _errorreport.json for any album where local files don't match
+    the provider's track list. No tags are modified. The JSON report contains track names, durations,
+    disc/track numbers, and ISRCs to help search for the missing tracks online.
+
 .NOTES
     This function requires the TagLib-Sharp library for reading and writing audio file tags.
     It will attempt to install it automatically if it's missing.
@@ -249,7 +257,7 @@ function Start-OM {
         [Parameter(Mandatory = $false)]
         [switch]$AutoSaveCover,
         [Parameter(Mandatory = $false)]
-        [ValidateSet('All', 'Genres', 'Year', 'AlbumArtist', 'Artists', 'TrackInfo', 'Album', 'CoverArt', 'Composers')]
+        [ValidateSet('All', 'Genres', 'Year', 'AlbumArtist', 'Artists', 'TrackInfo', 'Album', 'CoverArt', 'Composers', 'MissingTracks')]
         [string[]]$UpdateOnly = @('All'),
         [Parameter(Mandatory = $false)]
         [ValidateSet('Replace', 'Merge')]
@@ -285,6 +293,10 @@ function Start-OM {
         $UpdateGenresOnly = ($UpdateOnly -notcontains 'All') -and
             ($UpdateOnly -contains 'Genres') -and
             -not ($UpdateOnly | Where-Object { $_ -notin @('Genres', 'CoverArt') })
+
+        # Derive MissingTracks-only flag: skip all tagging, only produce mismatch JSON report.
+        $UpdateMissingTracksOnly = ($UpdateOnly -contains 'MissingTracks') -and
+            -not ($UpdateOnly | Where-Object { $_ -notin @('MissingTracks') })
 
         if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
             throw "Path not found or not a directory: $Path"
@@ -2446,6 +2458,101 @@ function Start-OM {
                         $script:pairedTracks = $null
                         $script:refreshTracks = $true
                         $goCDisplayShown = $false
+
+                        # MissingTracks mode: pair tracks, write JSON report if mismatch, then skip
+                        if ($UpdateMissingTracksOnly) {
+                            Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+                            Write-Host "🔍 MISSING TRACKS REPORT MODE" -ForegroundColor Magenta
+                            Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+                            Write-Host ""
+
+                            # Pair tracks using best strategy
+                            $strategies = @('byOrder', 'byTitle', 'byDuration')
+                            $bestStrategy = $null
+                            $bestScore = 0
+                            $bestPairing = $null
+                            foreach ($strategy in $strategies) {
+                                $tempParam = @{
+                                    SortMethod     = $strategy
+                                    AudioFiles     = $script:audioFiles
+                                    ProviderTracks = $tracksForAlbum
+                                }
+                                $tempPairing = Set-Tracks @tempParam
+                                $highConfCount = @($tempPairing | Where-Object {
+                                    $_.PSObject.Properties['ConfidenceLevel'] -and $_.ConfidenceLevel -eq 'High'
+                                }).Count
+                                if ($highConfCount -gt $bestScore) {
+                                    $bestScore = $highConfCount
+                                    $bestStrategy = $strategy
+                                    $bestPairing = $tempPairing
+                                }
+                            }
+                            if ($bestPairing) { $script:pairedTracks = $bestPairing }
+
+                            $audioCount = @($script:audioFiles).Count
+                            $providerCount = @($tracksForAlbum).Count
+
+                            if ($audioCount -ne $providerCount) {
+                                # Build JSON error report
+                                $unpairedProvider = @($script:pairedTracks | Where-Object { -not $_.AudioFile } | ForEach-Object { $_.ProviderTrack })
+                                $unpairedAudio = @($script:pairedTracks | Where-Object { -not $_.ProviderTrack } | ForEach-Object { $_.AudioFile })
+
+                                $formatDuration = {
+                                    param([int]$ms)
+                                    if ($ms -le 0) { return $null }
+                                    $totalSec = [math]::Floor($ms / 1000)
+                                    $min = [math]::Floor($totalSec / 60)
+                                    $sec = $totalSec % 60
+                                    return '{0}:{1:D2}' -f $min, $sec
+                                }
+
+                                $report = [ordered]@{
+                                    date           = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')
+                                    album          = $script:albumName
+                                    artist         = $script:artist
+                                    provider       = $Provider
+                                    albumId        = [string]$ProviderAlbum.id
+                                    audioFileCount = $audioCount
+                                    providerTrackCount = $providerCount
+                                    audioFiles     = @($script:audioFiles | ForEach-Object { Split-Path $_.FilePath -Leaf })
+                                    providerTracks = @($tracksForAlbum | ForEach-Object {
+                                        [ordered]@{
+                                            disc     = [int]$_.disc_number
+                                            track    = [int]$_.track_number
+                                            name     = $_.name
+                                            duration = & $formatDuration $(if ($_.duration_ms) { [int]$_.duration_ms } else { 0 })
+                                            isrc     = if ($_.PSObject.Properties['isrc']) { $_.isrc } else { $null }
+                                        }
+                                    })
+                                    missingTracks  = @($unpairedProvider | ForEach-Object {
+                                        [ordered]@{
+                                            disc     = [int]$_.disc_number
+                                            track    = [int]$_.track_number
+                                            name     = $_.name
+                                            duration = & $formatDuration $(if ($_.duration_ms) { [int]$_.duration_ms } else { 0 })
+                                            isrc     = if ($_.PSObject.Properties['isrc']) { $_.isrc } else { $null }
+                                        }
+                                    })
+                                    extraAudioFiles = @($unpairedAudio | ForEach-Object { Split-Path $_.FilePath -Leaf })
+                                }
+
+                                $reportPath = Join-Path $script:album.FullName '_errorreport.json'
+                                $report | ConvertTo-Json -Depth 4 | Out-File -FilePath $reportPath -Encoding UTF8
+                                Write-Host "Album: $($script:albumName)" -ForegroundColor Green
+                                Write-Host "Audio files: $audioCount | Provider tracks: $providerCount" -ForegroundColor Yellow
+                                Write-Host "Missing tracks: $($unpairedProvider.Count) | Extra files: $($unpairedAudio.Count)" -ForegroundColor Red
+                                Write-Host "Report written: $reportPath" -ForegroundColor Cyan
+                            }
+                            else {
+                                Write-Host "Album: $($script:albumName)" -ForegroundColor Green
+                                Write-Host "✓ All $audioCount tracks matched — no missing tracks." -ForegroundColor Green
+                            }
+
+                            Write-Host ""
+                            $albumDone = $true
+                            break stageLoop
+                        }
+
                         Write-Verbose "DEBUG: Starting doTracks loop, script:pairedTracks is null: $($null -eq $script:pairedTracks)"
                         :doTracks do {
                             Write-Verbose "DEBUG: Inside doTracks, checking if we need to refresh..."
@@ -2543,7 +2650,7 @@ function Start-OM {
                                     if ($audioCount -ne $providerCount) {
                                         Write-Warning "AUTO: Track count mismatch - $audioCount audio file(s) vs $providerCount provider track(s)"
                                         
-                                        # Build error report
+                                        # Build error report (text + JSON)
                                         $reportLines = @(
                                             "Track Count Mismatch Report"
                                             "=========================="
@@ -2583,9 +2690,51 @@ function Start-OM {
                                             }
                                         }
                                         
-                                        # Write report to album folder
+                                        # Write text report
                                         $reportPath = Join-Path $script:album.FullName "_errorreport.txt"
                                         $reportLines | Out-File -FilePath $reportPath -Encoding UTF8
+
+                                        # Write JSON report (machine-parseable)
+                                        $formatDuration = {
+                                            param([int]$ms)
+                                            if ($ms -le 0) { return $null }
+                                            $totalSec = [math]::Floor($ms / 1000)
+                                            $min = [math]::Floor($totalSec / 60)
+                                            $sec = $totalSec % 60
+                                            return '{0}:{1:D2}' -f $min, $sec
+                                        }
+                                        $jsonReport = [ordered]@{
+                                            date               = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')
+                                            album              = $script:albumName
+                                            artist             = $script:artist
+                                            provider           = $Provider
+                                            albumId            = [string]$ProviderAlbum.id
+                                            audioFileCount     = $audioCount
+                                            providerTrackCount = $providerCount
+                                            audioFiles         = @($script:audioFiles | ForEach-Object { Split-Path $_.FilePath -Leaf })
+                                            providerTracks     = @($tracksForAlbum | ForEach-Object {
+                                                [ordered]@{
+                                                    disc     = [int]$_.disc_number
+                                                    track    = [int]$_.track_number
+                                                    name     = $_.name
+                                                    duration = & $formatDuration $(if ($_.duration_ms) { [int]$_.duration_ms } else { 0 })
+                                                    isrc     = if ($_.PSObject.Properties['isrc']) { $_.isrc } else { $null }
+                                                }
+                                            })
+                                            missingTracks      = @($unpairedProvider | ForEach-Object {
+                                                [ordered]@{
+                                                    disc     = [int]$_.disc_number
+                                                    track    = [int]$_.track_number
+                                                    name     = $_.name
+                                                    duration = & $formatDuration $(if ($_.duration_ms) { [int]$_.duration_ms } else { 0 })
+                                                    isrc     = if ($_.PSObject.Properties['isrc']) { $_.isrc } else { $null }
+                                                }
+                                            })
+                                            extraAudioFiles    = @($unpairedAudio | ForEach-Object { Split-Path $_.FilePath -Leaf })
+                                        }
+                                        $jsonReportPath = Join-Path $script:album.FullName '_errorreport.json'
+                                        $jsonReport | ConvertTo-Json -Depth 4 | Out-File -FilePath $jsonReportPath -Encoding UTF8
+
                                         Write-Warning "AUTO: Error report written to: $reportPath"
                                         Write-Warning "AUTO: Proceeding with matched tracks only."
                                     }
