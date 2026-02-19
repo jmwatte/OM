@@ -2510,6 +2510,7 @@ function Start-OM {
                                     date           = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')
                                     album          = $ProviderAlbum.name
                                     artist         = $ProviderArtist.name
+                                    year           = (Get-ReleaseYear -ReleaseDate (Get-IfExists $ProviderAlbum 'release_date'))
                                     provider       = $Provider
                                     albumId        = [string]$ProviderAlbum.id
                                     audioFileCount = $audioCount
@@ -2707,6 +2708,7 @@ function Start-OM {
                                             date               = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')
                                             album              = $ProviderAlbum.name
                                             artist             = $ProviderArtist.name
+                                            year               = (Get-ReleaseYear -ReleaseDate (Get-IfExists $ProviderAlbum 'release_date'))
                                             provider           = $Provider
                                             albumId            = [string]$ProviderAlbum.id
                                             audioFileCount     = $audioCount
@@ -3259,6 +3261,7 @@ function Start-OM {
                                             date               = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')
                                             album              = $ProviderAlbum.name
                                             artist             = $ProviderArtist.name
+                                            year               = (Get-ReleaseYear -ReleaseDate (Get-IfExists $ProviderAlbum 'release_date'))
                                             provider           = $Provider
                                             albumId            = [string]$ProviderAlbum.id
                                             audioFileCount     = $saAudioCount
