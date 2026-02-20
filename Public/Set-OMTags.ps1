@@ -572,6 +572,7 @@ function Set-OMTags {
         }
         
         $processedCount = 0
+        $skippedCount = 0
         $errorCount = 0
         $results = [System.Collections.Generic.List[PSCustomObject]]::new()
         $trackCounter = if ($PSBoundParameters.ContainsKey('RenumberTracks')) { $RenumberTracks } else { 0 }
@@ -866,7 +867,7 @@ function Set-OMTags {
             
             if ($changes.Count -eq 0) {
                 Write-Verbose "No changes needed for: $(Split-Path $filePath -Leaf)"
-                $processedCount++
+                $skippedCount++
                 
                 if ($PassThru) {
                     $results.Add($currentTags)
@@ -1104,12 +1105,17 @@ function Set-OMTags {
     
     end {
         # Summary
-        if ($processedCount -gt 0 -or $errorCount -gt 0) {
+        if ($processedCount -gt 0 -or $skippedCount -gt 0 -or $errorCount -gt 0) {
             $verb = if ($WhatIfPreference) { "would be updated" } else { "updated" }
-            Write-Verbose "Tag update complete: $processedCount files $verb, $errorCount errors"
+            Write-Verbose "Tag update complete: $processedCount files $verb, $skippedCount skipped (no changes), $errorCount errors"
             
-            if (-not $WhatIfPreference -and $processedCount -gt 0) {
-                Write-Host "✓ Successfully updated $processedCount file(s)" -ForegroundColor Green
+            if (-not $WhatIfPreference) {
+                if ($processedCount -gt 0) {
+                    Write-Host "✓ Successfully updated $processedCount file(s)" -ForegroundColor Green
+                }
+                if ($skippedCount -gt 0) {
+                    Write-Host "· $skippedCount file(s) already up to date" -ForegroundColor DarkGray
+                }
             }
         }
         
