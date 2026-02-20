@@ -55,6 +55,13 @@ function Set-OMConfig {
     .PARAMETER ConfigPath
     Optional. Custom path for config file. If not specified, uses default location.
     
+    .PARAMETER RenameGenre
+    Hashtable mapping old genre names to new names. Renames genres in the whitelist and creates
+    mappings so existing files are corrected when processed with Format-Genres.
+    Also updates any existing mappings that pointed to the old name.
+    
+    Example: @{'Progressive Rock' = 'Rock Progressive'}
+    
     .PARAMETER Merge
     If set, merges new values with existing config. Otherwise, replaces entire provider config.
     
@@ -66,6 +73,12 @@ function Set-OMConfig {
     
     .EXAMPLE
     Set-OMConfig -QobuzAppId "12345" -QobuzSecret "secret" -ConfigPath "C:\custom\config.json"
+    
+    .EXAMPLE
+    Set-OMConfig -RenameGenre @{'Progressive Rock' = 'Rock Progressive'}
+    
+    Renames 'Progressive Rock' to 'Rock Progressive' in the whitelist and adds a mapping
+    so files tagged with 'Progressive Rock' get corrected by Format-Genres.
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -109,6 +122,9 @@ function Set-OMConfig {
         [Parameter(Mandatory = $false)]
         [ValidateSet('Spotify', 'Qobuz', 'Discogs', 'MusicBrainz')]
         [string]$DefaultProvider,
+
+        [Parameter(Mandatory = $false)]
+        [hashtable]$RenameGenre,
 
         [Parameter(Mandatory = $false)]
         [string]$ConfigPath,
@@ -244,6 +260,43 @@ function Set-OMConfig {
         $config.DefaultProvider = $DefaultProvider
         Write-Verbose "Set DefaultProvider to $DefaultProvider"
         $modified = $true
+    }
+
+    # Rename genres in whitelist and add mappings
+    if ($RenameGenre) {
+        if (-not $config.Genres) { $config.Genres = @{} }
+        if (-not $config.Genres.AllowedGenreNames) { $config.Genres.AllowedGenreNames = @() }
+        if (-not $config.Genres.GenreMappings) { $config.Genres.GenreMappings = @{} }
+
+        foreach ($oldName in $RenameGenre.Keys) {
+            $newName = $RenameGenre[$oldName]
+            if ([string]::IsNullOrWhiteSpace($newName)) {
+                Write-Warning "Skipping rename for '$oldName': new name is empty"
+                continue
+            }
+
+            # Remove old name from whitelist (case-insensitive)
+            $config.Genres.AllowedGenreNames = @($config.Genres.AllowedGenreNames | Where-Object { $_.ToLower() -ne $oldName.ToLower() })
+
+            # Add new name if not already present
+            if ($config.Genres.AllowedGenreNames -notcontains $newName) {
+                $config.Genres.AllowedGenreNames += $newName
+            }
+
+            # Add mapping: old name → new name
+            $config.Genres.GenreMappings[$oldName.ToLower()] = $newName
+
+            # Update any existing mappings that pointed to the old name
+            foreach ($key in @($config.Genres.GenreMappings.Keys)) {
+                if ($config.Genres.GenreMappings[$key] -eq $oldName) {
+                    $config.Genres.GenreMappings[$key] = $newName
+                    Write-Verbose "Updated existing mapping: '$key' now points to '$newName'"
+                }
+            }
+
+            Write-Host "✓ Renamed genre: '$oldName' → '$newName'" -ForegroundColor Green
+            $modified = $true
+        }
     }
 
     # Validate that at least one value was provided
