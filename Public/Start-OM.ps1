@@ -1361,7 +1361,7 @@ function Start-OM {
                         [Console]::ForegroundColor = [ConsoleColor]::Yellow
                         $modeIndicator = if (
                         $script:backNavigationMode) { " (Back Navigation - use 'f' to search again)" } else { "" }
-                        $albumChoice = Read-Host "Select album [number] (Enter=first), (P)rovider, {F}indMode, (ni) New Item (enter new artist+album), (x)ip, (C)over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags}, or new search term$modeIndicator"
+                        $albumChoice = Read-Host "Select album [number] (Enter=first), (p)rovider, (f)indMode, (ni) New Item (enter new artist+album), (x)ip, cover: (cv)iew/(cvo)riginal/(cs)ave/(ct)ags, or new search term$modeIndicator"
                         [Console]::ForegroundColor = $originalColor
                         if ($albumChoice -eq '') { $albumChoice = '1' }
                         
@@ -1415,6 +1415,11 @@ function Start-OM {
                             $skipQuickPrompts = $true
                             $script:backNavigationMode = $false
                             continue stageLoop
+                        }
+                        elseif ($albumChoice -eq 'c') {
+                            # User typed just 'c' — show cover art subcommand help
+                            Write-Host "Cover art commands: cv[N] = view, cvo[N] = view original, cs[N] = save to folder, ct[N] = save to tags (N = album number, default 1)" -ForegroundColor Cyan
+                            continue albumSelectionLoop
                         }
                         elseif ($albumChoice -match '^cvo(.*)$') {
                             $rangeText = $matches[1]

@@ -384,12 +384,18 @@ function Get-OMTags {
                     Composers       = $composers
                     Comment         = if ($tag -and $tag.Description) { $tag.Description } elseif ($tag -and $tag.Comment) { $tag.Comment } else { $null }
                     Lyrics          = if ($tag -and $tag.Lyrics) { $tag.Lyrics } else { $null }
-                    Duration        = if ($properties -and $properties.Duration) { $properties.Duration } else { [TimeSpan]::Zero }
-                    DurationSeconds = if ($properties -and $properties.Duration) { [double]$properties.Duration.TotalSeconds } else { 0.0 }
+                    Duration        = if ($properties -and $properties.Duration -and $properties.Duration -ne [TimeSpan]::Zero) {
+                        $properties.Duration
+                    } elseif ([System.IO.Path]::GetExtension($file).ToLower() -in @('.m4a', '.aac')) {
+                        $m4aMs = Get-M4aDuration -FilePath $file
+                        if ($m4aMs -gt 0) { [TimeSpan]::FromMilliseconds($m4aMs) } else { [TimeSpan]::Zero }
+                    } else { [TimeSpan]::Zero }
+                    DurationSeconds = 0.0  # placeholder, set below
                     Bitrate         = if ($properties -and $properties.AudioBitrate) { $properties.AudioBitrate } else { 0 }
                     SampleRate      = if ($properties -and $properties.AudioSampleRate) { $properties.AudioSampleRate } else { 0 }
                     Format          = [System.IO.Path]::GetExtension($file).TrimStart('.')
                 }
+                $normalizedTag.DurationSeconds = $normalizedTag.Duration.TotalSeconds
                 
                 # Note: singular convenience properties removed; use plural arrays (Artists, AlbumArtists, Genres, Composers)
 

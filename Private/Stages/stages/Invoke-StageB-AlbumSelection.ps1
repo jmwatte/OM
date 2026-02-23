@@ -786,7 +786,7 @@ function Invoke-StageB-AlbumSelection {
 
         $originalColor = [Console]::ForegroundColor
         [Console]::ForegroundColor = [ConsoleColor]::Yellow
-        $inputF = Read-Host "Select album(s) [number] (Enter=first), number(s) (e.g., 1,3,5-8), '(b)ack', '(n)ext', '(pr)ev', '(x)ip', 'id:<id>', '(p)rovider', '(f)indmode, (c)over {[V]iew,[S]ave,saveIn[T]ags}, '*' (all albums), '(ni)ew item (artist+album)', or text to search:"
+        $inputF = Read-Host "Select album(s) [number] (Enter=first), number(s) (e.g., 1,3,5-8), '(b)ack', '(n)ext', '(pr)ev', '(x)ip', 'id:<id>', '(p)rovider', '(f)indmode, cover: (cv)iew/(cvo)riginal/(cs)ave/(ct)ags, '*' (all albums), '(ni)ew item (artist+album), or text to search:"
         [Console]::ForegroundColor = $originalColor
         
         switch -Regex ($inputF) {
@@ -1494,21 +1494,26 @@ function Invoke-StageB-AlbumSelection {
                     CurrentPage           = $currentPage
                 }
             }
-              '^cvo(\d*)$' {
-                                    # View Cover art original
-                                    $rangeText = $matches[1]
-                                    if (-not $rangeText) { $rangeText = "1" }
-                                    Show-CoverArt -AlbumList $albumsForArtist -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
-                                    Read-Host "Press Enter to continue..."
-                                    continue
-                                }
-                 '^cv(.*)$' {
-                    # View Cover art: cv (first album), cv<number>, or cv1-4,6,7 (multiple albums with chafa grid)
-                    $rangeText = if ($matches[1]) { $matches[1].Trim() } else { '1' }
-                    Show-CoverArt -AlbumList $albumsForArtist -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
-                    Read-Host "Press Enter to continue..."
-                    continue
-                }
+            '^c$' {
+                # User typed just 'c' — show cover art subcommand help
+                Write-Host "Cover art commands: cv[N] = view, cvo[N] = view original, cs[N] = save to folder, ct[N] = save to tags (N = album number, default 1)" -ForegroundColor Cyan
+                continue
+            }
+            '^cvo(\d*)$' {
+                # View Cover art original
+                $rangeText = $matches[1]
+                if (-not $rangeText) { $rangeText = "1" }
+                Show-CoverArt -AlbumList $albumsForArtist -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
+                Read-Host "Press Enter to continue..."
+                continue
+            }
+            '^cv(.*)$' {
+                # View Cover art: cv (first album), cv<number>, or cv1-4,6,7 (multiple albums with chafa grid)
+                $rangeText = if ($matches[1]) { $matches[1].Trim() } else { '1' }
+                Show-CoverArt -AlbumList $albumsForArtist -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
+                Read-Host "Press Enter to continue..."
+                continue
+            }
             '^cs(\d*)$' {
                 # Save Cover art to folder: cs (first album) or cs<number> (specific album)
                 $albumIndex = if ($matches[1]) { [int]$matches[1] - 1 } else { 0 }  # Convert to 0-based index

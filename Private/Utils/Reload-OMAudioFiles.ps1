@@ -48,6 +48,13 @@ function Reload-OMAudioFiles {
                 if ($Trace) { Write-Host "[Reload] Get-OMTagFile returned"; $null = $tagFile }
                 $duration = $tagFile.Properties.Duration.TotalMilliseconds
                 if ($Trace) { Write-Host "[Reload] Duration: $duration" }
+
+                # Fallback for M4A files when TagLib returns zero duration
+                if ((-not $duration -or $duration -eq 0) -and $ext -in @('.m4a', '.aac')) {
+                    if ($Trace) { Write-Host "[Reload] TagLib returned 0 duration for M4A, trying Get-M4aDuration" }
+                    $duration = Get-M4aDuration -FilePath $f.FullName
+                    if ($Trace) { Write-Host "[Reload] Get-M4aDuration returned $duration" }
+                }
             }
 
             $trackNum = if ($tagFile -and $tagFile.Tag.Track) { $tagFile.Tag.Track } else { 0 }
