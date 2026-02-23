@@ -74,17 +74,12 @@ function Move-OMTags {
     )
 
     begin {
-        # Ensure TagLib is loaded
-        $tagLibLoaded = [System.AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $_.FullName -like '*TagLib*' }
-        if (-not $tagLibLoaded) {
-            Write-Error "TagLib-Sharp is required. Run Get-OMTags first to load it."
-            return
-        }
+        # Ensure TagLib is loaded (will load it if not already)
+        Assert-TagLibLoaded -ThrowOnError
 
         # Import Expand-RenamePattern from Set-OMTags if not available
         if (-not (Get-Command Expand-RenamePattern -ErrorAction SilentlyContinue)) {
-            Write-Error "Expand-RenamePattern function not found. Ensure Set-OMTags is loaded."
-            return
+            throw "Expand-RenamePattern function not found. Ensure Set-OMTags is loaded."
         }
 
         $results = @()
@@ -193,14 +188,25 @@ function Move-OMTags {
                 # Ensure source path is absolute
                 $sourcePath = $resolvedPath
                 
-                # Check if source contains a single album subfolder
-                $sourceContents = Get-ChildItem -LiteralPath $sourcePath -Directory
+                # Detect if source is an artist-level folder (audio files only in subfolders)
                 $actualSourcePath = $sourcePath
-                
-                # If source is an artist folder with a single album subfolder, use that as source
-                if ($sourceContents.Count -eq 1 -and $sourceContents[0].Name -like "*$albumName*") {
-                    $actualSourcePath = $sourceContents[0].FullName
-                    Write-Verbose "Detected single album subfolder: $($sourceContents[0].Name)"
+                $normalizedSource = $sourcePath.TrimEnd('\', '/')
+                $tagParentDirs = $tags | ForEach-Object { Split-Path $_.Path -Parent } | Sort-Object -Unique
+
+                # Check if any audio files are directly in the source folder
+                $hasDirectAudioFiles = $tagParentDirs | Where-Object { $_.TrimEnd('\', '/') -eq $normalizedSource }
+
+                if (-not $hasDirectAudioFiles) {
+                    # All audio files are in subfolders - find the immediate child folder(s)
+                    $immediateChildDirs = $tagParentDirs | ForEach-Object {
+                        $rel = $_.Substring($normalizedSource.Length).TrimStart('\', '/')
+                        ($rel -split '[\\/]')[0]
+                    } | Sort-Object -Unique
+
+                    if ($immediateChildDirs.Count -eq 1) {
+                        $actualSourcePath = Join-Path $sourcePath $immediateChildDirs[0]
+                        Write-Verbose "Detected album subfolder: $($immediateChildDirs[0])"
+                    }
                 }
                 
                 # Use a temporary folder to avoid conflicts

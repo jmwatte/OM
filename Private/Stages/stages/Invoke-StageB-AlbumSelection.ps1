@@ -1504,14 +1504,14 @@ function Invoke-StageB-AlbumSelection {
                 $rangeText = $matches[1]
                 if (-not $rangeText) { $rangeText = "1" }
                 Show-CoverArt -AlbumList $albumsForArtist -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
-                Read-Host "Press Enter to continue..."
+                $null = Read-Host "Press Enter to continue..."
                 continue
             }
             '^cv(.*)$' {
                 # View Cover art: cv (first album), cv<number>, or cv1-4,6,7 (multiple albums with chafa grid)
                 $rangeText = if ($matches[1]) { $matches[1].Trim() } else { '1' }
                 Show-CoverArt -AlbumList $albumsForArtist -RangeText $rangeText -Provider $Provider -Size 'original' -Grid $false
-                Read-Host "Press Enter to continue..."
+                $null = Read-Host "Press Enter to continue..."
                 continue
             }
             '^cs(\d*)$' {
