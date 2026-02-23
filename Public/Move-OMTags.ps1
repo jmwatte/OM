@@ -85,7 +85,7 @@ function Move-OMTags {
 
     begin {
         # Ensure TagLib is loaded (will load it if not already)
-        Assert-TagLibLoaded -ThrowOnError
+        $null = Assert-TagLibLoaded -ThrowOnError
 
         # Import Expand-RenamePattern from Set-OMTags if not available
         if (-not (Get-Command Expand-RenamePattern -ErrorAction SilentlyContinue)) {
@@ -208,10 +208,12 @@ function Move-OMTags {
 
                 if (-not $hasDirectAudioFiles) {
                     # All audio files are in subfolders - find the immediate child folder(s)
-                    $immediateChildDirs = $tagParentDirs | ForEach-Object {
+                    # Wrap in @() to ensure array - single result from Sort-Object is a string,
+                    # and indexing a string returns a character, not the whole string
+                    $immediateChildDirs = @($tagParentDirs | ForEach-Object {
                         $rel = $_.Substring($normalizedSource.Length).TrimStart('\', '/')
                         ($rel -split '[\\/]')[0]
-                    } | Sort-Object -Unique
+                    } | Sort-Object -Unique)
 
                     if ($immediateChildDirs.Count -eq 1) {
                         $actualSourcePath = Join-Path $sourcePath $immediateChildDirs[0]
