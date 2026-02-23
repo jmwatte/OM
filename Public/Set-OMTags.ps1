@@ -22,7 +22,25 @@ function Read-RawTagsForComparison {
             $artists = if ($tag.Performers) { @($tag.Performers) } else { @() }
             $albumArtists = if ($tag.AlbumArtists) { @($tag.AlbumArtists) } else { @() }
             $composers = if ($tag.Composers) { @($tag.Composers) } else { @() }
-            $genres = if ($tag.Genres) { @($tag.Genres) } else { @() }
+            
+            # Process genres the same way as Get-OMTags: split delimiters and deduplicate
+            # This ensures change detection matches what the pipeline sees
+            $genres = @()
+            if ($tag.Genres) {
+                $rawGenres = if ($tag.Genres -is [array]) { $tag.Genres } else { @($tag.Genres) }
+                foreach ($g in $rawGenres) {
+                    $decodedGenre = $g -replace '(?i)&amp;', '&' -replace '(?i)&lt;', '<' -replace '(?i)&gt;', '>' -replace '(?i)&quot;', '"' -replace '(?i)&#39;', "'"
+                    $genres += $decodedGenre -split '[,;/]' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+                }
+                $uniqueGenres = @{}
+                $genres = @($genres | ForEach-Object {
+                    $lowerKey = $_.ToLower()
+                    if (-not $uniqueGenres.ContainsKey($lowerKey)) {
+                        $uniqueGenres[$lowerKey] = $_
+                        $_
+                    }
+                })
+            }
             
             return [PSCustomObject]@{
                 Path            = $Path
@@ -144,8 +162,8 @@ function Expand-RenamePattern {
     # Trim whitespace
     $result = $result.Trim()
     
-    # Add extension if not present and pattern doesn't already have one
-    if ($result -notmatch '\.[a-zA-Z0-9]{2,4}$' -and $FileExtension) {
+    # Add extension if file extension is not already at the end
+    if ($FileExtension -and -not $result.EndsWith($FileExtension, [System.StringComparison]::OrdinalIgnoreCase)) {
         $result += $FileExtension
     }
     
@@ -896,6 +914,20 @@ function Set-OMTags {
             }
             
             if ($Force -or $PSCmdlet.ShouldProcess($filePath, $changeDescription)) {
+                # Check for file lock before attempting write
+                if (-not $WhatIfPreference) {
+                    $isLocked = Assert-FileLocked -Path $filePath
+                    if ($isLocked) {
+                        $lockResult = Wait-ForFileUnlock -Path $filePath
+                        if ($lockResult.Action -eq 'skip') {
+                            Write-Warning "Skipping locked file: $(Split-Path $filePath -Leaf)"
+                            $errorCount++
+                            return
+                        }
+                        # 'force' or 'proceed' — continue to attempt write
+                    }
+                }
+
                 # Write tags using TagLib-Sharp
                 Write-Verbose "Writing tags to: $(Split-Path $filePath -Leaf)"
                 

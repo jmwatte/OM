@@ -221,7 +221,8 @@ function Invoke-StageB-AlbumSelection {
                 Write-Verbose "Fetching all albums for artist..."
                 try { 
                     # For Qobuz, use url instead of id (needs full interpreter URL)
-                    $artistIdOrUrl = if ($Provider -eq 'Qobuz' -and $ProviderArtist.url) { $ProviderArtist.url } else { $ProviderArtist.id }
+                    $qobuzUrl = Get-IfExists $ProviderArtist 'url'
+                    $artistIdOrUrl = if ($Provider -eq 'Qobuz' -and $qobuzUrl) { $qobuzUrl } else { $ProviderArtist.id }
                     $CachedAlbums = @(Invoke-ProviderGetAlbums -Provider $Provider -ArtistId $artistIdOrUrl -AlbumType 'Album' | Where-Object {$_ -ne $null})
                     Write-Host "✓ Fetched $($CachedAlbums.Count) albums" -ForegroundColor Green
                 }
@@ -363,7 +364,7 @@ function Invoke-StageB-AlbumSelection {
                 }
             }
     
-            $inputF = Read-Host "Enter '(b)ack', '(s)kip or (x)ip', 'id:<id>' or album name to filter"
+            $inputF = Read-Host "Enter '(b)ack', '(s)kip or (x)ip', 'id:<id>', (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, or album name to filter"
             switch -Regex ($inputF) {
                 '^b$' {
                     return @{
@@ -392,6 +393,46 @@ function Invoke-StageB-AlbumSelection {
                         UpdatedCache          = $CachedAlbums
                         UpdatedCachedArtistId = $CachedArtistId
                         UpdatedProvider       = $Provider
+                        CurrentPage           = $currentPage
+                    }
+                }
+                '^ps$' {
+                    return @{
+                        NextStage             = 'A'
+                        SelectedAlbum         = $null
+                        UpdatedCache          = $null
+                        UpdatedCachedArtistId = $null
+                        UpdatedProvider       = 'Spotify'
+                        CurrentPage           = $currentPage
+                    }
+                }
+                '^pq$' {
+                    return @{
+                        NextStage             = 'A'
+                        SelectedAlbum         = $null
+                        UpdatedCache          = $null
+                        UpdatedCachedArtistId = $null
+                        UpdatedProvider       = 'Qobuz'
+                        CurrentPage           = $currentPage
+                    }
+                }
+                '^pd$' {
+                    return @{
+                        NextStage             = 'A'
+                        SelectedAlbum         = $null
+                        UpdatedCache          = $null
+                        UpdatedCachedArtistId = $null
+                        UpdatedProvider       = 'Discogs'
+                        CurrentPage           = $currentPage
+                    }
+                }
+                '^pm$' {
+                    return @{
+                        NextStage             = 'A'
+                        SelectedAlbum         = $null
+                        UpdatedCache          = $null
+                        UpdatedCachedArtistId = $null
+                        UpdatedProvider       = 'MusicBrainz'
                         CurrentPage           = $currentPage
                     }
                 }
@@ -1067,7 +1108,8 @@ function Invoke-StageB-AlbumSelection {
                 
                 try {
                     # For Qobuz, use url instead of id (needs full interpreter URL)
-                    $artistIdOrUrl = if ($Provider -eq 'Qobuz' -and $ProviderArtist.url) { $ProviderArtist.url } else { $ProviderArtist.id }
+                    $qobuzUrl = Get-IfExists $ProviderArtist 'url'
+                    $artistIdOrUrl = if ($Provider -eq 'Qobuz' -and $qobuzUrl) { $qobuzUrl } else { $ProviderArtist.id }
                     $fetchParams = @{
                         Provider  = $Provider
                         ArtistId  = $artistIdOrUrl
