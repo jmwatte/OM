@@ -3087,6 +3087,56 @@ function Start-OM {
                                     continue
                                 }
                                 '^x(ip)?$' { 
+                                    # Write error report if track count mismatch before skipping
+                                    $xAudioCount = @($script:audioFiles).Count
+                                    $xProviderCount = @($tracksForAlbum).Count
+                                    if ($xAudioCount -ne $xProviderCount) {
+                                        $xUnpairedProvider = @($script:pairedTracks | Where-Object { -not $_.AudioFile } | ForEach-Object { $_.ProviderTrack })
+                                        $xUnpairedAudio = @($script:pairedTracks | Where-Object { -not $_.ProviderTrack } | ForEach-Object { $_.AudioFile })
+                                        $formatDuration = {
+                                            param([int]$ms)
+                                            if ($ms -le 0) { return $null }
+                                            $totalSec = [int][math]::Floor($ms / 1000)
+                                            $min = [int][math]::Floor($totalSec / 60)
+                                            $sec = [int]($totalSec % 60)
+                                            return '{0}:{1:D2}' -f $min, $sec
+                                        }
+                                        $jsonReport = [ordered]@{
+                                            date               = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss')
+                                            album              = $ProviderAlbum.name
+                                            artist             = $ProviderArtist.name
+                                            year               = (Get-ReleaseYear -ReleaseDate (Get-IfExists $ProviderAlbum 'release_date'))
+                                            provider           = $Provider
+                                            albumId            = [string]$ProviderAlbum.id
+                                            audioFileCount     = $xAudioCount
+                                            providerTrackCount = $xProviderCount
+                                            audioFiles         = @($script:audioFiles | ForEach-Object { Split-Path $_.FilePath -Leaf })
+                                            providerTracks     = @($tracksForAlbum | ForEach-Object {
+                                                [ordered]@{
+                                                    disc     = [int]$_.disc_number
+                                                    track    = [int]$_.track_number
+                                                    name     = $_.name
+                                                    duration = & $formatDuration $(if ($_.duration_ms) { [int]$_.duration_ms } else { 0 })
+                                                    isrc     = if ($_.PSObject.Properties['isrc']) { $_.isrc } else { $null }
+                                                }
+                                            })
+                                            missingTracks      = @($xUnpairedProvider | ForEach-Object {
+                                                [ordered]@{
+                                                    disc     = [int]$_.disc_number
+                                                    track    = [int]$_.track_number
+                                                    name     = $_.name
+                                                    duration = & $formatDuration $(if ($_.duration_ms) { [int]$_.duration_ms } else { 0 })
+                                                    isrc     = if ($_.PSObject.Properties['isrc']) { $_.isrc } else { $null }
+                                                }
+                                            })
+                                            extraAudioFiles    = @($xUnpairedAudio | ForEach-Object { Split-Path $_.FilePath -Leaf })
+                                            skipped            = $true
+                                        }
+                                        $jsonReportPath = Join-Path $script:album.FullName '_errorreport.json'
+                                        $jsonReport | ConvertTo-Json -Depth 4 | Out-File -FilePath $jsonReportPath -Encoding UTF8
+                                        Write-Host "⚠️  Track mismatch: $xAudioCount audio file(s) vs $xProviderCount provider track(s)" -ForegroundColor Yellow
+                                        Write-Host "   Report: $jsonReportPath" -ForegroundColor Cyan
+                                    }
                                     # Skip to next album in pipeline
                                     $albumDone = $true
                                     $exitDo = $true  # Need this to break out of doTracks loop
