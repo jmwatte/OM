@@ -30,9 +30,11 @@ function Move-OMTags {
     Return detailed operation results for each moved album instead of just the new paths.
 
 .EXAMPLE
-    Move-OMTags -Path "C:\Music\Unsorted\Album" -TargetFolder "C:\Music\Organized"
+    mot -Path "H:\Gustav Leonhardt" -TargetFolder H:\music
 
-    Moves the album to C:\Music\Organized\AlbumArtist\Year - Album and renames files to "1.1 - Title.mp3" format.
+    Moves the album subfolder to H:\music\Gustav Leonhardt\1965 - Bach_ Goldberg Variations
+    and renames files to "1.01 - Title.flac" format. Uses the MOT alias.
+    If the source is an artist folder containing a single album subfolder, only the album is moved.
 
 .EXAMPLE
     Move-OMTags -Path "C:\Music\Album" -TargetFolder "C:\Organized" -FileRenamePattern "{Track:D2} - {Title}"
@@ -45,18 +47,26 @@ function Move-OMTags {
     Moves album and renames files using artist name in filename: "Artist Name - Song Title.mp3".
 
 .EXAMPLE
-    Get-OMTags -Path "C:\Music\Albums" -Details | Move-OMTags -TargetFolder "C:\Organized" -WhatIf
+    Get-ChildItem "H:\unsorted" -Directory | ForEach-Object { mot -Path $_.FullName -TargetFolder H:\music }
 
-    Preview moving and renaming for all albums in the directory.
+    Moves all album folders from H:\unsorted into H:\music, organized by artist and year.
 
 .EXAMPLE
-    Move-OMTags -Path "C:\Music\Album" -TargetFolder "C:\Organized" | Get-OMTags
+    mot -Path "C:\Music\Album" -TargetFolder "C:\Organized" | Get-OMTags
 
     Moves the album and pipes the new path to Get-OMTags to read the tags from the moved location.
 
+.EXAMPLE
+    mot -Path "C:\Music\Album" -TargetFolder "C:\Organized" -WhatIf
+
+    Preview the move and rename operations without making changes.
+
 .NOTES
-    Requires TagLib-Sharp for tag reading.
+    Alias: MOT
+    Requires TagLib-Sharp (loaded automatically via Assert-TagLibLoaded).
     Uses Approve-PathSegment for safe folder names.
+    Supported placeholders: {Disc}, {Track}, {Title}, {Artist}, {Album}, {Year}, etc.
+    Format specifiers: {Track:D2} (zero-pad), {Title:Upper}, {Artist:Lower}, {Title:TitleCase}.
 #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
