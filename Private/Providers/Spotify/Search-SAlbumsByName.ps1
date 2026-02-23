@@ -59,7 +59,7 @@ function Search-SAlbumsByName {
             continue
         }
 
-        if ($candidateResults -and $candidateResults.albums -and $candidateResults.albums.items -and $candidateResults.albums.items.Count -gt 0) {
+        if ($candidateResults -and $candidateResults.albums -and $candidateResults.albums.items -and @($candidateResults.albums.items).Count -gt 0) {
             $searchResults = $candidateResults
             break
         }
@@ -95,15 +95,16 @@ function Search-SAlbumsByName {
         }
     }
 
-    Write-Verbose "Found $($albums.Count) albums for: $attempt.Query"
+    $albums = @($albums)
+    Write-Verbose "Found $($albums.Count) albums for: $($attempt.Query)"
     
     # Extract cover art URLs from Spotify album objects
-    $albums = $albums | ForEach-Object {
+    $albums = @($albums | ForEach-Object {
         $album = $_
         
         # Extract cover art URL from images array (prefer largest image)
         $coverUrl = $null
-        if ($album.images -and $album.images.Count -gt 0) {
+        if ($album.images -and @($album.images).Count -gt 0) {
             # Sort by area (width * height) descending and take the first (largest)
             $largestImage = $album.images | 
                 Sort-Object { [int]$_.width * [int]$_.height } -Descending | 
@@ -126,7 +127,7 @@ function Search-SAlbumsByName {
         $album | Add-Member -MemberType NoteProperty -Name 'disc_count' -Value $null -Force
         
         $album
-    }
+    })
     
     return $albums
 }

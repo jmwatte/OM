@@ -215,12 +215,23 @@ function Show-CoverArt {
         # Add all image files
         $chafaArgs += $tempFiles
 
-        # Run chafa - output goes directly to console
-        Write-Verbose "Executing: chafa $($chafaArgs -join ' ')"
-        
+        # Run chafa - use Process class to bypass PowerShell's output pipeline
+        # PowerShell's & operator captures stdout as string objects, corrupting
+        # binary sixel/kitty/iterm escape sequences.
+        $chafaExe = (Get-Command chafa).Source
+        $chafaArgString = ($chafaArgs | ForEach-Object { if ($_ -match '\s') { "`"$_`"" } else { $_ } }) -join ' '
+        Write-Verbose "Executing: $chafaExe $chafaArgString"
+
         try {
-            & chafa @chafaArgs
-            Write-Verbose "Chafa execution completed."
+            $psi = [System.Diagnostics.ProcessStartInfo]::new()
+            $psi.FileName = $chafaExe
+            $psi.Arguments = $chafaArgString
+            $psi.UseShellExecute = $false
+            $psi.RedirectStandardOutput = $false
+            $psi.RedirectStandardError = $false
+            $proc = [System.Diagnostics.Process]::Start($psi)
+            $proc.WaitForExit()
+            Write-Verbose "Chafa execution completed (exit code $($proc.ExitCode))."
         }
         catch {
             Write-Warning "Failed to run chafa: $_"
