@@ -52,6 +52,9 @@ function Save-OMTagsLoop {
         [switch]$RequireBothPaired
     )
 
+    # --- Pass 1: Build tags for all eligible tracks ---
+    $trackEntries = @()
+
     foreach ($pair in $PairedTracks) {
         $hasAudio = $null -ne (Get-IfExists $pair 'AudioFile')
         $hasProvider = $null -ne (Get-IfExists $pair 'ProviderTrack')
@@ -108,6 +111,41 @@ function Save-OMTagsLoop {
             Write-Verbose "No tags to save for $filePath after filtering"
             continue
         }
+
+        $trackEntries += [PSCustomObject]@{
+            FilePath = $filePath
+            Tags     = $tags
+        }
+    }
+
+    # --- Normalize AlbumArtist across all tracks ---
+    # AlbumArtist must be consistent for an album. If Get-Tags produced different
+    # values per track (e.g. different soloists listed on different movements),
+    # pick the most common value and apply it to every track.
+    if ($trackEntries.Count -gt 1) {
+        $albumArtistValues = @($trackEntries | Where-Object { $_.Tags.ContainsKey('AlbumArtist') } |
+            ForEach-Object { $_.Tags['AlbumArtist'] })
+
+        if ($albumArtistValues.Count -gt 0) {
+            $uniqueValues = @($albumArtistValues | Select-Object -Unique)
+            if ($uniqueValues.Count -gt 1) {
+                # Pick the most frequent AlbumArtist value
+                $consistentAA = ($albumArtistValues | Group-Object | Sort-Object Count -Descending | Select-Object -First 1).Name
+                Write-Verbose "AlbumArtist inconsistency detected ($($uniqueValues.Count) distinct values). Normalizing all tracks to: $consistentAA"
+                Write-Host "ℹ️  AlbumArtist normalized across $($trackEntries.Count) tracks: $consistentAA" -ForegroundColor Cyan
+                foreach ($entry in $trackEntries) {
+                    if ($entry.Tags.ContainsKey('AlbumArtist')) {
+                        $entry.Tags['AlbumArtist'] = $consistentAA
+                    }
+                }
+            }
+        }
+    }
+
+    # --- Pass 2: Save tags ---
+    foreach ($entry in $trackEntries) {
+        $filePath = $entry.FilePath
+        $tags = $entry.Tags
 
         Write-Verbose ("Saving tags to: {0}" -f $filePath)
         Write-Verbose ("Tag values:`n{0}" -f ($tags | Out-String))
