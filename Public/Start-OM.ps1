@@ -539,7 +539,36 @@ function Start-OM {
                 Start-Sleep -Milliseconds 100  # Brief pause to ensure OS releases locks
             }
 
-            return Invoke-MoveAlbumWithRetry -mvArgs $mvArgs -useWhatIf $UseWhatIf
+            # If the current working directory is inside the album folder, temporarily move out
+            # so Windows doesn't block the rename/move due to CWD lock (e.g. when user runs "som .")
+            $cwdInsideAlbum = $false
+            $resolvedAlbumPath = (Resolve-Path -LiteralPath $AlbumPath -ErrorAction SilentlyContinue).ProviderPath
+            $currentCwd = (Get-Location).ProviderPath
+            if ($resolvedAlbumPath -and $currentCwd -and
+                ($currentCwd -eq $resolvedAlbumPath -or $currentCwd.StartsWith($resolvedAlbumPath + [System.IO.Path]::DirectorySeparatorChar))) {
+                $cwdInsideAlbum = $true
+                $cwdParent = Split-Path -Parent $resolvedAlbumPath
+                Write-Verbose "CWD is inside album folder - temporarily changing to parent: $cwdParent"
+                Push-Location -LiteralPath $cwdParent
+            }
+
+            try {
+                $result = Invoke-MoveAlbumWithRetry -mvArgs $mvArgs -useWhatIf $UseWhatIf
+            }
+            finally {
+                if ($cwdInsideAlbum) {
+                    Pop-Location
+                    # If the folder was renamed/moved, update CWD to the new location
+                    if ($result -and $result.Success -and $result.NewAlbumPath -ne $AlbumPath) {
+                        if (Test-Path -LiteralPath $result.NewAlbumPath -PathType Container) {
+                            Set-Location -LiteralPath $result.NewAlbumPath
+                            Write-Verbose "Updated CWD to renamed album folder: $($result.NewAlbumPath)"
+                        }
+                    }
+                }
+            }
+
+            return $result
         }
         # Helper scriptblock for handling move success (shared between sf and sa)
         $handleMoveSuccess = {
@@ -661,7 +690,26 @@ function Start-OM {
                         
                         # Move album to target folder
                         Write-Host "Moving album to target folder: $targetPath" -ForegroundColor Cyan
-                        Move-Item -LiteralPath $currentPath -Destination $targetPath -Force
+                        # Temporarily move CWD out if it's inside the album folder (e.g. "som .")
+                        $cwdInsideForTarget = $false
+                        $resolvedCurrentPath = (Resolve-Path -LiteralPath $currentPath -ErrorAction SilentlyContinue).ProviderPath
+                        $cwdNow = (Get-Location).ProviderPath
+                        if ($resolvedCurrentPath -and $cwdNow -and
+                            ($cwdNow -eq $resolvedCurrentPath -or $cwdNow.StartsWith($resolvedCurrentPath + [System.IO.Path]::DirectorySeparatorChar))) {
+                            $cwdInsideForTarget = $true
+                            Push-Location -LiteralPath (Split-Path -Parent $resolvedCurrentPath)
+                        }
+                        try {
+                            Move-Item -LiteralPath $currentPath -Destination $targetPath -Force
+                        }
+                        finally {
+                            if ($cwdInsideForTarget) {
+                                Pop-Location
+                                if (Test-Path -LiteralPath $targetPath -PathType Container) {
+                                    Set-Location -LiteralPath $targetPath
+                                }
+                            }
+                        }
                         
                         # Clean up empty parent folder if it's now empty
                         # SAFEGUARD: Only remove parent if we were processing from an artist folder (not single album mode)
