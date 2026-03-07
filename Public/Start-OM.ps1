@@ -479,6 +479,17 @@ function Start-OM {
             $script:audioFiles = $null
             $script:pairedTracks = $null
             $script:refreshTracks = $false
+
+            # Context object: explicit shared state passed to workflow functions
+            # Replaces implicit $script: variable access for testability
+            $script:ctx = @{
+                Album              = $albumOriginal
+                AudioFiles         = $null
+                PairedTracks       = $null
+                RefreshTracks      = $false
+                TargetFolderMoved  = $false
+                IsSingleAlbumPath  = $script:isSingleAlbumPath
+            }
             # derive album name and year
             # Try to extract year from the start of the folder name (e.g., "2023 - Album Name")
             if ($script:album.Name -match '^(\d{4})\s*[-]?\s*(.+)') {

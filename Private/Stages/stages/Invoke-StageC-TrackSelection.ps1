@@ -1194,8 +1194,10 @@ function Invoke-StageC-TrackSelection {
                     -ManualAlbumArtist $script:ManualAlbumArtist `
                     -UseWhatIf $UseWhatIf
                 $script:targetFolderMoved = $false
+                if ($script:ctx) { $script:ctx.TargetFolderMoved = $false }
                 Invoke-HandleMoveSuccess -MoveResult $moveResult -UseWhatIf $UseWhatIf -OldPath $oldpath `
-                    -TargetFolder $TargetFolder -NonInteractive:$NonInteractive -GoC:$GoC
+                    -TargetFolder $TargetFolder -NonInteractive:$NonInteractive -GoC:$GoC -Context $script:ctx
+                $script:targetFolderMoved = if ($script:ctx) { $script:ctx.TargetFolderMoved } else { $script:targetFolderMoved }
                 if ($script:targetFolderMoved) {
                     return (& $buildResult @{
                         NextStage = 'AlbumDone'
@@ -1423,8 +1425,10 @@ function Invoke-StageC-TrackSelection {
                         -UseWhatIf $UseWhatIf `
                         -SkipTagReading:$UseWhatIf
                     $script:targetFolderMoved = $false
+                    if ($script:ctx) { $script:ctx.TargetFolderMoved = $false }
                     Invoke-HandleMoveSuccess -MoveResult $moveResult -UseWhatIf $UseWhatIf -OldPath $oldpath `
-                        -TargetFolder $TargetFolder -NonInteractive:$NonInteractive -GoC:$GoC
+                        -TargetFolder $TargetFolder -NonInteractive:$NonInteractive -GoC:$GoC -Context $script:ctx
+                    $script:targetFolderMoved = if ($script:ctx) { $script:ctx.TargetFolderMoved } else { $script:targetFolderMoved }
 
                     if ($script:targetFolderMoved) {
                         return (& $buildResult @{ NextStage = 'AlbumDone'; SortMethod = $SortMethod; ReverseSource = [bool]$ReverseSource; UseWhatIf = $UseWhatIf })
