@@ -169,7 +169,7 @@ Files: `Invoke-StageA-ArtistSearch.ps1`, `Invoke-StageB-AlbumSelection.ps1`, `St
 Tests: Verify FindMode toggle works through Context.
 Risk: Low — very few references.
 
-### Step 5 — Sync Layer in Start-OM.ps1
+### Step 5 — Sync Layer in Start-OM.ps1 ✅ DONE (commit 5c908ca)
 
 Update Start-OM.ps1's stage-calling code to:
 1. Pass `-Context $script:ctx` to all three stages
@@ -184,7 +184,7 @@ Update Start-OM.ps1's stage-calling code to:
 Files: `Start-OM.ps1`
 Risk: Low — the sync is just copying values.
 
-### Step 6 — Remove `$script:` Fallbacks
+### Step 6 — Remove `$script:` Fallbacks ✅ DONE (commit 5c908ca)
 
 Once all callers pass Context:
 1. Remove the `if ($Context) { ... } else { $script:... }` fallback code
@@ -196,7 +196,7 @@ Files: All stage and workflow files.
 Tests: All existing tests still pass (they already use Context).
 Risk: Low — purely removing dead code.
 
-### Step 7 — Remove `$script:ctx` Wrapper (Optional, Final)
+### Step 7 — Remove `$script:ctx` Wrapper (Optional, Final) ✅ DONE (commit 5c908ca)
 
 At this point `$script:ctx` is the only `$script:` variable for shared state.
 Optionally rename it to a local `$ctx` passed through the call chain, fully
