@@ -87,24 +87,8 @@ function Invoke-StageC-TrackSelection {
         [hashtable]$Context
     )
 
-    # --- Resolve context: use passed Context or snapshot from $script: ---
-    if ($Context) {
-        $ctx = $Context
-    } else {
-        $ctx = @{
-            Album              = $script:album
-            AudioFiles         = $script:audioFiles
-            PairedTracks       = $script:pairedTracks
-            RefreshTracks      = $script:refreshTracks
-            TargetFolderMoved  = $script:targetFolderMoved
-            FindMode           = $script:findMode
-            ShowVerbose        = $script:showVerbose
-            GenreMode          = $script:genreMode
-            ManualAlbumArtist  = $script:ManualAlbumArtist
-            AutoModeActive     = $script:autoModeActive
-            BackNavigationMode = $script:backNavigationMode
-        }
-    }
+    # --- Resolve context ---
+    $ctx = $Context
 
     # Build default result hashtable (used as base for all returns)
     $defaultResult = @{
@@ -120,20 +104,8 @@ function Invoke-StageC-TrackSelection {
         SortMethod         = $SortMethod
     }
     # Helper to build a return hashtable by merging overrides into default.
-    # Also syncs $ctx back to $script: variables.
     $buildResult = {
         param([hashtable]$Overrides)
-        $script:album = $ctx.Album
-        $script:audioFiles = $ctx.AudioFiles
-        $script:pairedTracks = $ctx.PairedTracks
-        $script:refreshTracks = $ctx.RefreshTracks
-        $script:targetFolderMoved = $ctx.TargetFolderMoved
-        $script:findMode = $ctx.FindMode
-        $script:showVerbose = $ctx.ShowVerbose
-        $script:genreMode = $ctx.GenreMode
-        $script:ManualAlbumArtist = $ctx.ManualAlbumArtist
-        $script:autoModeActive = $ctx.AutoModeActive
-        $script:backNavigationMode = $ctx.BackNavigationMode
         $result = $defaultResult.Clone()
         foreach ($key in $Overrides.Keys) {
             $result[$key] = $Overrides[$key]

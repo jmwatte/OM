@@ -145,20 +145,8 @@ function Invoke-StageB-AlbumSelection {
         [hashtable]$Context
     )
     
-    # --- Resolve context: use passed Context or snapshot from $script: ---
-    if ($Context) {
-        $ctx = $Context
-    } else {
-        $ctx = @{
-            Album    = $script:album
-            FindMode = $script:findMode
-        }
-    }
-    # Helper: sync $ctx back to $script: variables
-    $syncBack = {
-        $script:album = $ctx.Album
-        $script:findMode = $ctx.FindMode
-    }
+    # --- Resolve context ---
+    $ctx = $Context
 
     if ($VerbosePreference -ne 'Continue') { Clear-Host }
     if ($ShowHeader) {
@@ -811,7 +799,6 @@ function Invoke-StageB-AlbumSelection {
                     Write-Host "✓ Switched to Quick Album Search mode" -ForegroundColor Green
                 }
                 # Return to Stage A to start with new find mode
-                & $syncBack
                 return @{
                     NextStage             = 'A'
                     SelectedAlbum         = $null

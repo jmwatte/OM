@@ -13,8 +13,6 @@ function Invoke-HandleMoveSuccess {
     .PARAMETER Context
         Hashtable with mutable shared state: Album, AudioFiles, PairedTracks,
         RefreshTracks, TargetFolderMoved, IsSingleAlbumPath.
-        When provided, the function reads/writes this object instead of $script: variables.
-        Falls back to $script: variables when Context is not provided (transition period).
     #>
     param(
         $MoveResult,
@@ -25,21 +23,6 @@ function Invoke-HandleMoveSuccess {
         [switch]$GoC,
         [hashtable]$Context
     )
-
-    # --- Context accessors: use $Context when provided, fall back to $script: ---
-    $getAlbum = { if ($Context) { $Context.Album } else { $script:album } }
-    $setAlbum = { param($v) if ($Context) { $Context.Album = $v } else { $script:album = $v } }
-    $getAudioFiles = { if ($Context) { $Context.AudioFiles } else { $script:audioFiles } }
-    $setAudioFiles = { param($v) if ($Context) { $Context.AudioFiles = $v } else { $script:audioFiles = $v } }
-    $getPairedTracks = { if ($Context) { $Context.PairedTracks } else { $script:pairedTracks } }
-    $setPairedTrackAudio = {
-        param($index, $audioFile)
-        if ($Context) { $Context.PairedTracks[$index].AudioFile = $audioFile }
-        else { $script:pairedTracks[$index].AudioFile = $audioFile }
-    }
-    $setRefreshTracks = { param($v) if ($Context) { $Context.RefreshTracks = $v } else { $script:refreshTracks = $v } }
-    $setTargetFolderMoved = { param($v) if ($Context) { $Context.TargetFolderMoved = $v } else { $script:targetFolderMoved = $v } }
-    $getIsSingleAlbumPath = { if ($Context) { $Context.IsSingleAlbumPath } else { $script:isSingleAlbumPath } }
 
     if ($MoveResult -and $MoveResult.Success) {
         if ($UseWhatIf) {
@@ -59,12 +42,11 @@ function Invoke-HandleMoveSuccess {
         else {
             if ($MoveResult.NewAlbumPath -ne $OldPath) {
                 # Folder was moved/renamed - update album and reload audio files from new location
-                & $setAlbum (Get-Item -LiteralPath $MoveResult.NewAlbumPath)
+                $Context.Album = Get-Item -LiteralPath $MoveResult.NewAlbumPath
 
                 # Dispose old TagFile handles before reload to avoid orphaned handles
-                $pairedTracks = & $getPairedTracks
-                if ($pairedTracks -and $pairedTracks.Count -gt 0) {
-                    foreach ($pt in $pairedTracks) {
+                if ($Context.PairedTracks -and $Context.PairedTracks.Count -gt 0) {
+                    foreach ($pt in $Context.PairedTracks) {
                         if ($pt.AudioFile -and $pt.AudioFile.TagFile) {
                             try { $pt.AudioFile.TagFile.Dispose() } catch { }
                         }
@@ -72,23 +54,20 @@ function Invoke-HandleMoveSuccess {
                 }
 
                 # Reload audio files with fresh TagLib handles from the NEW album path
-                $album = & $getAlbum
-                $reloaded = Reload-OMAudioFiles -AlbumPath $album.FullName
-                & $setAudioFiles $reloaded
+                $Context.AudioFiles = Reload-OMAudioFiles -AlbumPath $Context.Album.FullName
                 # Update paired tracks with reloaded audio files to reflect updated tags
-                if ($pairedTracks -and $pairedTracks.Count -gt 0) {
-                    for ($i = 0; $i -lt [Math]::Min($pairedTracks.Count, $reloaded.Count); $i++) {
-                        & $setPairedTrackAudio $i $reloaded[$i]
+                if ($Context.PairedTracks -and $Context.PairedTracks.Count -gt 0) {
+                    for ($i = 0; $i -lt [Math]::Min($Context.PairedTracks.Count, $Context.AudioFiles.Count); $i++) {
+                        $Context.PairedTracks[$i].AudioFile = $Context.AudioFiles[$i]
                     }
                 }
-                & $setRefreshTracks $true
+                $Context.RefreshTracks = $true
             }
 
             # Handle TargetFolder move if specified
             if ($TargetFolder) {
                 Write-Verbose "TargetFolder specified: $TargetFolder"
-                $album = & $getAlbum
-                $currentPath = $album.FullName
+                $currentPath = $Context.Album.FullName
                 $folderName = Split-Path $currentPath -Leaf
                 $originalParentFolder = Split-Path $currentPath -Parent
                 Write-Verbose "Current album path: $currentPath"
@@ -96,7 +75,7 @@ function Invoke-HandleMoveSuccess {
 
                 # Get AlbumArtist from the first audio file's tags
                 $albumArtistName = 'Unknown Artist'
-                $audioFiles = & $getAudioFiles
+                $audioFiles = $Context.AudioFiles
                 if ($audioFiles -and $audioFiles.Count -gt 0 -and $audioFiles[0].PSObject.Properties['FilePath']) {
                     Write-Verbose "Found $($audioFiles.Count) audio files for AlbumArtist extraction"
                     try {
@@ -180,10 +159,9 @@ function Invoke-HandleMoveSuccess {
                 }
 
                 # Clean up empty parent folder
-                $isSingleAlbumPath = & $getIsSingleAlbumPath
                 $shouldCleanupParent = $originalParentFolder -and
                                        (Test-Path -LiteralPath $originalParentFolder) -and
-                                       (-not $isSingleAlbumPath)
+                                       (-not $Context.IsSingleAlbumPath)
 
                 if ($shouldCleanupParent) {
                     $remainingItems = @(Get-ChildItem -LiteralPath $originalParentFolder -Force)
@@ -196,17 +174,16 @@ function Invoke-HandleMoveSuccess {
                         Write-Verbose "Parent folder not empty ($(($remainingItems.Count)) items remaining), keeping it"
                     }
                 }
-                elseif ($isSingleAlbumPath) {
+                elseif ($Context.IsSingleAlbumPath) {
                     Write-Verbose "Single album mode: Skipping parent folder cleanup to preserve original folder structure"
                 }
 
                 # Update album and reload audio files from new location
-                & $setAlbum (Get-Item -LiteralPath $targetPath)
+                $Context.Album = Get-Item -LiteralPath $targetPath
 
                 # Dispose old TagLib handles before reloading
-                $pairedTracks = & $getPairedTracks
-                if ($pairedTracks -and $pairedTracks.Count -gt 0) {
-                    foreach ($pt in $pairedTracks) {
+                if ($Context.PairedTracks -and $Context.PairedTracks.Count -gt 0) {
+                    foreach ($pt in $Context.PairedTracks) {
                         if ($pt.AudioFile -and $pt.AudioFile.TagFile) {
                             try { $pt.AudioFile.TagFile.Dispose() } catch { }
                         }
@@ -214,25 +191,23 @@ function Invoke-HandleMoveSuccess {
                 }
 
                 # Reload audio files with fresh TagLib handles from the target path
-                $album = & $getAlbum
-                $reloaded = Reload-OMAudioFiles -AlbumPath $album.FullName
-                & $setAudioFiles $reloaded
+                $Context.AudioFiles = Reload-OMAudioFiles -AlbumPath $Context.Album.FullName
 
                 # Update paired tracks with reloaded audio files
-                if ($pairedTracks -and $pairedTracks.Count -gt 0) {
-                    for ($i = 0; $i -lt [Math]::Min($pairedTracks.Count, $reloaded.Count); $i++) {
-                        & $setPairedTrackAudio $i $reloaded[$i]
+                if ($Context.PairedTracks -and $Context.PairedTracks.Count -gt 0) {
+                    for ($i = 0; $i -lt [Math]::Min($Context.PairedTracks.Count, $Context.AudioFiles.Count); $i++) {
+                        $Context.PairedTracks[$i].AudioFile = $Context.AudioFiles[$i]
                     }
                 }
 
                 # Album has been moved to target folder
-                & $setTargetFolderMoved $true
+                $Context.TargetFolderMoved = $true
                 Write-Host "Album saved and moved to target folder." -ForegroundColor Green
             }
 
             # After TargetFolder logic, show appropriate message
             if ($TargetFolder) {
-                # Already handled above with targetFolderMoved
+                # Already handled above with TargetFolderMoved
             }
             elseif ($MoveResult.NewAlbumPath -ne $OldPath) {
                 Write-Host "Album saved and folder renamed. Choose 's' to skip to next album, or select another option." -ForegroundColor Yellow

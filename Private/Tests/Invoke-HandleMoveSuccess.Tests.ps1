@@ -242,24 +242,4 @@ Describe 'Invoke-HandleMoveSuccess' {
         }
     }
 
-    Context 'Without Context (backward compatibility)' {
-        It 'falls back to $script: variables when no Context provided' {
-            $script:album = Get-Item -LiteralPath $script:albumDir
-            $script:audioFiles = @()
-            $script:pairedTracks = @()
-            $script:refreshTracks = $false
-            $script:targetFolderMoved = $false
-            $script:isSingleAlbumPath = $false
-
-            $moveResult = @{ Success = $true; NewAlbumPath = $script:albumDir }
-
-            Invoke-HandleMoveSuccess `
-                -MoveResult $moveResult `
-                -UseWhatIf $false `
-                -OldPath $script:albumDir `
-                -TargetFolder $script:targetDir
-
-            $script:targetFolderMoved | Should -BeTrue
-        }
-    }
 }

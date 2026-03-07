@@ -55,14 +55,8 @@ function Invoke-StageA-ArtistSelection {
         [hashtable]$Context
     )
 
-    # --- Resolve context: use passed Context or snapshot from $script: ---
-    if ($Context) {
-        $ctx = $Context
-    } else {
-        $ctx = @{
-            FindMode = $script:findMode
-        }
-    }
+    # --- Resolve context ---
+    $ctx = $Context
 
     # Build default result hashtable
     $defaultResult = @{
@@ -75,10 +69,6 @@ function Invoke-StageA-ArtistSelection {
         CachedArtistId     = $false  # sentinel: $false means "not changed"
         SkipQuickPrompts   = $false  # sentinel: $false means "not changed"
         LoadStageBResults  = $true
-    }
-    # Helper: sync $ctx back to $script: variables
-    $syncBack = {
-        $script:findMode = $ctx.FindMode
     }
 
     if ($VerbosePreference -ne 'Continue') { Clear-Host }
@@ -281,7 +271,6 @@ function Invoke-StageA-ArtistSelection {
         else {
             Write-Warning "Invalid mode: $newMode. Staying with $($ctx.FindMode)."
         }
-        & $syncBack
         return $defaultResult
     }
 

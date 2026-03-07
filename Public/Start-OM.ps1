@@ -414,7 +414,7 @@ function Start-OM {
                 [string]$AlbumName,
                 [int]$TrackCount = 0
             )
-            Show-OMHeader -Provider $Provider -Artist $Artist -AlbumName $AlbumName -TrackCount $TrackCount -QobuzUrlLocale $qobuzUrlLocale -ScriptAlbum $script:album
+            Show-OMHeader -Provider $Provider -Artist $Artist -AlbumName $AlbumName -TrackCount $TrackCount -QobuzUrlLocale $qobuzUrlLocale -ScriptAlbum $script:ctx.Album
         }
         # Replaced inline Get-StringSimilarity with centralized helper in Private/Utils/Get-StringSimilarity.ps1
         # See: Private/Utils/Get-StringSimilarity.ps1
@@ -432,7 +432,7 @@ function Start-OM {
         # Implementation moved to: Private/Utils/Invoke-ProviderWithFallback.ps1
         # The function is expected to be available via module import (no inline implementation here).
         
-        $script:album = $null
+        $script:ctx.Album = $null
         
         # Handle single album path: extract artist from parent folder
         if ($script:isSingleAlbumPath) {
@@ -473,15 +473,9 @@ function Start-OM {
             # Reset provider to the original value so mid-album switches don't carry over
             $Provider = $originalProvider
 
-            $script:album = $albumOriginal
-            $script:ManualAlbumArtist = $null
-            # Initialize script-scope variables used by handleMoveSuccess scriptblock
-            $script:audioFiles = $null
-            $script:pairedTracks = $null
-            $script:refreshTracks = $false
-
             # Context object: explicit shared state passed to workflow functions
-            # Replaces implicit $script: variable access for testability
+            # On first iteration, reads from $script: vars; on subsequent iterations, preserves
+            # FindMode/ShowVerbose/GenreMode from previous album's ctx
             $script:ctx = @{
                 Album              = $albumOriginal
                 AudioFiles         = $null
@@ -489,30 +483,30 @@ function Start-OM {
                 RefreshTracks      = $false
                 TargetFolderMoved  = $false
                 IsSingleAlbumPath  = $script:isSingleAlbumPath
-                FindMode           = $script:findMode
-                ShowVerbose        = $script:showVerbose
-                GenreMode          = $script:genreMode
+                FindMode           = if ($script:ctx) { $script:ctx.FindMode } else { $script:findMode }
+                ShowVerbose        = if ($script:ctx) { $script:ctx.ShowVerbose } else { $script:showVerbose }
+                GenreMode          = if ($script:ctx) { $script:ctx.GenreMode } else { $script:genreMode }
                 ManualAlbumArtist  = $null
                 AutoModeActive     = $false
                 BackNavigationMode = $false
             }
             # derive album name and year
             # Try to extract year from the start of the folder name (e.g., "2023 - Album Name")
-            if ($script:album.Name -match '^(\d{4})\s*[-]?\s*(.+)') {
+            if ($script:ctx.Album.Name -match '^(\d{4})\s*[-]?\s*(.+)') {
                 $year = $matches[1]
                 $albumName = Undo-PathSanitization -Name $matches[2].Trim()
                 $script:albumName = $albumName
             }
             else {
                 $year = $null
-                $script:albumName = Undo-PathSanitization -Name $script:album.Name.Trim()
+                $script:albumName = Undo-PathSanitization -Name $script:ctx.Album.Name.Trim()
                 $albumName = $script:albumName
             }
-            $audioFilesCheck = @(Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
+            $audioFilesCheck = @(Get-ChildItem -LiteralPath $script:ctx.Album.FullName -File -Recurse | 
                 Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' } |
                 Sort-Object { [regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(10, '0') }) })
             if (-not $audioFilesCheck -or $audioFilesCheck.Count -eq 0) {
-                Write-Warning "No supported audio files found in album folder: $($script:album.FullName). Skipping album."
+                Write-Warning "No supported audio files found in album folder: $($script:ctx.Album.FullName). Skipping album."
                 continue
             }
             $script:trackCount = $audioFilesCheck.Count
@@ -525,11 +519,9 @@ function Start-OM {
             $pageSize = 25
             $albumDone = $false
             $mastersOnlyMode = $true  # Track Discogs filter state: true=masters only, false=all releases
-            $script:findMode = 'quick'  # Always start in quick find mode
-            $script:ctx.FindMode = 'quick'
+            $script:ctx.FindMode = 'quick'  # Always start in quick find mode
             $script:quickAlbumCandidates = $null
             $script:quickCurrentPage = 1
-            $script:backNavigationMode = $false
             $script:ctx.BackNavigationMode = $false
             $currentArtist = $script:artist  # Persistent current artist for quick find mode
             $currentAlbum = $script:albumName  # Persistent current album for quick find mode
@@ -544,7 +536,7 @@ function Start-OM {
                 }
                 
                 # NEW: Handle quick find mode (only when not in track selection stage)
-                if ($script:findMode -eq 'quick' -and $stage -ne 'C') {
+                if ($script:ctx.FindMode -eq 'quick' -and $stage -ne 'C') {
                     if ($VerbosePreference -ne 'Continue') { Clear-Host }
                     & $showHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
                     Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
@@ -553,8 +545,8 @@ function Start-OM {
                     # Auto-detect artist and album from folder structure
                     if (-not $skipQuickPrompts) {
                         Write-Verbose "DEBUG: Running auto-detection (skipQuickPrompts=$skipQuickPrompts)"
-                        $folderName = $script:album.Name
-                        $artistFolderName = $script:album.Parent.Name
+                        $folderName = $script:ctx.Album.Name
+                        $artistFolderName = $script:ctx.Album.Parent.Name
                         
                         # Extract album name (strip year if present) — unified regex with main loop
                         if ($folderName -match '^(\d{4})\s*[-]?\s*(.+)') {
@@ -570,7 +562,7 @@ function Start-OM {
                         # Try to load AlbumArtist tag from first audio file for better detection
                         $tagArtist = $null
                         try {
-                            $firstAudioFile = Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse -ErrorAction Stop | 
+                            $firstAudioFile = Get-ChildItem -LiteralPath $script:ctx.Album.FullName -File -Recurse -ErrorAction Stop | 
                                 Where-Object { $_.Extension -in '.flac', '.mp3', '.m4a', '.ogg', '.opus', '.wma', '.ape' } |
                                 Select-Object -First 1
                             
@@ -652,7 +644,7 @@ function Start-OM {
                         $quickArtist = $currentArtist
                         if (-not $quickArtist) {
                             Write-Host "Artist is required. Switching to artist-first mode." -ForegroundColor Yellow
-                            $script:findMode = 'artist-first'
+                            $script:ctx.FindMode = 'artist-first'
                             $stage = 'A'
                             continue stageLoop
                         }
@@ -663,7 +655,7 @@ function Start-OM {
                         $quickAlbum = $currentAlbum
                         if (-not $quickAlbum) {
                             Write-Host "Album is required. Switching to artist-first mode." -ForegroundColor Yellow
-                            $script:findMode = 'artist-first'
+                            $script:ctx.FindMode = 'artist-first'
                             $stage = 'A'
                             continue stageLoop
                         }
@@ -677,7 +669,7 @@ function Start-OM {
                     }
 
                     # Check if we have cached albums from back navigation
-                    if ($script:backNavigationMode -and $script:quickAlbumCandidates) {
+                    if ($script:ctx.BackNavigationMode -and $script:quickAlbumCandidates) {
                         $albumCandidates = $script:quickAlbumCandidates
                         Write-Host "Using cached album results for back navigation..." -ForegroundColor Cyan
                     }
@@ -721,7 +713,7 @@ function Start-OM {
                                     continue quickSearchLoop
                                 }
                                 elseif ($retryChoice -eq 'a') {
-                                    $script:findMode = 'artist-first'
+                                    $script:ctx.FindMode = 'artist-first'
                                     $stage = 'A'
                                     break quickSearchLoop
                                 }
@@ -755,14 +747,14 @@ function Start-OM {
                             }
                         }
 
-                        if ($script:findMode -ne 'quick') {
+                        if ($script:ctx.FindMode -ne 'quick') {
                             continue stageLoop
                         }
 
                         # Store candidates for back navigation
                         $script:quickAlbumCandidates = $albumCandidates
                         $script:quickCurrentPage = 1
-                        $script:backNavigationMode = $false  # Reset back navigation flag
+                        $script:ctx.BackNavigationMode = $false  # Reset back navigation flag
                     }
                     
                     # AUTO MODE: Check existing candidates first, then try fallback if needed
@@ -895,11 +887,11 @@ function Start-OM {
                                 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
                                 Write-Host ""
                                 Write-Host "Album: $($ProviderAlbum.name)" -ForegroundColor Green
-                                Write-Host "Genre mode: $($script:genreMode)" -ForegroundColor Yellow
+                                Write-Host "Genre mode: $($script:ctx.GenreMode)" -ForegroundColor Yellow
                                 Write-Host ""
 
                                 $genreResult = Update-OMGenresFromProvider -SelectedAlbum $ProviderAlbum -ProviderArtist $ProviderArtist `
-                                    -AlbumPath $script:album.FullName -GenreMode $script:genreMode -UseWhatIf:$useWhatIf
+                                    -AlbumPath $script:ctx.Album.FullName -GenreMode $script:ctx.GenreMode -UseWhatIf:$useWhatIf
                                 
                                 if (-not $genreResult.Success -and $genreResult.Total -eq 0) {
                                     Write-Warning "No audio files found. Skipping."
@@ -911,7 +903,7 @@ function Start-OM {
                                     Write-Host "🖼️  Saving cover art..." -ForegroundColor Cyan
                                     $config = Get-OMConfig
                                     $maxSize = $config.CoverArt.FolderImageSize
-                                    Save-CoverArtWithFallback -CoverUrl $coverUrl -AlbumPath $script:album.FullName `
+                                    Save-CoverArtWithFallback -CoverUrl $coverUrl -AlbumPath $script:ctx.Album.FullName `
                                         -MaxSize $maxSize -Provider $Provider `
                                         -AlbumName $quickAlbum -ArtistName $quickArtist `
                                         -AutoFallback:$AutoFallback -UseWhatIf:$useWhatIf
@@ -922,18 +914,18 @@ function Start-OM {
                             }
                             
                             $stage = 'C'
-                            $script:autoModeActive = $true
+                            $script:ctx.AutoModeActive = $true
                             continue stageLoop
                         }
                         else {
                             if ($AutoWait) {
                                 Write-Warning "AUTO: No high-confidence match found. Falling back to interactive selection."
-                                $script:autoModeActive = $false
+                                $script:ctx.AutoModeActive = $false
                                 # Fall through to albumSelectionLoop so user can fix search and retry
                             }
                             else {
                                 Write-Warning "AUTO: No high-confidence match found across all providers. Skipping album."
-                                $script:autoModeActive = $false
+                                $script:ctx.AutoModeActive = $false
                                 $albumDone = $true
                                 continue stageLoop
                             }
@@ -968,7 +960,7 @@ function Start-OM {
                         $originalColor = [Console]::ForegroundColor
                         [Console]::ForegroundColor = [ConsoleColor]::Yellow
                         $modeIndicator = if (
-                        $script:backNavigationMode) { " (Back Navigation - use 'f' to search again)" } else { "" }
+                        $script:ctx.BackNavigationMode) { " (Back Navigation - use 'f' to search again)" } else { "" }
                         $albumChoice = Read-Host "Select album [number] (Enter=first), (b)ack, (p)rovider, (f)indMode, (ni) New Item, (x)ip, cover: cv/cvo/cs/ct, (?) help, or new search term$modeIndicator"
                         [Console]::ForegroundColor = $originalColor
                         if ($albumChoice -eq '') { $albumChoice = '1' }
@@ -988,40 +980,40 @@ function Start-OM {
                             $Provider = 'Spotify'
                             Write-Host "Switched to provider: $Provider" -ForegroundColor Green
                             $skipQuickPrompts = $true
-                            $script:backNavigationMode = $false
+                            $script:ctx.BackNavigationMode = $false
                             continue stageLoop
                         }
                         elseif ($albumChoice -eq 'pq') {
                             $Provider = 'Qobuz'
                             Write-Host "Switched to provider: $Provider" -ForegroundColor Green
                             $skipQuickPrompts = $true
-                            $script:backNavigationMode = $false
+                            $script:ctx.BackNavigationMode = $false
                             continue stageLoop
                         }
                         elseif ($albumChoice -eq 'pd') {
                             $Provider = 'Discogs'
                             Write-Host "Switched to provider: $Provider" -ForegroundColor Green
                             $skipQuickPrompts = $true
-                            $script:backNavigationMode = $false
+                            $script:ctx.BackNavigationMode = $false
                             continue stageLoop
                         }
                         elseif ($albumChoice -eq 'pm') {
                             $Provider = 'MusicBrainz'
                             Write-Host "Switched to provider: $Provider" -ForegroundColor Green
                             $skipQuickPrompts = $true
-                            $script:backNavigationMode = $false
+                            $script:ctx.BackNavigationMode = $false
                             continue stageLoop
                         }
                         elseif ($albumChoice -eq 'b') {
                             # Go back to re-enter artist/album search terms
                             $skipQuickPrompts = $false
-                            $script:backNavigationMode = $false
+                            $script:ctx.BackNavigationMode = $false
                             $script:quickAlbumCandidates = $null
                             continue stageLoop
                         }
                         elseif ($albumChoice.ToLower() -eq 'f') {
-                            $script:findMode = 'artist-first'
-                            $script:backNavigationMode = $false
+                            $script:ctx.FindMode = 'artist-first'
+                            $script:ctx.BackNavigationMode = $false
                             $stage = 'A'
                             continue stageLoop
                         }
@@ -1032,7 +1024,7 @@ function Start-OM {
                             if ($res.ChangedArtist) { $currentArtist = $res.Artist }
                             if ($res.ChangedAlbum) { $currentAlbum = $res.Album }
                             $skipQuickPrompts = $true
-                            $script:backNavigationMode = $false
+                            $script:ctx.BackNavigationMode = $false
                             continue stageLoop
                         }
                         elseif ($albumChoice -eq 'c') {
@@ -1078,7 +1070,7 @@ function Start-OM {
                                 $albumIndex = $index - 1
                                 $selectedAlbum = $albumCandidates[$albumIndex]
                                 if ($selectedAlbum.cover_url) {
-                                    $result = Save-CoverArt -CoverUrl $selectedAlbum.cover_url -AlbumPath $script:album.FullName -Action SaveToFolder -MaxSize $maxSize -WhatIf:$useWhatIf
+                                    $result = Save-CoverArt -CoverUrl $selectedAlbum.cover_url -AlbumPath $script:ctx.Album.FullName -Action SaveToFolder -MaxSize $maxSize -WhatIf:$useWhatIf
                                     if (-not $result.Success) {
                                         Write-Warning "Failed to save cover art for album $index ($($selectedAlbum.name)): $($result.Error)"
                                     }
@@ -1111,7 +1103,7 @@ function Start-OM {
                                 $albumIndex = $index - 1
                                 $selectedAlbum = $albumCandidates[$albumIndex]
                                 if ($selectedAlbum.cover_url) {
-                                    $result = Invoke-OMCoverArtEmbed -AlbumPath $script:album.FullName -CoverUrl $selectedAlbum.cover_url -MaxSize $maxSize -UseWhatIf:$useWhatIf
+                                    $result = Invoke-OMCoverArtEmbed -AlbumPath $script:ctx.Album.FullName -CoverUrl $selectedAlbum.cover_url -MaxSize $maxSize -UseWhatIf:$useWhatIf
                                     if ($null -ne $result -and -not $result.Success) {
                                         Write-Warning "Failed to embed cover art for album $index ($($selectedAlbum.name)): $($result.Error)"
                                     }
@@ -1171,7 +1163,7 @@ function Start-OM {
                                     $ProviderArtist = @{ name = $artistNameFromAlbum; id = $artistNameFromAlbum }
                                 }
                                 
-                                $script:backNavigationMode = $false  # Reset back navigation flag
+                                $script:ctx.BackNavigationMode = $false  # Reset back navigation flag
                                 
                                 # UpdateGenresOnly mode: Skip Stage C and directly update genres
                                 if ($UpdateGenresOnly) {
@@ -1180,11 +1172,11 @@ function Start-OM {
                                     Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
                                     Write-Host ""
                                     Write-Host "Selected album: $($ProviderAlbum.name)" -ForegroundColor Green
-                                    Write-Host "Genre mode: $($script:genreMode)" -ForegroundColor Yellow
+                                    Write-Host "Genre mode: $($script:ctx.GenreMode)" -ForegroundColor Yellow
                                     Write-Host ""
                                     
                                     $genreResult = Update-OMGenresFromProvider -SelectedAlbum $ProviderAlbum -ProviderArtist $ProviderArtist `
-                                        -AlbumPath $script:album.FullName -GenreMode $script:genreMode -UseWhatIf:$useWhatIf
+                                        -AlbumPath $script:ctx.Album.FullName -GenreMode $script:ctx.GenreMode -UseWhatIf:$useWhatIf
                                     
                                     if (-not $genreResult.Success -and $genreResult.Genres.Count -eq 0 -and $genreResult.Total -gt 0) {
                                         # No genres found - offer manual entry (interactive only)
@@ -1198,7 +1190,7 @@ function Start-OM {
                                                 # Create a temporary album object with the manual genres
                                                 $manualAlbum = @{ genres = $manualGenreArray }
                                                 $genreResult = Update-OMGenresFromProvider -SelectedAlbum $manualAlbum `
-                                                    -AlbumPath $script:album.FullName -GenreMode $script:genreMode -UseWhatIf:$useWhatIf
+                                                    -AlbumPath $script:ctx.Album.FullName -GenreMode $script:ctx.GenreMode -UseWhatIf:$useWhatIf
                                             }
                                         } else {
                                             Write-Host "Skipping album (no genres to apply)." -ForegroundColor Yellow
@@ -1213,7 +1205,7 @@ function Start-OM {
                                         Write-Host "🖼️  Saving cover art..." -ForegroundColor Cyan
                                         $config = Get-OMConfig
                                         $maxSize = $config.CoverArt.FolderImageSize
-                                        Save-CoverArtWithFallback -CoverUrl $coverUrl -AlbumPath $script:album.FullName `
+                                        Save-CoverArtWithFallback -CoverUrl $coverUrl -AlbumPath $script:ctx.Album.FullName `
                                             -MaxSize $maxSize -Provider $Provider `
                                             -AlbumName $quickAlbum -ArtistName $quickArtist `
                                             -AutoFallback:$AutoFallback -UseWhatIf:$useWhatIf
@@ -1250,7 +1242,7 @@ function Start-OM {
                             # New search term - update album name and restart search
                             $currentAlbum = $albumChoice
                             $skipQuickPrompts = $true
-                            $script:backNavigationMode = $false
+                            $script:ctx.BackNavigationMode = $false
                             $script:quickAlbumCandidates = $null
                             continue stageLoop
                         }
@@ -1337,7 +1329,7 @@ function Start-OM {
                             ProviderArtist     = $ProviderArtist
                             AlbumName          = $albumName
                             Year               = $year
-                            CachedAlbums       = if ($script:findMode -eq 'quick' -and $script:quickAlbumCandidates) { $script:quickAlbumCandidates } else { $cachedAlbums }
+                            CachedAlbums       = if ($script:ctx.FindMode -eq 'quick' -and $script:quickAlbumCandidates) { $script:quickAlbumCandidates } else { $cachedAlbums }
                             CachedArtistId     = $cachedArtistId
                             NormalizeDiscogsId = $normalizeDiscogsId
                             Artist             = $artist
@@ -1354,7 +1346,7 @@ function Start-OM {
                             CurrentPage        = $currentAlbumPage
                             UpdateGenresOnly   = $UpdateGenresOnly
                             UpdateOnly         = $UpdateOnly
-                            GenreMode          = $script:genreMode
+                            GenreMode          = $script:ctx.GenreMode
                             UseWhatIf          = $useWhatIf
                             Context            = $script:ctx
                         }
@@ -1410,7 +1402,7 @@ function Start-OM {
                                 Write-Host "🖼️  Saving cover art..." -ForegroundColor Cyan
                                 $config = Get-OMConfig
                                 $maxSize = $config.CoverArt.FolderImageSize
-                                Save-CoverArtWithFallback -CoverUrl $coverUrl -AlbumPath $script:album.FullName `
+                                Save-CoverArtWithFallback -CoverUrl $coverUrl -AlbumPath $script:ctx.Album.FullName `
                                     -MaxSize $maxSize -Provider $Provider `
                                     -AlbumName $quickAlbum -ArtistName $quickArtist `
                                     -AutoFallback:$AutoFallback -UseWhatIf:$useWhatIf
