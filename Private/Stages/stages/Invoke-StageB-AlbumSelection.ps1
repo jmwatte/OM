@@ -139,9 +139,27 @@ function Invoke-StageB-AlbumSelection {
         [string]$GenreMode = 'Replace',
 
         [Parameter()]
-        [switch]$UseWhatIf
+        [switch]$UseWhatIf,
+
+        [Parameter()]
+        [hashtable]$Context
     )
     
+    # --- Resolve context: use passed Context or snapshot from $script: ---
+    if ($Context) {
+        $ctx = $Context
+    } else {
+        $ctx = @{
+            Album    = $script:album
+            FindMode = $script:findMode
+        }
+    }
+    # Helper: sync $ctx back to $script: variables
+    $syncBack = {
+        $script:album = $ctx.Album
+        $script:findMode = $ctx.FindMode
+    }
+
     if ($VerbosePreference -ne 'Continue') { Clear-Host }
     if ($ShowHeader) {
         & $ShowHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -trackCount $script:trackCount
@@ -506,7 +524,7 @@ function Invoke-StageB-AlbumSelection {
         }
         
         # Show find mode indicator
-        if ($script:findMode -eq 'quick') {
+        if ($ctx.FindMode -eq 'quick') {
             Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
         } else {
             Write-Host "🔍 Find Mode: Artist-First" -ForegroundColor Magenta
@@ -574,7 +592,7 @@ function Invoke-StageB-AlbumSelection {
             # If UpdateGenresOnly, handle it here before returning
             if ($UpdateGenresOnly) {
                 Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
-                    -AlbumPath $script:album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                    -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
                 
                 return @{
                     NextStage             = 'AlbumDone'
@@ -601,7 +619,7 @@ function Invoke-StageB-AlbumSelection {
             # If UpdateGenresOnly, update genres and return AlbumDone
             if ($UpdateGenresOnly -and $selectedAlbum) {
                 Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
-                    -AlbumPath $script:album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                    -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
                 
                 return @{
                     NextStage             = 'AlbumDone'
@@ -628,7 +646,7 @@ function Invoke-StageB-AlbumSelection {
             # If UpdateGenresOnly, update genres and return AlbumDone
             if ($UpdateGenresOnly -and $selectedAlbum) {
                 Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
-                    -AlbumPath $script:album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                    -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
                 
                 return @{
                     NextStage             = 'AlbumDone'
@@ -784,15 +802,16 @@ function Invoke-StageB-AlbumSelection {
             }
             '^f$' {
                 # Toggle find mode between quick and artist-first
-                if ($script:findMode -eq 'quick') {
-                    $script:findMode = 'artist-first'
+                if ($ctx.FindMode -eq 'quick') {
+                    $ctx.FindMode = 'artist-first'
                     Write-Host "✓ Switched to Artist-First Search mode" -ForegroundColor Green
                 }
                 else {
-                    $script:findMode = 'quick'
+                    $ctx.FindMode = 'quick'
                     Write-Host "✓ Switched to Quick Album Search mode" -ForegroundColor Green
                 }
                 # Return to Stage A to start with new find mode
+                & $syncBack
                 return @{
                     NextStage             = 'A'
                     SelectedAlbum         = $null
@@ -864,7 +883,7 @@ function Invoke-StageB-AlbumSelection {
                 # If UpdateGenresOnly, update genres and return AlbumDone
                 if ($UpdateGenresOnly -and $selectedAlbum) {
                     Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
-                        -AlbumPath $script:album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                        -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
                     
                     return @{
                         NextStage             = 'AlbumDone'
@@ -1098,7 +1117,7 @@ function Invoke-StageB-AlbumSelection {
                     # If UpdateGenresOnly mode, update genres and skip Stage C
                     if ($UpdateGenresOnly) {
                         Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
-                            -AlbumPath $script:album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                            -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
                         
                         return @{
                             NextStage             = 'AlbumDone'

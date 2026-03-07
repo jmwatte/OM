@@ -49,8 +49,20 @@ function Invoke-StageA-ArtistSelection {
         [scriptblock]$ShowHeader,
         
         [Parameter()]
-        [scriptblock]$NormalizeDiscogsId
+        [scriptblock]$NormalizeDiscogsId,
+
+        [Parameter()]
+        [hashtable]$Context
     )
+
+    # --- Resolve context: use passed Context or snapshot from $script: ---
+    if ($Context) {
+        $ctx = $Context
+    } else {
+        $ctx = @{
+            FindMode = $script:findMode
+        }
+    }
 
     # Build default result hashtable
     $defaultResult = @{
@@ -64,12 +76,16 @@ function Invoke-StageA-ArtistSelection {
         SkipQuickPrompts   = $false  # sentinel: $false means "not changed"
         LoadStageBResults  = $true
     }
+    # Helper: sync $ctx back to $script: variables
+    $syncBack = {
+        $script:findMode = $ctx.FindMode
+    }
 
     if ($VerbosePreference -ne 'Continue') { Clear-Host }
     if ($ShowHeader) {
         & $ShowHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
     }
-    if ($script:findMode -eq 'quick') {
+    if ($ctx.FindMode -eq 'quick') {
         Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
     }
     else {
@@ -246,16 +262,16 @@ function Invoke-StageA-ArtistSelection {
         return $defaultResult
     }
     if ($inputF -eq 'f' -or $inputF -eq 'fm') {
-        Write-Host "`nCurrent find mode: $($script:findMode)" -ForegroundColor Cyan
+        Write-Host "`nCurrent find mode: $($ctx.FindMode)" -ForegroundColor Cyan
         Write-Host "Available modes: (q)uick album search, (a)rtist-first search" -ForegroundColor Gray
         $newMode = Read-Host "Select mode [q/a]"
         if ($newMode -eq 'q' -or $newMode -eq 'quick') {
-            $script:findMode = 'quick'
+            $ctx.FindMode = 'quick'
             $defaultResult.SkipQuickPrompts = $false
             Write-Host "✓ Switched to Quick Album Search mode" -ForegroundColor Green
         }
         elseif ($newMode -eq 'a' -or $newMode -eq 'artist-first') {
-            $script:findMode = 'artist-first'
+            $ctx.FindMode = 'artist-first'
             Write-Host "✓ Switched to Artist-First Search mode" -ForegroundColor Green
             $defaultResult.CachedAlbums = $null
             $defaultResult.CachedArtistId = $null
@@ -263,8 +279,9 @@ function Invoke-StageA-ArtistSelection {
             $defaultResult.ProviderArtist = $null
         }
         else {
-            Write-Warning "Invalid mode: $newMode. Staying with $($script:findMode)."
+            Write-Warning "Invalid mode: $newMode. Staying with $($ctx.FindMode)."
         }
+        & $syncBack
         return $defaultResult
     }
 

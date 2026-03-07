@@ -489,6 +489,12 @@ function Start-OM {
                 RefreshTracks      = $false
                 TargetFolderMoved  = $false
                 IsSingleAlbumPath  = $script:isSingleAlbumPath
+                FindMode           = $script:findMode
+                ShowVerbose        = $script:showVerbose
+                GenreMode          = $script:genreMode
+                ManualAlbumArtist  = $null
+                AutoModeActive     = $false
+                BackNavigationMode = $false
             }
             # derive album name and year
             # Try to extract year from the start of the folder name (e.g., "2023 - Album Name")
@@ -520,9 +526,11 @@ function Start-OM {
             $albumDone = $false
             $mastersOnlyMode = $true  # Track Discogs filter state: true=masters only, false=all releases
             $script:findMode = 'quick'  # Always start in quick find mode
+            $script:ctx.FindMode = 'quick'
             $script:quickAlbumCandidates = $null
             $script:quickCurrentPage = 1
             $script:backNavigationMode = $false
+            $script:ctx.BackNavigationMode = $false
             $currentArtist = $script:artist  # Persistent current artist for quick find mode
             $currentAlbum = $script:albumName  # Persistent current album for quick find mode
             $skipQuickPrompts = $false  # Flag to skip prompts when re-entering quick find after provider change
@@ -1267,6 +1275,7 @@ function Start-OM {
                             GoA                = $goA
                             ShowHeader         = $showHeader
                             NormalizeDiscogsId = $normalizeDiscogsId
+                            Context            = $script:ctx
                         }
 
                         $stageAResult = Invoke-StageA-ArtistSelection @stageAParams
@@ -1347,6 +1356,7 @@ function Start-OM {
                             UpdateOnly         = $UpdateOnly
                             GenreMode          = $script:genreMode
                             UseWhatIf          = $useWhatIf
+                            Context            = $script:ctx
                         }
                         
                         $stageBResult = Invoke-StageB-AlbumSelection @stageBParams
@@ -1434,6 +1444,7 @@ function Start-OM {
                             QuickAlbum              = $quickAlbum
                             Artist                  = $artist
                             SortMethod              = $sortMethod
+                            Context                 = $script:ctx
                         }
 
                         $stageCResult = Invoke-StageC-TrackSelection @stageCParams

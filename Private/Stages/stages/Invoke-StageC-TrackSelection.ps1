@@ -81,8 +81,30 @@ function Invoke-StageC-TrackSelection {
         [string]$Artist,
         
         [Parameter()]
-        [string]$SortMethod = 'byFilesystem'
+        [string]$SortMethod = 'byFilesystem',
+
+        [Parameter()]
+        [hashtable]$Context
     )
+
+    # --- Resolve context: use passed Context or snapshot from $script: ---
+    if ($Context) {
+        $ctx = $Context
+    } else {
+        $ctx = @{
+            Album              = $script:album
+            AudioFiles         = $script:audioFiles
+            PairedTracks       = $script:pairedTracks
+            RefreshTracks      = $script:refreshTracks
+            TargetFolderMoved  = $script:targetFolderMoved
+            FindMode           = $script:findMode
+            ShowVerbose        = $script:showVerbose
+            GenreMode          = $script:genreMode
+            ManualAlbumArtist  = $script:ManualAlbumArtist
+            AutoModeActive     = $script:autoModeActive
+            BackNavigationMode = $script:backNavigationMode
+        }
+    }
 
     # Build default result hashtable (used as base for all returns)
     $defaultResult = @{
@@ -97,9 +119,21 @@ function Invoke-StageC-TrackSelection {
         ReverseSource      = [bool]$ReverseSource
         SortMethod         = $SortMethod
     }
-    # Helper to build a return hashtable by merging overrides into default
+    # Helper to build a return hashtable by merging overrides into default.
+    # Also syncs $ctx back to $script: variables.
     $buildResult = {
         param([hashtable]$Overrides)
+        $script:album = $ctx.Album
+        $script:audioFiles = $ctx.AudioFiles
+        $script:pairedTracks = $ctx.PairedTracks
+        $script:refreshTracks = $ctx.RefreshTracks
+        $script:targetFolderMoved = $ctx.TargetFolderMoved
+        $script:findMode = $ctx.FindMode
+        $script:showVerbose = $ctx.ShowVerbose
+        $script:genreMode = $ctx.GenreMode
+        $script:ManualAlbumArtist = $ctx.ManualAlbumArtist
+        $script:autoModeActive = $ctx.AutoModeActive
+        $script:backNavigationMode = $ctx.BackNavigationMode
         $result = $defaultResult.Clone()
         foreach ($key in $Overrides.Keys) {
             $result[$key] = $Overrides[$key]
@@ -113,7 +147,7 @@ function Invoke-StageC-TrackSelection {
         & $ShowHeader -Provider $Provider -Artist $script:artist -AlbumName $script:albumName -TrackCount $script:trackCount
     }
 
-    if ($script:findMode -eq 'quick') {
+    if ($ctx.FindMode -eq 'quick') {
         Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
     }
     else {
@@ -151,16 +185,16 @@ function Invoke-StageC-TrackSelection {
     # Collect audio files and tags via shared helper
     $preserveOrder = ($SortMethod -eq 'byFilesystem')
     Write-Verbose "sortMethod = '$SortMethod' (preserveOrder = $preserveOrder)"
-    $script:audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName -PreserveOrder:$preserveOrder
-    Write-Verbose "Loaded $($script:audioFiles.Count) audio files"
+    $ctx.AudioFiles = Reload-OMAudioFiles -AlbumPath $ctx.Album.FullName -PreserveOrder:$preserveOrder
+    Write-Verbose "Loaded $($ctx.AudioFiles.Count) audio files"
 
     # Check if any valid audio files were loaded
-    $validAudioFiles = @($script:audioFiles | Where-Object { $_ -ne $null })
+    $validAudioFiles = @($ctx.AudioFiles | Where-Object { $_ -ne $null })
     if ($validAudioFiles.Count -eq 0) {
         Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Red
         Write-Host "⚠️  ERROR: No valid audio files found!" -ForegroundColor Red
         Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Red
-        Write-Host "`nAlbum folder: $($script:album.FullName)" -ForegroundColor Yellow
+        Write-Host "`nAlbum folder: $($ctx.Album.FullName)" -ForegroundColor Yellow
         Write-Host "All audio files were corrupted or invalid. Skipping this album." -ForegroundColor Yellow
         Write-Host "`nPress Enter to continue to next album..." -ForegroundColor Cyan
         Read-Host
@@ -168,7 +202,7 @@ function Invoke-StageC-TrackSelection {
     }
 
     # Update script:audioFiles to only contain valid files
-    $script:audioFiles = $validAudioFiles
+    $ctx.AudioFiles = $validAudioFiles
 
     # --- Track fetching ---
     $tracksForAlbum = $null
@@ -362,7 +396,7 @@ function Invoke-StageC-TrackSelection {
             $canRetryReleases = (Get-IfExists $ProviderAlbum '_masterReleases') -and $ProviderAlbum._masterReleases.Count -gt 0
             $backPrompt = if ($canRetryReleases) { "'b' to try different release" } else { "'b' for album selection" }
 
-            if ($Auto -and $script:autoModeActive) {
+            if ($Auto -and $ctx.AutoModeActive) {
                 Write-Host "⚠️  AUTO: Track fetch failed, skipping album..." -ForegroundColor Yellow
                 return (& $buildResult @{ NextStage = 'AlbumDone' })
             }
@@ -485,9 +519,9 @@ function Invoke-StageC-TrackSelection {
             Write-Host ""
             $response = Read-Host "Press 'a' to build custom album artist, or Enter to use automatic detection"
             if ($response -eq 'a') {
-                $script:ManualAlbumArtist = Invoke-AlbumArtistBuilder -AlbumName $ProviderAlbum.name -Tracks $tracksForAlbum -CurrentAlbumArtist $ProviderArtist.name
-                if ($script:ManualAlbumArtist) {
-                    Write-Host "✓ Album artist set to: $script:ManualAlbumArtist" -ForegroundColor Green
+                $ctx.ManualAlbumArtist = Invoke-AlbumArtistBuilder -AlbumName $ProviderAlbum.name -Tracks $tracksForAlbum -CurrentAlbumArtist $ProviderArtist.name
+                if ($ctx.ManualAlbumArtist) {
+                    Write-Host "✓ Album artist set to: $ctx.ManualAlbumArtist" -ForegroundColor Green
                 }
                 else {
                     Write-Host "Skipped - will use automatic detection" -ForegroundColor Gray
@@ -512,8 +546,8 @@ function Invoke-StageC-TrackSelection {
         Write-Warning "Exception in Format-Table: $($_ | Out-String)"
     }
     $exitdo = $false
-    $script:pairedTracks = $null
-    $script:refreshTracks = $true
+    $ctx.PairedTracks = $null
+    $ctx.RefreshTracks = $true
     $goCDisplayShown = $false
 
     # Local variables for state that may change during doTracks
@@ -523,7 +557,7 @@ function Invoke-StageC-TrackSelection {
     $cachedArtistId = $null
     $artistQuery = $Artist
     $albumDone = $false
-    $audioFiles = $script:audioFiles
+    $audioFiles = $ctx.AudioFiles
 
     # --- MissingTracks mode ---
     if ($UpdateMissingTracksOnly) {
@@ -539,7 +573,7 @@ function Invoke-StageC-TrackSelection {
         foreach ($strategy in $strategies) {
             $tempParam = @{
                 SortMethod     = $strategy
-                AudioFiles     = $script:audioFiles
+                AudioFiles     = $ctx.AudioFiles
                 ProviderTracks = $tracksForAlbum
             }
             $tempPairing = Set-Tracks @tempParam
@@ -552,14 +586,14 @@ function Invoke-StageC-TrackSelection {
                 $bestPairing = $tempPairing
             }
         }
-        if ($bestPairing) { $script:pairedTracks = $bestPairing }
+        if ($bestPairing) { $ctx.PairedTracks = $bestPairing }
 
-        $audioCount = @($script:audioFiles).Count
+        $audioCount = @($ctx.AudioFiles).Count
         $providerCount = @($tracksForAlbum).Count
 
         if ($audioCount -ne $providerCount) {
-            $unpairedProvider = @($script:pairedTracks | Where-Object { -not $_.AudioFile } | ForEach-Object { $_.ProviderTrack })
-            $unpairedAudio = @($script:pairedTracks | Where-Object { -not $_.ProviderTrack } | ForEach-Object { $_.AudioFile })
+            $unpairedProvider = @($ctx.PairedTracks | Where-Object { -not $_.AudioFile } | ForEach-Object { $_.ProviderTrack })
+            $unpairedAudio = @($ctx.PairedTracks | Where-Object { -not $_.ProviderTrack } | ForEach-Object { $_.AudioFile })
 
             $formatDuration = {
                 param([int]$ms)
@@ -579,7 +613,7 @@ function Invoke-StageC-TrackSelection {
                 albumId        = [string]$ProviderAlbum.id
                 audioFileCount = $audioCount
                 providerTrackCount = $providerCount
-                audioFiles     = @($script:audioFiles | ForEach-Object { Split-Path $_.FilePath -Leaf })
+                audioFiles     = @($ctx.AudioFiles | ForEach-Object { Split-Path $_.FilePath -Leaf })
                 providerTracks = @($tracksForAlbum | ForEach-Object {
                     [ordered]@{
                         disc     = [int]$_.disc_number
@@ -601,7 +635,7 @@ function Invoke-StageC-TrackSelection {
                 extraAudioFiles = @($unpairedAudio | ForEach-Object { Split-Path $_.FilePath -Leaf })
             }
 
-            $reportPath = Join-Path $script:album.FullName '_errorreport.json'
+            $reportPath = Join-Path $ctx.Album.FullName '_errorreport.json'
             $report | ConvertTo-Json -Depth 4 | Out-File -FilePath $reportPath -Encoding UTF8
             Write-Host "Album: $($script:albumName)" -ForegroundColor Green
             Write-Host "Audio files: $audioCount | Provider tracks: $providerCount" -ForegroundColor Yellow
@@ -618,28 +652,28 @@ function Invoke-StageC-TrackSelection {
     }
 
     # --- doTracks interactive loop ---
-    Write-Verbose "DEBUG: Starting doTracks loop, script:pairedTracks is null: $($null -eq $script:pairedTracks)"
+    Write-Verbose "DEBUG: Starting doTracks loop, script:pairedTracks is null: $($null -eq $ctx.PairedTracks)"
     :doTracks do {
         Write-Verbose "DEBUG: Inside doTracks, checking if we need to refresh..."
-        if ($script:refreshTracks -or -not $script:pairedTracks) {
+        if ($ctx.RefreshTracks -or -not $ctx.PairedTracks) {
             Write-Verbose "DEBUG: Will call Set-Tracks"
             if ($UseWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
             $param = @{
                 SortMethod    = $SortMethod
-                AudioFiles    = $script:audioFiles
+                AudioFiles    = $ctx.AudioFiles
                 ProviderTracks = $tracksForAlbum
             }
             if ($ReverseSource) { $param.Reverse = $true }
-            $script:pairedTracks = Set-Tracks @param
+            $ctx.PairedTracks = Set-Tracks @param
 
             # Sort paired tracks by confidence
-            Write-Verbose "DEBUG: About to check confidence sorting... script:pairedTracks type: $($script:pairedTracks.GetType().Name), Count: $($script:pairedTracks.Count)"
-            if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0 -and $script:pairedTracks[0].PSObject.Properties['Confidence']) {
-                $script:pairedTracks = $script:pairedTracks | Sort-Object Confidence -Descending
-                Write-Verbose "Sorted $($script:pairedTracks.Count) tracks by confidence"
+            Write-Verbose "DEBUG: About to check confidence sorting... script:pairedTracks type: $($ctx.PairedTracks.GetType().Name), Count: $($ctx.PairedTracks.Count)"
+            if ($ctx.PairedTracks -and $ctx.PairedTracks.Count -gt 0 -and $ctx.PairedTracks[0].PSObject.Properties['Confidence']) {
+                $ctx.PairedTracks = $ctx.PairedTracks | Sort-Object Confidence -Descending
+                Write-Verbose "Sorted $($ctx.PairedTracks.Count) tracks by confidence"
             }
 
-            $script:refreshTracks = $false
+            $ctx.RefreshTracks = $false
             if ($SortMethod -eq 'Manual') {
                 $SortMethod = 'byOrder'
             }
@@ -648,19 +682,19 @@ function Invoke-StageC-TrackSelection {
                 if ($VerbosePreference -ne 'Continue') { Clear-Host }
                 $autoReader = { param($prompt) 'q' }
                 $autoShowParams = @{
-                    PairedTracks  = $script:pairedTracks
+                    PairedTracks  = $ctx.PairedTracks
                     AlbumName     = $ProviderAlbum.name
                     ProviderArtist = $ProviderArtist
                     ProviderAlbum = $ProviderAlbum
                 }
                 if ($ReverseSource) { $autoShowParams.Reverse = $true }
-                if ($script:showVerbose) { $autoShowParams.Verbose = $true }
+                if ($ctx.ShowVerbose) { $autoShowParams.Verbose = $true }
                 Show-Tracks @autoShowParams -InputReader $autoReader | Out-Null
                 $goCDisplayShown = $true
             }
 
             # AUTO MODE: Smart matching with best sort strategy
-            if ($Auto -and $script:autoModeActive -and -not $GoC) {
+            if ($Auto -and $ctx.AutoModeActive -and -not $GoC) {
                 Write-Host "🤖 AUTO: Analyzing track matches..." -ForegroundColor Cyan
 
                 $strategies = @('byOrder', 'byTitle', 'byDuration')
@@ -671,7 +705,7 @@ function Invoke-StageC-TrackSelection {
                 foreach ($strategy in $strategies) {
                     $tempParam = @{
                         SortMethod    = $strategy
-                        AudioFiles    = $script:audioFiles
+                        AudioFiles    = $ctx.AudioFiles
                         ProviderTracks = $tracksForAlbum
                     }
                     if ($ReverseSource) { $tempParam.Reverse = $true }
@@ -691,11 +725,11 @@ function Invoke-StageC-TrackSelection {
                 }
 
                 if ($bestPairing) {
-                    $script:pairedTracks = $bestPairing
+                    $ctx.PairedTracks = $bestPairing
                     $SortMethod = $bestStrategy
                 }
 
-                $totalTracks = $script:pairedTracks.Count
+                $totalTracks = $ctx.PairedTracks.Count
                 $confidencePercent = if ($totalTracks -gt 0) {
                     [Math]::Round(($bestScore / $totalTracks) * 100, 0)
                 } else { 0 }
@@ -703,7 +737,7 @@ function Invoke-StageC-TrackSelection {
                 Write-Host "🤖 AUTO: Best strategy: '$bestStrategy' ($bestScore/$totalTracks matches, $confidencePercent% confidence)" -ForegroundColor Green
 
                 # Check for track count mismatch
-                $audioCount = @($script:audioFiles).Count
+                $audioCount = @($ctx.AudioFiles).Count
                 $providerCount = @($tracksForAlbum).Count
                 if ($audioCount -ne $providerCount) {
                     Write-Warning "AUTO: Track count mismatch - $audioCount audio file(s) vs $providerCount provider track(s)"
@@ -720,7 +754,7 @@ function Invoke-StageC-TrackSelection {
                         ""
                         "Audio files on disk:"
                     )
-                    foreach ($af in $script:audioFiles) {
+                    foreach ($af in $ctx.AudioFiles) {
                         $reportLines += "  - $(Split-Path $af.FilePath -Leaf)"
                     }
                     $reportLines += ""
@@ -729,8 +763,8 @@ function Invoke-StageC-TrackSelection {
                         $reportLines += "  - $($pt.disc_number).$($pt.track_number): $($pt.name)"
                     }
 
-                    $unpairedProvider = @($script:pairedTracks | Where-Object { -not $_.AudioFile } | ForEach-Object { $_.ProviderTrack })
-                    $unpairedAudio = @($script:pairedTracks | Where-Object { -not $_.ProviderTrack } | ForEach-Object { $_.AudioFile })
+                    $unpairedProvider = @($ctx.PairedTracks | Where-Object { -not $_.AudioFile } | ForEach-Object { $_.ProviderTrack })
+                    $unpairedAudio = @($ctx.PairedTracks | Where-Object { -not $_.ProviderTrack } | ForEach-Object { $_.AudioFile })
                     if ($unpairedProvider.Count -gt 0) {
                         $reportLines += ""
                         $reportLines += "Missing audio files (provider tracks without matching audio):"
@@ -746,7 +780,7 @@ function Invoke-StageC-TrackSelection {
                         }
                     }
 
-                    $reportPath = Join-Path $script:album.FullName "_errorreport.txt"
+                    $reportPath = Join-Path $ctx.Album.FullName "_errorreport.txt"
                     $reportLines | Out-File -FilePath $reportPath -Encoding UTF8
 
                     $formatDuration = {
@@ -766,7 +800,7 @@ function Invoke-StageC-TrackSelection {
                         albumId            = [string]$ProviderAlbum.id
                         audioFileCount     = $audioCount
                         providerTrackCount = $providerCount
-                        audioFiles         = @($script:audioFiles | ForEach-Object { Split-Path $_.FilePath -Leaf })
+                        audioFiles         = @($ctx.AudioFiles | ForEach-Object { Split-Path $_.FilePath -Leaf })
                         providerTracks     = @($tracksForAlbum | ForEach-Object {
                             [ordered]@{
                                 disc     = [int]$_.disc_number
@@ -787,7 +821,7 @@ function Invoke-StageC-TrackSelection {
                         })
                         extraAudioFiles    = @($unpairedAudio | ForEach-Object { Split-Path $_.FilePath -Leaf })
                     }
-                    $jsonReportPath = Join-Path $script:album.FullName '_errorreport.json'
+                    $jsonReportPath = Join-Path $ctx.Album.FullName '_errorreport.json'
                     $jsonReport | ConvertTo-Json -Depth 4 | Out-File -FilePath $jsonReportPath -Encoding UTF8
 
                     Write-Warning "AUTO: Error report written to: $reportPath"
@@ -810,7 +844,7 @@ function Invoke-StageC-TrackSelection {
                 }
                 else {
                     Write-Warning "AUTO: Confidence too low ($confidencePercent%), falling back to interactive mode"
-                    $script:autoModeActive = $false
+                    $ctx.AutoModeActive = $false
                 }
             }
         }
@@ -819,13 +853,13 @@ function Invoke-StageC-TrackSelection {
             Write-Host "goC: auto-applying Save-All for album '$($ProviderAlbum.name)'." -ForegroundColor Yellow
             $inputF = 'sa'
         }
-        elseif ($Auto -and $script:autoModeActive -and $inputF -eq 'sa') {
+        elseif ($Auto -and $ctx.AutoModeActive -and $inputF -eq 'sa') {
             # Auto mode already set inputF to 'sa' above, proceed
         }
         else {
             if ($UseWhatIf) { $HostColor = 'Cyan' } else { $HostColor = 'Red' }
             $whatIfStatus = if ($UseWhatIf) { "ON" } else { "OFF" }
-            $verboseStatus = if ($script:showVerbose) { "ON" } else { "OFF" }
+            $verboseStatus = if ($ctx.ShowVerbose) { "ON" } else { "OFF" }
 
             $sortOptions = @{
                 'byOrder' = '(o)rder'
@@ -841,11 +875,11 @@ function Invoke-StageC-TrackSelection {
                 if ($_.Key -eq $SortMethod) { "[*$($_.Value)*]" } else { $_.Value }
             }) -join ', '
 
-            $genreModeStatus = $script:genreMode
+            $genreModeStatus = $ctx.GenreMode
             $optionsLine = "`nOptions: SortBy $sortMethodDisplay, (r)everse | (S)ave {[A]ll, [T]ags, [F]olderNames} | {C}over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags} | (aa)AlbumArtist, (gm)GenreMode:$genreModeStatus, (rm)ReviewMarked, (b)ack/(pr)evious, (P)rovider, (F)indmode, (w)hatIf:$whatIfStatus, (v)erbose:$verboseStatus, (X)ip"
             $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'rm', 'sa', 'st', 'sf', 'cv', 'cvo', 'cs', 'ct', 'aa', 'gm', 'b', 'pr', 'p', 'pq', 'ps', 'pd', 'pm', 'f', 'w', 'whatif', 'v', 'x')
             $paramshow = @{
-                PairedTracks  = $script:pairedTracks
+                PairedTracks  = $ctx.PairedTracks
                 AlbumName     = $ProviderAlbum.name
                 ProviderArtist = $ProviderArtist
                 ProviderAlbum = $ProviderAlbum
@@ -856,7 +890,7 @@ function Invoke-StageC-TrackSelection {
                 SortMethod    = $SortMethod
             }
             if ($ReverseSource) { $paramshow.Reverse = $true }
-            if ($script:showVerbose) { $paramshow.Verbose = $true }
+            if ($ctx.ShowVerbose) { $paramshow.Verbose = $true }
             if ($VerbosePreference -ne 'Continue') { Clear-Host }
             $inputF = Show-Tracks @paramshow
 
@@ -872,23 +906,23 @@ function Invoke-StageC-TrackSelection {
                 Show-OMHelp -Context 'StageC'
                 continue
             }
-            '^o$' { $SortMethod = 'byOrder'; $script:refreshTracks = $true; continue }
-            '^d$' { $SortMethod = 'byDuration'; $script:refreshTracks = $true; continue }
-            '^t$' { $SortMethod = 'byTrackNumber'; $script:refreshTracks = $true; continue }
-            '^n$' { $SortMethod = 'byName'; $script:refreshTracks = $true; continue }
-            '^l$' { $SortMethod = 'byTitle'; $script:refreshTracks = $true; continue }
-            '^h$' { $SortMethod = 'Hybrid'; $script:refreshTracks = $true; continue }
-            '^m$' { $SortMethod = 'Manual'; $script:refreshTracks = $true; continue }
-            '^f$' { $SortMethod = 'byFilesystem'; $script:refreshTracks = $true; continue }
-            '^r$' { $ReverseSource = -not $ReverseSource; $script:refreshTracks = $true; continue }
+            '^o$' { $SortMethod = 'byOrder'; $ctx.RefreshTracks = $true; continue }
+            '^d$' { $SortMethod = 'byDuration'; $ctx.RefreshTracks = $true; continue }
+            '^t$' { $SortMethod = 'byTrackNumber'; $ctx.RefreshTracks = $true; continue }
+            '^n$' { $SortMethod = 'byName'; $ctx.RefreshTracks = $true; continue }
+            '^l$' { $SortMethod = 'byTitle'; $ctx.RefreshTracks = $true; continue }
+            '^h$' { $SortMethod = 'Hybrid'; $ctx.RefreshTracks = $true; continue }
+            '^m$' { $SortMethod = 'Manual'; $ctx.RefreshTracks = $true; continue }
+            '^f$' { $SortMethod = 'byFilesystem'; $ctx.RefreshTracks = $true; continue }
+            '^r$' { $ReverseSource = -not $ReverseSource; $ctx.RefreshTracks = $true; continue }
             '^rm$' {
                 # Review marked tracks in Manual mode, or all tracks if none marked
-                $markedTracks = @($script:pairedTracks | Where-Object { $_.PSObject.Properties['Marked'] -and $_.Marked })
+                $markedTracks = @($ctx.PairedTracks | Where-Object { $_.PSObject.Properties['Marked'] -and $_.Marked })
 
                 $reviewAll = $false
                 if ($markedTracks.Count -eq 0) {
                     $reviewAll = $true
-                    $markedTracks = @($script:pairedTracks | Where-Object { $_.AudioFile })
+                    $markedTracks = @($ctx.PairedTracks | Where-Object { $_.AudioFile })
                     if ($markedTracks.Count -eq 0) {
                         Write-Host "`nNo audio files to review." -ForegroundColor Yellow
                         Start-Sleep -Seconds 2
@@ -984,12 +1018,12 @@ function Invoke-StageC-TrackSelection {
                         if ($selectedIndex -ge 0 -and $selectedIndex -lt $scoredPool.Count) {
                             $selectedTrack = $scoredPool[$selectedIndex].Track
 
-                            for ($i = 0; $i -lt $script:pairedTracks.Count; $i++) {
-                                if ($script:pairedTracks[$i].AudioFile -and
-                                    $script:pairedTracks[$i].AudioFile.FilePath -eq $markedTrack.AudioFile.FilePath) {
-                                    $script:pairedTracks[$i].ProviderTrack = $selectedTrack
-                                    if ($script:pairedTracks[$i].PSObject.Properties['Marked']) {
-                                        $script:pairedTracks[$i].Marked = $false
+                            for ($i = 0; $i -lt $ctx.PairedTracks.Count; $i++) {
+                                if ($ctx.PairedTracks[$i].AudioFile -and
+                                    $ctx.PairedTracks[$i].AudioFile.FilePath -eq $markedTrack.AudioFile.FilePath) {
+                                    $ctx.PairedTracks[$i].ProviderTrack = $selectedTrack
+                                    if ($ctx.PairedTracks[$i].PSObject.Properties['Marked']) {
+                                        $ctx.PairedTracks[$i].Marked = $false
                                     }
                                     Write-Host "✓ Updated" -ForegroundColor Green
 
@@ -1018,29 +1052,29 @@ function Invoke-StageC-TrackSelection {
                 $finishMsg = if ($reviewAll) { "Finished reviewing all tracks" } else { "Finished reviewing marked tracks" }
                 Write-Host "`n✓ $finishMsg" -ForegroundColor Green
                 Start-Sleep -Seconds 1
-                $script:refreshTracks = $true
+                $ctx.RefreshTracks = $true
                 continue
             }
             '^gm$' {
-                $script:genreMode = if ($script:genreMode -eq 'Replace') { 'Merge' } else { 'Replace' }
-                $modeColor = if ($script:genreMode -eq 'Merge') { 'Cyan' } else { 'Green' }
-                Write-Host "`n✓ Genre Mode: $($script:genreMode)" -ForegroundColor $modeColor
-                if ($script:genreMode -eq 'Merge') {
+                $ctx.GenreMode = if ($ctx.GenreMode -eq 'Replace') { 'Merge' } else { 'Replace' }
+                $modeColor = if ($ctx.GenreMode -eq 'Merge') { 'Cyan' } else { 'Green' }
+                Write-Host "`n✓ Genre Mode: $($ctx.GenreMode)" -ForegroundColor $modeColor
+                if ($ctx.GenreMode -eq 'Merge') {
                     Write-Host "   Genres will be merged with existing tags (deduplicated)" -ForegroundColor Gray
                 } else {
                     Write-Host "   Genres will replace existing tags" -ForegroundColor Gray
                 }
                 Start-Sleep -Seconds 2
-                $script:refreshTracks = $true
+                $ctx.RefreshTracks = $true
                 continue
             }
-            '^v$' { $script:showVerbose = -not $script:showVerbose; $script:refreshTracks = $true; continue }
+            '^v$' { $ctx.ShowVerbose = -not $ctx.ShowVerbose; $ctx.RefreshTracks = $true; continue }
             '^aa$' {
                 if ($tracksForAlbum -and $tracksForAlbum.Count -gt 0) {
-                    $script:ManualAlbumArtist = Invoke-AlbumArtistBuilder -AlbumName $ProviderAlbum.name -Tracks $tracksForAlbum -CurrentAlbumArtist $ProviderArtist.name
-                    if ($script:ManualAlbumArtist) {
-                        Write-Host "`n✓ Album artist set to: $script:ManualAlbumArtist" -ForegroundColor Green
-                        $script:refreshTracks = $true
+                    $ctx.ManualAlbumArtist = Invoke-AlbumArtistBuilder -AlbumName $ProviderAlbum.name -Tracks $tracksForAlbum -CurrentAlbumArtist $ProviderArtist.name
+                    if ($ctx.ManualAlbumArtist) {
+                        Write-Host "`n✓ Album artist set to: $ctx.ManualAlbumArtist" -ForegroundColor Green
+                        $ctx.RefreshTracks = $true
                     }
                     else {
                         Write-Host "`nSkipped - album artist unchanged" -ForegroundColor Gray
@@ -1052,11 +1086,11 @@ function Invoke-StageC-TrackSelection {
                 continue
             }
             '^b$' {
-                $script:ManualAlbumArtist = $null
-                if ($script:findMode -eq 'quick') {
+                $ctx.ManualAlbumArtist = $null
+                if ($ctx.FindMode -eq 'quick') {
                     $loadStageBResults = $false
                     $skipQuickPrompts = $false
-                    $script:backNavigationMode = $true
+                    $ctx.BackNavigationMode = $true
                 }
                 else {
                     $loadStageBResults = $false
@@ -1071,11 +1105,11 @@ function Invoke-StageC-TrackSelection {
                 })
             }
             '^pr$' {
-                $script:ManualAlbumArtist = $null
-                if ($script:findMode -eq 'quick') {
+                $ctx.ManualAlbumArtist = $null
+                if ($ctx.FindMode -eq 'quick') {
                     $loadStageBResults = $false
                     $skipQuickPrompts = $false
-                    $script:backNavigationMode = $true
+                    $ctx.BackNavigationMode = $true
                 }
                 else {
                     $loadStageBResults = $false
@@ -1096,8 +1130,8 @@ function Invoke-StageC-TrackSelection {
                 continue
             }
             '^f$' {
-                if ($script:findMode -eq 'quick') {
-                    $script:findMode = 'artist-first'
+                if ($ctx.FindMode -eq 'quick') {
+                    $ctx.FindMode = 'artist-first'
                     Write-Host "✓ Switched to Artist-First Search mode" -ForegroundColor Green
                     $cachedAlbums = $null
                     $cachedArtistId = $null
@@ -1106,7 +1140,7 @@ function Invoke-StageC-TrackSelection {
                     $ProviderAlbum = $null
                 }
                 else {
-                    $script:findMode = 'quick'
+                    $ctx.FindMode = 'quick'
                     $skipQuickPrompts = $false
                     Write-Host "✓ Switched to Quick Album Search mode" -ForegroundColor Green
                 }
@@ -1122,16 +1156,16 @@ function Invoke-StageC-TrackSelection {
             }
             '^whatif$|^w$' {
                 $UseWhatIf = -not $UseWhatIf
-                $script:refreshTracks = $true
+                $ctx.RefreshTracks = $true
                 continue
             }
             '^x(ip)?$' {
                 # Write error report if track count mismatch before skipping
-                $xAudioCount = @($script:audioFiles).Count
+                $xAudioCount = @($ctx.AudioFiles).Count
                 $xProviderCount = @($tracksForAlbum).Count
                 if ($xAudioCount -ne $xProviderCount) {
-                    $xUnpairedProvider = @($script:pairedTracks | Where-Object { -not $_.AudioFile } | ForEach-Object { $_.ProviderTrack })
-                    $xUnpairedAudio = @($script:pairedTracks | Where-Object { -not $_.ProviderTrack } | ForEach-Object { $_.AudioFile })
+                    $xUnpairedProvider = @($ctx.PairedTracks | Where-Object { -not $_.AudioFile } | ForEach-Object { $_.ProviderTrack })
+                    $xUnpairedAudio = @($ctx.PairedTracks | Where-Object { -not $_.ProviderTrack } | ForEach-Object { $_.AudioFile })
                     $formatDuration = {
                         param([int]$ms)
                         if ($ms -le 0) { return $null }
@@ -1149,7 +1183,7 @@ function Invoke-StageC-TrackSelection {
                         albumId            = [string]$ProviderAlbum.id
                         audioFileCount     = $xAudioCount
                         providerTrackCount = $xProviderCount
-                        audioFiles         = @($script:audioFiles | ForEach-Object { Split-Path $_.FilePath -Leaf })
+                        audioFiles         = @($ctx.AudioFiles | ForEach-Object { Split-Path $_.FilePath -Leaf })
                         providerTracks     = @($tracksForAlbum | ForEach-Object {
                             [ordered]@{
                                 disc     = [int]$_.disc_number
@@ -1171,7 +1205,7 @@ function Invoke-StageC-TrackSelection {
                         extraAudioFiles    = @($xUnpairedAudio | ForEach-Object { Split-Path $_.FilePath -Leaf })
                         skipped            = $true
                     }
-                    $jsonReportPath = Join-Path $script:album.FullName '_errorreport.json'
+                    $jsonReportPath = Join-Path $ctx.Album.FullName '_errorreport.json'
                     $jsonReport | ConvertTo-Json -Depth 4 | Out-File -FilePath $jsonReportPath -Encoding UTF8
                     Write-Host "⚠️  Track mismatch: $xAudioCount audio file(s) vs $xProviderCount provider track(s)" -ForegroundColor Yellow
                     Write-Host "   Report: $jsonReportPath" -ForegroundColor Cyan
@@ -1184,21 +1218,19 @@ function Invoke-StageC-TrackSelection {
                 })
             }
             '^sf$' {
-                $oldpath = $script:album.FullName
+                $oldpath = $ctx.Album.FullName
                 $moveResult = Invoke-OMFolderRename `
                     -AlbumPath $oldpath `
                     -ProviderAlbum $ProviderAlbum `
                     -ProviderArtist $ProviderArtist `
                     -AudioFiles $audioFiles `
                     -AlbumNameFallback $script:albumName `
-                    -ManualAlbumArtist $script:ManualAlbumArtist `
+                    -ManualAlbumArtist $ctx.ManualAlbumArtist `
                     -UseWhatIf $UseWhatIf
-                $script:targetFolderMoved = $false
-                if ($script:ctx) { $script:ctx.TargetFolderMoved = $false }
+                $ctx.TargetFolderMoved = $false
                 Invoke-HandleMoveSuccess -MoveResult $moveResult -UseWhatIf $UseWhatIf -OldPath $oldpath `
-                    -TargetFolder $TargetFolder -NonInteractive:$NonInteractive -GoC:$GoC -Context $script:ctx
-                $script:targetFolderMoved = if ($script:ctx) { $script:ctx.TargetFolderMoved } else { $script:targetFolderMoved }
-                if ($script:targetFolderMoved) {
+                    -TargetFolder $TargetFolder -NonInteractive:$NonInteractive -GoC:$GoC -Context $ctx
+                if ($ctx.TargetFolderMoved) {
                     return (& $buildResult @{
                         NextStage = 'AlbumDone'
                         SortMethod = $SortMethod
@@ -1209,7 +1241,7 @@ function Invoke-StageC-TrackSelection {
                 continue doTracks
             }
             '^st\s+(?<range>.+)$' {
-                if (-not $script:pairedTracks -or $script:pairedTracks.Count -eq 0) {
+                if (-not $ctx.PairedTracks -or $ctx.PairedTracks.Count -eq 0) {
                     Write-Warning "No track matches available to save."
                     continue doTracks
                 }
@@ -1221,7 +1253,7 @@ function Invoke-StageC-TrackSelection {
                 }
 
                 try {
-                    $selectedIndices = Expand-SelectionRange -RangeText $rangeText -MaxIndex $script:pairedTracks.Count
+                    $selectedIndices = Expand-SelectionRange -RangeText $rangeText -MaxIndex $ctx.PairedTracks.Count
                 }
                 catch {
                     Write-Warning "Invalid track selection: $($_.Exception.Message)"
@@ -1234,7 +1266,7 @@ function Invoke-StageC-TrackSelection {
                 }
 
                 try {
-                    $saveResult = Save-OMTrackSelection -PairedTracks $script:pairedTracks -SelectedIndices $selectedIndices -ProviderArtist $ProviderArtist -ProviderAlbum $ProviderAlbum -UseWhatIf:$UseWhatIf
+                    $saveResult = Save-OMTrackSelection -PairedTracks $ctx.PairedTracks -SelectedIndices $selectedIndices -ProviderArtist $ProviderArtist -ProviderAlbum $ProviderAlbum -UseWhatIf:$UseWhatIf
                 }
                 catch {
                     Write-Warning "Failed to save selected tracks: $($_.Exception.Message)"
@@ -1266,22 +1298,22 @@ function Invoke-StageC-TrackSelection {
                 $tracksForAlbum = $saveResult.UpdatedProviderTracks
 
                 if ($saveResult.SavedDetails.Count -gt 0) {
-                    Write-Host ("✓ Processed {0} track(s). Remaining: {1}" -f $saveResult.SavedDetails.Count, $script:pairedTracks.Count) -ForegroundColor Green
+                    Write-Host ("✓ Processed {0} track(s). Remaining: {1}" -f $saveResult.SavedDetails.Count, $ctx.PairedTracks.Count) -ForegroundColor Green
                 }
                 else {
                     Write-Host "No tracks were updated." -ForegroundColor Yellow
                 }
 
-                $script:refreshTracks = $false
+                $ctx.RefreshTracks = $false
                 continue doTracks
             }
             '^st$' {
                 try {
-                    Save-OMTagsLoop -PairedTracks $script:pairedTracks `
+                    Save-OMTagsLoop -PairedTracks $ctx.PairedTracks `
                         -ProviderArtist $ProviderArtist `
                         -ProviderAlbum $ProviderAlbum `
-                        -ManualAlbumArtist $script:ManualAlbumArtist `
-                        -GenreMode $script:genreMode `
+                        -ManualAlbumArtist $ctx.ManualAlbumArtist `
+                        -GenreMode $ctx.GenreMode `
                         -UseWhatIf:$UseWhatIf
 
                     if (-not $UseWhatIf) {
@@ -1291,8 +1323,8 @@ function Invoke-StageC-TrackSelection {
                                 $af.TagFile = $null
                             }
                         }
-                        $audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName
-                        $script:refreshTracks = $true
+                        $audioFiles = Reload-OMAudioFiles -AlbumPath $ctx.Album.FullName
+                        $ctx.RefreshTracks = $true
                     }
                     continue doTracks
                 }
@@ -1323,29 +1355,29 @@ function Invoke-StageC-TrackSelection {
                     Write-Host "🖼️  Saving cover art..." -ForegroundColor Cyan
                     $config = Get-OMConfig
                     $maxSize = $config.CoverArt.FolderImageSize
-                    $null = Save-CoverArtWithFallback -CoverUrl $coverUrl -AlbumPath $script:album.FullName `
+                    $null = Save-CoverArtWithFallback -CoverUrl $coverUrl -AlbumPath $ctx.Album.FullName `
                         -MaxSize $maxSize -Provider $Provider `
                         -AlbumName $QuickAlbum -ArtistName $QuickArtist `
                         -AutoFallback:$AutoFallback -UseWhatIf:$UseWhatIf
                 }
 
                 if (-not $coverArtOnlyMode) {
-                    Save-OMTagsLoop -PairedTracks $script:pairedTracks `
+                    Save-OMTagsLoop -PairedTracks $ctx.PairedTracks `
                         -ProviderArtist $ProviderArtist `
                         -ProviderAlbum $ProviderAlbum `
-                        -ManualAlbumArtist $script:ManualAlbumArtist `
-                        -GenreMode $script:genreMode `
+                        -ManualAlbumArtist $ctx.ManualAlbumArtist `
+                        -GenreMode $ctx.GenreMode `
                         -UseWhatIf:$UseWhatIf `
                         -UpdateOnly $UpdateOnly `
                         -RequireBothPaired
                 }
 
                 # Write JSON error report if track count mismatch
-                $saAudioCount = @($script:audioFiles).Count
+                $saAudioCount = @($ctx.AudioFiles).Count
                 $saProviderCount = @($tracksForAlbum).Count
                 if ($saAudioCount -ne $saProviderCount) {
-                    $saUnpairedProvider = @($script:pairedTracks | Where-Object { -not $_.AudioFile } | ForEach-Object { $_.ProviderTrack })
-                    $saUnpairedAudio = @($script:pairedTracks | Where-Object { -not $_.ProviderTrack } | ForEach-Object { $_.AudioFile })
+                    $saUnpairedProvider = @($ctx.PairedTracks | Where-Object { -not $_.AudioFile } | ForEach-Object { $_.ProviderTrack })
+                    $saUnpairedAudio = @($ctx.PairedTracks | Where-Object { -not $_.ProviderTrack } | ForEach-Object { $_.AudioFile })
                     $formatDuration = {
                         param([int]$ms)
                         if ($ms -le 0) { return $null }
@@ -1363,7 +1395,7 @@ function Invoke-StageC-TrackSelection {
                         albumId            = [string]$ProviderAlbum.id
                         audioFileCount     = $saAudioCount
                         providerTrackCount = $saProviderCount
-                        audioFiles         = @($script:audioFiles | ForEach-Object { Split-Path $_.FilePath -Leaf })
+                        audioFiles         = @($ctx.AudioFiles | ForEach-Object { Split-Path $_.FilePath -Leaf })
                         providerTracks     = @($tracksForAlbum | ForEach-Object {
                             [ordered]@{
                                 disc     = [int]$_.disc_number
@@ -1384,7 +1416,7 @@ function Invoke-StageC-TrackSelection {
                         })
                         extraAudioFiles    = @($saUnpairedAudio | ForEach-Object { Split-Path $_.FilePath -Leaf })
                     }
-                    $jsonReportPath = Join-Path $script:album.FullName '_errorreport.json'
+                    $jsonReportPath = Join-Path $ctx.Album.FullName '_errorreport.json'
                     $jsonReport | ConvertTo-Json -Depth 4 | Out-File -FilePath $jsonReportPath -Encoding UTF8
                     Write-Host "⚠️  Track mismatch: $saAudioCount audio file(s) vs $saProviderCount provider track(s)" -ForegroundColor Yellow
                     Write-Host "   Missing: $($saUnpairedProvider.Count) | Extra: $($saUnpairedAudio.Count)" -ForegroundColor Yellow
@@ -1408,7 +1440,7 @@ function Invoke-StageC-TrackSelection {
                 else {
                     Write-Verbose "Preview: keeping TagFile handles open so interactive UI can display tags."
                 }
-                $oldpath = $script:album.FullName
+                $oldpath = $ctx.Album.FullName
                 $shouldRenameFolder = ($UpdateOnly -contains 'All') -or
                     ($UpdateOnly -contains 'Year') -or
                     ($UpdateOnly -contains 'AlbumArtist') -or
@@ -1421,37 +1453,35 @@ function Invoke-StageC-TrackSelection {
                         -ProviderArtist $ProviderArtist `
                         -AudioFiles $audioFiles `
                         -AlbumNameFallback $script:albumName `
-                        -ManualAlbumArtist $script:ManualAlbumArtist `
+                        -ManualAlbumArtist $ctx.ManualAlbumArtist `
                         -UseWhatIf $UseWhatIf `
                         -SkipTagReading:$UseWhatIf
-                    $script:targetFolderMoved = $false
-                    if ($script:ctx) { $script:ctx.TargetFolderMoved = $false }
+                    $ctx.TargetFolderMoved = $false
                     Invoke-HandleMoveSuccess -MoveResult $moveResult -UseWhatIf $UseWhatIf -OldPath $oldpath `
-                        -TargetFolder $TargetFolder -NonInteractive:$NonInteractive -GoC:$GoC -Context $script:ctx
-                    $script:targetFolderMoved = if ($script:ctx) { $script:ctx.TargetFolderMoved } else { $script:targetFolderMoved }
+                        -TargetFolder $TargetFolder -NonInteractive:$NonInteractive -GoC:$GoC -Context $ctx
 
-                    if ($script:targetFolderMoved) {
+                    if ($ctx.TargetFolderMoved) {
                         return (& $buildResult @{ NextStage = 'AlbumDone'; SortMethod = $SortMethod; ReverseSource = [bool]$ReverseSource; UseWhatIf = $UseWhatIf })
                     }
 
                     # Reload audio files if not WhatIf and folder wasn't moved
                     if (-not $UseWhatIf -and $moveResult -and $moveResult.NewAlbumPath -eq $oldpath) {
                         Write-Verbose "Reloading audio files to reflect saved tags (folder not moved)"
-                        $script:audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName
+                        $ctx.AudioFiles = Reload-OMAudioFiles -AlbumPath $ctx.Album.FullName
 
-                        if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
-                            for ($i = 0; $i -lt [Math]::Min($script:pairedTracks.Count, $script:audioFiles.Count); $i++) {
-                                $script:pairedTracks[$i].AudioFile = $script:audioFiles[$i]
+                        if ($ctx.PairedTracks -and $ctx.PairedTracks.Count -gt 0) {
+                            for ($i = 0; $i -lt [Math]::Min($ctx.PairedTracks.Count, $ctx.AudioFiles.Count); $i++) {
+                                $ctx.PairedTracks[$i].AudioFile = $ctx.AudioFiles[$i]
                             }
                         }
-                        $script:refreshTracks = $true
+                        $ctx.RefreshTracks = $true
                     }
                 } else {
                     if (-not $UseWhatIf) {
-                        $script:audioFiles = Reload-OMAudioFiles -AlbumPath $script:album.FullName
-                        if ($script:pairedTracks -and $script:pairedTracks.Count -gt 0) {
-                            for ($i = 0; $i -lt [Math]::Min($script:pairedTracks.Count, $script:audioFiles.Count); $i++) {
-                                $script:pairedTracks[$i].AudioFile = $script:audioFiles[$i]
+                        $ctx.AudioFiles = Reload-OMAudioFiles -AlbumPath $ctx.Album.FullName
+                        if ($ctx.PairedTracks -and $ctx.PairedTracks.Count -gt 0) {
+                            for ($i = 0; $i -lt [Math]::Min($ctx.PairedTracks.Count, $ctx.AudioFiles.Count); $i++) {
+                                $ctx.PairedTracks[$i].AudioFile = $ctx.AudioFiles[$i]
                             }
                         }
                     }
@@ -1459,7 +1489,7 @@ function Invoke-StageC-TrackSelection {
                 }
 
                 # AUTO MODE: Skip to next album after successful save
-                if ($Auto -and $script:autoModeActive) {
+                if ($Auto -and $ctx.AutoModeActive) {
                     Write-Host "✓ AUTO: Album completed successfully, moving to next album..." -ForegroundColor Green
                     return (& $buildResult @{ NextStage = 'AlbumDone'; SortMethod = $SortMethod; ReverseSource = [bool]$ReverseSource; UseWhatIf = $UseWhatIf })
                 }
@@ -1669,7 +1699,7 @@ function Invoke-StageC-TrackSelection {
 
                 if ($coverUrl) {
                     $maxSize = $Config.CoverArt.FolderImageSize
-                    $result = Save-CoverArt -CoverUrl $coverUrl -AlbumPath $script:album.FullName -Action SaveToFolder -MaxSize $maxSize -WhatIf:$UseWhatIf
+                    $result = Save-CoverArt -CoverUrl $coverUrl -AlbumPath $ctx.Album.FullName -Action SaveToFolder -MaxSize $maxSize -WhatIf:$UseWhatIf
                     if (-not $result.Success) {
                         Write-Warning "Failed to save cover art: $($result.Error)"
                     }
@@ -1684,7 +1714,7 @@ function Invoke-StageC-TrackSelection {
 
                 if ($coverUrl) {
                     $maxSize = $Config.CoverArt.TagImageSize
-                    $result = Invoke-OMCoverArtEmbed -AlbumPath $script:album.FullName -CoverUrl $coverUrl -MaxSize $maxSize -UseWhatIf:$UseWhatIf
+                    $result = Invoke-OMCoverArtEmbed -AlbumPath $ctx.Album.FullName -CoverUrl $coverUrl -MaxSize $maxSize -UseWhatIf:$UseWhatIf
                     if ($null -eq $result) {
                         # Warning already shown by Invoke-OMCoverArtEmbed
                     }
