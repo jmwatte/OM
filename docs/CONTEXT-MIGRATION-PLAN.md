@@ -94,7 +94,7 @@ but not required since stage functions already receive them as parameters.
 - [x] 6 pipeline-leak prevention tests
 - [x] Commit: `96ceec2`
 
-### Step 2 — Add Category B Variables to Context
+### Step 2 — Add Category B Variables to Context ✅ DONE (commit 96f8521)
 
 Expand `$script:ctx` to include all Category B variables:
 
@@ -121,7 +121,7 @@ Files: `Start-OM.ps1` only.
 Tests: Verify init values.
 Risk: None — just adding keys, nothing reads them yet.
 
-### Step 3 — Migrate Stage C (biggest target, ~170 refs)
+### Step 3 — Migrate Stage C (biggest target, ~170 refs) ✅ DONE (commit 96f8521)
 
 Stage C has the most `$script:` references. Migrate using the accessor pattern:
 
@@ -151,7 +151,7 @@ Files: `Invoke-StageC-TrackSelection.ps1`, `Start-OM.ps1`
 Tests: Pipeline-leak test for `sa`/`sf` handlers, context state assertions.
 Risk: Medium — many references, but accessor pattern is mechanical.
 
-### Step 4 — Migrate Stage A and Stage B (~15 refs each)
+### Step 4 — Migrate Stage A and Stage B (~15 refs each) ✅ DONE (commit 96f8521)
 
 These only use `$script:findMode` as shared mutable state. Small scope.
 
