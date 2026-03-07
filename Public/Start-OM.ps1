@@ -432,7 +432,8 @@ function Start-OM {
         # Implementation moved to: Private/Utils/Invoke-ProviderWithFallback.ps1
         # The function is expected to be available via module import (no inline implementation here).
         
-        $script:ctx.Album = $null
+        # Pre-loop album reset (ctx is created per-album inside foreach below)
+        $script:ctx = @{ Album = $null }
         
         # Handle single album path: extract artist from parent folder
         if ($script:isSingleAlbumPath) {
@@ -483,9 +484,9 @@ function Start-OM {
                 RefreshTracks      = $false
                 TargetFolderMoved  = $false
                 IsSingleAlbumPath  = $script:isSingleAlbumPath
-                FindMode           = if ($script:ctx) { $script:ctx.FindMode } else { $script:findMode }
-                ShowVerbose        = if ($script:ctx) { $script:ctx.ShowVerbose } else { $script:showVerbose }
-                GenreMode          = if ($script:ctx) { $script:ctx.GenreMode } else { $script:genreMode }
+                FindMode           = if ($script:ctx.ContainsKey('FindMode')) { $script:ctx.FindMode } else { $script:findMode }
+                ShowVerbose        = if ($script:ctx.ContainsKey('ShowVerbose')) { $script:ctx.ShowVerbose } else { $script:showVerbose }
+                GenreMode          = if ($script:ctx.ContainsKey('GenreMode')) { $script:ctx.GenreMode } else { $script:genreMode }
                 ManualAlbumArtist  = $null
                 AutoModeActive     = $false
                 BackNavigationMode = $false
