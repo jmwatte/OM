@@ -52,6 +52,8 @@ View current config: `Get-OMConfig`
 - Tag files: `Set-OMTags -Path "C:\path\to\file.mp3"`
 - Search providers: Use internal functions like `Search-DItem` (Discogs) or `Search-QAlbum` (Qobuz).
 
+For the full interactive guide, see **[docs/USER-GUIDE.md](docs/USER-GUIDE.md)**.
+
 For detailed commands, see `Get-Command -Module OM`.
 
 ## Troubleshooting

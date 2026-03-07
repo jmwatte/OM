@@ -364,8 +364,19 @@ function Invoke-StageB-AlbumSelection {
                 }
             }
     
-            $inputF = Read-Host "Enter '(b)ack', '(s)kip or (x)ip', 'id:<id>', (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, or album name to filter"
+            $inputF = Read-Host "Enter '(b)ack', '(s)kip or (x)ip', 'id:<id>', ps/pq/pd/pm, or album name to filter, (?) help"
             switch -Regex ($inputF) {
+                '^\?$' {
+                    Show-OMHelp -Context 'StageB-NoResults'
+                    return @{
+                        NextStage             = 'B'
+                        SelectedAlbum         = $null
+                        UpdatedCache          = $CachedAlbums
+                        UpdatedCachedArtistId = $CachedArtistId
+                        UpdatedProvider       = $Provider
+                        CurrentPage           = $currentPage
+                    }
+                }
                 '^b$' {
                     return @{
                         NextStage             = 'A'
@@ -562,65 +573,8 @@ function Invoke-StageB-AlbumSelection {
             
             # If UpdateGenresOnly, handle it here before returning
             if ($UpdateGenresOnly) {
-                # Get audio files
-                $genreUpdateFiles = @(Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
-                    Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' })
-                
-                if ($genreUpdateFiles.Count -gt 0) {
-                    # Extract genres from album object (use artist if album has no genres)
-                    try {
-                        $providerGenres = @()
-                        
-                        # Safely check for genre properties using Get-IfExists
-                        $albumGenres = Get-IfExists $selectedAlbum 'genres'
-                        $albumGenre = Get-IfExists $selectedAlbum 'genre'
-                        $albumStyles = Get-IfExists $selectedAlbum 'styles'
-                        $artistGenres = if ($ProviderArtist) { Get-IfExists $ProviderArtist 'genres' } else { $null }
-                        
-                        if ($albumGenres) { 
-                            $providerGenres = @($albumGenres) 
-                        }
-                        elseif ($albumGenre) { 
-                            $providerGenres = @($albumGenre) 
-                        }
-                        elseif ($albumStyles) { 
-                            $providerGenres = @($albumStyles) 
-                        }
-                        elseif ($artistGenres) { 
-                            $providerGenres = @($artistGenres) 
-                        }
-                        
-                        # Force array type, filter, trim, and decode HTML entities (e.g., &amp; -> &)
-                        $providerGenres = @($providerGenres | Where-Object { $_ -and $_ -ne '' } | ForEach-Object { 
-                            $decoded = [System.Net.WebUtility]::HtmlDecode($_.ToString().Trim())
-                            $decoded
-                        })
-                        
-                        # Defensive count check
-                        $providerGenreCount = if ($providerGenres -is [array]) { $providerGenres.Count } else { if ($providerGenres) { 1 } else { 0 } }
-                        if ($providerGenreCount -gt 0) {
-                            $updatedCount = 0
-                            foreach ($audioFile in $genreUpdateFiles) {
-                                $currentTags = Get-OMTags -Path $audioFile.FullName
-                                $currentGenres = if ($currentTags.Genres) { @($currentTags.Genres) } else { @() }
-                                $newGenres = if ($GenreMode -eq 'Merge') { @($currentGenres + $providerGenres | Select-Object -Unique) } else { @($providerGenres) }
-                                
-                                # Defensive count checks for comparison
-                                $currentCount = if ($currentGenres -is [array]) { $currentGenres.Count } else { if ($currentGenres) { 1 } else { 0 } }
-                                $newCount = if ($newGenres -is [array]) { $newGenres.Count } else { if ($newGenres) { 1 } else { 0 } }
-                                $changed = ($newCount -ne $currentCount) -or (Compare-Object $newGenres $currentGenres)
-                                if ($changed) {
-                                    Set-OMTags -Path $audioFile.FullName -Tags @{ Genres = $newGenres } -Force -WhatIf:$UseWhatIf | Out-Null
-                                    $updatedCount++
-                                }
-                            }
-                            Write-Host "✓ Updated $updatedCount/$($genreUpdateFiles.Count) file(s) with genres" -ForegroundColor Green
-                        }
-                    }
-                    catch {
-                        Write-Warning "Failed to update genres: $_"
-                    }
-                }
+                Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
+                    -AlbumPath $script:album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
                 
                 return @{
                     NextStage             = 'AlbumDone'
@@ -646,52 +600,8 @@ function Invoke-StageB-AlbumSelection {
             
             # If UpdateGenresOnly, update genres and return AlbumDone
             if ($UpdateGenresOnly -and $selectedAlbum) {
-                $genreUpdateFiles = @(Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
-                    Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' })
-                
-                if ($genreUpdateFiles.Count -gt 0) {
-                    try {
-                        $providerGenres = @()
-                        # Extract genres from selected album
-                        $albumGenres = Get-IfExists $selectedAlbum 'genres'
-                        $albumGenre = Get-IfExists $selectedAlbum 'genre'
-                        $albumStyles = Get-IfExists $selectedAlbum 'styles'
-                        $artistGenres = if ($ProviderArtist) { Get-IfExists $ProviderArtist 'genres' } else { $null }
-                        
-                        $providerGenres = @()
-                        if ($albumGenres) { $providerGenres = @($albumGenres) }
-                        elseif ($albumGenre) { $providerGenres = @($albumGenre) }
-                        elseif ($albumStyles) { $providerGenres = @($albumStyles) }
-                        elseif ($artistGenres) { $providerGenres = @($artistGenres) }
-                        
-                        # Force array type, filter, trim, and decode HTML entities (e.g., &amp; -> &)
-                        $providerGenres = @($providerGenres | Where-Object { $_ -and $_ -ne '' } | ForEach-Object { 
-                            $decoded = [System.Net.WebUtility]::HtmlDecode($_.ToString().Trim())
-                            $decoded
-                        })
-                        
-                        # Defensive count check
-                        $providerGenreCount = if ($providerGenres -is [array]) { $providerGenres.Count } else { if ($providerGenres) { 1 } else { 0 } }
-                        if ($providerGenreCount -gt 0) {
-                            $updatedCount = 0
-                            foreach ($audioFile in $genreUpdateFiles) {
-                                $currentTags = Get-OMTags -Path $audioFile.FullName
-                                $currentGenres = if ($currentTags.Genres) { @($currentTags.Genres) } else { @() }
-                                $newGenres = if ($GenreMode -eq 'Merge') { @($currentGenres + $providerGenres | Select-Object -Unique) } else { @($providerGenres) }
-                                
-                                # Defensive count checks for comparison
-                                $currentCount = if ($currentGenres -is [array]) { $currentGenres.Count } else { if ($currentGenres) { 1 } else { 0 } }
-                                $newCount = if ($newGenres -is [array]) { $newGenres.Count } else { if ($newGenres) { 1 } else { 0 } }
-                                $changed = ($newCount -ne $currentCount) -or (Compare-Object $newGenres $currentGenres)
-                                if ($changed) {
-                                    Set-OMTags -Path $audioFile.FullName -Tags @{ Genres = $newGenres } -Force -WhatIf:$UseWhatIf | Out-Null
-                                    $updatedCount++
-                                }
-                            }
-                            Write-Host "✓ Updated $updatedCount/$($genreUpdateFiles.Count) file(s)" -ForegroundColor Green
-                        }
-                    } catch { Write-Warning "Failed to update genres: $_" }
-                }
+                Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
+                    -AlbumPath $script:album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
                 
                 return @{
                     NextStage             = 'AlbumDone'
@@ -717,52 +627,8 @@ function Invoke-StageB-AlbumSelection {
             
             # If UpdateGenresOnly, update genres and return AlbumDone
             if ($UpdateGenresOnly -and $selectedAlbum) {
-                $genreUpdateFiles = @(Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
-                    Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' })
-                
-                if ($genreUpdateFiles.Count -gt 0) {
-                    try {
-                        $providerGenres = @()
-                        # Extract genres from selected album
-                        $albumGenres = Get-IfExists $selectedAlbum 'genres'
-                        $albumGenre = Get-IfExists $selectedAlbum 'genre'
-                        $albumStyles = Get-IfExists $selectedAlbum 'styles'
-                        $artistGenres = if ($ProviderArtist) { Get-IfExists $ProviderArtist 'genres' } else { $null }
-                        
-                        $providerGenres = @()
-                        if ($albumGenres) { $providerGenres = @($albumGenres) }
-                        elseif ($albumGenre) { $providerGenres = @($albumGenre) }
-                        elseif ($albumStyles) { $providerGenres = @($albumStyles) }
-                        elseif ($artistGenres) { $providerGenres = @($artistGenres) }
-                        
-                        # Force array type, filter, trim, and decode HTML entities (e.g., &amp; -> &)
-                        $providerGenres = @($providerGenres | Where-Object { $_ -and $_ -ne '' } | ForEach-Object { 
-                            $decoded = [System.Net.WebUtility]::HtmlDecode($_.ToString().Trim())
-                            $decoded
-                        })
-                        
-                        # Defensive count check
-                        $providerGenreCount = if ($providerGenres -is [array]) { $providerGenres.Count } else { if ($providerGenres) { 1 } else { 0 } }
-                        if ($providerGenreCount -gt 0) {
-                            $updatedCount = 0
-                            foreach ($audioFile in $genreUpdateFiles) {
-                                $currentTags = Get-OMTags -Path $audioFile.FullName
-                                $currentGenres = if ($currentTags.Genres) { @($currentTags.Genres) } else { @() }
-                                $newGenres = if ($GenreMode -eq 'Merge') { @($currentGenres + $providerGenres | Select-Object -Unique) } else { @($providerGenres) }
-                                
-                                # Defensive count checks for comparison
-                                $currentCount = if ($currentGenres -is [array]) { $currentGenres.Count } else { if ($currentGenres) { 1 } else { 0 } }
-                                $newCount = if ($newGenres -is [array]) { $newGenres.Count } else { if ($newGenres) { 1 } else { 0 } }
-                                $changed = ($newCount -ne $currentCount) -or (Compare-Object $newGenres $currentGenres)
-                                if ($changed) {
-                                    Set-OMTags -Path $audioFile.FullName -Tags @{ Genres = $newGenres } -Force -WhatIf:$UseWhatIf | Out-Null
-                                    $updatedCount++
-                                }
-                            }
-                            Write-Host "✓ Updated $updatedCount/$($genreUpdateFiles.Count) file(s)" -ForegroundColor Green
-                        }
-                    } catch { Write-Warning "Failed to update genres: $_" }
-                }
+                Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
+                    -AlbumPath $script:album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
                 
                 return @{
                     NextStage             = 'AlbumDone'
@@ -786,10 +652,14 @@ function Invoke-StageB-AlbumSelection {
 
         $originalColor = [Console]::ForegroundColor
         [Console]::ForegroundColor = [ConsoleColor]::Yellow
-        $inputF = Read-Host "Select album(s) [number] (Enter=first), number(s) (e.g., 1,3,5-8), '(b)ack', '(n)ext', '(pr)ev', '(x)ip', 'id:<id>', '(p)rovider', '(f)indmode, cover: (cv)iew/(cvo)riginal/(cs)ave/(ct)ags, '*' (all albums), '(ni)ew item (artist+album), or text to search:"
+        $inputF = Read-Host "Select album(s) [number], (b)ack, (n)ext, (pr)ev, (x)ip, id:<id>, (p)rovider, (f)indmode, cv/cvo/cs/ct, *, (ni), (?) help, or text:"
         [Console]::ForegroundColor = $originalColor
         
         switch -Regex ($inputF) {
+            '^\?$' {
+                Show-OMHelp -Context 'StageB-Select'
+                continue
+            }
             '^x(ip)?$' {
                 return @{
                     NextStage             = 'Skip'
@@ -993,52 +863,8 @@ function Invoke-StageB-AlbumSelection {
                 
                 # If UpdateGenresOnly, update genres and return AlbumDone
                 if ($UpdateGenresOnly -and $selectedAlbum) {
-                    $genreUpdateFiles = @(Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
-                        Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' })
-                    
-                    if ($genreUpdateFiles.Count -gt 0) {
-                        try {
-                            $providerGenres = @()
-                            
-                            # Safely check for genre properties
-                            $albumGenres = Get-IfExists $selectedAlbum 'genres'
-                            $albumGenre = Get-IfExists $selectedAlbum 'genre'
-                            $albumStyles = Get-IfExists $selectedAlbum 'styles'
-                            $artistGenres = if ($ProviderArtist) { Get-IfExists $ProviderArtist 'genres' } else { $null }
-                            
-                            if ($albumGenres) { $providerGenres = @($albumGenres) }
-                            elseif ($albumGenre) { $providerGenres = @($albumGenre) }
-                            elseif ($albumStyles) { $providerGenres = @($albumStyles) }
-                            elseif ($artistGenres) { $providerGenres = @($artistGenres) }
-                            
-                            # Force array type, filter, trim, and decode HTML entities (e.g., &amp; -> &)
-                            $providerGenres = @($providerGenres | Where-Object { $_ -and $_ -ne '' } | ForEach-Object { 
-                                $decoded = [System.Net.WebUtility]::HtmlDecode($_.ToString().Trim())
-                                $decoded
-                            })
-                            
-                            # Defensive count check
-                            $providerGenreCount = if ($providerGenres -is [array]) { $providerGenres.Count } else { if ($providerGenres) { 1 } else { 0 } }
-                            if ($providerGenreCount -gt 0) {
-                                $updatedCount = 0
-                                foreach ($audioFile in $genreUpdateFiles) {
-                                    $currentTags = Get-OMTags -Path $audioFile.FullName
-                                    $currentGenres = if ($currentTags.Genres) { @($currentTags.Genres) } else { @() }
-                                    $newGenres = if ($GenreMode -eq 'Merge') { @($currentGenres + $providerGenres | Select-Object -Unique) } else { @($providerGenres) }
-                                    
-                                    # Defensive count checks for comparison
-                                    $currentCount = if ($currentGenres -is [array]) { $currentGenres.Count } else { if ($currentGenres) { 1 } else { 0 } }
-                                    $newCount = if ($newGenres -is [array]) { $newGenres.Count } else { if ($newGenres) { 1 } else { 0 } }
-                                    $changed = ($newCount -ne $currentCount) -or (Compare-Object $newGenres $currentGenres)
-                                    if ($changed) {
-                                        Set-OMTags -Path $audioFile.FullName -Tags @{ Genres = $newGenres } -Force -WhatIf:$UseWhatIf | Out-Null
-                                        $updatedCount++
-                                    }
-                                }
-                                Write-Host "✓ Updated $updatedCount/$($genreUpdateFiles.Count) file(s)" -ForegroundColor Green
-                            }
-                        } catch { Write-Warning "Failed to update genres: $_" }
-                    }
+                    Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
+                        -AlbumPath $script:album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
                     
                     return @{
                         NextStage             = 'AlbumDone'
@@ -1271,148 +1097,16 @@ function Invoke-StageB-AlbumSelection {
                     
                     # If UpdateGenresOnly mode, update genres and skip Stage C
                     if ($UpdateGenresOnly) {
-                        Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-                        Write-Host "🎵 UPDATE GENRES ONLY MODE" -ForegroundColor Magenta
-                        Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-                        Write-Host ""
-                        Write-Host "Album: $($selectedAlbum.name)" -ForegroundColor Green
-                        Write-Host "Genre mode: $GenreMode" -ForegroundColor Yellow
-                        Write-Host ""
+                        Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
+                            -AlbumPath $script:album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
                         
-                        # Get audio files from script:album (set by parent)
-                        $genreUpdateFiles = @(Get-ChildItem -LiteralPath $script:album.FullName -File -Recurse | 
-                            Where-Object { $_.Extension -match '\.(mp3|flac|wav|m4a|aac|ogg|ape)' })
-                        
-                        if ($genreUpdateFiles.Count -eq 0) {
-                            Write-Warning "No audio files found. Skipping."
-                            return @{
-                                NextStage             = 'AlbumDone'
-                                SelectedAlbum         = $selectedAlbum
-                                UpdatedCache          = $CachedAlbums
-                                UpdatedCachedArtistId = $CachedArtistId
-                                UpdatedProvider       = $Provider
-                                CurrentPage           = $currentPage
-                            }
-                        }
-                        
-                        # Extract genres from selected album (use artist genres if album has none)
-                        Write-Verbose "Extracting genres from $Provider album/artist..."
-                        try {
-                            $providerGenres = @()
-                            
-                            # Safely check for genre properties
-                            $albumGenres = Get-IfExists $selectedAlbum 'genres'
-                            $albumGenre = Get-IfExists $selectedAlbum 'genre'
-                            $albumStyles = Get-IfExists $selectedAlbum 'styles'
-                            $artistGenres = if ($ProviderArtist) { Get-IfExists $ProviderArtist 'genres' } else { $null }
-                            
-                            if ($albumGenres) {
-                                $providerGenres = @($albumGenres)
-                            }
-                            elseif ($albumGenre) {
-                                $providerGenres = @($albumGenre)
-                            }
-                            elseif ($albumStyles) {
-                                $providerGenres = @($albumStyles)
-                            }
-                            elseif ($artistGenres) {
-                                $providerGenres = @($artistGenres)
-                            }
-                            
-                            $providerGenres = @($providerGenres | Where-Object { $_ -and $_ -ne '' } | ForEach-Object { $_.ToString().Trim() })
-                            
-                            if ($providerGenres.Count -eq 0) {
-                                Write-Warning "No genres found for this album. Skipping."
-                                return @{
-                                    NextStage             = 'AlbumDone'
-                                    SelectedAlbum         = $selectedAlbum
-                                    UpdatedCache          = $CachedAlbums
-                                    UpdatedCachedArtistId = $CachedArtistId
-                                    UpdatedProvider       = $Provider
-                                    CurrentPage           = $currentPage
-                                }
-                            }
-                            
-                            Write-Host "Genres: $($providerGenres -join ', ')" -ForegroundColor Green
-                            
-                            # Update files
-                            $updatedCount = 0
-                            foreach ($audioFile in $genreUpdateFiles) {
-                                try {
-                                    $currentTags = Get-OMTags -Path $audioFile.FullName
-                                    $currentGenres = @()
-                                    if ($currentTags.Genres) {
-                                        $currentGenres = @($currentTags.Genres)
-                                    }
-                                    
-                                    # Determine new genres based on mode
-                                    $newGenres = @()
-                                    if ($GenreMode -eq 'Merge') {
-                                        $combined = @($currentGenres) + @($providerGenres)
-                                        $newGenres = @($combined | Select-Object -Unique)
-                                    }
-                                    else {
-                                        $newGenres = @($providerGenres)
-                                    }
-                                    
-                                    # Check if changed
-                                    $changed = $false
-                                    $currentCount = if ($currentGenres -is [array]) { $currentGenres.Count } else { if ($currentGenres) { 1 } else { 0 } }
-                                    $newCount = if ($newGenres -is [array]) { $newGenres.Count } else { if ($newGenres) { 1 } else { 0 } }
-                                    
-                                    if ($newCount -ne $currentCount) {
-                                        $changed = $true
-                                    }
-                                    else {
-                                        $sortedNew = @($newGenres | Sort-Object)
-                                        $sortedCurrent = @($currentGenres | Sort-Object)
-                                        for ($i = 0; $i -lt $newCount; $i++) {
-                                            if ($sortedNew[$i] -cne $sortedCurrent[$i]) {
-                                                $changed = $true
-                                                break
-                                            }
-                                        }
-                                    }
-                                    
-                                    if ($changed) {
-                                        Write-Verbose "  Updating: $($audioFile.Name) ($($currentGenres -join ', ') → $($newGenres -join ', '))"
-                                        Set-OMTags -Path $audioFile.FullName -Tags @{ Genres = $newGenres } -Force -WhatIf:$UseWhatIf | Out-Null
-                                        $updatedCount++
-                                    }
-                                }
-                                catch {
-                                    Write-Warning "Failed to update '$($audioFile.Name)': $_"
-                                }
-                            }
-                            
-                            if ($UseWhatIf) {
-                                Write-Host "✓ WhatIf: Would update $updatedCount/$($genreUpdateFiles.Count) file(s)" -ForegroundColor Yellow
-                            }
-                            else {
-                                Write-Host "✓ Updated $updatedCount/$($genreUpdateFiles.Count) file(s)" -ForegroundColor Green
-                            }
-                            Write-Host ""
-                            
-                            # Return AlbumDone to skip Stage C
-                            return @{
-                                NextStage             = 'AlbumDone'
-                                SelectedAlbum         = $selectedAlbum
-                                UpdatedCache          = $CachedAlbums
-                                UpdatedCachedArtistId = $CachedArtistId
-                                UpdatedProvider       = $Provider
-                                CurrentPage           = $currentPage
-                            }
-                        }
-                        catch {
-                            Write-Warning "Failed to fetch album details or update genres: $_"
-                            return @{
-                                NextStage             = 'AlbumDone'
-                                SelectedAlbum         = $selectedAlbum
-                                UpdatedCache          = $CachedAlbums
-                                UpdatedCachedArtistId = $CachedArtistId
-                                UpdatedProvider       = $Provider
-                                CurrentPage           = $currentPage
-                            }
+                        return @{
+                            NextStage             = 'AlbumDone'
+                            SelectedAlbum         = $selectedAlbum
+                            UpdatedCache          = $CachedAlbums
+                            UpdatedCachedArtistId = $CachedArtistId
+                            UpdatedProvider       = $Provider
+                            CurrentPage           = $currentPage
                         }
                     }
                     
