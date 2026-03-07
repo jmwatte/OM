@@ -894,6 +894,19 @@ function Start-OM {
                                 $genreResult = Update-OMGenresFromProvider -SelectedAlbum $ProviderAlbum -ProviderArtist $ProviderArtist `
                                     -AlbumPath $script:ctx.Album.FullName -GenreMode $script:ctx.GenreMode -UseWhatIf:$useWhatIf
                                 
+                                # Genre fallback: if no genres found and AutoFallback enabled, try other providers
+                                if ($genreResult.Genres.Count -eq 0 -and $AutoFallback) {
+                                    Write-Host "⚠️  No genres from $Provider. Trying other providers..." -ForegroundColor Yellow
+                                    $genreFallback = Get-GenresWithFallback -PrimaryProvider $Provider `
+                                        -ArtistName $quickArtist -AlbumName $quickAlbum `
+                                        -TrackCount $script:trackCount -Threshold $AutoConfidenceThreshold
+                                    if ($genreFallback) {
+                                        $fbAlbum = @{ genres = $genreFallback.Genres }
+                                        $genreResult = Update-OMGenresFromProvider -SelectedAlbum $fbAlbum `
+                                            -AlbumPath $script:ctx.Album.FullName -GenreMode $script:ctx.GenreMode -UseWhatIf:$useWhatIf
+                                    }
+                                }
+
                                 if (-not $genreResult.Success -and $genreResult.Total -eq 0) {
                                     Write-Warning "No audio files found. Skipping."
                                 }
@@ -1179,6 +1192,19 @@ function Start-OM {
                                     $genreResult = Update-OMGenresFromProvider -SelectedAlbum $ProviderAlbum -ProviderArtist $ProviderArtist `
                                         -AlbumPath $script:ctx.Album.FullName -GenreMode $script:ctx.GenreMode -UseWhatIf:$useWhatIf
                                     
+                                    # Genre fallback: if no genres found, try other providers before prompting
+                                    if ($genreResult.Genres.Count -eq 0 -and $genreResult.Total -gt 0 -and $AutoFallback) {
+                                        Write-Host "⚠️  No genres from $Provider. Trying other providers..." -ForegroundColor Yellow
+                                        $genreFallback = Get-GenresWithFallback -PrimaryProvider $Provider `
+                                            -ArtistName $quickArtist -AlbumName $quickAlbum `
+                                            -TrackCount $script:trackCount -Threshold $AutoConfidenceThreshold
+                                        if ($genreFallback) {
+                                            $fbAlbum = @{ genres = $genreFallback.Genres }
+                                            $genreResult = Update-OMGenresFromProvider -SelectedAlbum $fbAlbum `
+                                                -AlbumPath $script:ctx.Album.FullName -GenreMode $script:ctx.GenreMode -UseWhatIf:$useWhatIf
+                                        }
+                                    }
+
                                     if (-not $genreResult.Success -and $genreResult.Genres.Count -eq 0 -and $genreResult.Total -gt 0) {
                                         # No genres found - offer manual entry (interactive only)
                                         Write-Host "Do you want to (s)kip or (e)nter genres manually? [s]: " -NoNewline -ForegroundColor Yellow

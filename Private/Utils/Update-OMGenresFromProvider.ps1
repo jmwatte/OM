@@ -83,7 +83,11 @@ function Update-OMGenresFromProvider {
     foreach ($audioFile in $audioFiles) {
         try {
             $currentTags = Get-OMTags -Path $audioFile.FullName
-            $currentGenres = if ($currentTags.Genres) { @($currentTags.Genres) } else { @() }
+            $currentGenres = @(
+                if ($currentTags.Genres -and $currentTags.Genres -ne '*Empty*') {
+                    $currentTags.Genres
+                }
+            )
 
             $newGenres = if ($GenreMode -eq 'Merge') {
                 @((@($currentGenres) + @($providerGenres)) | Select-Object -Unique)
