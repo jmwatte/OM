@@ -899,7 +899,7 @@ function Start-OM {
                                     Write-Host "⚠️  No genres from $Provider. Trying other providers..." -ForegroundColor Yellow
                                     $genreFallback = Get-GenresWithFallback -PrimaryProvider $Provider `
                                         -ArtistName $quickArtist -AlbumName $quickAlbum `
-                                        -TrackCount $script:trackCount -Threshold $AutoConfidenceThreshold
+                                        -TrackCount $script:trackCount
                                     if ($genreFallback) {
                                         $fbAlbum = @{ genres = $genreFallback.Genres }
                                         $genreResult = Update-OMGenresFromProvider -SelectedAlbum $fbAlbum `
@@ -1197,7 +1197,7 @@ function Start-OM {
                                         Write-Host "⚠️  No genres from $Provider. Trying other providers..." -ForegroundColor Yellow
                                         $genreFallback = Get-GenresWithFallback -PrimaryProvider $Provider `
                                             -ArtistName $quickArtist -AlbumName $quickAlbum `
-                                            -TrackCount $script:trackCount -Threshold $AutoConfidenceThreshold
+                                            -TrackCount $script:trackCount
                                         if ($genreFallback) {
                                             $fbAlbum = @{ genres = $genreFallback.Genres }
                                             $genreResult = Update-OMGenresFromProvider -SelectedAlbum $fbAlbum `

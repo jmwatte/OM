@@ -89,11 +89,13 @@ function Update-OMGenresFromProvider {
                 }
             )
 
-            $newGenres = if ($GenreMode -eq 'Merge') {
-                @((@($currentGenres) + @($providerGenres)) | Select-Object -Unique)
-            } else {
-                @($providerGenres)
-            }
+            $newGenres = @(
+                if ($GenreMode -eq 'Merge') {
+                    (@($currentGenres) + @($providerGenres)) | Select-Object -Unique
+                } else {
+                    $providerGenres
+                }
+            )
 
             # Check if actually changed
             $changed = $false

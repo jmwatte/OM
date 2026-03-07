@@ -40,7 +40,7 @@ function Get-GenresWithFallback {
         [int]$TrackCount = 0,
 
         [Parameter()]
-        [double]$Threshold = 0.7
+        [double]$Threshold = 0.35
     )
 
     $fallbackChain = switch ($PrimaryProvider) {
@@ -99,8 +99,8 @@ function Get-GenresWithFallback {
         $genres = @($genres)  # Ensure array even if Where-Object returned $null
 
         # If album has no genres, try the artist
+        $fbArtist = $null
         if (@($genres).Count -eq 0) {
-            $fbArtist = $null
             if ($fbProvider -eq 'Spotify') {
                 $fbArtists = Get-IfExists $fbAlbum 'artists'
                 if ($fbArtists -and @($fbArtists).Count -gt 0) {
