@@ -59,6 +59,8 @@ function Save-CoverArtWithFallback {
         [switch]$UseWhatIf
     )
 
+    $coverResult = $null
+
     # Try the primary URL first (if we have one)
     if ($CoverUrl) {
         $coverResult = Save-CoverArt -CoverUrl $CoverUrl -AlbumPath $AlbumPath `
