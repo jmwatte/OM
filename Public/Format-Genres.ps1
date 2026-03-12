@@ -1,4 +1,4 @@
-function Format-Genres {
+﻿function Format-Genres {
     <#
     .SYNOPSIS
         Validates and standardizes audio file genre tags against a whitelist with intelligent mapping.
@@ -130,8 +130,11 @@ function Format-Genres {
         $config = Get-OMConfig
         $config.Genres.GenreMappings
         
-        # Edit config to add/remove mappings:
-        Set-OMConfig -GenresMappings @{"pop/rock" = "Pop"; "classique" = "Classical"}
+        # Rename a genre in the whitelist (old name → new name):
+        Set-OMConfig -RenameGenre @{'Progressive Rock' = 'Rock Progressive'}
+        
+        # This renames the genre in the whitelist and adds a mapping so
+        # files still tagged with 'Progressive Rock' get corrected by Format-Genres.
 
     .LINK
         Get-OMTags
