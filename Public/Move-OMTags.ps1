@@ -218,6 +218,31 @@ function Move-OMTags {
                     if ($immediateChildDirs.Count -eq 1) {
                         $actualSourcePath = Join-Path $sourcePath $immediateChildDirs[0]
                         Write-Verbose "Detected album subfolder: $($immediateChildDirs[0])"
+
+                        # Move cover art and other common assets from parent into the subfolder
+                        # so they travel with the album (e.g., cover.jpg saved by SOM at wrapper level)
+                        $assetPatterns = @('cover.jpg', 'cover.png', 'folder.jpg', 'folder.png')
+                        foreach ($pattern in $assetPatterns) {
+                            $parentAsset = Join-Path $sourcePath $pattern
+                            if (Test-Path -LiteralPath $parentAsset -PathType Leaf) {
+                                $targetAsset = Join-Path $actualSourcePath $pattern
+                                if (Test-Path -LiteralPath $targetAsset -PathType Leaf) {
+                                    # Both exist: keep the newer/larger one (provider cover is likely better)
+                                    $parentInfo = Get-Item -LiteralPath $parentAsset
+                                    $targetInfo = Get-Item -LiteralPath $targetAsset
+                                    if ($parentInfo.Length -ge $targetInfo.Length) {
+                                        Write-Verbose "Replacing subfolder $pattern with parent version (parent: $($parentInfo.Length) bytes >= subfolder: $($targetInfo.Length) bytes)"
+                                        Move-Item -LiteralPath $parentAsset -Destination $targetAsset -Force
+                                    } else {
+                                        Write-Verbose "Keeping subfolder $pattern (subfolder: $($targetInfo.Length) bytes > parent: $($parentInfo.Length) bytes)"
+                                        Remove-Item -LiteralPath $parentAsset -Force
+                                    }
+                                } else {
+                                    Write-Verbose "Moving $pattern from parent into subfolder"
+                                    Move-Item -LiteralPath $parentAsset -Destination $targetAsset -Force
+                                }
+                            }
+                        }
                     }
                 }
                 

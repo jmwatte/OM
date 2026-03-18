@@ -598,13 +598,18 @@ function Start-OM {
                             Write-Host "🎵 Using AlbumArtist tag for better match: '$tagArtist'" -ForegroundColor Green
                             $detectedArtist = $tagArtist
                             
-                            # Also check if album name has "Artist - Title" pattern and strip it
+                            # Also check if album name has "Artist - Title" or "Title - Artist" pattern and strip it
                             if ($detectedAlbum -match '^([^-]+?)\s*-\s*(.+)$') {
                                 $possibleArtist = $matches[1].Trim()
                                 $possibleAlbumOnly = $matches[2].Trim()
-                                # If the album prefix looks like part of artist name, strip it
+                                # If the album prefix looks like part of artist name, strip it ("Artist - Album")
                                 if ($possibleArtist -match [regex]::Escape($detectedArtist) -or $detectedArtist -match [regex]::Escape($possibleArtist)) {
                                     $detectedAlbum = $possibleAlbumOnly
+                                    Write-Host "   Cleaned album name to: '$detectedAlbum'" -ForegroundColor Gray
+                                }
+                                # Also check right side: "Album - Artist" pattern
+                                elseif ($possibleAlbumOnly -match [regex]::Escape($detectedArtist) -or $detectedArtist -match [regex]::Escape($possibleAlbumOnly)) {
+                                    $detectedAlbum = $possibleArtist
                                     Write-Host "   Cleaned album name to: '$detectedAlbum'" -ForegroundColor Gray
                                 }
                             }
@@ -619,6 +624,12 @@ function Start-OM {
                                 Write-Host "🎵 Using artist from album name: '$possibleArtist'" -ForegroundColor Green
                                 $detectedArtist = $possibleArtist
                                 $detectedAlbum = $possibleAlbumOnly
+                            }
+                            # Also check right side: "Album - Artist" pattern
+                            elseif ($possibleAlbumOnly -match [regex]::Escape($detectedArtist) -or $detectedArtist -match [regex]::Escape($possibleAlbumOnly)) {
+                                Write-Host "📁 Auto-detected from folder: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Gray
+                                Write-Host "   Cleaned album name to: '$possibleArtist'" -ForegroundColor Gray
+                                $detectedAlbum = $possibleArtist
                             }
                             else {
                                 Write-Host "📁 Auto-detected from folder structure: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Green

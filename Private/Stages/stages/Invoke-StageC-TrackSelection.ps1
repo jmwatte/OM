@@ -1327,7 +1327,17 @@ function Invoke-StageC-TrackSelection {
                     Write-Host "🖼️  Saving cover art..." -ForegroundColor Cyan
                     $config = Get-OMConfig
                     $maxSize = $config.CoverArt.FolderImageSize
-                    $null = Save-CoverArtWithFallback -CoverUrl $coverUrl -AlbumPath $ctx.Album.FullName `
+                    # Save cover to the directory containing audio files (may differ from $ctx.Album.FullName
+                    # when a wrapper folder exists, e.g. Artist\Album\Album - Artist\*.flac)
+                    $coverSavePath = $ctx.Album.FullName
+                    if ($ctx.AudioFiles -and $ctx.AudioFiles.Count -gt 0) {
+                        $audioDir = Split-Path $ctx.AudioFiles[0].FilePath -Parent
+                        if ($audioDir -and $audioDir -ne $ctx.Album.FullName) {
+                            $coverSavePath = $audioDir
+                            Write-Verbose "Cover art save path adjusted to audio file directory: $coverSavePath"
+                        }
+                    }
+                    $null = Save-CoverArtWithFallback -CoverUrl $coverUrl -AlbumPath $coverSavePath `
                         -MaxSize $maxSize -Provider $Provider `
                         -AlbumName $QuickAlbum -ArtistName $QuickArtist `
                         -AutoFallback:$AutoFallback -UseWhatIf:$UseWhatIf
@@ -1671,7 +1681,13 @@ function Invoke-StageC-TrackSelection {
 
                 if ($coverUrl) {
                     $maxSize = $Config.CoverArt.FolderImageSize
-                    $result = Save-CoverArt -CoverUrl $coverUrl -AlbumPath $ctx.Album.FullName -Action SaveToFolder -MaxSize $maxSize -WhatIf:$UseWhatIf
+                    # Save cover to the directory containing audio files
+                    $csCoverPath = $ctx.Album.FullName
+                    if ($ctx.AudioFiles -and $ctx.AudioFiles.Count -gt 0) {
+                        $csAudioDir = Split-Path $ctx.AudioFiles[0].FilePath -Parent
+                        if ($csAudioDir -and $csAudioDir -ne $ctx.Album.FullName) { $csCoverPath = $csAudioDir }
+                    }
+                    $result = Save-CoverArt -CoverUrl $coverUrl -AlbumPath $csCoverPath -Action SaveToFolder -MaxSize $maxSize -WhatIf:$UseWhatIf
                     if (-not $result.Success) {
                         Write-Warning "Failed to save cover art: $($result.Error)"
                     }

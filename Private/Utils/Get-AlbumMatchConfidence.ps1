@@ -15,13 +15,16 @@ function Get-AlbumMatchConfidence {
     
     # Artist similarity
     $remoteArtist = ''
-    if ($value = Get-IfExists $Candidate 'artists') {
-        if ($value -is [array] -and $value.Count -gt 0) {
-            $remoteArtist = if ($value[0].name) { $value[0].name } else { $value[0].ToString() }
+    $value = Get-IfExists $Candidate 'artists'
+    if ($value) {
+        $arr = @($value)  # Force array — pipeline unwraps single-element arrays from Get-IfExists
+        if ($arr.Count -gt 0) {
+            $remoteArtist = if ($arr[0].name) { $arr[0].name } else { $arr[0].ToString() }
         }
     }
-    if (-not $remoteArtist -and ($value = Get-IfExists $Candidate 'artist')) {
-        $remoteArtist = $value
+    if (-not $remoteArtist) {
+        $value = Get-IfExists $Candidate 'artist'
+        if ($value) { $remoteArtist = $value }
     }
     
     if ($remoteArtist) {
