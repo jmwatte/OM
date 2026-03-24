@@ -599,7 +599,7 @@ function Start-OM {
                             $detectedArtist = $tagArtist
                             
                             # Also check if album name has "Artist - Title" or "Title - Artist" pattern and strip it
-                            if ($detectedAlbum -match '^([^-]+?)\s*-\s*(.+)$') {
+                            if ($detectedAlbum -match '^(.+?)\s+-\s+(.+)$') {
                                 $possibleArtist = $matches[1].Trim()
                                 $possibleAlbumOnly = $matches[2].Trim()
                                 # If the album prefix looks like part of artist name, strip it ("Artist - Album")
@@ -615,7 +615,7 @@ function Start-OM {
                             }
                         }
                         # Otherwise check if album name has "Artist - Title" pattern
-                        elseif ($detectedAlbum -match '^([^-]+?)\s*-\s*(.+)$') {
+                        elseif ($detectedAlbum -match '^(.+?)\s+-\s+(.+)$') {
                             $possibleArtist = $matches[1].Trim()
                             $possibleAlbumOnly = $matches[2].Trim()
                             
