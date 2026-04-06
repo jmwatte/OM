@@ -59,9 +59,9 @@ function Search-SItem {
                     }
                 }
                 
-                # Sort by similarity and take top 10
-                $topAlbums = $scoredAlbums | Sort-Object -Property Score -Descending | Select-Object -First 10
-                Write-Verbose "Processing top $($topAlbums.Count) albums based on similarity to query"
+                # Sort by similarity (keep all results for client-side paging)
+                $topAlbums = $scoredAlbums | Sort-Object -Property Score -Descending
+                Write-Verbose "Processing $($topAlbums.Count) albums sorted by similarity to query"
                 
                 # Extract cover art URLs from album objects
                 $albumsWithCover = $topAlbums | ForEach-Object {

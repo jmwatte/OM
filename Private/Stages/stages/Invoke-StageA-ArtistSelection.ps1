@@ -137,7 +137,7 @@ function Invoke-StageA-ArtistSelection {
                 return $defaultResult
             }
             '^id:(.+)$' {
-                $id = $matches[1].Trim()
+                $id = ConvertFrom-ProviderUrl -InputId $matches[1].Trim() -Provider $Provider
                 if ($Provider -eq 'Discogs' -and $NormalizeDiscogsId) { $id = & $NormalizeDiscogsId $id }
                 $defaultResult.NextStage = 'B'
                 $defaultResult.ProviderArtist = @{ id = $id; name = $id }
@@ -201,7 +201,7 @@ function Invoke-StageA-ArtistSelection {
         return $defaultResult
     }
     if ($inputF -like 'id:*') {
-        $id = $inputF.Substring(3)
+        $id = ConvertFrom-ProviderUrl -InputId $inputF.Substring(3) -Provider $Provider
         if ($Provider -eq 'Discogs' -and $NormalizeDiscogsId) { $id = & $NormalizeDiscogsId $id }
         $defaultResult.NextStage = 'B'
         $defaultResult.ProviderArtist = @{ id = $id; name = $id }

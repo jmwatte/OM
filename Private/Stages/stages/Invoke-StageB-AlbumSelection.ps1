@@ -454,7 +454,7 @@ function Invoke-StageB-AlbumSelection {
                     }
                 }
                 '^id:.*' {
-                    $id = $inputF.Substring(3)
+                    $id = ConvertFrom-ProviderUrl -InputId $inputF.Substring(3) -Provider $Provider
                     if ($Provider -eq 'Discogs') { $id = & $NormalizeDiscogsId $id }
                     return @{
                         NextStage             = 'C'
@@ -892,7 +892,7 @@ function Invoke-StageB-AlbumSelection {
                 }
             }
             '^id:(.+)$' {
-                $id = $matches[1].Trim()
+                $id = ConvertFrom-ProviderUrl -InputId $matches[1].Trim() -Provider $Provider
                 if ($Provider -eq 'Discogs') { $id = & $NormalizeDiscogsId $id }
                 if ($Provider -eq 'MusicBrainz') {
                     Write-Host "Fetching MusicBrainz release information..." -ForegroundColor Cyan

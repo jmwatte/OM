@@ -599,34 +599,50 @@ function Start-OM {
                             $detectedArtist = $tagArtist
                             
                             # Also check if album name has "Artist - Title" or "Title - Artist" pattern and strip it
-                            if ($detectedAlbum -match '^(.+?)\s+-\s+(.+)$') {
+                            if ($detectedAlbum -match '^(.+)\s+-\s+(.+)$') {
                                 $possibleArtist = $matches[1].Trim()
                                 $possibleAlbumOnly = $matches[2].Trim()
-                                # If the album prefix looks like part of artist name, strip it ("Artist - Album")
-                                if ($possibleArtist -match [regex]::Escape($detectedArtist) -or $detectedArtist -match [regex]::Escape($possibleArtist)) {
+                                # If the album prefix IS the artist name (exact or starts-with), strip it ("Artist - Album")
+                                # Use starts-with instead of substring match to avoid false positives like
+                                # "The Complete Art Blakey On Emarcy" matching because it contains "Art Blakey"
+                                $escapedDetected = [regex]::Escape($detectedArtist)
+                                $escapedPossible = [regex]::Escape($possibleArtist)
+                                $escapedAlbumOnly = [regex]::Escape($possibleAlbumOnly)
+                                if ($possibleArtist -eq $detectedArtist -or
+                                    $possibleArtist -match ('^' + $escapedDetected + '(\s|$)') -or
+                                    $detectedArtist -match ('^' + $escapedPossible + '(\s|$)')) {
                                     $detectedAlbum = $possibleAlbumOnly
                                     Write-Host "   Cleaned album name to: '$detectedAlbum'" -ForegroundColor Gray
                                 }
                                 # Also check right side: "Album - Artist" pattern
-                                elseif ($possibleAlbumOnly -match [regex]::Escape($detectedArtist) -or $detectedArtist -match [regex]::Escape($possibleAlbumOnly)) {
+                                elseif ($possibleAlbumOnly -eq $detectedArtist -or
+                                    $possibleAlbumOnly -match ('^' + $escapedDetected + '(\s|$)') -or
+                                    $detectedArtist -match ('^' + $escapedAlbumOnly + '(\s|$)')) {
                                     $detectedAlbum = $possibleArtist
                                     Write-Host "   Cleaned album name to: '$detectedAlbum'" -ForegroundColor Gray
                                 }
                             }
                         }
                         # Otherwise check if album name has "Artist - Title" pattern
-                        elseif ($detectedAlbum -match '^(.+?)\s+-\s+(.+)$') {
+                        elseif ($detectedAlbum -match '^(.+)\s+-\s+(.+)$') {
                             $possibleArtist = $matches[1].Trim()
                             $possibleAlbumOnly = $matches[2].Trim()
-                            
-                            if ($possibleArtist -match [regex]::Escape($detectedArtist)) {
+                            # Use starts-with matching to avoid false positives from substring matches
+                            $escapedDetected = [regex]::Escape($detectedArtist)
+                            $escapedPossible = [regex]::Escape($possibleArtist)
+                            $escapedAlbumOnly = [regex]::Escape($possibleAlbumOnly)
+                            if ($possibleArtist -eq $detectedArtist -or
+                                $possibleArtist -match ('^' + $escapedDetected + '(\s|$)') -or
+                                $detectedArtist -match ('^' + $escapedPossible + '(\s|$)')) {
                                 Write-Host "📁 Auto-detected from folder: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Gray
                                 Write-Host "🎵 Using artist from album name: '$possibleArtist'" -ForegroundColor Green
                                 $detectedArtist = $possibleArtist
                                 $detectedAlbum = $possibleAlbumOnly
                             }
                             # Also check right side: "Album - Artist" pattern
-                            elseif ($possibleAlbumOnly -match [regex]::Escape($detectedArtist) -or $detectedArtist -match [regex]::Escape($possibleAlbumOnly)) {
+                            elseif ($possibleAlbumOnly -eq $detectedArtist -or
+                                $possibleAlbumOnly -match ('^' + $escapedDetected + '(\s|$)') -or
+                                $detectedArtist -match ('^' + $escapedAlbumOnly + '(\s|$)')) {
                                 Write-Host "📁 Auto-detected from folder: Artist='$detectedArtist', Album='$detectedAlbum'" -ForegroundColor Gray
                                 Write-Host "   Cleaned album name to: '$possibleArtist'" -ForegroundColor Gray
                                 $detectedAlbum = $possibleArtist
@@ -703,7 +719,7 @@ function Start-OM {
                             # Check if we have candidates (use the properly extracted $albumCandidates)
                             if ($null -eq $albumCandidates -or $albumCandidates.Count -eq 0) {
                                 Write-Host "No albums found for '$quickAlbum' by '$quickArtist' with $Provider." -ForegroundColor Red
-                                $retryChoice = Read-Host "`nPress Enter to retry, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(a)' artist-first mode, (ni) New Item (enter new artist+album), (x) skip album, (?) help, or enter new album name"
+                                $retryChoice = Read-Host "`nPress Enter to retry, (ps)potify, (pq)obuz, (pd)iscogs, (pm)usicbrainz, '(a)' artist-first mode, (ni) New Item, id:<id>, (x) skip, (?) help, or new album name"
                                 if ($retryChoice -eq 'ps') {
                                     $Provider = 'Spotify'
                                     Write-Host "Switched to provider: $Provider" -ForegroundColor Green
@@ -739,6 +755,37 @@ function Start-OM {
                                 elseif ($retryChoice -eq '?') {
                                     Show-OMHelp -Context 'QuickFind-Retry'
                                     continue quickSearchLoop
+                                }
+                                elseif ($retryChoice -match '^id:(.+)$') {
+                                    $id = ConvertFrom-ProviderUrl -InputId $matches[1].Trim() -Provider $Provider
+                                    if ($Provider -eq 'Discogs') { $id = & $normalizeDiscogsId $id }
+                                    $ProviderAlbum = @{ id = $id; name = $id }
+                                    if ($Provider -eq 'MusicBrainz') {
+                                        Write-Host "Fetching MusicBrainz release information..." -ForegroundColor Cyan
+                                        try {
+                                            $release = Invoke-MusicBrainzRequest -Endpoint 'release' -Id $id -Inc 'artist-credits'
+                                            if ($release) {
+                                                $ProviderAlbum = @{
+                                                    id           = $id
+                                                    name         = if (Get-IfExists $release 'title') { $release.title } else { $id }
+                                                    release_date = if (Get-IfExists $release 'date') { $release.date } else { $null }
+                                                }
+                                                Write-Host "✓ Found release: $($ProviderAlbum.name)" -ForegroundColor Green
+                                            }
+                                            else {
+                                                Write-Warning "Could not fetch release information for ID: $id"
+                                            }
+                                        }
+                                        catch {
+                                            Write-Warning "Failed to fetch MusicBrainz release information: $_"
+                                        }
+                                    }
+                                    else {
+                                        Write-Host "✓ Using album ID: $id" -ForegroundColor Green
+                                    }
+                                    $ProviderArtist = @{ name = $currentArtist; id = $currentArtist }
+                                    $stage = 'C'
+                                    break quickSearchLoop
                                 }
                                 elseif ($retryChoice -eq 'x' -or $retryChoice -eq 'xip') {
                                     # Skip this album
@@ -968,8 +1015,17 @@ function Start-OM {
                         Write-Host "🔍 Find Mode: Quick Album Search" -ForegroundColor Magenta
                         Write-Host ""
                         
-                        Write-Host "$Provider Album candidates for '$quickAlbum' by '$quickArtist':" -ForegroundColor Green
-                        for ($i = 0; $i -lt $albumCandidates.Count; $i++) {
+                        # Paging: show 10 albums per page
+                        $quickPageSize = 10
+                        $totalQuickPages = [math]::Max(1, [math]::Ceiling($albumCandidates.Count / $quickPageSize))
+                        if ($script:quickCurrentPage -gt $totalQuickPages) { $script:quickCurrentPage = $totalQuickPages }
+                        if ($script:quickCurrentPage -lt 1) { $script:quickCurrentPage = 1 }
+                        $startIdx = ($script:quickCurrentPage - 1) * $quickPageSize
+                        $endIdx = [math]::Min($startIdx + $quickPageSize - 1, $albumCandidates.Count - 1)
+
+                        $pageInfo = if ($totalQuickPages -gt 1) { " (page $($script:quickCurrentPage)/$totalQuickPages)" } else { "" }
+                        Write-Host "$Provider Album candidates for '$quickAlbum' by '$quickArtist'$pageInfo`:" -ForegroundColor Green
+                        for ($i = $startIdx; $i -le $endIdx; $i++) {
                             $album = $albumCandidates[$i]
                             $artistDisplay = if ($album.artists -and $album.artists[0].name) { $album.artists[0].name } else { 'Unknown Artist' }
                             
@@ -986,12 +1042,28 @@ function Start-OM {
                         [Console]::ForegroundColor = [ConsoleColor]::Yellow
                         $modeIndicator = if (
                         $script:ctx.BackNavigationMode) { " (Back Navigation - use 'f' to search again)" } else { "" }
-                        $albumChoice = Read-Host "Select album [number] (Enter=first), (b)ack, (p)rovider, (f)indMode, (ni) New Item, (x)ip, cover: cv/cvo/cs/ct, (?) help, or new search term$modeIndicator"
+                        $albumChoice = Read-Host "Select album [number] (Enter=first), (n)ext, (pr)ev, (b)ack, (p)rovider, (f)indMode, (ni) New Item, id:<id>, (x)ip, cv/cvo/cs/ct, (?) help, or new search$modeIndicator"
                         [Console]::ForegroundColor = $originalColor
-                        if ($albumChoice -eq '') { $albumChoice = '1' }
+                        if ($albumChoice -eq '') { $albumChoice = [string]($startIdx + 1) }
                         
                         if ($albumChoice -eq '?') {
                             Show-OMHelp -Context 'QuickFind-Select'
+                            continue albumSelectionLoop
+                        }
+                        elseif ($albumChoice -eq 'n') {
+                            if ($script:quickCurrentPage -lt $totalQuickPages) {
+                                $script:quickCurrentPage++
+                            } else {
+                                Write-Host "Already on last page." -ForegroundColor Yellow
+                            }
+                            continue albumSelectionLoop
+                        }
+                        elseif ($albumChoice -eq 'pr') {
+                            if ($script:quickCurrentPage -gt 1) {
+                                $script:quickCurrentPage--
+                            } else {
+                                Write-Host "Already on first page." -ForegroundColor Yellow
+                            }
                             continue albumSelectionLoop
                         }
                         elseif ($albumChoice -eq 'p') {
@@ -1138,6 +1210,38 @@ function Start-OM {
                                 }
                             }
                             continue albumSelectionLoop
+                        }
+                        elseif ($albumChoice -match '^id:(.+)$') {
+                            $id = ConvertFrom-ProviderUrl -InputId $matches[1].Trim() -Provider $Provider
+                            if ($Provider -eq 'Discogs') { $id = & $normalizeDiscogsId $id }
+                            $ProviderAlbum = @{ id = $id; name = $id }
+                            if ($Provider -eq 'MusicBrainz') {
+                                Write-Host "Fetching MusicBrainz release information..." -ForegroundColor Cyan
+                                try {
+                                    $release = Invoke-MusicBrainzRequest -Endpoint 'release' -Id $id -Inc 'artist-credits'
+                                    if ($release) {
+                                        $ProviderAlbum = @{
+                                            id           = $id
+                                            name         = if (Get-IfExists $release 'title') { $release.title } else { $id }
+                                            release_date = if (Get-IfExists $release 'date') { $release.date } else { $null }
+                                        }
+                                        Write-Host "✓ Found release: $($ProviderAlbum.name)" -ForegroundColor Green
+                                    }
+                                    else {
+                                        Write-Warning "Could not fetch release information for ID: $id"
+                                    }
+                                }
+                                catch {
+                                    Write-Warning "Failed to fetch MusicBrainz release information: $_"
+                                }
+                            }
+                            else {
+                                Write-Host "✓ Using album ID: $id" -ForegroundColor Green
+                            }
+                            $ProviderArtist = @{ name = $quickArtist; id = $quickArtist }
+                            $script:ctx.BackNavigationMode = $false
+                            $stage = 'C'
+                            continue stageLoop
                         }
                         elseif ($albumChoice -match '^\d+$') {
                             $idx = [int]$albumChoice
@@ -1507,6 +1611,16 @@ function Start-OM {
                         }
                         if ($stageCResult.ContainsKey('LoadStageBResults')) {
                             $loadStageBResults = $stageCResult.LoadStageBResults
+                        }
+                        # Handle artist/album override from 'ni' command in Stage C
+                        if ($stageCResult.ContainsKey('NewArtist')) {
+                            $currentArtist = $stageCResult.NewArtist
+                            $quickArtist = $stageCResult.NewArtist
+                        }
+                        if ($stageCResult.ContainsKey('NewAlbum')) {
+                            $currentAlbum = $stageCResult.NewAlbum
+                            $quickAlbum = $stageCResult.NewAlbum
+                            $script:quickAlbumCandidates = $null
                         }
 
                         $nextStage = $stageCResult.NextStage

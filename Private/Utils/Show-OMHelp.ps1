@@ -27,6 +27,7 @@ function Show-OMHelp {
                 @{ Cmd = 'ps/pq/pd/pm';  Desc = 'Switch provider (Spotify/Qobuz/Discogs/MusicBrainz)' }
                 @{ Cmd = 'a';            Desc = 'Switch to artist-first mode' }
                 @{ Cmd = 'ni';           Desc = 'New Item - enter new artist + album' }
+                @{ Cmd = 'id:<id>';      Desc = 'Select album by provider ID' }
                 @{ Cmd = 'x';            Desc = 'Skip this album' }
                 @{ Cmd = '<text>';        Desc = 'Search with new album name' }
                 @{ Cmd = '?';            Desc = 'Show this help' }
@@ -35,11 +36,14 @@ function Show-OMHelp {
         'QuickFind-Select' {
             @(
                 @{ Cmd = '1-N / Enter';  Desc = 'Select album by number (Enter = first)' }
+                @{ Cmd = 'n';            Desc = 'Next page of results' }
+                @{ Cmd = 'pr';           Desc = 'Previous page of results' }
                 @{ Cmd = 'b';            Desc = 'Back to artist/album search' }
                 @{ Cmd = 'p';            Desc = 'Show current provider' }
                 @{ Cmd = 'ps/pq/pd/pm';  Desc = 'Switch provider' }
                 @{ Cmd = 'f';            Desc = 'Switch to artist-first mode' }
                 @{ Cmd = 'ni';           Desc = 'New Item - enter new artist + album' }
+                @{ Cmd = 'id:<id>';      Desc = 'Select album by provider ID or URL' }
                 @{ Cmd = 'cv/cvo/cs/ct'; Desc = 'Cover: view/original/save/tags' }
                 @{ Cmd = 'x';            Desc = 'Skip this album' }
                 @{ Cmd = '<text>';        Desc = 'Search with new term' }

@@ -339,18 +339,8 @@
             $genreInfo = $script:allGenresFrequency[$genreKey]
             $originalGenre = $genreInfo.original
 
-            # Check if it's allowed (case-insensitive)
-            if ($allowedGenresNormalized.ContainsKey($genreKey)) {
-                $genreAnalysis.allowed += @{
-                    key       = $genreKey
-                    original  = $originalGenre
-                    standard  = $allowedGenresNormalized[$genreKey]
-                    count     = $genreInfo.count
-                    files     = $genreInfo.files
-                }
-            }
-            # Check if it's already mapped
-            elseif ($omConfig.Genres.GenreMappings.ContainsKey($genreKey)) {
+            # Check if it's mapped (mappings take priority over allowed list)
+            if ($omConfig.Genres.GenreMappings.ContainsKey($genreKey)) {
                 $mappedTo = $omConfig.Genres.GenreMappings[$genreKey]
                 if ($null -eq $mappedTo -or $mappedTo -eq '') {
                     # Marked as garbage
@@ -369,6 +359,16 @@
                         count     = $genreInfo.count
                         files     = $genreInfo.files
                     }
+                }
+            }
+            # Check if it's allowed (case-insensitive)
+            elseif ($allowedGenresNormalized.ContainsKey($genreKey)) {
+                $genreAnalysis.allowed += @{
+                    key       = $genreKey
+                    original  = $originalGenre
+                    standard  = $allowedGenresNormalized[$genreKey]
+                    count     = $genreInfo.count
+                    files     = $genreInfo.files
                 }
             }
             # Unmapped - will need user input
@@ -801,17 +801,17 @@ function Apply-GenreCorrections {
 
                 $genreKey = $genre.ToLower()
 
-                # Check if allowed (use standard casing)
-                if ($AllowedGenresNormalized.ContainsKey($genreKey)) {
-                    $correctedGenres += $AllowedGenresNormalized[$genreKey]
-                }
-                # Check if mapped
-                elseif ($GenreMappings.ContainsKey($genreKey)) {
+                # Check if mapped (mappings take priority over allowed list)
+                if ($GenreMappings.ContainsKey($genreKey)) {
                     $mappedTo = $GenreMappings[$genreKey]
                     if ($null -ne $mappedTo -and $mappedTo -ne '') {
                         $correctedGenres += $mappedTo
                     }
                     # else: it's garbage (null), skip it
+                }
+                # Check if allowed (use standard casing)
+                elseif ($AllowedGenresNormalized.ContainsKey($genreKey)) {
+                    $correctedGenres += $AllowedGenresNormalized[$genreKey]
                 }
                 # Check if explicitly garbage
                 elseif ($GarbageGenres -contains $genre) {

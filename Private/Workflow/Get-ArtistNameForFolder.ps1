@@ -51,8 +51,8 @@ function Get-ArtistNameForFolder {
         }
     }
 
-    # 3. ProviderAlbum.album_artist (only if ManualAlbumArtist not set)
-    if (-not $ManualAlbumArtist) {
+    # 3. ProviderAlbum.album_artist (only if steps 1-2 didn't produce a result)
+    if (-not $ManualAlbumArtist -and -not $artistNameForFolder) {
         $albumArtistFromMetadata = Get-IfExists $ProviderAlbum 'album_artist'
         if ($albumArtistFromMetadata) {
             $artistNameForFolder = $albumArtistFromMetadata

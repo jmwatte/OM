@@ -241,7 +241,7 @@ function Invoke-StageC-TrackSelection {
                     }
                 }
 
-                if (-not (Get-IfExists $ProviderAlbum 'artist') -and -not (Get-IfExists $ProviderAlbum 'album_artist')) {
+                if (-not (Get-IfExists $ProviderAlbum 'artist') -and -not (Get-IfExists $ProviderAlbum 'artists') -and -not (Get-IfExists $ProviderAlbum 'album_artist')) {
                     $albumArtistFromTrack = Get-IfExists $firstTrack 'album_artist'
                     if ($albumArtistFromTrack) {
                         if ($null -eq (Get-IfExists $ProviderAlbum 'album_artist')) {
@@ -848,8 +848,8 @@ function Invoke-StageC-TrackSelection {
             }) -join ', '
 
             $genreModeStatus = $ctx.GenreMode
-            $optionsLine = "`nOptions: SortBy $sortMethodDisplay, (r)everse | (S)ave {[A]ll, [T]ags, [F]olderNames} | {C}over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags} | (aa)AlbumArtist, (gm)GenreMode:$genreModeStatus, (rm)ReviewMarked, (b)ack/(pr)evious, (P)rovider, (F)indmode, (w)hatIf:$whatIfStatus, (v)erbose:$verboseStatus, (X)ip"
-            $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'rm', 'sa', 'st', 'sf', 'cv', 'cvo', 'cs', 'ct', 'aa', 'gm', 'b', 'pr', 'p', 'pq', 'ps', 'pd', 'pm', 'f', 'w', 'whatif', 'v', 'x')
+            $optionsLine = "`nOptions: SortBy $sortMethodDisplay, (r)everse | (S)ave {[A]ll, [T]ags, [F]olderNames} | {C}over {[V]iew,[O]riginal,[S]ave,saveIn[T]ags} | (aa)AlbumArtist, (gm)GenreMode:$genreModeStatus, (rm)ReviewMarked, (b)ack/(pr)evious, (ni)NewItem, (P)rovider, (F)indmode, (w)hatIf:$whatIfStatus, (v)erbose:$verboseStatus, (X)ip"
+            $commandList = @('o', 'd', 't', 'n', 'l', 'h', 'm', 'r', 'rm', 'sa', 'st', 'sf', 'cv', 'cvo', 'cs', 'ct', 'aa', 'gm', 'b', 'pr', 'ni', 'p', 'pq', 'ps', 'pd', 'pm', 'f', 'w', 'whatif', 'v', 'x')
             $paramshow = @{
                 PairedTracks  = $ctx.PairedTracks
                 AlbumName     = $ProviderAlbum.name
@@ -1075,6 +1075,23 @@ function Invoke-StageC-TrackSelection {
                     ReverseSource = [bool]$ReverseSource
                     UseWhatIf = $UseWhatIf
                 })
+            }
+            '^ni$' {
+                # New Item: prompt for new artist/album and go back to search
+                $ctx.ManualAlbumArtist = $null
+                $res = Read-ArtistAlbum -DefaultArtist $QuickArtist -DefaultAlbum $QuickAlbum
+                $overrides = @{
+                    NextStage = 'B'
+                    LoadStageBResults = $false
+                    SkipQuickPrompts = $true
+                    SortMethod = $SortMethod
+                    ReverseSource = [bool]$ReverseSource
+                    UseWhatIf = $UseWhatIf
+                }
+                if ($res.ChangedArtist) { $overrides.NewArtist = $res.Artist }
+                if ($res.ChangedAlbum) { $overrides.NewAlbum = $res.Album }
+                $ctx.BackNavigationMode = $false
+                return (& $buildResult $overrides)
             }
             '^pr$' {
                 $ctx.ManualAlbumArtist = $null
