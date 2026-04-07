@@ -99,6 +99,7 @@
     Valid values:
     - 'All' (default): Update all metadata fields
     - 'Genres': Only update genre tags
+    - 'AllGenres': Collect genres from ALL providers (Spotify, Qobuz, Discogs, MusicBrainz) and merge them
     - 'Year': Only update the release year
     - 'AlbumArtist': Only update the album artist field
     - 'Artists': Only update track-level performer/artist fields
@@ -203,6 +204,19 @@
     the provider's track list. No tags are modified. The JSON report contains track names, durations,
     disc/track numbers, and ISRCs to help search for the missing tracks online.
 
+.EXAMPLE
+    Start-OM -Path "C:\Music\Artist" -Auto -UpdateOnly AllGenres
+
+    Collects genres from ALL providers (Spotify, Qobuz, Discogs, MusicBrainz) for each album,
+    merges them into a single deduplicated list, and writes the combined genres to the audio files.
+    This gives the richest genre coverage by combining each provider's strengths.
+
+.EXAMPLE
+    Start-OM -Path "C:\Music\Artist" -Auto -UpdateOnly AllGenres,CoverArt
+
+    Collects genres from all providers and also downloads cover art. Genre tags are replaced
+    with the merged set from all providers.
+
 .NOTES
     This function requires the TagLib-Sharp library for reading and writing audio file tags.
     It will attempt to install it automatically if it's missing.
@@ -257,7 +271,7 @@ function Start-OM {
         [Parameter(Mandatory = $false)]
         [switch]$AutoSaveCover,
         [Parameter(Mandatory = $false)]
-        [ValidateSet('All', 'Genres', 'Year', 'AlbumArtist', 'Artists', 'TrackInfo', 'Album', 'CoverArt', 'Composers', 'MissingTracks')]
+        [ValidateSet('All', 'Genres', 'AllGenres', 'Year', 'AlbumArtist', 'Artists', 'TrackInfo', 'Album', 'CoverArt', 'Composers', 'MissingTracks')]
         [string[]]$UpdateOnly = @('All'),
         [Parameter(Mandatory = $false)]
         [ValidateSet('Replace', 'Merge')]
@@ -289,10 +303,13 @@ function Start-OM {
         }
 
         # Derive backward-compatible UpdateGenresOnly flag from UpdateOnly.
-        # Skip Stage C when UpdateOnly contains only Genres and/or CoverArt (no track-level fields).
+        # Skip Stage C when UpdateOnly contains only Genres/AllGenres and/or CoverArt (no track-level fields).
         $UpdateGenresOnly = ($UpdateOnly -notcontains 'All') -and
-            ($UpdateOnly -contains 'Genres') -and
-            -not ($UpdateOnly | Where-Object { $_ -notin @('Genres', 'CoverArt') })
+            ($UpdateOnly -contains 'Genres' -or $UpdateOnly -contains 'AllGenres') -and
+            -not ($UpdateOnly | Where-Object { $_ -notin @('Genres', 'AllGenres', 'CoverArt') })
+
+        # Derive AllGenres flag: collect genres from every provider instead of just the current one.
+        $UpdateAllGenres = $UpdateOnly -contains 'AllGenres'
 
         # Derive MissingTracks-only flag: skip all tagging, only produce mismatch JSON report.
         $UpdateMissingTracksOnly = ($UpdateOnly -contains 'MissingTracks') -and
@@ -949,19 +966,34 @@ function Start-OM {
                                 Write-Host "Genre mode: $($script:ctx.GenreMode)" -ForegroundColor Yellow
                                 Write-Host ""
 
-                                $genreResult = Update-OMGenresFromProvider -SelectedAlbum $ProviderAlbum -ProviderArtist $ProviderArtist `
-                                    -AlbumPath $script:ctx.Album.FullName -GenreMode $script:ctx.GenreMode -UseWhatIf:$useWhatIf
-                                
-                                # Genre fallback: if no genres found and AutoFallback enabled, try other providers
-                                if ($genreResult.Genres.Count -eq 0 -and $AutoFallback) {
-                                    Write-Host "⚠️  No genres from $Provider. Trying other providers..." -ForegroundColor Yellow
-                                    $genreFallback = Get-GenresWithFallback -PrimaryProvider $Provider `
-                                        -ArtistName $quickArtist -AlbumName $quickAlbum `
+                                if ($UpdateAllGenres) {
+                                    # AllGenres mode: collect from every provider and merge
+                                    Write-Host "🌐 Collecting genres from ALL providers..." -ForegroundColor Magenta
+                                    $allGenresResult = Get-AllProviderGenres -ArtistName $quickArtist -AlbumName $quickAlbum `
                                         -TrackCount $script:trackCount
-                                    if ($genreFallback) {
-                                        $fbAlbum = @{ genres = $genreFallback.Genres }
-                                        $genreResult = Update-OMGenresFromProvider -SelectedAlbum $fbAlbum `
+                                    if ($allGenresResult -and $allGenresResult.Merged.Count -gt 0) {
+                                        $mergedAlbum = @{ genres = $allGenresResult.Merged }
+                                        $genreResult = Update-OMGenresFromProvider -SelectedAlbum $mergedAlbum `
                                             -AlbumPath $script:ctx.Album.FullName -GenreMode $script:ctx.GenreMode -UseWhatIf:$useWhatIf
+                                    } else {
+                                        Write-Warning "No genres found on any provider."
+                                        $genreResult = [PSCustomObject]@{ Updated = 0; Total = 0; Genres = @(); Success = $false }
+                                    }
+                                } else {
+                                    $genreResult = Update-OMGenresFromProvider -SelectedAlbum $ProviderAlbum -ProviderArtist $ProviderArtist `
+                                        -AlbumPath $script:ctx.Album.FullName -GenreMode $script:ctx.GenreMode -UseWhatIf:$useWhatIf
+                                    
+                                    # Genre fallback: if no genres found and AutoFallback enabled, try other providers
+                                    if ($genreResult.Genres.Count -eq 0 -and $AutoFallback) {
+                                        Write-Host "⚠️  No genres from $Provider. Trying other providers..." -ForegroundColor Yellow
+                                        $genreFallback = Get-GenresWithFallback -PrimaryProvider $Provider `
+                                            -ArtistName $quickArtist -AlbumName $quickAlbum `
+                                            -TrackCount $script:trackCount
+                                        if ($genreFallback) {
+                                            $fbAlbum = @{ genres = $genreFallback.Genres }
+                                            $genreResult = Update-OMGenresFromProvider -SelectedAlbum $fbAlbum `
+                                                -AlbumPath $script:ctx.Album.FullName -GenreMode $script:ctx.GenreMode -UseWhatIf:$useWhatIf
+                                        }
                                     }
                                 }
 
@@ -1304,19 +1336,34 @@ function Start-OM {
                                     Write-Host "Genre mode: $($script:ctx.GenreMode)" -ForegroundColor Yellow
                                     Write-Host ""
                                     
-                                    $genreResult = Update-OMGenresFromProvider -SelectedAlbum $ProviderAlbum -ProviderArtist $ProviderArtist `
-                                        -AlbumPath $script:ctx.Album.FullName -GenreMode $script:ctx.GenreMode -UseWhatIf:$useWhatIf
-                                    
-                                    # Genre fallback: if no genres found, try other providers before prompting
-                                    if ($genreResult.Genres.Count -eq 0 -and $genreResult.Total -gt 0 -and $AutoFallback) {
-                                        Write-Host "⚠️  No genres from $Provider. Trying other providers..." -ForegroundColor Yellow
-                                        $genreFallback = Get-GenresWithFallback -PrimaryProvider $Provider `
-                                            -ArtistName $quickArtist -AlbumName $quickAlbum `
+                                    if ($UpdateAllGenres) {
+                                        # AllGenres mode: collect from every provider and merge
+                                        Write-Host "🌐 Collecting genres from ALL providers..." -ForegroundColor Magenta
+                                        $allGenresResult = Get-AllProviderGenres -ArtistName $quickArtist -AlbumName $quickAlbum `
                                             -TrackCount $script:trackCount
-                                        if ($genreFallback) {
-                                            $fbAlbum = @{ genres = $genreFallback.Genres }
-                                            $genreResult = Update-OMGenresFromProvider -SelectedAlbum $fbAlbum `
+                                        if ($allGenresResult -and $allGenresResult.Merged.Count -gt 0) {
+                                            $mergedAlbum = @{ genres = $allGenresResult.Merged }
+                                            $genreResult = Update-OMGenresFromProvider -SelectedAlbum $mergedAlbum `
                                                 -AlbumPath $script:ctx.Album.FullName -GenreMode $script:ctx.GenreMode -UseWhatIf:$useWhatIf
+                                        } else {
+                                            Write-Warning "No genres found on any provider."
+                                            $genreResult = [PSCustomObject]@{ Updated = 0; Total = 0; Genres = @(); Success = $false }
+                                        }
+                                    } else {
+                                        $genreResult = Update-OMGenresFromProvider -SelectedAlbum $ProviderAlbum -ProviderArtist $ProviderArtist `
+                                            -AlbumPath $script:ctx.Album.FullName -GenreMode $script:ctx.GenreMode -UseWhatIf:$useWhatIf
+                                        
+                                        # Genre fallback: if no genres found, try other providers before prompting
+                                        if ($genreResult.Genres.Count -eq 0 -and $genreResult.Total -gt 0 -and $AutoFallback) {
+                                            Write-Host "⚠️  No genres from $Provider. Trying other providers..." -ForegroundColor Yellow
+                                            $genreFallback = Get-GenresWithFallback -PrimaryProvider $Provider `
+                                                -ArtistName $quickArtist -AlbumName $quickAlbum `
+                                                -TrackCount $script:trackCount
+                                            if ($genreFallback) {
+                                                $fbAlbum = @{ genres = $genreFallback.Genres }
+                                                $genreResult = Update-OMGenresFromProvider -SelectedAlbum $fbAlbum `
+                                                    -AlbumPath $script:ctx.Album.FullName -GenreMode $script:ctx.GenreMode -UseWhatIf:$useWhatIf
+                                            }
                                         }
                                     }
 
@@ -1487,6 +1534,7 @@ function Start-OM {
                             MaxResults         = 10
                             CurrentPage        = $currentAlbumPage
                             UpdateGenresOnly   = $UpdateGenresOnly
+                            UpdateAllGenres    = $UpdateAllGenres
                             UpdateOnly         = $UpdateOnly
                             GenreMode          = $script:ctx.GenreMode
                             UseWhatIf          = $useWhatIf

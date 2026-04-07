@@ -54,6 +54,9 @@ function Invoke-StageB-AlbumSelection {
     .PARAMETER UpdateGenresOnly
         When enabled, only update genre tags and skip Stage C.
 
+    .PARAMETER UpdateAllGenres
+        When enabled, collect genres from ALL providers and merge them instead of using a single provider.
+
     .PARAMETER UpdateOnly
         Array of metadata fields to update. Used to determine if cover art should be saved.
 
@@ -131,6 +134,9 @@ function Invoke-StageB-AlbumSelection {
         
         [Parameter()]
         [switch]$UpdateGenresOnly,
+
+        [Parameter()]
+        [switch]$UpdateAllGenres,
         
         [Parameter()]
         [string[]]$UpdateOnly = @('All'),
@@ -579,8 +585,16 @@ function Invoke-StageB-AlbumSelection {
             
             # If UpdateGenresOnly, handle it here before returning
             if ($UpdateGenresOnly) {
-                Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
-                    -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                if ($UpdateAllGenres) {
+                    $allGenresResult = Get-AllProviderGenres -ArtistName $Artist -AlbumName $AlbumName -TrackCount $trackCount
+                    if ($allGenresResult -and $allGenresResult.Merged.Count -gt 0) {
+                        $mergedAlbum = @{ genres = $allGenresResult.Merged }
+                        Update-OMGenresFromProvider -SelectedAlbum $mergedAlbum -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                    }
+                } else {
+                    Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
+                        -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                }
                 
                 return @{
                     NextStage             = 'AlbumDone'
@@ -606,8 +620,16 @@ function Invoke-StageB-AlbumSelection {
             
             # If UpdateGenresOnly, update genres and return AlbumDone
             if ($UpdateGenresOnly -and $selectedAlbum) {
-                Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
-                    -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                if ($UpdateAllGenres) {
+                    $allGenresResult = Get-AllProviderGenres -ArtistName $Artist -AlbumName $AlbumName -TrackCount $trackCount
+                    if ($allGenresResult -and $allGenresResult.Merged.Count -gt 0) {
+                        $mergedAlbum = @{ genres = $allGenresResult.Merged }
+                        Update-OMGenresFromProvider -SelectedAlbum $mergedAlbum -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                    }
+                } else {
+                    Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
+                        -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                }
                 
                 return @{
                     NextStage             = 'AlbumDone'
@@ -633,8 +655,16 @@ function Invoke-StageB-AlbumSelection {
             
             # If UpdateGenresOnly, update genres and return AlbumDone
             if ($UpdateGenresOnly -and $selectedAlbum) {
-                Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
-                    -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                if ($UpdateAllGenres) {
+                    $allGenresResult = Get-AllProviderGenres -ArtistName $Artist -AlbumName $AlbumName -TrackCount $trackCount
+                    if ($allGenresResult -and $allGenresResult.Merged.Count -gt 0) {
+                        $mergedAlbum = @{ genres = $allGenresResult.Merged }
+                        Update-OMGenresFromProvider -SelectedAlbum $mergedAlbum -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                    }
+                } else {
+                    Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
+                        -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                }
                 
                 return @{
                     NextStage             = 'AlbumDone'
@@ -869,8 +899,16 @@ function Invoke-StageB-AlbumSelection {
                 
                 # If UpdateGenresOnly, update genres and return AlbumDone
                 if ($UpdateGenresOnly -and $selectedAlbum) {
-                    Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
-                        -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                    if ($UpdateAllGenres) {
+                        $allGenresResult = Get-AllProviderGenres -ArtistName $Artist -AlbumName $AlbumName -TrackCount $trackCount
+                        if ($allGenresResult -and $allGenresResult.Merged.Count -gt 0) {
+                            $mergedAlbum = @{ genres = $allGenresResult.Merged }
+                            Update-OMGenresFromProvider -SelectedAlbum $mergedAlbum -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                        }
+                    } else {
+                        Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
+                            -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                    }
                     
                     return @{
                         NextStage             = 'AlbumDone'
@@ -1103,8 +1141,16 @@ function Invoke-StageB-AlbumSelection {
                     
                     # If UpdateGenresOnly mode, update genres and skip Stage C
                     if ($UpdateGenresOnly) {
-                        Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
-                            -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                        if ($UpdateAllGenres) {
+                            $allGenresResult = Get-AllProviderGenres -ArtistName $Artist -AlbumName $AlbumName -TrackCount $trackCount
+                            if ($allGenresResult -and $allGenresResult.Merged.Count -gt 0) {
+                                $mergedAlbum = @{ genres = $allGenresResult.Merged }
+                                Update-OMGenresFromProvider -SelectedAlbum $mergedAlbum -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                            }
+                        } else {
+                            Update-OMGenresFromProvider -SelectedAlbum $selectedAlbum -ProviderArtist $ProviderArtist `
+                                -AlbumPath $ctx.Album.FullName -GenreMode $GenreMode -UseWhatIf:$UseWhatIf | Out-Null
+                        }
                         
                         return @{
                             NextStage             = 'AlbumDone'

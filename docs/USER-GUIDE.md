@@ -211,6 +211,12 @@ Start-OM -Path "C:\Music\Artist" -UpdateOnly Genres -Provider Discogs -Auto
 # Merge genres (add provider genres to existing, no duplicates)
 Start-OM -Path "C:\Music\Artist" -UpdateOnly Genres -GenreMode Merge -Auto
 
+# Collect genres from ALL providers (Spotify, Qobuz, Discogs, MusicBrainz) and merge
+Start-OM -Path "C:\Music\Artist" -UpdateOnly AllGenres -Auto
+
+# Collect all-provider genres and also download cover art
+Start-OM -Path "C:\Music\Artist" -UpdateOnly AllGenres,CoverArt -Auto
+
 # Only download cover art (no tag changes)
 Start-OM -Path "C:\Music\Artist" -UpdateOnly CoverArt -Auto -AutoFallback
 
@@ -229,7 +235,8 @@ Start-OM -Path "C:\Music\Artist" -UpdateOnly MissingTracks -Auto -AutoFallback
 | Value | What It Updates |
 |-------|-----------------|
 | `All` | Everything (default) |
-| `Genres` | Genre tags only |
+| `Genres` | Genre tags from current provider only |
+| `AllGenres` | Collect and merge genres from ALL providers |
 | `Year` | Release year only |
 | `AlbumArtist` | Album artist field |
 | `Artists` | Track-level performer/artist |
