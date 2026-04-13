@@ -391,6 +391,27 @@ Creates: `C:\Music\Organized\AlbumArtist\Year - Album\01 - Track.flac`
 Repair-AudioFileExtensions -Path "C:\Music" -Recurse
 ```
 
+### Export-OMPlaylists — Export Spotify Playlists to CSV
+
+```powershell
+# Interactive picker — select playlists from a grid view
+Export-OMPlaylists
+
+# Export all playlists at once
+Export-OMPlaylists -All
+
+# Filter by name (supports wildcards)
+Export-OMPlaylists -Name "Jazz*"
+
+# Include audio features (key, tempo, danceability, etc.)
+Export-OMPlaylists -Name "Favorites" -IncludeAudioFeatures
+
+# Custom output directory
+Export-OMPlaylists -OutputPath "D:\Music\Playlists" -All
+```
+
+Exports one CSV per playlist to `~/.OM/playlists/` by default. With `-IncludeAudioFeatures`, adds musical key (e.g., C, F#), mode (Major/Minor), tempo, and more.
+
 ---
 
 ## Command Reference

@@ -72,6 +72,7 @@ Description = 'OM PowerShell module for music organization'
 FunctionsToExport = @(
     'Add-OMDiscNumbers',
     'Export-OMGenres',
+    'Export-OMPlaylists',
     'Format-Genres',
     'Get-OMConfig',
     'Get-OMTags',
