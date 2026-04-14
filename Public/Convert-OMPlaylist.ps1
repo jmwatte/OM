@@ -110,7 +110,20 @@ function Convert-OMPlaylist {
             if (-not $s) { return '' }
             # Strip parenthesized/bracketed suffixes (remaster notes, mix versions, etc.)
             $s = $s -replace '\s*[\(\[][^\)\]]*[\)\]]', ''
+            # Strip " - Remastered YYYY" / " - Remaster" style suffixes (Spotify format)
+            $s = $s -replace '\s*-\s*(remaster(ed)?(\s+\d{4})?|deluxe(\s+edition)?|bonus\s+track\s+version)\s*$', ''
             $s.ToLower().Trim() -replace '[^a-z0-9\s]', '' -replace '\s+', ' '
+        }
+
+        # Normalize artist with sorted individual names (handles "A, B" vs "B; A")
+        $script:NormalizeArtistSorted = {
+            param([string]$s)
+            if (-not $s) { return '' }
+            $parts = $s -split '\s*[,;&/]\s*|\s+feat\.?\s+|\s+ft\.?\s+' |
+                Where-Object { $_.Trim() } |
+                ForEach-Object { & $script:Normalize $_ } |
+                Where-Object { $_ }
+            ($parts | Sort-Object) -join ' '
         }
 
         Write-Host "  Building search indexes..." -ForegroundColor DarkCyan
@@ -142,6 +155,26 @@ function Convert-OMPlaylist {
                 $script:exactIndex[$key2].Add($track)
             }
 
+            # Sorted-artist keys for order-independent matching ("A, B" == "B; A")
+            $sortedArtist = & $script:NormalizeArtistSorted $track.'%artist%'
+            $sortedKey = "$sortedArtist|$title"
+            if ($sortedKey -ne $key) {
+                if (-not $script:exactIndex.ContainsKey($sortedKey)) {
+                    $script:exactIndex[$sortedKey] = [System.Collections.Generic.List[object]]::new()
+                }
+                $script:exactIndex[$sortedKey].Add($track)
+            }
+            if ($albumArtist) {
+                $sortedAlbumArtist = & $script:NormalizeArtistSorted $track.'%album artist%'
+                $sortedKey2 = "$sortedAlbumArtist|$title"
+                if ($sortedKey2 -ne $key -and $sortedKey2 -ne $sortedKey -and (-not $script:exactIndex.ContainsKey($sortedKey2) -or -not $script:exactIndex[$sortedKey2].Contains($track))) {
+                    if (-not $script:exactIndex.ContainsKey($sortedKey2)) {
+                        $script:exactIndex[$sortedKey2] = [System.Collections.Generic.List[object]]::new()
+                    }
+                    $script:exactIndex[$sortedKey2].Add($track)
+                }
+            }
+
             # Artist word index — each significant word maps to tracks
             $allArtistText = "$artist $albumArtist"
             $seenWords = @{}
@@ -171,7 +204,7 @@ function Convert-OMPlaylist {
         $ec = $script:exactIndex.Count
         $aw = $script:artistWordIndex.Count
         $tw = $script:titleWordIndex.Count
-        Write-Host "  Indexes ready ($ec exact, $aw artist words, $tw title words)." -ForegroundColor DarkCyan
+        Write-Host "  Indexes ready: $ec exact, $aw artist-words, $tw title-words." -ForegroundColor DarkCyan
 
         # Store threshold in script scope for Find-LocalMatch
         $script:MatchThreshold = $MatchThreshold
@@ -366,8 +399,14 @@ function Find-LocalMatch {
 
     # Fast path: exact normalized match
     $key = "$spArtist|$spTitle"
-    if ($script:exactIndex.ContainsKey($key)) {
-        $candidates = $script:exactIndex[$key]
+    # Also try sorted-artist key for order-independent matching
+    $sortedSpArtist = & $script:NormalizeArtistSorted $SpotifyTrack.Artists
+    $sortedKey = "$sortedSpArtist|$spTitle"
+    $exactKey = if ($script:exactIndex.ContainsKey($key)) { $key }
+                elseif ($sortedKey -ne $key -and $script:exactIndex.ContainsKey($sortedKey)) { $sortedKey }
+                else { $null }
+    if ($exactKey) {
+        $candidates = $script:exactIndex[$exactKey]
         # If multiple, prefer album match
         if ($candidates.Count -gt 1 -and $spAlbum) {
             foreach ($c in $candidates) {
@@ -513,6 +552,15 @@ function Find-LocalMatch {
         if ($localAlbumArtist2 -and $localAlbumArtist2 -ne $localArtist) {
             $albumArtistScore = Get-StringSimilarity -String1 $spArtist -String2 $localAlbumArtist2
             if ($albumArtistScore -gt $artistScore) { $artistScore = $albumArtistScore }
+        }
+        # Also try sorted artist names for order-independent comparison
+        $sortedLocalArtist = & $script:NormalizeArtistSorted $local.'%artist%'
+        $sortedArtistScore = Get-StringSimilarity -String1 $sortedSpArtist -String2 $sortedLocalArtist
+        if ($sortedArtistScore -gt $artistScore) { $artistScore = $sortedArtistScore }
+        $sortedLocalAlbumArtist = & $script:NormalizeArtistSorted $local.'%album artist%'
+        if ($sortedLocalAlbumArtist -and $sortedLocalAlbumArtist -ne $sortedLocalArtist) {
+            $sortedAlbumArtistScore = Get-StringSimilarity -String1 $sortedSpArtist -String2 $sortedLocalAlbumArtist
+            if ($sortedAlbumArtistScore -gt $artistScore) { $artistScore = $sortedAlbumArtistScore }
         }
         $titleScore = Get-StringSimilarity -String1 $spTitle -String2 $localTitle
 
