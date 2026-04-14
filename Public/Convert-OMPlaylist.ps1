@@ -125,12 +125,20 @@ function Convert-OMPlaylist {
             $albumArtist = & $script:Normalize $track.'%album artist%'
             $title = & $script:Normalize $track.'%title%'
 
-            # Exact index
+            # Exact index — index by both %artist% and %album artist%
             $key = "$artist|$title"
             if (-not $script:exactIndex.ContainsKey($key)) {
                 $script:exactIndex[$key] = [System.Collections.Generic.List[object]]::new()
             }
             $script:exactIndex[$key].Add($track)
+
+            if ($albumArtist -and $albumArtist -ne $artist) {
+                $key2 = "$albumArtist|$title"
+                if (-not $script:exactIndex.ContainsKey($key2)) {
+                    $script:exactIndex[$key2] = [System.Collections.Generic.List[object]]::new()
+                }
+                $script:exactIndex[$key2].Add($track)
+            }
 
             # Artist word index — each significant word maps to tracks
             $allArtistText = "$artist $albumArtist"
@@ -441,16 +449,25 @@ function Find-LocalMatch {
     foreach ($entry in $candidates) {
         $local = $entry.Track
         $localArtist = & $script:Normalize $local.'%artist%'
+        $localAlbumArtist = & $script:Normalize $local.'%album artist%'
         $localTitle = & $script:Normalize $local.'%title%'
 
         # Token overlap score: count shared words / max words
+        # Try both %artist% and %album artist%, use whichever scores better
         $localArtistWords = $localArtist.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
+        $localAlbumArtistWords = $localAlbumArtist.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
         $localTitleWords = $localTitle.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
 
         $artistShared = 0
         foreach ($w in $spArtistWords) {
             foreach ($lw in $localArtistWords) {
                 if ($w -eq $lw) { $artistShared++; break }
+            }
+        }
+        $albumArtistShared = 0
+        foreach ($w in $spArtistWords) {
+            foreach ($lw in $localAlbumArtistWords) {
+                if ($w -eq $lw) { $albumArtistShared++; break }
             }
         }
         $titleShared = 0
@@ -460,14 +477,19 @@ function Find-LocalMatch {
             }
         }
 
-        $maxArtist = [math]::Max($spArtistWords.Count, $localArtistWords.Count)
+        # Use whichever artist field gives a better overlap
+        $bestArtistShared = [math]::Max($artistShared, $albumArtistShared)
+        $bestArtistWords = if ($albumArtistShared -gt $artistShared) { $localAlbumArtistWords } else { $localArtistWords }
+        $bestArtistNorm = if ($albumArtistShared -gt $artistShared) { $localAlbumArtist } else { $localArtist }
+
+        $maxArtist = [math]::Max($spArtistWords.Count, $bestArtistWords.Count)
         $maxTitle = [math]::Max($spTitleWords.Count, $localTitleWords.Count)
-        $artistOverlap = if ($maxArtist -gt 0) { $artistShared / $maxArtist } else { 0 }
+        $artistOverlap = if ($maxArtist -gt 0) { $bestArtistShared / $maxArtist } else { 0 }
         $titleOverlap = if ($maxTitle -gt 0) { $titleShared / $maxTitle } else { 0 }
         $quickScore = ($artistOverlap * 0.4) + ($titleOverlap * 0.6)
 
         if ($quickScore -gt 0.2) {
-            $prescored.Add(@{ Track = $local; QuickScore = $quickScore; LocalArtist = $localArtist; LocalTitle = $localTitle })
+            $prescored.Add(@{ Track = $local; QuickScore = $quickScore; LocalArtist = $bestArtistNorm; LocalTitle = $localTitle })
         }
     }
 
@@ -483,7 +505,13 @@ function Find-LocalMatch {
         $localArtist = $entry.LocalArtist
         $localTitle = $entry.LocalTitle
 
+        # Also try %album artist% for Levenshtein — use whichever scores better
         $artistScore = Get-StringSimilarity -String1 $spArtist -String2 $localArtist
+        $localAlbumArtist2 = & $script:Normalize $local.'%album artist%'
+        if ($localAlbumArtist2 -and $localAlbumArtist2 -ne $localArtist) {
+            $albumArtistScore = Get-StringSimilarity -String1 $spArtist -String2 $localAlbumArtist2
+            if ($albumArtistScore -gt $artistScore) { $artistScore = $albumArtistScore }
+        }
         $titleScore = Get-StringSimilarity -String1 $spTitle -String2 $localTitle
 
         # Weight title more heavily — artist names vary a lot
