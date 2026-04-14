@@ -64,7 +64,7 @@ function Get-OMTags {
 
     begin {
         # Supported audio file extensions
-        $supportedExtensions = @('.mp3', '.flac', '.m4a', '.ogg', '.wav', '.wma', '.ape')
+        $supportedExtensions = @('.mp3', '.flac', '.m4a', '.ogg', '.opus', '.wav', '.wma', '.ape')
         
         # Extensions that should be skipped without warning
         $excludedExtensions = @('.dll', '.exe', '.pdb', '.xml', '.config', '.json', '.txt', '.md', '.ps1', '.psm1')

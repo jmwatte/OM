@@ -5,7 +5,7 @@ param(
     [string]$RootDir
 )
 
-$audioExts = @('.mp3', '.flac', '.wav', '.m4a', '.ogg', '.aac')
+$audioExts = @('.mp3', '.flac', '.wav', '.m4a', '.ogg', '.opus', '.aac')
 $imageExts = @('.jpg', '.jpeg', '.png', '.bmp', '.gif')
 $coverNames = @('folder', 'cover', 'album','front')
 

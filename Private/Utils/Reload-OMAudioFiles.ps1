@@ -8,7 +8,7 @@ function Reload-OMAudioFiles {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)][string]$AlbumPath,
-        [string[]]$Extensions = @('.mp3','.flac','.wav','.m4a','.aac','.ogg','.ape'),
+        [string[]]$Extensions = @('.mp3','.flac','.wav','.m4a','.aac','.ogg','.opus','.ape'),
         [switch]$PreserveOrder,
         [switch]$Trace
     )

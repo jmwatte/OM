@@ -26,7 +26,7 @@ function Repair-AudioFileExtensions {
         [switch]$Recurse
     )
 
-    $audioExtensions = @('.mp3', '.flac', '.m4a', '.wav', '.ogg', '.ape', '.aac', '.wma')
+    $audioExtensions = @('.mp3', '.flac', '.m4a', '.wav', '.ogg', '.opus', '.ape', '.aac', '.wma')
 
     $getParams = @{ LiteralPath = $Path; File = $true; ErrorAction = 'SilentlyContinue' }
     if ($Recurse) { $getParams['Recurse'] = $true }
