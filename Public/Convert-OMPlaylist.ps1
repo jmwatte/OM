@@ -108,6 +108,8 @@ function Convert-OMPlaylist {
         $script:Normalize = {
             param([string]$s)
             if (-not $s) { return '' }
+            # Strip parenthesized/bracketed suffixes (remaster notes, mix versions, etc.)
+            $s = $s -replace '\s*[\(\[][^\)\]]*[\)\]]', ''
             $s.ToLower().Trim() -replace '[^a-z0-9\s]', '' -replace '\s+', ' '
         }
 
