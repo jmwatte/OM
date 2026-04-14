@@ -412,6 +412,36 @@ Export-OMPlaylists -OutputPath "D:\Music\Playlists" -All
 
 Exports one CSV per playlist to `~/.OM/playlists/` by default. With `-IncludeAudioFeatures`, adds musical key (e.g., C, F#), mode (Major/Minor), tempo, and more.
 
+### Convert-OMPlaylist — Match Spotify Playlists Against Local Library
+
+```powershell
+# Interactive picker — select CSV files from a grid view
+Convert-OMPlaylist
+
+# Convert a single playlist CSV
+Convert-OMPlaylist -CsvPath "~/.OM/playlists/Jazz Favorites.csv"
+
+# Batch convert all exported playlists
+Get-ChildItem ~/.OM/playlists/*.csv | Convert-OMPlaylist
+
+# Lower match threshold for more lenient matching (default 0.7)
+Convert-OMPlaylist -CsvPath "playlist.csv" -MatchThreshold 0.6
+
+# Generate only the match report, skip M3U8 creation
+Convert-OMPlaylist -CsvPath "playlist.csv" -ReportOnly
+
+# Full workflow: export from Spotify, then match against local library
+Export-OMPlaylists -Name "Rock*" -All
+Get-ChildItem ~/.OM/playlists/Rock*.csv | Convert-OMPlaylist
+```
+
+Matches Spotify playlist tracks against the Foobar2000 SQLite database using exact and fuzzy matching. Generates an M3U8 playlist of matched tracks and a detailed match report with:
+- **Missing Albums** summary (artist - album (year) [N tracks missing])
+- **Missing Tracks** detail (by album)
+- **Matched Tracks** with confidence percentage and match type (Exact/Near-Exact/Strong/Fuzzy)
+
+Requires: PSSQLite module (`Install-Module PSSQLite -Scope CurrentUser`) and Foobar2000 v2 with the SQLite materialization plugin.
+
 ---
 
 ## Command Reference
