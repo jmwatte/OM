@@ -112,6 +112,9 @@ function Convert-OMPlaylist {
             $s = $s -replace '\s*[\(\[][^\)\]]*[\)\]]', ''
             # Strip " - Remastered YYYY" / " - Remaster" style suffixes (Spotify format)
             $s = $s -replace '\s*-\s*(remaster(ed)?(\s+\d{4})?|deluxe(\s+edition)?|bonus\s+track\s+version)\s*$', ''
+            # Strip " - Single Version" / " - Alternate Take" / " - Pt. 1 / Single Version" etc.
+            # Spotify uses dash-separated qualifiers where Foobar uses parenthesized ones
+            $s = $s -replace '\s+-\s+.*\b(version|mix|take|edit|remix|dialog|dialogue|instrumental|acoustic|live|demo|mono|stereo|reprise|rehearsal|outtake|dub|session|interlude|unplugged)\b.*$', ''
             $s.ToLower().Trim() -replace '[^a-z0-9\s]', '' -replace '\s+', ' '
         }
 

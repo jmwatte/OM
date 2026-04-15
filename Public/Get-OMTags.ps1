@@ -356,6 +356,21 @@ function Get-OMTags {
                         $decodedGenre = $g -replace '(?i)&amp;', '&' -replace '(?i)&lt;', '<' -replace '(?i)&gt;', '>' -replace '(?i)&quot;', '"' -replace '(?i)&#39;', "'"
                         $genres += $decodedGenre -split '[,;/]' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
                     }
+                }
+                # For MP4/M4A: fall back to com.apple.iTunes/GENRE custom atoms if standard ©gen is empty
+                if ($genres.Count -eq 0 -and $fileObj -is [TagLib.Mpeg4.File]) {
+                    $appleTag = $fileObj.GetTag([TagLib.TagTypes]::Apple, $false)
+                    if ($appleTag) {
+                        $customBoxes = @($appleTag.DataBoxes("com.apple.iTunes", "GENRE"))
+                        foreach ($box in $customBoxes) {
+                            if ($box.Text) {
+                                $decodedGenre = $box.Text -replace '(?i)&amp;', '&' -replace '(?i)&lt;', '<' -replace '(?i)&gt;', '>' -replace '(?i)&quot;', '"' -replace '(?i)&#39;', "'"
+                                $genres += $decodedGenre -split '[,;/]' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+                            }
+                        }
+                    }
+                }
+                if ($genres.Count -gt 0) {
                     # Deduplicate case-insensitively, preserving first occurrence's casing
                     $uniqueGenres = @{}
                     $genres = $genres | ForEach-Object {

@@ -1028,6 +1028,15 @@ function Set-OMTags {
                                         $xiphTag.RemoveField("GENRE")
                                     }
                                 }
+                                # For MP4/M4A files, clear custom com.apple.iTunes/GENRE atoms to prevent duplicates
+                                if ($fileObj -is [TagLib.Mpeg4.File]) {
+                                    $appleTag = $fileObj.GetTag([TagLib.TagTypes]::Apple, $false)
+                                    if ($appleTag) {
+                                        while (@($appleTag.DataBoxes("com.apple.iTunes", "GENRE")).Count -gt 0) {
+                                            $appleTag.SetDashBox("com.apple.iTunes", "GENRE", $null)
+                                        }
+                                    }
+                                }
                                 # Now set via standard API
                                 $tag.Genres = @()
                                 if ($newValue) {
