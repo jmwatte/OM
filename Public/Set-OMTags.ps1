@@ -24,10 +24,29 @@ function Read-RawTagsForComparison {
             $composers = if ($tag.Composers) { @($tag.Composers) } else { @() }
             
             # Process genres the same way as Get-OMTags: split delimiters and deduplicate
-            # This ensures change detection matches what the pipeline sees
+            # This ensures change detection matches what the pipeline sees.
+            # For MP3 files, read the raw TCON frame text directly (bypassing TagLib's
+            # ID3v1 numeric genre translation) so we can detect and fix files where
+            # genres were previously written as numeric codes like (137) for Heavy Metal.
             $genres = @()
             if ($tag.Genres) {
-                $rawGenres = if ($tag.Genres -is [array]) { $tag.Genres } else { @($tag.Genres) }
+                $isMp3File = [System.IO.Path]::GetExtension($Path).ToLower() -eq '.mp3'
+                $rawGenres = if ($isMp3File) {
+                    # Read raw TCON text from ID3v2 - includes numeric codes like "(137)"
+                    $id3v2TagR = $fileObj.GetTag([TagLib.TagTypes]::Id3v2, $false)
+                    if ($id3v2TagR) {
+                        $tconFrameR = [TagLib.Id3v2.TextInformationFrame]::Get($id3v2TagR, 'TCON', $false)
+                        if ($tconFrameR -and $tconFrameR.Text -and $tconFrameR.Text.Count -gt 0) {
+                            @($tconFrameR.Text)
+                        } else {
+                            if ($tag.Genres -is [array]) { $tag.Genres } else { @($tag.Genres) }
+                        }
+                    } else {
+                        if ($tag.Genres -is [array]) { $tag.Genres } else { @($tag.Genres) }
+                    }
+                } else {
+                    if ($tag.Genres -is [array]) { $tag.Genres } else { @($tag.Genres) }
+                }
                 foreach ($g in $rawGenres) {
                     $decodedGenre = $g -replace '(?i)&amp;', '&' -replace '(?i)&lt;', '<' -replace '(?i)&gt;', '>' -replace '(?i)&quot;', '"' -replace '(?i)&#39;', "'"
                     $genres += $decodedGenre -split '[,;/]' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
@@ -1037,10 +1056,28 @@ function Set-OMTags {
                                         }
                                     }
                                 }
-                                # Now set via standard API
-                                $tag.Genres = @()
-                                if ($newValue) {
-                                    $tag.Genres = $newValue
+                                # For MP3 files: write genres as plain text in the ID3v2 TCON frame,
+                                # bypassing TagLib-Sharp's automatic conversion of known genre names
+                                # to numeric ID3v1 codes (e.g. "Heavy Metal" -> "(137)").
+                                # Numeric codes in the Winamp extended range (80-191) are only
+                                # translated by TagLib, not by foobar2000 or Windows Explorer,
+                                # which display them as raw numbers instead of genre names.
+                                $isMp3Write = [System.IO.Path]::GetExtension($filePath).ToLower() -eq '.mp3'
+                                if ($isMp3Write) {
+                                    $id3v2TagW = $fileObj.GetTag([TagLib.TagTypes]::Id3v2, $true)
+                                    if ($id3v2TagW) {
+                                        $id3v2TagW.RemoveFrames('TCON')
+                                        if ($newValue -and $newValue.Count -gt 0) {
+                                            $tconFrameW = [TagLib.Id3v2.TextInformationFrame]::Get($id3v2TagW, 'TCON', $true)
+                                            $tconFrameW.Text = [string[]]$newValue
+                                        }
+                                    }
+                                } else {
+                                    # Standard API for FLAC, OGG, M4A, WAV, WMA, etc.
+                                    $tag.Genres = @()
+                                    if ($newValue) {
+                                        $tag.Genres = $newValue
+                                    }
                                 }
                             }
                             'Composers' { 
