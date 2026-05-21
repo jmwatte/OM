@@ -73,6 +73,7 @@ FunctionsToExport = @(
     'Add-OMDiscNumbers',
     'Convert-OMPlaylist',
     'Export-OMGenres',
+    'Export-OMTagsCsv',
     'Export-OMPlaylists',
     'Format-Genres',
     'Get-OMConfig',
